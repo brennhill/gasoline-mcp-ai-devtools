@@ -6,7 +6,7 @@
  * @fileoverview Message Handlers - Handles all chrome.runtime.onMessage routing
  * with type-safe message discrimination.
  */
-import type { LogEntry, ChromeMessageSender, BrowserStateSnapshot, ConnectionStatus, ContextWarning, CircuitBreakerState, MemoryPressureState, WebSocketEvent, EnhancedAction, NetworkBodyPayload, PerformanceSnapshot } from '../types/index.js';
+import type { LogEntry, ChromeMessageSender, ConnectionStatus, ContextWarning, CircuitBreakerState, MemoryPressureState, WebSocketEvent, EnhancedAction, NetworkBodyPayload, PerformanceSnapshot } from '../types/index.js';
 /** Message handler dependencies */
 export interface MessageHandlerDependencies {
     getServerUrl: () => string;
@@ -64,37 +64,4 @@ export declare function installMessageListener(deps: MessageHandlerDependencies)
  * @param untrackedTabId - Optional tab ID that was just untracked (to notify it to stop flicker)
  */
 export declare function broadcastTrackingState(untrackedTabId?: number | null): Promise<void>;
-interface StoredStateSnapshot extends BrowserStateSnapshot {
-    name: string;
-    size_bytes: number;
-}
-/**
- * Save a state snapshot to persistent storage
- */
-export declare function saveStateSnapshot(name: string, state: BrowserStateSnapshot): Promise<{
-    success: boolean;
-    snapshot_name: string;
-    size_bytes: number;
-}>;
-/**
- * Load a state snapshot from persistent storage
- */
-export declare function loadStateSnapshot(name: string): Promise<StoredStateSnapshot | null>;
-/**
- * List all state snapshots with metadata
- */
-export declare function listStateSnapshots(): Promise<Array<{
-    name: string;
-    url: string;
-    timestamp: number;
-    size_bytes: number;
-}>>;
-/**
- * Delete a state snapshot from persistent storage
- */
-export declare function deleteStateSnapshot(name: string): Promise<{
-    success: boolean;
-    deleted: string;
-}>;
-export {};
 //# sourceMappingURL=message-handlers.d.ts.map

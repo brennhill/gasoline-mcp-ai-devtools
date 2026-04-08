@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 
 	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
@@ -70,10 +71,10 @@ func toFloat64(v any) (float64, bool) {
 	return 0, false
 }
 
-func (h *InteractActionHandler) HandleDOMPrimitive(req JSONRPCRequest, args json.RawMessage, action string) JSONRPCResponse {
+func (h *InteractActionHandler) HandleDOMPrimitive(req mcp.JSONRPCRequest, args json.RawMessage, action string) mcp.JSONRPCResponse {
 	params, err := ParseDOMPrimitiveParams(args)
 	if err != nil {
-		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
+		return mcp.Fail(req, mcp.ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	// If x/y coordinates provided on a click action, escalate to CDP for hardware-level click
@@ -82,7 +83,7 @@ func (h *InteractActionHandler) HandleDOMPrimitive(req JSONRPCRequest, args json
 	}
 
 	var failed bool
-	var errResp JSONRPCResponse
+	var errResp mcp.JSONRPCResponse
 	args, errResp, failed = h.resolveDOMSelectorFromIndex(req, args, &params)
 	if failed {
 		return errResp

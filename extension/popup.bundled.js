@@ -227,6 +227,17 @@
     const internalPrefixes = ["chrome://", "chrome-extension://", "about:", "edge://", "brave://", "devtools://"];
     return internalPrefixes.some((prefix) => url.startsWith(prefix));
   }
+  function startTimerDisplay(statusEl, startTime) {
+    const update = () => {
+      const elapsed = Math.round((Date.now() - startTime) / 1e3);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      statusEl.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
+    };
+    update();
+    const interval = setInterval(update, 1e3);
+    return () => clearInterval(interval);
+  }
 
   // extension/popup/status-display.js
   var DEFAULT_MAX_ENTRIES = 1e3;
@@ -503,13 +514,8 @@
     if (els.optionsEl)
       els.optionsEl.style.display = "none";
     if (state.timerInterval)
-      clearInterval(state.timerInterval);
-    state.timerInterval = setInterval(() => {
-      const elapsed = Math.round((Date.now() - startTime) / 1e3);
-      const mins = Math.floor(elapsed / 60);
-      const secs = elapsed % 60;
-      els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
-    }, 1e3);
+      state.timerInterval();
+    state.timerInterval = startTimerDisplay(els.statusEl, startTime);
     if (!wasRecording && Date.now() - startTime <= RECENT_RECORDING_START_MS) {
       showTopNotice(els, "Recording started");
     }
@@ -523,7 +529,7 @@
     if (els.optionsEl)
       els.optionsEl.style.display = "block";
     if (state.timerInterval) {
-      clearInterval(state.timerInterval);
+      state.timerInterval();
       state.timerInterval = null;
     }
   }
@@ -848,14 +854,9 @@
     els.label.textContent = STOP_LABEL2;
     els.statusEl.textContent = "";
     if (state.timerInterval)
-      clearInterval(state.timerInterval);
+      state.timerInterval();
     const start = state.startTime ?? Date.now();
-    state.timerInterval = setInterval(() => {
-      const elapsed = Math.round((Date.now() - start) / 1e3);
-      const mins = Math.floor(elapsed / 60);
-      const secs = elapsed % 60;
-      els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, "0")}`;
-    }, 1e3);
+    state.timerInterval = startTimerDisplay(els.statusEl, start);
   }
   function showIdle2(els, state) {
     state.isRecording = false;
@@ -865,7 +866,7 @@
     els.label.textContent = START_LABEL2;
     els.statusEl.textContent = "";
     if (state.timerInterval) {
-      clearInterval(state.timerInterval);
+      state.timerInterval();
       state.timerInterval = null;
     }
   }
@@ -1120,11 +1121,6 @@
       if (chrome.runtime.lastError) {
       }
     });
-    chrome.tabs.sendMessage(prevTabId, {
-      type: "tracking_state_changed",
-      state: { isTracked: false, aiPilotEnabled: false }
-    }).catch(() => {
-    });
     console.log(KABOOM_LOG_PREFIX, "Stopped tracking via bar stop button");
   }
   async function handleUrlClick(tabId) {
@@ -1183,10 +1179,6 @@
           chrome.tabs.reload(tabId);
         } else {
           console.log(KABOOM_LOG_PREFIX, "Content script already loaded, skipping reload");
-          chrome.tabs.sendMessage(tabId, {
-            type: "tracking_state_changed",
-            state: { isTracked: true, aiPilotEnabled: false }
-          });
         }
       });
     }

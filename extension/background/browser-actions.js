@@ -2,7 +2,7 @@
  * Purpose: Handles browser navigation actions (navigate, refresh, back, forward, tab management) with CSP probing and async timeouts.
  * Docs: docs/features/feature/interact-explore/index.md
  */
-import { waitForTabLoad, pingContentScript, getActiveTab } from './event-listeners.js';
+import { waitForTabLoad, pingContentScript, getActiveTab } from './tab-state.js';
 import { debugLog } from './index.js';
 import { isAiWebPilotEnabled } from './state.js';
 import { DebugCategory } from './debug.js';
@@ -11,22 +11,12 @@ import { executeWithWorldRouting, probeCSPStatus } from './query-execution.js';
 import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js';
 import { persistTrackedTab } from './commands/helpers.js';
 import { errorMessage } from '../lib/error-utils.js';
-import { delay } from '../lib/timeout-utils.js';
+import { delay, withTimeoutReject as withTimeout } from '../lib/timeout-utils.js';
 // =============================================================================
 // TIMEOUT CONFIGURATION
 // =============================================================================
 const ASYNC_EXECUTE_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS;
-/**
- * Race a promise against a timeout. Properly clears the timer when the promise
- * settles first so no dangling setTimeout keeps the service worker alive.
- */
-function withTimeout(promise, timeoutMs, message) {
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
-        promise.then((value) => { clearTimeout(timer); resolve(value); }, (err) => { clearTimeout(timer); reject(err); });
-    });
-}
 /** Cached CSP status from the most recent navigation */
 let lastCSPStatus = { csp_restricted: false, csp_level: 'none' };
 /** Get the CSP status from the most recent navigation (for sync layer) */

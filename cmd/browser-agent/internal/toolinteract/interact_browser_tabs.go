@@ -5,14 +5,15 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 )
 
-func (h *InteractActionHandler) HandleBrowserActionNewTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBrowserActionNewTabImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		URL string `json:"url"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -20,21 +21,21 @@ func (h *InteractActionHandler) HandleBrowserActionNewTabImpl(req JSONRPCRequest
 	if params.URL != "" {
 		rewriteURL, err := h.ResolveNavigateURLImpl(params.URL)
 		if err != nil {
-			return fail(req, ErrInvalidParam,
+			return mcp.Fail(req, mcp.ErrInvalidParam,
 				err.Error(),
 				"Enable configure(what='security_mode', mode='insecure_proxy', confirm=true), or use a standard http(s) URL.",
-				withParam("url"))
+				mcp.WithParam("url"))
 		}
 		resolvedURL = rewriteURL
 	}
 
 	actionParams := make(map[string]any)
-	lenientUnmarshal(args, &actionParams)
+	mcp.LenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "new_tab"
 	if resolvedURL != "" {
 		actionParams["url"] = resolvedURL
 	}
-	actionPayload := buildQueryParams(actionParams)
+	actionPayload := mcp.BuildQueryParams(actionParams)
 
 	return h.newCommand("new_tab").
 		correlationPrefix("newtab").
@@ -50,36 +51,36 @@ func (h *InteractActionHandler) HandleBrowserActionNewTabImpl(req JSONRPCRequest
 		execute(req, args)
 }
 
-func (h *InteractActionHandler) HandleBrowserActionSwitchTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBrowserActionSwitchTabImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		TabID      int   `json:"tab_id,omitempty"`
 		TabIndex   *int  `json:"tab_index,omitempty"`
 		SetTracked *bool `json:"set_tracked,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 	if params.TabID <= 0 && params.TabIndex == nil {
-		return fail(req, ErrMissingParam,
+		return mcp.Fail(req, mcp.ErrMissingParam,
 			"switch_tab requires tab_id or tab_index",
 			"Provide tab_id from observe(what='tabs') or tab_index from your tab list ordering.",
-			withParam("tab_id"),
-			withHint("Alternative: provide tab_index"))
+			mcp.WithParam("tab_id"),
+			mcp.WithHint("Alternative: provide tab_index"))
 	}
 	if params.TabIndex != nil && *params.TabIndex < 0 {
-		return fail(req, ErrInvalidParam,
+		return mcp.Fail(req, mcp.ErrInvalidParam,
 			"tab_index must be >= 0",
 			"Provide a non-negative tab_index (0-based).",
-			withParam("tab_index"))
+			mcp.WithParam("tab_index"))
 	}
 
 	// Default set_tracked to true so subsequent commands target the new tab.
 	setTracked := params.SetTracked == nil || *params.SetTracked
 
 	actionParams := make(map[string]any)
-	lenientUnmarshal(args, &actionParams)
+	mcp.LenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "switch_tab"
-	actionPayload := buildQueryParams(actionParams)
+	actionPayload := mcp.BuildQueryParams(actionParams)
 
 	// No requireTabTracking gate: switch_tab IS how you establish tracking
 	// for an existing tab. The handler calls applySwitchTabTracking on success.
@@ -110,7 +111,7 @@ func (h *InteractActionHandler) HandleBrowserActionSwitchTabImpl(req JSONRPCRequ
 	return resp
 }
 
-func (h *InteractActionHandler) HandleActivateTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleActivateTabImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	return h.queueBrowserAction(req, args, browserActionOpts{
 		action:         "activate_tab",
 		correlationPfx: "activate",
@@ -118,18 +119,18 @@ func (h *InteractActionHandler) HandleActivateTabImpl(req JSONRPCRequest, args j
 	})
 }
 
-func (h *InteractActionHandler) HandleBrowserActionCloseTabImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBrowserActionCloseTabImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
 	actionParams := make(map[string]any)
-	lenientUnmarshal(args, &actionParams)
+	mcp.LenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "close_tab"
-	actionPayload := buildQueryParams(actionParams)
+	actionPayload := mcp.BuildQueryParams(actionParams)
 
 	// NOTE: close_tab is gated even with explicit tab_id.
 	// Future: allow bypass when tab_id is explicitly provided.

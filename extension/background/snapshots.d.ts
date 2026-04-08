@@ -23,24 +23,4 @@ export declare function resetContextWarning(): void;
  * Resolve an entire stack trace
  */
 export declare function resolveStackTrace(stack: string, debugLogFn?: (category: string, message: string, data?: unknown) => void): Promise<string>;
-/**
- * Get current state of processing queries (for testing)
- */
-export declare function getProcessingQueriesState(): Map<string, number>;
-/**
- * Add a query to the processing set with timestamp
- */
-export declare function addProcessingQuery(queryId: string, timestamp?: number): void;
-/**
- * Remove a query from the processing set
- */
-export declare function removeProcessingQuery(queryId: string): void;
-/**
- * Check if a query is currently being processed
- */
-export declare function isQueryProcessing(queryId: string): boolean;
-/**
- * Clean up stale processing queries that have exceeded the TTL
- */
-export declare function cleanupStaleProcessingQueries(debugLogFn?: (category: string, message: string, data?: unknown) => void): void;
 //# sourceMappingURL=snapshots.d.ts.map

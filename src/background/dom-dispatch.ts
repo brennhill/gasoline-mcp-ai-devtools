@@ -14,6 +14,8 @@ import type { DOMActionParams, DOMResult } from './dom-types.js'
 import type { SendAsyncResultFn, ActionToastFn } from './commands/helpers.js'
 import { domFrameProbe } from './dom-frame-probe.js'
 import { domPrimitive } from './dom-primitives.js'
+import { domPrimitiveRead } from './dom-primitives-read.js'
+import { domPrimitiveAction } from './dom-primitives-action.js'
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js'
 import { domPrimitiveQuery } from './dom-primitives-query.js'
 import { domPrimitiveWaitForStable, domPrimitiveActionDiff } from './dom-primitives-stability.js'
@@ -102,7 +104,7 @@ async function executeWaitFor(target: DOMExecutionTarget, params: DOMActionParam
   const quickCheck = await chrome.scripting.executeScript({
     target,
     world: 'MAIN',
-    func: domPrimitive,
+    func: domPrimitiveRead,
     args: [domAction, selector, domOpts]
   })
   const quickPicked = pickFrameResult(quickCheck)
@@ -119,7 +121,7 @@ async function executeWaitFor(target: DOMExecutionTarget, params: DOMActionParam
     const probeResults = await chrome.scripting.executeScript({
       target,
       world: 'MAIN',
-      func: domPrimitive,
+      func: domPrimitiveRead,
       args: [domAction, selector, domOpts]
     })
 
@@ -149,14 +151,23 @@ async function executeWaitFor(target: DOMExecutionTarget, params: DOMActionParam
   }
 }
 
+const READ_ACTIONS_DISPATCH = new Set(['get_text', 'get_value', 'get_attribute'])
+
+function resolveStandardPrimitive(act: string): typeof domPrimitive {
+  if (READ_ACTIONS_DISPATCH.has(act)) return domPrimitiveRead as typeof domPrimitive
+  // All mutating selector-based actions use domPrimitiveAction
+  return domPrimitiveAction as typeof domPrimitive
+}
+
 async function executeStandardAction(
   target: DOMExecutionTarget,
   params: DOMActionParams
 ): Promise<chrome.scripting.InjectionResult[]> {
+  const func = resolveStandardPrimitive(params.action!)
   return chrome.scripting.executeScript({
     target,
     world: 'MAIN',
-    func: domPrimitive,
+    func,
     args: [
       params.action!,
       params.selector || '',

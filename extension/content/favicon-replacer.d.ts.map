@@ -1,1 +1,1 @@
-{"version":3,"file":"favicon-replacer.d.ts","sourceRoot":"","sources":["../../src/content/favicon-replacer.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAqBH;;;GAGG;AAEH,wBAAgB,mBAAmB,IAAI,IAAI,CAoB1C"}
+{"version":3,"file":"favicon-replacer.d.ts","sourceRoot":"","sources":["../../src/content/favicon-replacer.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAEH;;;;GAIG;AAEH,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,mBAAmB,CAAA;AAatD;;;;GAIG;AACH,wBAAgB,mBAAmB,IAAI,IAAI,CAO1C;AAED;;;;;GAKG;AACH,wBAAgB,aAAa,CAAC,KAAK,EAAE,aAAa,GAAG,IAAI,CAcxD;AAED;;GAEG;AACH,wBAAgB,cAAc,IAAI,IAAI,CAGrC"}

@@ -4,6 +4,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -15,7 +16,7 @@ func ParseEvidenceMode(args json.RawMessage) (evidenceMode, error) {
 	var params struct {
 		Evidence string `json:"evidence"`
 	}
-	lenientUnmarshal(args, &params)
+	mcp.LenientUnmarshal(args, &params)
 	raw := strings.TrimSpace(params.Evidence)
 	if raw == "" {
 		return evidenceModeOff, nil
@@ -61,7 +62,7 @@ func canonicalActionFromInteractArgs(args json.RawMessage) string {
 		What   string `json:"what"`
 		Action string `json:"action"`
 	}
-	lenientUnmarshal(args, &params)
+	mcp.LenientUnmarshal(args, &params)
 	action := strings.TrimSpace(params.What)
 	if action == "" {
 		action = strings.TrimSpace(params.Action)

@@ -116,7 +116,7 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 	handler.uploadInteractHandler = toolinteract.NewUploadInteractHandler(interactDeps, handler.interactActionHandler)
 	handler.testGenHandler = newTestGenHandler(handler) // *ToolHandler satisfies testGenHandlerDeps
 	handler.stateInteractHandler = toolinteract.NewStateInteractHandler(interactDeps, handler.sessionStoreImpl)
-	handler.configureSessionHandler = newConfigureSessionHandler(handler, handler.sessionStoreImpl, handler.sessionManager, handler.MCPHandler.server)
+	handler.configureSessionHandler = newConfigureSessionHandler(handler, handler.sessionStoreImpl, handler.sessionManager)
 
 	// Initialize dispatch modules and tool schemas once at startup.
 	handler.ensureToolModules()

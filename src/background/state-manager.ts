@@ -49,13 +49,17 @@ export {
   checkContextAnnotations,
   getContextWarning,
   resetContextWarning,
-  resolveStackTrace,
+  resolveStackTrace
+} from './snapshots.js'
+
+// Re-export processing query tracking
+export {
   getProcessingQueriesState,
   addProcessingQuery,
   removeProcessingQuery,
   isQueryProcessing,
   cleanupStaleProcessingQueries
-} from './snapshots.js'
+} from './processing-queries.js'
 
 // Debug log functions are defined and exported below
 

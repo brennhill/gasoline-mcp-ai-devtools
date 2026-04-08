@@ -5,29 +5,30 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 )
 
 // handleHardwareClick dispatches a coordinate-based click via CDP Input.dispatchMouseEvent.
 // This gives LLMs an explicit "I see coordinates in a screenshot, click there" path.
-func (h *InteractActionHandler) HandleHardwareClick(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleHardwareClick(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	params, err := parseHardwareClickParams(args)
 	if err != nil {
-		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
+		return mcp.Fail(req, mcp.ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	if params.X == nil {
-		return fail(req, ErrMissingParam, "Required parameter 'x' is missing", "Add the 'x' coordinate (pixels from left)", withParam("x"))
+		return mcp.Fail(req, mcp.ErrMissingParam, "Required parameter 'x' is missing", "Add the 'x' coordinate (pixels from left)", mcp.WithParam("x"))
 	}
 	if params.Y == nil {
-		return fail(req, ErrMissingParam, "Required parameter 'y' is missing", "Add the 'y' coordinate (pixels from top)", withParam("y"))
+		return mcp.Fail(req, mcp.ErrMissingParam, "Required parameter 'y' is missing", "Add the 'y' coordinate (pixels from top)", mcp.WithParam("y"))
 	}
 
 	return h.HandleCDPClick(req, args, "hardware_click", *params.X, *params.Y, params.TabID)
 }
 
 // handleCDPClick creates a cdp_action query for a hardware-level click at coordinates.
-func (h *InteractActionHandler) HandleCDPClick(req JSONRPCRequest, args json.RawMessage, action string, x, y float64, tabID int) JSONRPCResponse {
+func (h *InteractActionHandler) HandleCDPClick(req mcp.JSONRPCRequest, args json.RawMessage, action string, x, y float64, tabID int) mcp.JSONRPCResponse {
 	return h.newCommand("cdp_click").
 		correlationPrefix("cdp_click").
 		reason(action).
@@ -39,7 +40,7 @@ func (h *InteractActionHandler) HandleCDPClick(req JSONRPCRequest, args json.Raw
 		}).
 		tabID(tabID).
 		guardsWithOpts(
-			[]func(*StructuredError){withAction(action)},
+			[]func(*mcp.StructuredError){mcp.WithAction(action)},
 			h.deps.RequirePilot, h.deps.RequireExtension, h.deps.RequireTabTracking,
 		).
 		recordAction(action, "", map[string]any{"x": x, "y": y, "method": "cdp"}).

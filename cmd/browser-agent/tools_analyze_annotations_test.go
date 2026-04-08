@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolanalyze"
 )
 
 // unmarshalMCPText extracts the text from an MCP tool response.
@@ -988,7 +990,7 @@ func TestToolGetAnnotations_Flush_UsesExplicitURLFilterWhenWaiterMissing(t *test
 	})
 
 	corrID := "ann_flush_filter_fallback"
-	h.capture.RegisterCommand(corrID, "", annotationWaitCommandTTL)
+	h.capture.RegisterCommand(corrID, "", toolanalyze.AnnotationWaitCommandTTL)
 
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: float64(1)}
 	resp := h.toolGetAnnotations(req, json.RawMessage(`{"what":"annotations","operation":"flush","correlation_id":"`+corrID+`","url":"http://localhost:3000/*"}`))

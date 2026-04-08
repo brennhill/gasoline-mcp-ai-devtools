@@ -13,6 +13,42 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 )
 
+// ============================================
+// Wire Types — checked by scripts/check-sync-wire-drift.js
+// TS counterpart: src/types/wire-push.ts
+// ============================================
+
+// PushScreenshotRequest is the request body for POST /push/screenshot.
+type PushScreenshotRequest struct {
+	ScreenshotDataURL string `json:"screenshot_data_url"`
+	Note              string `json:"note"`
+	PageURL           string `json:"page_url"`
+	TabID             int    `json:"tab_id"`
+}
+
+// PushMessageRequest is the request body for POST /push/message.
+type PushMessageRequest struct {
+	Message string `json:"message"`
+	PageURL string `json:"page_url"`
+	TabID   int    `json:"tab_id"`
+}
+
+// PushCapabilitiesResponse is the response from GET /push/capabilities.
+type PushCapabilitiesResponse struct {
+	PushEnabled           bool   `json:"push_enabled"`
+	SupportsSampling      bool   `json:"supports_sampling"`
+	SupportsNotifications bool   `json:"supports_notifications"`
+	ClientName            string `json:"client_name"`
+	InboxCount            int    `json:"inbox_count"`
+}
+
+// PushResponse is the response from POST /push/screenshot and POST /push/message.
+type PushResponse struct {
+	Status         string `json:"status"`
+	EventID        string `json:"event_id"`
+	DeliveryMethod string `json:"delivery_method"`
+}
+
 // pushEventID generates a unique event ID with the given prefix.
 func pushEventID(prefix string) string {
 	var b [8]byte
@@ -24,26 +60,55 @@ func pushEventID(prefix string) string {
 	return prefix + "-" + hex.EncodeToString(b[:])
 }
 
-// handlePushScreenshot receives a screenshot from the extension and routes it.
-func (s *Server) handlePushScreenshot(w http.ResponseWriter, r *http.Request) {
+// validatePushRequest checks method and content-type for push POST endpoints.
+// Returns true if the request is valid and the caller should proceed.
+func validatePushRequest(w http.ResponseWriter, r *http.Request, errPrefix string) bool {
 	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "push_screenshot: method not allowed. Use POST method."})
-		return
+		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": errPrefix + ": method not allowed. Use POST method."})
+		return false
 	}
-
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "" && !strings.HasPrefix(contentType, "application/json") {
-		jsonResponse(w, http.StatusUnsupportedMediaType, map[string]string{"error": "push_screenshot: unsupported content type. Set Content-Type to application/json."})
+		jsonResponse(w, http.StatusUnsupportedMediaType, map[string]string{"error": errPrefix + ": unsupported content type. Set Content-Type to application/json."})
+		return false
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	return true
+}
+
+// deliverPushEvent routes a push event through the push router or inbox fallback,
+// then writes the JSON response. Shared by handlePushScreenshot and handlePushMessage.
+func (s *Server) deliverPushEvent(w http.ResponseWriter, ev push.PushEvent, errPrefix string) {
+	status := "queued"
+	deliveryMethod := string(push.DeliveredViaInbox)
+	if s.pushRouter != nil {
+		result, err := s.pushRouter.DeliverPush(ev)
+		if err != nil {
+			jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": errPrefix + ": delivery failed. " + err.Error()})
+			return
+		}
+		deliveryMethod = string(result.Method)
+		if result.Method == push.DeliveredViaSampling {
+			status = "delivered"
+		}
+	} else if s.pushInbox != nil {
+		s.pushInbox.Enqueue(ev)
+	}
+
+	jsonResponse(w, http.StatusOK, map[string]any{
+		"status":          status,
+		"event_id":        ev.ID,
+		"delivery_method": deliveryMethod,
+	})
+}
+
+// handlePushScreenshot receives a screenshot from the extension and routes it.
+func (s *Server) handlePushScreenshot(w http.ResponseWriter, r *http.Request) {
+	if !validatePushRequest(w, r, "push_screenshot") {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	var body struct {
-		ScreenshotDataURL string `json:"screenshot_data_url"`
-		Note              string `json:"note"`
-		PageURL           string `json:"page_url"`
-		TabID             int    `json:"tab_id"`
-	}
+	var body PushScreenshotRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "push_screenshot: invalid JSON body. Send a valid JSON object."})
 		return
@@ -65,48 +130,16 @@ func (s *Server) handlePushScreenshot(w http.ResponseWriter, r *http.Request) {
 		Note:          body.Note,
 	}
 
-	status := "queued"
-	deliveryMethod := string(push.DeliveredViaInbox)
-	if s.pushRouter != nil {
-		result, err := s.pushRouter.DeliverPush(ev)
-		if err != nil {
-			jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "push_screenshot: delivery failed. " + err.Error()})
-			return
-		}
-		deliveryMethod = string(result.Method)
-		if result.Method == push.DeliveredViaSampling {
-			status = "delivered"
-		}
-	} else if s.pushInbox != nil {
-		s.pushInbox.Enqueue(ev)
-	}
-
-	jsonResponse(w, http.StatusOK, map[string]any{
-		"status":          status,
-		"event_id":        ev.ID,
-		"delivery_method": deliveryMethod,
-	})
+	s.deliverPushEvent(w, ev, "push_screenshot")
 }
 
 // handlePushMessage receives a chat message from the extension and routes it.
 func (s *Server) handlePushMessage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
-		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "push_message: method not allowed. Use POST method."})
+	if !validatePushRequest(w, r, "push_message") {
 		return
 	}
 
-	contentType := r.Header.Get("Content-Type")
-	if contentType != "" && !strings.HasPrefix(contentType, "application/json") {
-		jsonResponse(w, http.StatusUnsupportedMediaType, map[string]string{"error": "push_message: unsupported content type. Set Content-Type to application/json."})
-		return
-	}
-
-	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
-	var body struct {
-		Message string `json:"message"`
-		PageURL string `json:"page_url"`
-		TabID   int    `json:"tab_id"`
-	}
+	var body PushMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "push_message: invalid JSON body. Send a valid JSON object with a 'message' field."})
 		return
@@ -126,27 +159,7 @@ func (s *Server) handlePushMessage(w http.ResponseWriter, r *http.Request) {
 		Message:   body.Message,
 	}
 
-	status := "queued"
-	deliveryMethod := string(push.DeliveredViaInbox)
-	if s.pushRouter != nil {
-		result, err := s.pushRouter.DeliverPush(ev)
-		if err != nil {
-			jsonResponse(w, http.StatusInternalServerError, map[string]string{"error": "push_message: delivery failed. " + err.Error()})
-			return
-		}
-		deliveryMethod = string(result.Method)
-		if result.Method == push.DeliveredViaSampling {
-			status = "delivered"
-		}
-	} else if s.pushInbox != nil {
-		s.pushInbox.Enqueue(ev)
-	}
-
-	jsonResponse(w, http.StatusOK, map[string]any{
-		"status":          status,
-		"event_id":        ev.ID,
-		"delivery_method": deliveryMethod,
-	})
+	s.deliverPushEvent(w, ev, "push_message")
 }
 
 // handlePushCapabilities returns per-session push capability flags for the extension.

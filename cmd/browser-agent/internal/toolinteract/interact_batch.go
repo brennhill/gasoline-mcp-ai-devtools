@@ -5,19 +5,19 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconst"
 )
 
-// Batch/replay shared constants and state.
-// NOTE: These duplicate toolconfigure.MaxSequenceSteps and toolconfigure.DefaultStepTimeout.
-// Keep both in sync. A cross-package import is avoided to prevent a dependency cycle.
 const (
-	maxSequenceSteps   = 50
-	defaultStepTimeout = 10_000
+	maxSequenceSteps   = toolconst.MaxSequenceSteps
+	defaultStepTimeout = toolconst.DefaultStepTimeout
 )
 
 // ReplayMu prevents concurrent batch/replay execution.
@@ -50,11 +50,11 @@ func forceReplayAsyncInteractStep(stepArgs json.RawMessage) json.RawMessage {
 }
 
 // extractCorrelationIDFromToolResponse extracts correlation_id from a tool response.
-func extractCorrelationIDFromToolResponse(resp JSONRPCResponse) string {
+func extractCorrelationIDFromToolResponse(resp mcp.JSONRPCResponse) string {
 	if resp.Result == nil {
 		return ""
 	}
-	var result MCPToolResult
+	var result mcp.MCPToolResult
 	if json.Unmarshal(resp.Result, &result) != nil || len(result.Content) == 0 {
 		return ""
 	}
@@ -78,11 +78,11 @@ func extractCorrelationIDFromToolResponse(resp JSONRPCResponse) string {
 }
 
 // extractErrorMessage extracts an error message from a tool response.
-func extractErrorMessage(resp JSONRPCResponse) string {
+func extractErrorMessage(resp mcp.JSONRPCResponse) string {
 	if resp.Result == nil {
 		return ""
 	}
-	var result MCPToolResult
+	var result mcp.MCPToolResult
 	if json.Unmarshal(resp.Result, &result) != nil {
 		return ""
 	}
@@ -102,7 +102,7 @@ func extractErrorMessage(resp JSONRPCResponse) string {
 }
 
 // handleBatch executes a sequence of interact steps provided inline.
-func (h *InteractActionHandler) HandleBatch(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBatch(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	// Fail fast if pilot/extension are not available — avoids acquiring replayMu
 	// and iterating steps that would all fail individually (#9.R3.9).
 	if resp, blocked := checkGuards(req, h.deps.RequirePilot, h.deps.RequireExtension); blocked {
@@ -115,16 +115,16 @@ func (h *InteractActionHandler) HandleBatch(req JSONRPCRequest, args json.RawMes
 		ContinueOnErr *bool             `json:"continue_on_error"`
 		StopAfterStep int               `json:"stop_after_step"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
 	// Validate steps
 	if len(params.Steps) == 0 {
-		return fail(req, ErrInvalidParam, "Steps must be a non-empty array", "Add at least one step", withParam("steps"))
+		return mcp.Fail(req, mcp.ErrInvalidParam, "Steps must be a non-empty array", "Add at least one step", mcp.WithParam("steps"))
 	}
 	if len(params.Steps) > maxSequenceSteps {
-		return fail(req, ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller batches", withParam("steps"))
+		return mcp.Fail(req, mcp.ErrInvalidParam, fmt.Sprintf("Steps exceeds maximum of %d", maxSequenceSteps), "Split into smaller batches", mcp.WithParam("steps"))
 	}
 
 	// Validate each step has a what (or action) field
@@ -134,7 +134,7 @@ func (h *InteractActionHandler) HandleBatch(req JSONRPCRequest, args json.RawMes
 			Action string `json:"action"`
 		}
 		if err := json.Unmarshal(step, &s); err != nil || (s.What == "" && s.Action == "") {
-			return fail(req, ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", withParam("steps"))
+			return mcp.Fail(req, mcp.ErrInvalidParam, fmt.Sprintf("Step[%d] missing required 'what' field", i), "Add a 'what' field to each step", mcp.WithParam("steps"))
 		}
 	}
 
@@ -149,12 +149,12 @@ func (h *InteractActionHandler) HandleBatch(req JSONRPCRequest, args json.RawMes
 	}
 
 	// Acquire replay mutex (prevent concurrent batch/replay)
-	mu := h.deps.ReplayMu
+	mu := h.deps.GetReplayMu()
 	if mu == nil {
 		mu = &ReplayMu
 	}
 	if !mu.TryLock() {
-		return fail(req, ErrInvalidParam, "Another batch or sequence is currently executing", "Wait for it to complete")
+		return mcp.Fail(req, mcp.ErrInvalidParam, "Another batch or sequence is currently executing", "Wait for it to complete")
 	}
 	defer mu.Unlock()
 
@@ -291,7 +291,7 @@ func (h *InteractActionHandler) HandleBatch(req JSONRPCRequest, args json.RawMes
 		"message":        message,
 	}
 
-	return succeed(req, "Batch execution", responseData)
+	return mcp.Succeed(req, "Batch execution", responseData)
 }
 
 // StripComposableScreenshotFromStep removes include_screenshot from batch step args

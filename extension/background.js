@@ -77,7 +77,7 @@ export { createCircuitBreaker, createBatcherWithCircuitBreaker, createLogBatcher
 // =============================================================================
 // === PUBLIC API: STATE SNAPSHOTS (Initialization)
 // =============================================================================
-export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './background/message-handlers.js';
+export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './background/state-snapshots.js';
 // =============================================================================
 // INITIALIZATION — Only in Chrome extension context, not in Node.js test environment
 // =============================================================================

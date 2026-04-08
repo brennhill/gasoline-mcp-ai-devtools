@@ -4,6 +4,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -11,13 +12,13 @@ import (
 	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
 
-func (h *InteractActionHandler) HandleListInteractive(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleListInteractive(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		TabID       int  `json:"tab_id,omitempty"`
 		VisibleOnly bool `json:"visible_only,omitempty"`
 		Limit       int  `json:"limit,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -49,8 +50,8 @@ func (h *InteractActionHandler) HandleListInteractive(req JSONRPCRequest, args j
 }
 
 // buildElementIndexFromResponse parses list_interactive results and stores scoped index selectors.
-func (h *InteractActionHandler) buildElementIndexFromResponse(clientID string, tabID int, generation string, resp JSONRPCResponse) string {
-	var result MCPToolResult
+func (h *InteractActionHandler) buildElementIndexFromResponse(clientID string, tabID int, generation string, resp mcp.JSONRPCResponse) string {
+	var result mcp.MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
 		return ""
 	}
@@ -92,11 +93,11 @@ func (h *InteractActionHandler) buildElementIndexFromResponse(clientID string, t
 	return ""
 }
 
-func annotateListInteractiveIndexMetadata(resp JSONRPCResponse, tabID int, generation string) JSONRPCResponse {
+func annotateListInteractiveIndexMetadata(resp mcp.JSONRPCResponse, tabID int, generation string) mcp.JSONRPCResponse {
 	if generation == "" {
 		return resp
 	}
-	var result MCPToolResult
+	var result mcp.MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
 		return resp
 	}
@@ -127,8 +128,8 @@ func annotateListInteractiveIndexMetadata(resp JSONRPCResponse, tabID int, gener
 }
 
 // truncateListInteractiveResponse limits the elements array in a list_interactive response.
-func truncateListInteractiveResponse(resp JSONRPCResponse, limit int) JSONRPCResponse {
-	var result MCPToolResult
+func truncateListInteractiveResponse(resp mcp.JSONRPCResponse, limit int) mcp.JSONRPCResponse {
+	var result mcp.MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil || result.IsError {
 		return resp
 	}

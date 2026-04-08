@@ -1,4 +1,4 @@
-// beacon.go — Anonymous telemetry beacons. Disable with Kaboom_TELEMETRY=off.
+// beacon.go — Anonymous telemetry beacons. Disable with KABOOM_TELEMETRY=off.
 
 package telemetry
 
@@ -43,7 +43,8 @@ func BeaconEvent(event string, props map[string]string) {
 }
 
 func beacon(event string, props map[string]string) {
-	if os.Getenv("Kaboom_TELEMETRY") == "off" {
+	// Check canonical env var first, then legacy for backwards compat.
+	if os.Getenv("KABOOM_TELEMETRY") == "off" || os.Getenv("Kaboom_TELEMETRY") == "off" {
 		return
 	}
 

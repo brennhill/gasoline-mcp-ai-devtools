@@ -4,19 +4,20 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // handleDrawModeStart queues a draw_mode query for the extension to activate draw mode.
-func (h *InteractActionHandler) HandleDrawModeStart(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleDrawModeStart(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		TabID        int    `json:"tab_id,omitempty"`
 		AnnotSession string `json:"annot_session,omitempty"`
 	}
 	if len(args) > 0 {
-		lenientUnmarshal(args, &params)
+		mcp.LenientUnmarshal(args, &params)
 	}
 
 	if resp, blocked := checkGuards(req, h.deps.RequirePilot, h.deps.RequireExtension); blocked {
@@ -26,7 +27,7 @@ func (h *InteractActionHandler) HandleDrawModeStart(req JSONRPCRequest, args jso
 		return resp
 	}
 
-	correlationID := newCorrelationID("draw")
+	correlationID := mcp.NewCorrelationID("draw")
 
 	queryParams := map[string]string{"action": "start"}
 	if params.AnnotSession != "" {
@@ -52,7 +53,7 @@ func (h *InteractActionHandler) HandleDrawModeStart(req JSONRPCRequest, args jso
 	// Record AI action
 	h.deps.RecordAIAction("draw_mode_start", "", nil)
 
-	return succeed(req, "Draw mode activated", map[string]any{
+	return mcp.Succeed(req, "Draw mode activated", map[string]any{
 		"status":         "queued",
 		"correlation_id": correlationID,
 		"message":        "Draw mode activation queued. The user can now draw annotations on the page. Use analyze({what: 'annotations', wait: true}) to block until the user finishes drawing.",

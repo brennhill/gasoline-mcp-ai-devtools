@@ -7,6 +7,7 @@
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
 import { getLocal, setLocal, removeLocal } from '../lib/storage-utils.js'
+import { startTimerDisplay } from './ui-utils.js'
 
 interface ActionRecordingElements {
   row: HTMLElement
@@ -17,7 +18,7 @@ interface ActionRecordingElements {
 interface ActionRecordingState {
   isRecording: boolean
   recordingId: string | null
-  timerInterval: ReturnType<typeof setInterval> | null
+  timerInterval: (() => void) | null
   startTime: number | null
 }
 
@@ -35,14 +36,9 @@ function showRecording(els: ActionRecordingElements, state: ActionRecordingState
   els.label.textContent = STOP_LABEL
   els.statusEl.textContent = ''
 
-  if (state.timerInterval) clearInterval(state.timerInterval)
+  if (state.timerInterval) state.timerInterval()
   const start = state.startTime ?? Date.now()
-  state.timerInterval = setInterval(() => {
-    const elapsed = Math.round((Date.now() - start) / 1000)
-    const mins = Math.floor(elapsed / 60)
-    const secs = elapsed % 60
-    els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
-  }, 1000)
+  state.timerInterval = startTimerDisplay(els.statusEl, start)
 }
 
 function showIdle(els: ActionRecordingElements, state: ActionRecordingState): void {
@@ -53,7 +49,7 @@ function showIdle(els: ActionRecordingElements, state: ActionRecordingState): vo
   els.label.textContent = START_LABEL
   els.statusEl.textContent = ''
   if (state.timerInterval) {
-    clearInterval(state.timerInterval)
+    state.timerInterval()
     state.timerInterval = null
   }
 }

@@ -32,15 +32,8 @@ export async function handleStopTracking(showIdleState) {
             /* no recording active — expected */
         }
     });
-    // Notify content script so favicon restores without reload
-    chrome.tabs
-        .sendMessage(prevTabId, {
-        type: 'tracking_state_changed',
-        state: { isTracked: false, aiPilotEnabled: false }
-    })
-        .catch(() => {
-        /* tab may be closed */
-    });
+    // Background's onTrackedTabChanged storage listener handles broadcasting
+    // tracking_state_changed to content scripts when storage keys are removed.
     console.log(KABOOM_LOG_PREFIX, 'Stopped tracking via bar stop button');
 }
 /**
@@ -119,12 +112,9 @@ export async function handleTrackPageClick(showInternalPageState, showCloakedSta
                 chrome.tabs.reload(tabId);
             }
             else {
-                // Content script already running — notify it of tracking change
+                // Content script already running — background's onTrackedTabChanged
+                // storage listener handles broadcasting tracking_state_changed.
                 console.log(KABOOM_LOG_PREFIX, 'Content script already loaded, skipping reload');
-                chrome.tabs.sendMessage(tabId, {
-                    type: 'tracking_state_changed',
-                    state: { isTracked: true, aiPilotEnabled: false }
-                });
             }
         });
     }

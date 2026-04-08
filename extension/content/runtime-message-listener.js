@@ -5,6 +5,7 @@ import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighli
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
 import { toggleChatWidget } from './ui/chat-widget.js';
+import { updateFavicon } from './favicon-replacer.js';
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true;
 let subtitlesEnabled = true;
@@ -67,6 +68,11 @@ export function initRuntimeMessageListener() {
         },
         [SettingName.SUBTITLES]: (msg) => {
             subtitlesEnabled = msg.enabled;
+            return false;
+        },
+        tracking_state_changed: (msg) => {
+            const state = msg.state;
+            updateFavicon(state);
             return false;
         }
     };

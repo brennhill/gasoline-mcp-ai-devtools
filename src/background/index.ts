@@ -53,7 +53,7 @@ import {
   checkServerHealth,
   sendStatusPing
 } from './communication.js'
-import { getTrackedTabInfo } from './event-listeners.js'
+import { getTrackedTabInfo } from './tab-state.js'
 import { DebugCategory } from './debug.js'
 import { getRequestHeaders } from './server.js'
 import {

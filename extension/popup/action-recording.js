@@ -6,6 +6,7 @@
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { getLocal, setLocal, removeLocal } from '../lib/storage-utils.js';
+import { startTimerDisplay } from './ui-utils.js';
 const START_LABEL = 'Record action workflow';
 const STOP_LABEL = 'Stop recording';
 function showRecording(els, state) {
@@ -14,14 +15,9 @@ function showRecording(els, state) {
     els.label.textContent = STOP_LABEL;
     els.statusEl.textContent = '';
     if (state.timerInterval)
-        clearInterval(state.timerInterval);
+        state.timerInterval();
     const start = state.startTime ?? Date.now();
-    state.timerInterval = setInterval(() => {
-        const elapsed = Math.round((Date.now() - start) / 1000);
-        const mins = Math.floor(elapsed / 60);
-        const secs = elapsed % 60;
-        els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-    }, 1000);
+    state.timerInterval = startTimerDisplay(els.statusEl, start);
 }
 function showIdle(els, state) {
     state.isRecording = false;
@@ -31,7 +27,7 @@ function showIdle(els, state) {
     els.label.textContent = START_LABEL;
     els.statusEl.textContent = '';
     if (state.timerInterval) {
-        clearInterval(state.timerInterval);
+        state.timerInterval();
         state.timerInterval = null;
     }
 }

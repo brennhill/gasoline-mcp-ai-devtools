@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"net/url"
 	"strings"
@@ -18,7 +19,7 @@ import (
 // If url is provided, the extension navigates first before collecting data.
 // Screenshot is appended server-side after the extension returns.
 // Post-processes the result to separate menus from ungrouped page elements.
-func (h *InteractActionHandler) HandleExplorePage(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleExplorePage(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		URL         string `json:"url,omitempty"`
 		TabID       int    `json:"tab_id,omitempty"`
@@ -26,7 +27,7 @@ func (h *InteractActionHandler) HandleExplorePage(req JSONRPCRequest, args json.
 		Limit       int    `json:"limit,omitempty"`
 	}
 	if len(args) > 0 {
-		if resp, stop := parseArgs(req, args, &params); stop {
+		if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 			return resp
 		}
 	}
@@ -35,10 +36,10 @@ func (h *InteractActionHandler) HandleExplorePage(req JSONRPCRequest, args json.
 	if params.URL != "" {
 		parsed, err := url.Parse(params.URL)
 		if err != nil || parsed.Scheme == "" {
-			return fail(req, ErrInvalidParam, "Invalid URL: "+params.URL, "Provide a valid http or https URL", withParam("url"))
+			return mcp.Fail(req, mcp.ErrInvalidParam, "Invalid URL: "+params.URL, "Provide a valid http or https URL", mcp.WithParam("url"))
 		}
 		if parsed.Scheme != "http" && parsed.Scheme != "https" {
-			return fail(req, ErrInvalidParam, "Only http and https URLs are allowed, got: "+parsed.Scheme, "Use an http or https URL", withParam("url"))
+			return mcp.Fail(req, mcp.ErrInvalidParam, "Only http and https URLs are allowed, got: "+parsed.Scheme, "Use an http or https URL", mcp.WithParam("url"))
 		}
 	}
 
@@ -65,8 +66,8 @@ func (h *InteractActionHandler) HandleExplorePage(req JSONRPCRequest, args json.
 // enrichExploreWithMenus post-processes an explore_page response to add a
 // site_menus section. Elements claimed by menus are removed from the
 // interactive_elements list so there is no overlap.
-func enrichExploreWithMenus(resp JSONRPCResponse) JSONRPCResponse {
-	return mutateToolResult(resp, func(r *MCPToolResult) {
+func enrichExploreWithMenus(resp mcp.JSONRPCResponse) mcp.JSONRPCResponse {
+	return mcp.MutateToolResult(resp, func(r *mcp.MCPToolResult) {
 		if len(r.Content) == 0 || r.Content[0].Type != "text" {
 			return
 		}

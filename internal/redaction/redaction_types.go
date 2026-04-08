@@ -2,7 +2,10 @@
 // Why: Provides local type definitions so the redaction engine can re-marshal responses without importing cmd/.
 package redaction
 
-import "regexp"
+import (
+	"encoding/json"
+	"regexp"
+)
 
 // MCPContentBlock represents a single content block in an MCP tool response.
 // This is duplicated from cmd/browser-agent/tools_core.go to avoid circular imports.
@@ -43,6 +46,15 @@ type compiledPattern struct {
 	regex       *regexp.Regexp
 	replacement string
 	validate    func(match string) bool // optional post-match validation (e.g., Luhn)
+}
+
+// Redactor is the canonical interface for response redaction.
+// The concrete RedactionEngine satisfies this interface.
+// Consumers that need the full redaction surface should depend on this interface.
+type Redactor interface {
+	Redact(input string) string
+	RedactJSON(data json.RawMessage) json.RawMessage
+	RedactMapValues(data map[string]any) map[string]any
 }
 
 // RedactionEngine applies a set of compiled patterns to text.

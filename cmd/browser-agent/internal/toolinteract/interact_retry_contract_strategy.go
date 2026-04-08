@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"strings"
 	"time"
@@ -33,13 +34,13 @@ func parseRetryParentCorrelationID(args json.RawMessage) string {
 	var params struct {
 		CorrelationID string `json:"correlation_id"`
 	}
-	lenientUnmarshal(args, &params)
+	mcp.LenientUnmarshal(args, &params)
 	return strings.TrimSpace(params.CorrelationID)
 }
 
 func deriveRetryStrategy(action string, args json.RawMessage) (strategy string, fingerprint string) {
 	var payload map[string]any
-	lenientUnmarshal(args, &payload)
+	mcp.LenientUnmarshal(args, &payload)
 
 	f := map[string]any{
 		"action": strings.ToLower(strings.TrimSpace(action)),

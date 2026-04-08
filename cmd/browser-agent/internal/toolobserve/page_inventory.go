@@ -21,11 +21,11 @@ func HandlePageInventory(d Deps, req mcp.JSONRPCRequest, args json.RawMessage) m
 	}
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &params); err != nil {
-			return fail(req, mcp.ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
+			return mcp.Fail(req, mcp.ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 		}
 	}
 
-	correlationID := newCorrelationID("page_inventory")
+	correlationID := mcp.NewCorrelationID("page_inventory")
 
 	query := queries.PendingQuery{
 		Type:          "page_inventory",

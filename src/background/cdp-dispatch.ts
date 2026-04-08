@@ -314,6 +314,48 @@ async function cdpDispatchSingleKey(tabId: number, key: string): Promise<void> {
   }
 }
 
+// =============================================================================
+// SHARED CDP LIFECYCLE AND ACTION DISPATCH
+// =============================================================================
+
+/**
+ * Attach debugger, run fn, detach debugger — guarantees cleanup.
+ * Throws on attach failure; callers decide how to handle.
+ */
+async function withDebugger<T>(tabId: number, fn: () => Promise<T>): Promise<T> {
+  await chrome.debugger.attach({ tabId }, CDP_VERSION)
+  try {
+    return await fn()
+  } finally {
+    try {
+      await chrome.debugger.detach({ tabId })
+    } catch {
+      /* already detached or tab closed */
+    }
+  }
+}
+
+/**
+ * Execute a CDP action (click/type/key_press) given parsed params.
+ * Dispatches to the correct CDP primitive; throws on unknown action.
+ */
+async function performCDPAction(tabId: number, action: string, params: CDPActionParams): Promise<Record<string, unknown>> {
+  switch (action) {
+    case 'click':
+      return cdpClick(tabId, params)
+    case 'type':
+      return cdpType(tabId, params)
+    case 'key_press':
+      return cdpKeyPress(tabId, params)
+    default:
+      throw new Error(`Unknown CDP action: ${action}`)
+  }
+}
+
+// =============================================================================
+// AUTO-ESCALATION: CDP-first for click/type/key_press, fallback to DOM
+// =============================================================================
+
 /**
  * Attempt CDP-first execution for click/type/key_press.
  * Returns a DOMResult on success, or null to signal fallback to DOM primitives.
@@ -339,11 +381,12 @@ export async function tryCDPEscalation(
     const resolved = await resolveElement(tabId, params)
     if (!resolved) return null
 
-    // Step 2: Attach debugger
-    await chrome.debugger.attach({ tabId }, CDP_VERSION)
+    // Validate params before attaching debugger
+    if (action === 'type' && !params.text) return null
+    if (action === 'key_press' && !params.text) return null
 
-    try {
-      // Step 3: Execute CDP action
+    // Step 2+3: Attach debugger, execute CDP action, detach
+    await withDebugger(tabId, async () => {
       if (action === 'click') {
         await cdpSend(tabId, 'Input.dispatchMouseEvent', {
           type: 'mousePressed',
@@ -360,25 +403,15 @@ export async function tryCDPEscalation(
           clickCount: 1
         })
       } else if (action === 'type') {
-        const text = params.text || ''
-        if (!text) return null
         if (params.clear) await cdpClearField(tabId)
-        await cdpDispatchKeySequence(tabId, text)
+        await cdpDispatchKeySequence(tabId, params.text!)
       } else if (action === 'key_press') {
-        const key = params.text || ''
-        if (!key) return null
-        await cdpDispatchSingleKey(tabId, key)
+        await cdpDispatchSingleKey(tabId, params.text!)
       }
+    })
 
-      // Step 4: Build DOMResult with matched evidence
-      return buildCDPResult(action, selector, resolved, Date.now() - startTime)
-    } finally {
-      try {
-        await chrome.debugger.detach({ tabId })
-      } catch {
-        /* already detached */
-      }
-    }
+    // Step 4: Build DOMResult with matched evidence
+    return buildCDPResult(action, selector, resolved, Date.now() - startTime)
   } catch {
     // CDP unavailable or failed — fall back to DOM primitives silently
     return null
@@ -412,42 +445,12 @@ export async function executeCDPAction(
   actionToast(tabId, toastLabel, undefined, 'trying', 10000)
 
   try {
-    await chrome.debugger.attach({ tabId }, CDP_VERSION)
-  } catch (err) {
-    const errorMsg = mapCDPError(err)
-    actionToast(tabId, toastLabel, errorMsg, 'error')
-    sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, errorMsg)
-    return
-  }
-
-  try {
-    let result: Record<string, unknown>
-
-    switch (action) {
-      case 'click':
-        result = await cdpClick(tabId, params)
-        break
-      case 'type':
-        result = await cdpType(tabId, params)
-        break
-      case 'key_press':
-        result = await cdpKeyPress(tabId, params)
-        break
-      default:
-        throw new Error(`Unknown CDP action: ${action}`)
-    }
-
+    const result = await withDebugger(tabId, () => performCDPAction(tabId, action, params))
     actionToast(tabId, toastLabel, undefined, 'success')
     sendAsyncResult(syncClient, query.id, query.correlation_id!, 'complete', result)
   } catch (err) {
     const errorMsg = mapCDPError(err)
     actionToast(tabId, toastLabel, errorMsg, 'error')
     sendAsyncResult(syncClient, query.id, query.correlation_id!, 'error', null, errorMsg)
-  } finally {
-    try {
-      await chrome.debugger.detach({ tabId })
-    } catch {
-      // Already detached or tab closed — safe to ignore
-    }
   }
 }

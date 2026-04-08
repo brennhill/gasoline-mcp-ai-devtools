@@ -21,7 +21,7 @@ export interface RecordingElements {
 
 export interface RecordingState {
   isRecording: boolean
-  timerInterval: ReturnType<typeof setInterval> | null
+  timerInterval: (() => void) | null
 }
 
 export type ShowRecordingFn = (els: RecordingElements, state: RecordingState, name: string, startTime: number) => void

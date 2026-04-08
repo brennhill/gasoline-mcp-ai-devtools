@@ -13,7 +13,7 @@ import { executeUpload } from '../upload-handler.js';
 import { startRecording, stopRecording } from '../recording.js';
 import { executeWithWorldRouting } from '../query-execution.js';
 import { handleBrowserAction, handleAsyncBrowserAction, handleAsyncExecuteCommand } from '../browser-actions.js';
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../message-handlers.js';
+import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from '../state-snapshots.js';
 import { registerCommand } from './registry.js';
 import { requireAiWebPilot, isContentScriptUnreachableError } from './helpers.js';
 import { errorMessage } from '../../lib/error-utils.js';

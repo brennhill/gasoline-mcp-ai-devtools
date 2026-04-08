@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 // handleNavigateAndDocument performs click-based navigation, waits for URL/stability,
 // then enriches the response with compact page context (url/title/tab_id).
-func (h *InteractActionHandler) HandleNavigateAndDocument(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleNavigateAndDocument(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	workflowStart := time.Now()
 	trace := make([]WorkflowStep, 0, 4)
 
@@ -24,7 +25,7 @@ func (h *InteractActionHandler) HandleNavigateAndDocument(req JSONRPCRequest, ar
 		WaitForStable    *bool `json:"wait_for_stable,omitempty"`
 	}
 	if err := json.Unmarshal(args, &params); err != nil {
-		return fail(req, ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
+		return mcp.Fail(req, mcp.ErrInvalidJSON, "Invalid JSON arguments: "+err.Error(), "Fix JSON syntax and call again")
 	}
 
 	waitForURLChange := true
@@ -93,10 +94,10 @@ func (h *InteractActionHandler) HandleNavigateAndDocument(req JSONRPCRequest, ar
 		}
 		lastURL, changed := h.waitForTrackedURLChange(req, beforeURL, timeoutMs)
 		if !changed {
-			failResp := fail(req, ErrExtTimeout,
+			failResp := mcp.Fail(req, mcp.ErrExtTimeout,
 				"URL did not change after click within timeout",
 				"Increase timeout_ms, disable wait_for_url_change, or verify the click target triggers navigation.",
-				withParam("wait_for_url_change"),
+				mcp.WithParam("wait_for_url_change"),
 			)
 			trace = append(trace, WorkflowStep{
 				Action:   "wait_for_url_change",
@@ -189,7 +190,7 @@ func filterNavigateAndDocumentClickArgs(args json.RawMessage) json.RawMessage {
 	return encoded
 }
 
-func (h *InteractActionHandler) currentTrackedURL(req JSONRPCRequest) string {
+func (h *InteractActionHandler) currentTrackedURL(req mcp.JSONRPCRequest) string {
 	_, _, trackedURL := h.deps.Capture().GetTrackingStatus()
 	if trackedURL != "" {
 		return trackedURL
@@ -202,7 +203,7 @@ func (h *InteractActionHandler) currentTrackedURL(req JSONRPCRequest) string {
 	return ""
 }
 
-func (h *InteractActionHandler) waitForTrackedURLChange(req JSONRPCRequest, beforeURL string, timeoutMs int) (string, bool) {
+func (h *InteractActionHandler) waitForTrackedURLChange(req mcp.JSONRPCRequest, beforeURL string, timeoutMs int) (string, bool) {
 	if timeoutMs <= 0 {
 		timeoutMs = 5000
 	}
@@ -221,27 +222,27 @@ func (h *InteractActionHandler) waitForTrackedURLChange(req JSONRPCRequest, befo
 // validateNavigateAndDocumentTab ensures workflow-level waits and page context are
 // scoped to the currently tracked tab. Unlike plain click, this workflow derives
 // post-action state from tracked page metadata.
-func (h *InteractActionHandler) validateNavigateAndDocumentTab(req JSONRPCRequest, tabID int) (JSONRPCResponse, bool) {
+func (h *InteractActionHandler) validateNavigateAndDocumentTab(req mcp.JSONRPCRequest, tabID int) (mcp.JSONRPCResponse, bool) {
 	if tabID <= 0 {
-		return JSONRPCResponse{}, false
+		return mcp.JSONRPCResponse{}, false
 	}
 
 	enabled, trackedTabID, _ := h.deps.Capture().GetTrackingStatus()
 	if !enabled || trackedTabID <= 0 {
-		return fail(req, ErrInvalidParam,
+		return mcp.Fail(req, mcp.ErrInvalidParam,
 			fmt.Sprintf("navigate_and_document with tab_id=%d requires an actively tracked tab", tabID),
 			"Switch tracking to the target tab first (interact what=switch_tab), then retry navigate_and_document.",
-			withParam("tab_id"),
+			mcp.WithParam("tab_id"),
 		), true
 	}
 	if trackedTabID == tabID {
-		return JSONRPCResponse{}, false
+		return mcp.JSONRPCResponse{}, false
 	}
 
-	return fail(req, ErrInvalidParam,
+	return mcp.Fail(req, mcp.ErrInvalidParam,
 		fmt.Sprintf("navigate_and_document requires tracked tab_id=%d; got tab_id=%d", trackedTabID, tabID),
 		"Switch tracking to the target tab first (interact what=switch_tab) or omit tab_id.",
-		withParam("tab_id"),
+		mcp.WithParam("tab_id"),
 	), true
 }
 
@@ -258,10 +259,10 @@ func remainingNavigateAndDocumentTimeoutMs(workflowStart time.Time, totalTimeout
 	return remaining, true
 }
 
-func navigateAndDocumentTimeoutBudgetExceeded(req JSONRPCRequest, stage string) JSONRPCResponse {
-	return fail(req, ErrExtTimeout,
+func navigateAndDocumentTimeoutBudgetExceeded(req mcp.JSONRPCRequest, stage string) mcp.JSONRPCResponse {
+	return mcp.Fail(req, mcp.ErrExtTimeout,
 		fmt.Sprintf("timeout_ms exhausted before %s stage", stage),
 		"Increase timeout_ms or disable one of the workflow wait stages.",
-		withParam("timeout_ms"),
+		mcp.WithParam("timeout_ms"),
 	)
 }

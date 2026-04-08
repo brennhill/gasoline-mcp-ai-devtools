@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -58,10 +59,7 @@ func (h *InteractActionHandler) ResolveNavigateURLImpl(rawURL string) (string, e
 		return "", fmt.Errorf("kaboom-insecure target URL must include host")
 	}
 
-	port := defaultPort
-	if h.deps.GetListenPort != nil {
-		port = h.deps.GetListenPort()
-	}
+	port := h.deps.GetListenPort()
 	return fmt.Sprintf("http://127.0.0.1:%d/insecure-proxy?target=%s", port, url.QueryEscape(target)), nil
 }
 
@@ -81,10 +79,10 @@ type browserActionOpts struct {
 // queueBrowserAction is the shared helper for simple browser actions that follow
 // the guard → correlate → arm evidence → enqueue → record → wait pattern.
 // Uses commandBuilder to eliminate repeated boilerplate.
-func (h *InteractActionHandler) queueBrowserAction(req JSONRPCRequest, args json.RawMessage, opts browserActionOpts) JSONRPCResponse {
+func (h *InteractActionHandler) queueBrowserAction(req mcp.JSONRPCRequest, args json.RawMessage, opts browserActionOpts) mcp.JSONRPCResponse {
 	actionParams := opts.params
 	if actionParams == nil {
-		actionParams = buildQueryParams(map[string]any{"action": opts.action})
+		actionParams = mcp.BuildQueryParams(map[string]any{"action": opts.action})
 	}
 
 	recordAction := opts.recordAction
@@ -112,20 +110,20 @@ func (h *InteractActionHandler) queueBrowserAction(req JSONRPCRequest, args json
 
 // handleScreenshotAliasImpl provides backward compatibility for clients that call
 // interact({action:"screenshot"}). The canonical API remains observe({what:"screenshot"}).
-func (h *InteractActionHandler) HandleScreenshotAliasImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleScreenshotAliasImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	return h.deps.GetScreenshot(req, args)
 }
 
-func (h *InteractActionHandler) HandleSubtitleImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleSubtitleImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Text *string `json:"text"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
 	if params.Text == nil {
-		return fail(req, ErrMissingParam, "Required parameter 'text' is missing for subtitle action", "Add the 'text' parameter with subtitle text, or empty string to clear", withParam("text"))
+		return mcp.Fail(req, mcp.ErrMissingParam, "Required parameter 'text' is missing for subtitle action", "Add the 'text' parameter with subtitle text, or empty string to clear", mcp.WithParam("text"))
 	}
 
 	queuedMsg := "Subtitle set"

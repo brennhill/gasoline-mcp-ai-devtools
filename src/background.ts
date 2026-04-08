@@ -181,7 +181,7 @@ export {
   loadStateSnapshot,
   listStateSnapshots,
   deleteStateSnapshot
-} from './background/message-handlers.js'
+} from './background/state-snapshots.js'
 
 
 // =============================================================================

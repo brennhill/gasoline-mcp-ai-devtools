@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
@@ -13,13 +14,13 @@ import (
 // handleWaitForStable is the named handler for the standalone wait_for_stable action.
 // It injects default stability_ms and timeout_ms if not provided, then delegates
 // to the standard DOM primitive dispatch.
-func (h *InteractActionHandler) HandleWaitForStable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleWaitForStable(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		StabilityMs int `json:"stability_ms,omitempty"`
 		TimeoutMs   int `json:"timeout_ms,omitempty"`
 		TabID       int `json:"tab_id,omitempty"`
 	}
-	lenientUnmarshal(args, &params)
+	mcp.LenientUnmarshal(args, &params)
 
 	// Apply defaults
 	if params.StabilityMs <= 0 {
@@ -44,15 +45,15 @@ func (h *InteractActionHandler) HandleWaitForStable(req JSONRPCRequest, args jso
 // handleAutoDismissOverlays is the named handler for the standalone auto_dismiss_overlays action.
 // It delegates to the DOM primitive dispatch, which runs consent framework selectors
 // followed by the existing dismiss_top_overlay multi-strategy approach on the extension side.
-func (h *InteractActionHandler) HandleAutoDismissOverlays(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleAutoDismissOverlays(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	return h.HandleDOMPrimitive(req, args, "auto_dismiss_overlays")
 }
 
 // queueComposableAutoDismiss queues an auto_dismiss_overlays command as a side effect.
 // Used when auto_dismiss=true is passed as a composable param on navigate.
-func (h *InteractActionHandler) QueueComposableAutoDismiss(req JSONRPCRequest) {
-	dismissArgs := buildQueryParams(map[string]any{"action": "auto_dismiss_overlays"})
-	correlationID := newCorrelationID("dom_auto_dismiss_overlays")
+func (h *InteractActionHandler) QueueComposableAutoDismiss(req mcp.JSONRPCRequest) {
+	dismissArgs := mcp.BuildQueryParams(map[string]any{"action": "auto_dismiss_overlays"})
+	correlationID := mcp.NewCorrelationID("dom_auto_dismiss_overlays")
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -68,12 +69,12 @@ func (h *InteractActionHandler) QueueComposableAutoDismiss(req JSONRPCRequest) {
 // Used when action_diff=true is passed as a composable param on any mutating action.
 // The extension instruments a MutationObserver after the main action, captures mutations,
 // and returns a structured summary of what changed (overlays, toasts, form errors, etc.).
-func (h *InteractActionHandler) QueueComposableActionDiff(req JSONRPCRequest) {
-	diffArgs := buildQueryParams(map[string]any{
+func (h *InteractActionHandler) QueueComposableActionDiff(req mcp.JSONRPCRequest) {
+	diffArgs := mcp.BuildQueryParams(map[string]any{
 		"action":     "action_diff",
 		"timeout_ms": 3000,
 	})
-	correlationID := newCorrelationID("dom_action_diff")
+	correlationID := mcp.NewCorrelationID("dom_action_diff")
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -87,18 +88,18 @@ func (h *InteractActionHandler) QueueComposableActionDiff(req JSONRPCRequest) {
 
 // queueComposableWaitForStable queues a wait_for_stable command as a side effect.
 // Used when wait_for_stable=true is passed as a composable param on navigate or click.
-func (h *InteractActionHandler) QueueComposableWaitForStable(req JSONRPCRequest, stabilityMs int) {
+func (h *InteractActionHandler) QueueComposableWaitForStable(req mcp.JSONRPCRequest, stabilityMs int) {
 	if stabilityMs <= 0 {
 		stabilityMs = 500
 	}
 	timeoutMs := 5000
 
-	stableArgs := buildQueryParams(map[string]any{
+	stableArgs := mcp.BuildQueryParams(map[string]any{
 		"action":       "wait_for_stable",
 		"stability_ms": stabilityMs,
 		"timeout_ms":   timeoutMs,
 	})
-	correlationID := newCorrelationID("dom_wait_for_stable")
+	correlationID := mcp.NewCorrelationID("dom_wait_for_stable")
 
 	query := queries.PendingQuery{
 		Type:          "dom_action",
@@ -111,12 +112,12 @@ func (h *InteractActionHandler) QueueComposableWaitForStable(req JSONRPCRequest,
 }
 
 // queueComposableSubtitle queues a subtitle command as a side effect of another action.
-func (h *InteractActionHandler) QueueComposableSubtitle(req JSONRPCRequest, text string) {
-	subtitleArgs := buildQueryParams(map[string]any{"text": text})
+func (h *InteractActionHandler) QueueComposableSubtitle(req mcp.JSONRPCRequest, text string) {
+	subtitleArgs := mcp.BuildQueryParams(map[string]any{"text": text})
 	subtitleQuery := queries.PendingQuery{
 		Type:          "subtitle",
 		Params:        subtitleArgs,
-		CorrelationID: newCorrelationID("subtitle"),
+		CorrelationID: mcp.NewCorrelationID("subtitle"),
 	}
 	if _, blocked := h.deps.EnqueuePendingQuery(req, subtitleQuery, queries.AsyncCommandTimeout); blocked {
 		return

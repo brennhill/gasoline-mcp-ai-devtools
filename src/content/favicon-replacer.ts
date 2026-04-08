@@ -24,23 +24,10 @@ let flickerInterval: number | null = null
 
 /**
  * Initialize favicon replacement.
- * Listens for tracking state changes and updates favicon accordingly.
+ * Requests initial tracking state from background and updates favicon accordingly.
+ * Ongoing tracking_state_changed messages are handled by the central runtime-message-listener.
  */
-// #lizard forgives
 export function initFaviconReplacer(): void {
-  // Listen for tracking state updates from background
-  chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
-    // Only accept messages from the extension itself (background script)
-    if (sender.id !== chrome.runtime.id) return false
-    if (message.type === 'tracking_state_changed') {
-      const newState: TrackingState = message.state
-      updateFavicon(newState)
-    }
-    // Explicitly return false so Chrome doesn't prematurely resolve
-    // sendMessage promises from other listeners (e.g. DOM_QUERY, A11Y_QUERY).
-    return false
-  })
-
   // Request initial tracking state
   chrome.runtime.sendMessage({ type: 'get_tracking_state' }, (response: { state?: TrackingState }) => {
     if (response && response.state) {
@@ -55,7 +42,7 @@ export function initFaviconReplacer(): void {
  * - Tracked (AI Pilot off): Shows static glowing flame
  * - Tracked (AI Pilot on): Shows flickering flame
  */
-function updateFavicon(state: TrackingState): void {
+export function updateFavicon(state: TrackingState): void {
   if (!state.isTracked) {
     // Restore original favicon
     restoreOriginalFavicon()
@@ -69,6 +56,14 @@ function updateFavicon(state: TrackingState): void {
     replaceFaviconWithFlame(false)
     stopFlicker()
   }
+}
+
+/**
+ * Restore the original page favicon (exported for use by central message handler).
+ */
+export function restoreFavicon(): void {
+  restoreOriginalFavicon()
+  stopFlicker()
 }
 
 /**

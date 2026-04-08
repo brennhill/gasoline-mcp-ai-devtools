@@ -14,7 +14,9 @@ export { createErrorSignature, processErrorGroup, cleanupStaleErrorGroups, flush
 // Re-export cache and memory management
 export { canTakeScreenshot, recordScreenshot, clearScreenshotTimestamps, estimateBufferMemory, checkMemoryPressure, getMemoryPressureState, resetMemoryPressureState, isNetworkBodyCaptureDisabled, setSourceMapEnabled, isSourceMapEnabled, clearSourceMapCache, MEMORY_SOFT_LIMIT, MEMORY_HARD_LIMIT, MEMORY_CHECK_INTERVAL_MS, MEMORY_AVG_LOG_ENTRY_SIZE, MEMORY_AVG_WS_EVENT_SIZE, MEMORY_AVG_NETWORK_BODY_SIZE, MEMORY_AVG_ACTION_SIZE, MAX_PENDING_BUFFER } from './cache-limits.js';
 // Re-export source map and context monitoring
-export { measureContextSize, checkContextAnnotations, getContextWarning, resetContextWarning, resolveStackTrace, getProcessingQueriesState, addProcessingQuery, removeProcessingQuery, isQueryProcessing, cleanupStaleProcessingQueries } from './snapshots.js';
+export { measureContextSize, checkContextAnnotations, getContextWarning, resetContextWarning, resolveStackTrace } from './snapshots.js';
+// Re-export processing query tracking
+export { getProcessingQueriesState, addProcessingQuery, removeProcessingQuery, isQueryProcessing, cleanupStaleProcessingQueries } from './processing-queries.js';
 /** Debug log buffer */
 const debugLogBuffer = [];
 /** Debug log buffer size */

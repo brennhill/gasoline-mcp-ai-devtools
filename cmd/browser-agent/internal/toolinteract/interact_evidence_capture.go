@@ -22,7 +22,7 @@ type EvidenceShot = evidenceShot
 
 // EvidenceCaptureFn is the pluggable evidence capture function.
 // Tests can replace it to avoid real screenshot I/O.
-var evidenceCaptureFn func(deps *Deps, clientID string) evidenceShot
+var evidenceCaptureFn func(deps Deps, clientID string) evidenceShot
 
 func (h *InteractActionHandler) captureEvidenceWithRetry(clientID string) evidenceShot {
 	retries := evidenceRetryCount()
@@ -30,13 +30,10 @@ func (h *InteractActionHandler) captureEvidenceWithRetry(clientID string) eviden
 	last := evidenceShot{Error: "evidence_capture_not_attempted"}
 
 	captureFn := evidenceCaptureFn
-	if captureFn == nil && h.deps.DefaultEvidenceCapture != nil {
-		captureFn = func(_ *Deps, cid string) evidenceShot {
+	if captureFn == nil {
+		captureFn = func(_ Deps, cid string) evidenceShot {
 			return h.deps.DefaultEvidenceCapture(cid)
 		}
-	}
-	if captureFn == nil {
-		return evidenceShot{Error: "evidence_capture_not_configured"}
 	}
 
 	for i := 0; i < attempts; i++ {
@@ -58,7 +55,7 @@ func (h *InteractActionHandler) captureEvidenceWithRetry(clientID string) eviden
 }
 
 // SetEvidenceCaptureFn overrides the evidence capture function (for testing).
-func SetEvidenceCaptureFn(fn func(deps *Deps, clientID string) EvidenceShot) {
+func SetEvidenceCaptureFn(fn func(deps Deps, clientID string) EvidenceShot) {
 	evidenceCaptureFn = fn
 }
 

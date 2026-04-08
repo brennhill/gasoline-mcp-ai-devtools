@@ -6,7 +6,7 @@
 import { getServerUrl, getConnectionStatus, getExtensionLogQueue, pushExtensionLog, capExtensionLogs, getCurrentLogLevel, isScreenshotOnError, _setDebugModeRaw, setConnectionStatus, setConnectionCheckRunning, clearExtensionLogQueue, EXTENSION_SESSION_ID, isAiControlled, isAiWebPilotEnabled, isConnectionCheckRunning as isConnectionCheckRunningFlag, isDebugMode, applyCaptureOverrides } from './state.js';
 import { addDebugLogEntry, getDebugLog as getDebugLogEntries, clearDebugLog as clearDebugLogEntries, isSourceMapEnabled, resolveStackTrace, processErrorGroup, canTakeScreenshot, recordScreenshot } from './state-manager.js';
 import { createCircuitBreaker, RATE_LIMIT_CONFIG, shouldCaptureLog, formatLogEntry, captureScreenshot, updateBadge, checkServerHealth, sendStatusPing } from './communication.js';
-import { getTrackedTabInfo } from './event-listeners.js';
+import { getTrackedTabInfo } from './tab-state.js';
 import { DebugCategory } from './debug.js';
 import { getRequestHeaders } from './server.js';
 import { handlePendingQuery as handlePendingQueryImpl, handlePilotCommand as handlePilotCommandImpl } from './pending-queries.js';

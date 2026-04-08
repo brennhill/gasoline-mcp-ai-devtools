@@ -5,23 +5,24 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"time"
 
 	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
 
-func (h *StateInteractHandler) HandleStateSave(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *StateInteractHandler) HandleStateSave(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
-	if resp, blocked := requireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
+	if resp, blocked := mcp.RequireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
 		return resp
 	}
 
@@ -56,16 +57,16 @@ func (h *StateInteractHandler) HandleStateSave(req JSONRPCRequest, args json.Raw
 
 	data, err := json.Marshal(stateData)
 	if err != nil {
-		return fail(req, ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")
+		return mcp.Fail(req, mcp.ErrInternal, "Failed to serialize state: "+err.Error(), "Internal error — do not retry")
 	}
 
 	if err := h.sessionStoreImpl.Save(act.StateNamespace, snapshotName, data); err != nil {
-		return fail(req, ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")
+		return mcp.Fail(req, mcp.ErrInternal, "Failed to save state: "+err.Error(), "Internal error — check storage")
 	}
 
 	h.deps.RecordAIAction("save_state", tabURL, map[string]any{"snapshot_name": snapshotName})
 
-	return succeed(req, "State saved", map[string]any{
+	return mcp.Succeed(req, "State saved", map[string]any{
 		"status":        "saved",
 		"snapshot_name": snapshotName,
 		"state_capture": capture.Status,
@@ -76,18 +77,18 @@ func (h *StateInteractHandler) HandleStateSave(req JSONRPCRequest, args json.Raw
 	})
 }
 
-func (h *StateInteractHandler) HandleStateLoad(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *StateInteractHandler) HandleStateLoad(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
 		IncludeURL   bool   `json:"include_url,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
-	if resp, blocked := requireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
+	if resp, blocked := mcp.RequireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
 		return resp
 	}
 
@@ -97,12 +98,12 @@ func (h *StateInteractHandler) HandleStateLoad(req JSONRPCRequest, args json.Raw
 
 	data, err := h.sessionStoreImpl.Load(act.StateNamespace, snapshotName)
 	if err != nil {
-		return fail(req, ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.deps.DiagnosticHint())
+		return mcp.Fail(req, mcp.ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.deps.DiagnosticHint())
 	}
 
 	var stateData map[string]any
 	if err := json.Unmarshal(data, &stateData); err != nil {
-		return fail(req, ErrInternal, "Failed to parse state data", "Internal error — state may be corrupted")
+		return mcp.Fail(req, mcp.ErrInternal, "Failed to parse state data", "Internal error — state may be corrupted")
 	}
 
 	if params.IncludeURL {
@@ -137,5 +138,5 @@ func (h *StateInteractHandler) HandleStateLoad(req JSONRPCRequest, args json.Raw
 
 	h.deps.RecordAIAction("load_state", "", map[string]any{"snapshot_name": snapshotName})
 
-	return succeed(req, "State loaded", responseData)
+	return mcp.Succeed(req, "State loaded", responseData)
 }

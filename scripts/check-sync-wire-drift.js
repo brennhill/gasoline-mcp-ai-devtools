@@ -17,6 +17,54 @@ const ROOT = path.resolve(__dirname, '..')
 const GO_FILE = 'internal/capture/sync.go'
 const TS_FILE = 'src/background/sync-client.ts'
 
+// Additional Go/TS file pairs for types defined outside the primary sync files.
+const EXTRA_TYPE_FILES = [
+  {
+    goFile: 'internal/types/log.go',
+    tsFile: 'src/background/sync-client.ts',
+    goTypeName: 'ExtensionLog',
+    tsTypeName: 'SyncExtensionLog'
+  },
+  // Upload wire types (internal/upload/types.go <-> src/types/wire-upload.ts)
+  {
+    goFile: 'internal/upload/types.go',
+    tsFile: 'src/types/wire-upload.ts',
+    goTypeName: 'FileReadResponse',
+    tsTypeName: 'FileReadResponse'
+  },
+  {
+    goFile: 'internal/upload/types.go',
+    tsFile: 'src/types/wire-upload.ts',
+    goTypeName: 'StageResponse',
+    tsTypeName: 'StageResponse'
+  },
+  // Push wire types (cmd/browser-agent/push_handlers.go <-> src/types/wire-push.ts)
+  {
+    goFile: 'cmd/browser-agent/push_handlers.go',
+    tsFile: 'src/types/wire-push.ts',
+    goTypeName: 'PushScreenshotRequest',
+    tsTypeName: 'PushScreenshotRequest'
+  },
+  {
+    goFile: 'cmd/browser-agent/push_handlers.go',
+    tsFile: 'src/types/wire-push.ts',
+    goTypeName: 'PushMessageRequest',
+    tsTypeName: 'PushMessageRequest'
+  },
+  {
+    goFile: 'cmd/browser-agent/push_handlers.go',
+    tsFile: 'src/types/wire-push.ts',
+    goTypeName: 'PushCapabilitiesResponse',
+    tsTypeName: 'PushCapabilities'
+  },
+  {
+    goFile: 'cmd/browser-agent/push_handlers.go',
+    tsFile: 'src/types/wire-push.ts',
+    goTypeName: 'PushResponse',
+    tsTypeName: 'PushResponse'
+  }
+]
+
 // Sync types that must stay aligned between Go and TS.
 // Only types that cross the wire (sent/received over HTTP) are checked.
 const SYNC_TYPES = [
@@ -36,7 +84,11 @@ const SYNC_TYPES = [
 const OPTIONALITY_OVERRIDES = {
   // Go always sends capture_overrides (even as {}), but TS treats it as optional
   // for defensive parsing. The TS consumer already guards with `if (data.capture_overrides)`.
-  'SyncResponse.capture_overrides': 'ts-optional-ok'
+  'SyncResponse.capture_overrides': 'ts-optional-ok',
+  // Go marks category as omitempty (empty string omitted), but TS always sends it.
+  // The extension always populates category before sending; Go omitempty only matters
+  // for server→client serialization where empty category is dropped.
+  'ExtensionLog/SyncExtensionLog.category': 'ts-required-ok'
 }
 
 // ============================================
@@ -143,9 +195,12 @@ function compareType(goStruct, tsInterface) {
     // Go optional (omitempty/pointer/slice/map) should be TS optional (?)
     // Go required should be TS required
     if (goField.optional && !tsField.optional) {
-      errors.push(
-        `${typeName}.${tag}: Go is optional (omitempty/pointer) but TS declares it required`
-      )
+      const overrideKey = `${typeName}.${tag}`
+      if (!OPTIONALITY_OVERRIDES[overrideKey]) {
+        errors.push(
+          `${typeName}.${tag}: Go is optional (omitempty/pointer) but TS declares it required — add to OPTIONALITY_OVERRIDES if intentional`
+        )
+      }
     }
     if (!goField.optional && tsField.optional) {
       const overrideKey = `${typeName}.${tag}`
@@ -207,13 +262,51 @@ for (const typeName of SYNC_TYPES) {
   checkedCount++
 }
 
+// Check extra type pairs defined in separate files.
+for (const extra of EXTRA_TYPE_FILES) {
+  const extraGoPath = path.join(ROOT, extra.goFile)
+  const extraTsPath = path.join(ROOT, extra.tsFile)
+
+  if (!fs.existsSync(extraGoPath)) {
+    allErrors.push(`${extra.goTypeName}: Go file not found: ${extra.goFile}`)
+    continue
+  }
+  if (!fs.existsSync(extraTsPath)) {
+    allErrors.push(`${extra.tsTypeName}: TS file not found: ${extra.tsFile}`)
+    continue
+  }
+
+  const extraGoContent = fs.readFileSync(extraGoPath, 'utf-8')
+  const extraTsContent = fs.readFileSync(extraTsPath, 'utf-8')
+
+  const goStruct = parseGoStruct(extraGoContent, extra.goTypeName)
+  if (!goStruct) {
+    allErrors.push(`${extra.goTypeName}: not found in ${extra.goFile}`)
+    continue
+  }
+
+  const tsInterface = parseTSInterface(extraTsContent, extra.tsTypeName)
+  if (!tsInterface) {
+    allErrors.push(`${extra.tsTypeName}: not found in ${extra.tsFile}`)
+    continue
+  }
+
+  // Compare using the Go type name for error messages, noting the TS alias.
+  const crossErrors = compareType(
+    { name: `${extra.goTypeName}/${extra.tsTypeName}`, fields: goStruct.fields },
+    { name: `${extra.goTypeName}/${extra.tsTypeName}`, fields: tsInterface.fields }
+  )
+  allErrors = allErrors.concat(crossErrors)
+  checkedCount++
+}
+
 if (allErrors.length > 0) {
   console.error('SYNC WIRE DRIFT DETECTED:')
   for (const err of allErrors) {
     console.error(`  - ${err}`)
   }
-  console.error(`\nChecked ${checkedCount}/${SYNC_TYPES.length} sync types`)
-  console.error(`Fix the drift in ${GO_FILE} or ${TS_FILE}`)
+  console.error(`\nChecked ${checkedCount}/${SYNC_TYPES.length + EXTRA_TYPE_FILES.length} sync types`)
+  console.error(`Fix the drift in the relevant Go or TS files`)
   process.exit(1)
 } else {
   console.log(`OK: ${checkedCount} sync wire types verified, zero drift`)

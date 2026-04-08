@@ -13,23 +13,10 @@ let originalFaviconHref = null;
 let flickerInterval = null;
 /**
  * Initialize favicon replacement.
- * Listens for tracking state changes and updates favicon accordingly.
+ * Requests initial tracking state from background and updates favicon accordingly.
+ * Ongoing tracking_state_changed messages are handled by the central runtime-message-listener.
  */
-// #lizard forgives
 export function initFaviconReplacer() {
-    // Listen for tracking state updates from background
-    chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
-        // Only accept messages from the extension itself (background script)
-        if (sender.id !== chrome.runtime.id)
-            return false;
-        if (message.type === 'tracking_state_changed') {
-            const newState = message.state;
-            updateFavicon(newState);
-        }
-        // Explicitly return false so Chrome doesn't prematurely resolve
-        // sendMessage promises from other listeners (e.g. DOM_QUERY, A11Y_QUERY).
-        return false;
-    });
     // Request initial tracking state
     chrome.runtime.sendMessage({ type: 'get_tracking_state' }, (response) => {
         if (response && response.state) {
@@ -43,7 +30,7 @@ export function initFaviconReplacer() {
  * - Tracked (AI Pilot off): Shows static glowing flame
  * - Tracked (AI Pilot on): Shows flickering flame
  */
-function updateFavicon(state) {
+export function updateFavicon(state) {
     if (!state.isTracked) {
         // Restore original favicon
         restoreOriginalFavicon();
@@ -59,6 +46,13 @@ function updateFavicon(state) {
         replaceFaviconWithFlame(false);
         stopFlicker();
     }
+}
+/**
+ * Restore the original page favicon (exported for use by central message handler).
+ */
+export function restoreFavicon() {
+    restoreOriginalFavicon();
+    stopFlicker();
 }
 /**
  * Save original favicon and replace with Kaboom flame.

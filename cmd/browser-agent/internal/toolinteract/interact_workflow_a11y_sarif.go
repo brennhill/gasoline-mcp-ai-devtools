@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"strings"
 	"time"
@@ -12,13 +13,13 @@ import (
 
 // handleRunA11yAndExportSARIF runs accessibility audit then exports SARIF in one call.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *InteractActionHandler) HandleRunA11yAndExportSARIF(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleRunA11yAndExportSARIF(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Scope  string `json:"scope,omitempty"`
 		SaveTo string `json:"save_to,omitempty"`
 		TabID  int    `json:"tab_id,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -26,7 +27,7 @@ func (h *InteractActionHandler) HandleRunA11yAndExportSARIF(req JSONRPCRequest, 
 	workflowStart := time.Now()
 
 	// Step 1: Run accessibility audit.
-	a11yArgs := buildQueryParams(map[string]any{
+	a11yArgs := mcp.BuildQueryParams(map[string]any{
 		"what":   "accessibility",
 		"scope":  params.Scope,
 		"tab_id": params.TabID,
@@ -63,8 +64,8 @@ func (h *InteractActionHandler) HandleRunA11yAndExportSARIF(req JSONRPCRequest, 
 }
 
 // extractMCPResponseJSONPayload extracts JSON payload from first text block in MCP response.
-func extractMCPResponseJSONPayload(resp JSONRPCResponse) json.RawMessage {
-	var result MCPToolResult
+func extractMCPResponseJSONPayload(resp mcp.JSONRPCResponse) json.RawMessage {
+	var result mcp.MCPToolResult
 	if err := json.Unmarshal(resp.Result, &result); err != nil || len(result.Content) == 0 {
 		return nil
 	}

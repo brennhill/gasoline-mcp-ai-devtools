@@ -36,6 +36,8 @@ import {
 import { showActionToast } from './ui/toast.js'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
 import { toggleChatWidget } from './ui/chat-widget.js'
+import { updateFavicon } from './favicon-replacer.js'
+import type { TrackingState } from '../types/index.js'
 
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true
@@ -105,6 +107,11 @@ export function initRuntimeMessageListener(): void {
     },
     [SettingName.SUBTITLES]: (msg) => {
       subtitlesEnabled = (msg as { enabled: boolean }).enabled
+      return false
+    },
+    tracking_state_changed: (msg) => {
+      const state = (msg as { state: TrackingState }).state
+      updateFavicon(state)
       return false
     }
   }

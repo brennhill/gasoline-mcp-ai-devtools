@@ -8,7 +8,7 @@
 
 import type { PendingQuery } from '../types/index.js'
 import type { SyncClient } from './sync-client.js'
-import { waitForTabLoad, pingContentScript, getActiveTab } from './event-listeners.js'
+import { waitForTabLoad, pingContentScript, getActiveTab } from './tab-state.js'
 import { debugLog } from './index.js'
 import { isAiWebPilotEnabled } from './state.js'
 import { DebugCategory } from './debug.js'
@@ -18,7 +18,7 @@ import { ASYNC_COMMAND_TIMEOUT_MS } from '../lib/constants.js'
 import type { SendAsyncResultFn, ActionToastFn } from './pending-queries.js'
 import { persistTrackedTab } from './commands/helpers.js'
 import { errorMessage } from '../lib/error-utils.js'
-import { delay } from '../lib/timeout-utils.js'
+import { delay, withTimeoutReject as withTimeout } from '../lib/timeout-utils.js'
 
 // =============================================================================
 // TIMEOUT CONFIGURATION
@@ -26,20 +26,6 @@ import { delay } from '../lib/timeout-utils.js'
 
 const ASYNC_EXECUTE_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS
 const ASYNC_BROWSER_ACTION_TIMEOUT_MS = ASYNC_COMMAND_TIMEOUT_MS
-
-/**
- * Race a promise against a timeout. Properly clears the timer when the promise
- * settles first so no dangling setTimeout keeps the service worker alive.
- */
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(message)), timeoutMs)
-    promise.then(
-      (value) => { clearTimeout(timer); resolve(value) },
-      (err) => { clearTimeout(timer); reject(err as Error) }
-    )
-  })
-}
 
 // =============================================================================
 // BROWSER ACTION TYPES

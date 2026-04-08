@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"time"
 )
@@ -12,7 +13,7 @@ import (
 // handleNavigateAndWaitFor navigates to a URL, waits for a CSS selector to appear,
 // and optionally returns page content — all in one call.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *InteractActionHandler) HandleNavigateAndWaitFor(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleNavigateAndWaitFor(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		URL            string `json:"url"`
 		WaitFor        string `json:"wait_for"`
@@ -20,13 +21,13 @@ func (h *InteractActionHandler) HandleNavigateAndWaitFor(req JSONRPCRequest, arg
 		TimeoutMs      int    `json:"timeout_ms,omitempty"`
 		IncludeContent bool   `json:"include_content,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := requireString(req, params.URL, "url", "Add 'url' to navigate to"); blocked {
+	if resp, blocked := mcp.RequireString(req, params.URL, "url", "Add 'url' to navigate to"); blocked {
 		return resp
 	}
-	if resp, blocked := requireString(req, params.WaitFor, "wait_for", "Add a CSS selector to wait for after navigation"); blocked {
+	if resp, blocked := mcp.RequireString(req, params.WaitFor, "wait_for", "Add a CSS selector to wait for after navigation"); blocked {
 		return resp
 	}
 	if params.TimeoutMs <= 0 {
@@ -37,7 +38,7 @@ func (h *InteractActionHandler) HandleNavigateAndWaitFor(req JSONRPCRequest, arg
 	workflowStart := time.Now()
 
 	// Step 1: Navigate.
-	navArgs := buildQueryParams(map[string]any{
+	navArgs := mcp.BuildQueryParams(map[string]any{
 		"action": "navigate",
 		"url":    params.URL,
 		"tab_id": params.TabID,
@@ -60,7 +61,7 @@ func (h *InteractActionHandler) HandleNavigateAndWaitFor(req JSONRPCRequest, arg
 	if waitTimeout < 1000 {
 		waitTimeout = 1000
 	}
-	waitArgs := buildQueryParams(map[string]any{
+	waitArgs := mcp.BuildQueryParams(map[string]any{
 		"action":     "wait_for",
 		"selector":   params.WaitFor,
 		"timeout_ms": waitTimeout,

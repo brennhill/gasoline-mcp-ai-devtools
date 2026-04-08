@@ -19,8 +19,6 @@ const SOURCE_MAP_FETCH_TIMEOUT = 5000;
 const CONTEXT_SIZE_THRESHOLD = 20 * 1024;
 const CONTEXT_WARNING_WINDOW_MS = 60000;
 const CONTEXT_WARNING_COUNT = 3;
-/** Processing query TTL */
-const PROCESSING_QUERY_TTL_MS = 60000;
 /** Stack frame regex patterns */
 const STACK_FRAME_REGEX = /^\s*at\s+(?:(.+?)\s+\()?(?:(.+?):(\d+):(\d+)|(.+?):(\d+))\)?$/;
 const ANONYMOUS_FRAME_REGEX = /^\s*at\s+(.+?):(\d+):(\d+)$/;
@@ -33,8 +31,6 @@ const VLQ_CHAR_MAP = new Map(VLQ_CHARS.split('').map((c, i) => [c, i]));
 /** Context annotation monitoring state */
 let contextExcessiveTimestamps = [];
 let contextWarningState = null;
-/** Processing queries tracking */
-const processingQueries = new Map();
 // =============================================================================
 // CONTEXT ANNOTATION MONITORING
 // =============================================================================
@@ -368,48 +364,5 @@ export async function resolveStackTrace(stack, debugLogFn) {
     }
     return resolvedLines.join('\n');
 }
-// =============================================================================
-// PROCESSING QUERY TRACKING
-// =============================================================================
-/**
- * Get current state of processing queries (for testing)
- */
-export function getProcessingQueriesState() {
-    return processingQueries;
-}
-/**
- * Add a query to the processing set with timestamp
- */
-export function addProcessingQuery(queryId, timestamp = Date.now()) {
-    processingQueries.set(queryId, timestamp);
-}
-/**
- * Remove a query from the processing set
- */
-export function removeProcessingQuery(queryId) {
-    processingQueries.delete(queryId);
-}
-/**
- * Check if a query is currently being processed
- */
-export function isQueryProcessing(queryId) {
-    return processingQueries.has(queryId);
-}
-/**
- * Clean up stale processing queries that have exceeded the TTL
- */
-export function cleanupStaleProcessingQueries(debugLogFn) {
-    const now = Date.now();
-    for (const [queryId, timestamp] of processingQueries) {
-        if (now - timestamp > PROCESSING_QUERY_TTL_MS) {
-            processingQueries.delete(queryId);
-            if (debugLogFn) {
-                debugLogFn('connection', 'Cleaned up stale processing query', {
-                    queryId,
-                    age: Math.round((now - timestamp) / 1000) + 's'
-                });
-            }
-        }
-    }
-}
+// Processing query tracking extracted to ./processing-queries.ts
 //# sourceMappingURL=snapshots.js.map

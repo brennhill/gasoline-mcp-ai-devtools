@@ -5,11 +5,12 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 )
 
 // handleClipboardRead reads text from the clipboard via navigator.clipboard.readText().
-func (h *InteractActionHandler) HandleClipboardRead(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleClipboardRead(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	script := `(async () => {
   try {
     const text = await navigator.clipboard.readText();
@@ -30,14 +31,14 @@ func (h *InteractActionHandler) HandleClipboardRead(req JSONRPCRequest, args jso
 }
 
 // handleClipboardWrite writes text to the clipboard via navigator.clipboard.writeText().
-func (h *InteractActionHandler) HandleClipboardWrite(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleClipboardWrite(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Text string `json:"text"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
-	if resp, blocked := requireString(req, params.Text, "text", "Add the 'text' parameter with the content to write to clipboard"); blocked {
+	if resp, blocked := mcp.RequireString(req, params.Text, "text", "Add the 'text' parameter with the content to write to clipboard"); blocked {
 		return resp
 	}
 

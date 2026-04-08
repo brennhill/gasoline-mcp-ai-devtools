@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 
 	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
@@ -17,14 +18,14 @@ func resolveStateSnapshotName(snapshotName, legacyName string) string {
 	return legacyName
 }
 
-func (h *StateInteractHandler) HandleStateList(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *StateInteractHandler) HandleStateList(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	if resp, blocked := h.deps.RequireSessionStore(req); blocked {
 		return resp
 	}
 
 	keys, err := h.sessionStoreImpl.List(act.StateNamespace)
 	if err != nil {
-		return fail(req, ErrInternal, "Failed to list states: "+err.Error(), "Internal error — do not retry")
+		return mcp.Fail(req, mcp.ErrInternal, "Failed to list states: "+err.Error(), "Internal error — do not retry")
 	}
 
 	states := make([]map[string]any, 0, len(keys))
@@ -32,7 +33,7 @@ func (h *StateInteractHandler) HandleStateList(req JSONRPCRequest, args json.Raw
 		states = append(states, h.buildStateEntry(key))
 	}
 
-	return succeed(req, "States listed", map[string]any{
+	return mcp.Succeed(req, "States listed", map[string]any{
 		"states": states,
 		"count":  len(states),
 	})
@@ -57,17 +58,17 @@ func (h *StateInteractHandler) buildStateEntry(key string) map[string]any {
 	return entry
 }
 
-func (h *StateInteractHandler) HandleStateDelete(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *StateInteractHandler) HandleStateDelete(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		SnapshotName string `json:"snapshot_name"`
 		Name         string `json:"name"` // backward-compatible alias
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
 	snapshotName := resolveStateSnapshotName(params.SnapshotName, params.Name)
-	if resp, blocked := requireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
+	if resp, blocked := mcp.RequireString(req, snapshotName, "snapshot_name", "Add the 'snapshot_name' parameter (legacy alias: 'name')"); blocked {
 		return resp
 	}
 
@@ -76,12 +77,12 @@ func (h *StateInteractHandler) HandleStateDelete(req JSONRPCRequest, args json.R
 	}
 
 	if err := h.sessionStoreImpl.Delete(act.StateNamespace, snapshotName); err != nil {
-		return fail(req, ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.deps.DiagnosticHint())
+		return mcp.Fail(req, mcp.ErrNoData, "State not found: "+snapshotName, "Use interact with action='list_states' to see available snapshots", h.deps.DiagnosticHint())
 	}
 
 	h.deps.RecordAIAction("delete_state", "", map[string]any{"snapshot_name": snapshotName})
 
-	return succeed(req, "State deleted", map[string]any{
+	return mcp.Succeed(req, "State deleted", map[string]any{
 		"status":        "deleted",
 		"snapshot_name": snapshotName,
 	})

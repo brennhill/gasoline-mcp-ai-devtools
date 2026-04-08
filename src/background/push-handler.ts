@@ -7,22 +7,16 @@
 // push-handler.ts — Background handlers for screenshot push and push capability tracking.
 
 import { getServerUrl } from './state.js'
-import { getActiveTab } from './event-listeners.js'
+import { getActiveTab } from './tab-state.js'
 import { getRequestHeaders } from './server.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { fetchWithTimeout } from '../lib/timeout-utils.js'
+import type { PushCapabilities } from '../types/wire-push.js'
 
 /** Timeout for push fetch calls (ms). */
 const PUSH_FETCH_TIMEOUT_MS = 8_000
 
-/** Per-session push capability state from the daemon. */
-export interface PushCapabilities {
-  push_enabled: boolean
-  supports_sampling: boolean
-  supports_notifications: boolean
-  client_name: string
-  inbox_count: number
-}
+export type { PushCapabilities }
 
 let cachedCapabilities: PushCapabilities | null = null
 let capabilitiesFetchedAt = 0

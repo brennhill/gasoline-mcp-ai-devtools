@@ -16,7 +16,7 @@ func HandleTutorial(d Deps, req mcp.JSONRPCRequest, args json.RawMessage, failur
 	var params struct {
 		What string `json:"what"`
 	}
-	lenientUnmarshal(args, &params)
+	mcp.LenientUnmarshal(args, &params)
 
 	mode := "tutorial"
 	if params.What == "examples" {
@@ -24,7 +24,7 @@ func HandleTutorial(d Deps, req mcp.JSONRPCRequest, args json.RawMessage, failur
 	}
 
 	context := TutorialContext(d)
-	return succeed(req, "Tutorial", map[string]any{
+	return mcp.Succeed(req, "Tutorial", map[string]any{
 		"status":                     "ok",
 		"mode":                       mode,
 		"message":                    "Quickstart snippets and context-aware guidance",

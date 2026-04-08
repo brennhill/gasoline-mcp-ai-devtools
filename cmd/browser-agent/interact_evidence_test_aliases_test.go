@@ -21,7 +21,7 @@ func syncEvidenceCaptureFn() {
 		return
 	}
 	fn := evidenceCaptureFn
-	toolinteract.SetEvidenceCaptureFn(func(_ *toolinteract.Deps, clientID string) toolinteract.EvidenceShot {
+	toolinteract.SetEvidenceCaptureFn(func(_ toolinteract.Deps, clientID string) toolinteract.EvidenceShot {
 		return fn(nil, clientID)
 	})
 }

@@ -12,7 +12,7 @@ import (
 
 // InteractActionHandler handles interact action dispatch, jitter, evidence, and retry contracts.
 type InteractActionHandler struct {
-	deps *Deps
+	deps Deps
 
 	// Action jitter: randomized micro-delays before interact actions.
 	jitterMu          sync.RWMutex
@@ -31,7 +31,7 @@ type InteractActionHandler struct {
 }
 
 // NewInteractActionHandler creates a new InteractActionHandler with the given dependencies.
-func NewInteractActionHandler(deps *Deps) *InteractActionHandler {
+func NewInteractActionHandler(deps Deps) *InteractActionHandler {
 	return &InteractActionHandler{
 		deps:                 deps,
 		evidenceByCommand:    make(map[string]*commandEvidenceState),

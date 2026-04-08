@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
@@ -22,7 +23,7 @@ type stateCaptureResult = act.StateCaptureResult
 
 // captureState attempts to capture form values, scroll position, and web storage from the browser.
 // Always returns a stateCaptureResult with an explicit Status the caller can surface to the LLM.
-func (h *StateInteractHandler) CaptureState(req JSONRPCRequest) stateCaptureResult {
+func (h *StateInteractHandler) CaptureState(req mcp.JSONRPCRequest) stateCaptureResult {
 	if !h.deps.Capture().IsPilotActionAllowed() {
 		return stateCaptureResult{Status: act.StateCaptureStatusPilotDisabled}
 	}
@@ -30,9 +31,9 @@ func (h *StateInteractHandler) CaptureState(req JSONRPCRequest) stateCaptureResu
 		return stateCaptureResult{Status: act.StateCaptureStatusExtensionDisconnected}
 	}
 
-	correlationID := newCorrelationID("state_capture")
+	correlationID := mcp.NewCorrelationID("state_capture")
 
-	scriptArgs := buildQueryParams(map[string]any{
+	scriptArgs := mcp.BuildQueryParams(map[string]any{
 		"action": "execute_js",
 		"script": act.StateCaptureScript,
 		"world":  "main",
@@ -68,11 +69,11 @@ func (h *StateInteractHandler) CaptureState(req JSONRPCRequest) stateCaptureResu
 
 // queueStateRestore queues a JS execute command to restore form values, scroll position,
 // localStorage, sessionStorage, and cookies. This is fire-and-forget.
-func (h *StateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues, scrollPos, localStorage, sessionStorage, cookies map[string]any) string {
-	correlationID := newCorrelationID("state_restore")
+func (h *StateInteractHandler) queueStateRestore(req mcp.JSONRPCRequest, formValues, scrollPos, localStorage, sessionStorage, cookies map[string]any) string {
+	correlationID := mcp.NewCorrelationID("state_restore")
 
 	script := act.BuildStateRestoreScript(formValues, scrollPos, localStorage, sessionStorage, cookies)
-	scriptArgs := buildQueryParams(map[string]any{
+	scriptArgs := mcp.BuildQueryParams(map[string]any{
 		"action": "execute_js",
 		"script": script,
 		"world":  "main",
@@ -92,14 +93,14 @@ func (h *StateInteractHandler) queueStateRestore(req JSONRPCRequest, formValues,
 
 // queueStateNavigation queues a navigation to the saved URL if pilot is enabled
 // and the state contains a non-empty URL. Mutates stateData to add tracking fields.
-func (h *StateInteractHandler) QueueStateNavigation(req JSONRPCRequest, stateData map[string]any) {
+func (h *StateInteractHandler) QueueStateNavigation(req mcp.JSONRPCRequest, stateData map[string]any) {
 	savedURL, ok := stateData["url"].(string)
 	if !ok || savedURL == "" || !h.deps.Capture().IsPilotActionAllowed() || !h.deps.Capture().IsExtensionConnected() {
 		return
 	}
-	correlationID := newCorrelationID("nav")
+	correlationID := mcp.NewCorrelationID("nav")
 	// Error impossible: map contains only string values
-	navArgs := buildQueryParams(map[string]any{"action": "navigate", "url": savedURL})
+	navArgs := mcp.BuildQueryParams(map[string]any{"action": "navigate", "url": savedURL})
 	query := queries.PendingQuery{
 		Type:          "browser_action",
 		Params:        navArgs,

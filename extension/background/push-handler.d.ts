@@ -3,14 +3,8 @@
  * Why: Enables browser-to-AI message injection via keyboard shortcuts.
  * Docs: docs/features/feature/browser-push/index.md
  */
-/** Per-session push capability state from the daemon. */
-export interface PushCapabilities {
-    push_enabled: boolean;
-    supports_sampling: boolean;
-    supports_notifications: boolean;
-    client_name: string;
-    inbox_count: number;
-}
+import type { PushCapabilities } from '../types/wire-push.js';
+export type { PushCapabilities };
 /**
  * Install the push_screenshot keyboard shortcut listener.
  * When Alt+Shift+S is pressed, captures the active tab's screenshot

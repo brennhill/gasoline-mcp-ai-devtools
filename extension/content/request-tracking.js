@@ -2,18 +2,48 @@
  * Purpose: Manages pending request/response pairs (highlight, execute_js, a11y, DOM queries) with timeout cleanup for AI Web Pilot features.
  * Docs: docs/features/feature/interact-explore/index.md
  */
-// Pending highlight response resolvers (keyed by request ID)
-const pendingHighlightRequests = new Map();
-let highlightRequestId = 0;
-// Pending execute requests waiting for responses from inject.js
-const pendingExecuteRequests = new Map();
-let executeRequestId = 0;
-// Pending a11y audit requests waiting for responses from inject.js
-const pendingA11yRequests = new Map();
-let a11yRequestId = 0;
-// Pending DOM query requests waiting for responses from inject.js
-const pendingDomRequests = new Map();
-let domRequestId = 0;
+/**
+ * Generic tracker for pending request/response pairs keyed by auto-incrementing numeric ID.
+ */
+class PendingRequestTracker {
+    pending = new Map();
+    nextId = 0;
+    /** Register a resolver and return the assigned request ID. */
+    register(resolve) {
+        const id = ++this.nextId;
+        this.pending.set(id, resolve);
+        return id;
+    }
+    /** Resolve a pending request by ID and remove it from the tracker. */
+    resolve(id, result) {
+        const resolver = this.pending.get(id);
+        if (resolver) {
+            this.pending.delete(id);
+            resolver(result);
+        }
+    }
+    /** Check whether a request ID is still pending. */
+    has(id) {
+        return this.pending.has(id);
+    }
+    /** Remove a pending request without resolving it. */
+    delete(id) {
+        this.pending.delete(id);
+    }
+    /** Remove all pending requests. */
+    clear() {
+        this.pending.clear();
+    }
+    /** Number of pending requests. */
+    get size() {
+        return this.pending.size;
+    }
+}
+// Typed tracker instances for each request category
+const highlightTracker = new PendingRequestTracker();
+const executeTracker = new PendingRequestTracker();
+const a11yTracker = new PendingRequestTracker();
+const domTracker = new PendingRequestTracker();
 // Periodic cleanup timer (Issue #2 fix)
 const CLEANUP_INTERVAL_MS = 30000; // 30 seconds
 let cleanupTimer = null;
@@ -35,10 +65,10 @@ function getRequestTimestamps() {
  * Prevents memory leaks and stale request accumulation across navigations.
  */
 export function clearPendingRequests() {
-    pendingHighlightRequests.clear();
-    pendingExecuteRequests.clear();
-    pendingA11yRequests.clear();
-    pendingDomRequests.clear();
+    highlightTracker.clear();
+    executeTracker.clear();
+    a11yTracker.clear();
+    domTracker.clear();
     requestTimestamps.clear();
 }
 /**
@@ -50,11 +80,11 @@ function performPeriodicCleanup() {
     const staleThreshold = 60000; // 60 seconds
     for (const [id, timestamp] of getRequestTimestamps()) {
         if (now - timestamp > staleThreshold) {
-            // Remove stale request from all maps
-            pendingHighlightRequests.delete(id);
-            pendingExecuteRequests.delete(id);
-            pendingA11yRequests.delete(id);
-            pendingDomRequests.delete(id);
+            // Remove stale request from all trackers
+            highlightTracker.delete(id);
+            executeTracker.delete(id);
+            a11yTracker.delete(id);
+            domTracker.delete(id);
             requestTimestamps.delete(id);
         }
     }
@@ -65,131 +95,63 @@ function performPeriodicCleanup() {
  */
 export function getPendingRequestStats() {
     return {
-        highlight: pendingHighlightRequests.size,
-        execute: pendingExecuteRequests.size,
-        a11y: pendingA11yRequests.size,
-        dom: pendingDomRequests.size
+        highlight: highlightTracker.size,
+        execute: executeTracker.size,
+        a11y: a11yTracker.size,
+        dom: domTracker.size
     };
 }
-/**
- * Get the next highlight request ID and register a resolver
- */
+// --- Highlight requests ---
 export function registerHighlightRequest(resolve) {
-    const requestId = ++highlightRequestId;
-    pendingHighlightRequests.set(requestId, resolve);
-    return requestId;
+    return highlightTracker.register(resolve);
 }
-/**
- * Resolve a highlight request
- */
 export function resolveHighlightRequest(requestId, result) {
-    const resolve = pendingHighlightRequests.get(requestId);
-    if (resolve) {
-        pendingHighlightRequests.delete(requestId);
-        resolve(result);
-    }
+    highlightTracker.resolve(requestId, result);
 }
-/**
- * Check if a highlight request exists
- */
 export function hasHighlightRequest(requestId) {
-    return pendingHighlightRequests.has(requestId);
+    return highlightTracker.has(requestId);
 }
-/**
- * Delete a highlight request without resolving
- */
 export function deleteHighlightRequest(requestId) {
-    pendingHighlightRequests.delete(requestId);
+    highlightTracker.delete(requestId);
 }
-/**
- * Get the next execute request ID and register a resolver
- */
+// --- Execute requests ---
 export function registerExecuteRequest(resolve) {
-    const requestId = ++executeRequestId;
-    pendingExecuteRequests.set(requestId, resolve);
-    return requestId;
+    return executeTracker.register(resolve);
 }
-/**
- * Resolve an execute request
- */
 export function resolveExecuteRequest(requestId, result) {
-    const resolve = pendingExecuteRequests.get(requestId);
-    if (resolve) {
-        pendingExecuteRequests.delete(requestId);
-        resolve(result);
-    }
+    executeTracker.resolve(requestId, result);
 }
-/**
- * Check if an execute request exists
- */
 export function hasExecuteRequest(requestId) {
-    return pendingExecuteRequests.has(requestId);
+    return executeTracker.has(requestId);
 }
-/**
- * Delete an execute request without resolving
- */
 export function deleteExecuteRequest(requestId) {
-    pendingExecuteRequests.delete(requestId);
+    executeTracker.delete(requestId);
 }
-/**
- * Get the next a11y request ID and register a resolver
- */
+// --- A11y requests ---
 export function registerA11yRequest(resolve) {
-    const requestId = ++a11yRequestId;
-    pendingA11yRequests.set(requestId, resolve);
-    return requestId;
+    return a11yTracker.register(resolve);
 }
-/**
- * Resolve an a11y request
- */
 export function resolveA11yRequest(requestId, result) {
-    const resolve = pendingA11yRequests.get(requestId);
-    if (resolve) {
-        pendingA11yRequests.delete(requestId);
-        resolve(result);
-    }
+    a11yTracker.resolve(requestId, result);
 }
-/**
- * Check if an a11y request exists
- */
 export function hasA11yRequest(requestId) {
-    return pendingA11yRequests.has(requestId);
+    return a11yTracker.has(requestId);
 }
-/**
- * Delete an a11y request without resolving
- */
 export function deleteA11yRequest(requestId) {
-    pendingA11yRequests.delete(requestId);
+    a11yTracker.delete(requestId);
 }
-/**
- * Get the next DOM request ID and register a resolver
- */
+// --- DOM requests ---
 export function registerDomRequest(resolve) {
-    const requestId = ++domRequestId;
-    pendingDomRequests.set(requestId, resolve);
-    return requestId;
+    return domTracker.register(resolve);
 }
-/**
- * Resolve a DOM request
- */
 export function resolveDomRequest(requestId, result) {
-    const resolve = pendingDomRequests.get(requestId);
-    if (resolve) {
-        pendingDomRequests.delete(requestId);
-        resolve(result);
-    }
+    domTracker.resolve(requestId, result);
 }
-/**
- * Check if a DOM request exists
- */
 export function hasDomRequest(requestId) {
-    return pendingDomRequests.has(requestId);
+    return domTracker.has(requestId);
 }
-/**
- * Delete a DOM request without resolving
- */
 export function deleteDomRequest(requestId) {
-    pendingDomRequests.delete(requestId);
+    domTracker.delete(requestId);
 }
 /**
  * Cleanup periodic timer (Issue #2 fix).

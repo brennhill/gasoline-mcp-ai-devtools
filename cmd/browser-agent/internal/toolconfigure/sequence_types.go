@@ -5,15 +5,15 @@ package toolconfigure
 import (
 	"encoding/json"
 	"regexp"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolconst"
 )
 
-// NOTE: MaxSequenceSteps and DefaultStepTimeout are duplicated in toolinteract/interact_batch.go
-// as unexported constants. Keep both in sync.
 const (
 	SequenceNamespace  = "sequences"
-	MaxSequenceSteps   = 50
+	MaxSequenceSteps   = toolconst.MaxSequenceSteps
 	MaxSequenceNameLen = 64
-	DefaultStepTimeout = 10000 // ms
+	DefaultStepTimeout = toolconst.DefaultStepTimeout
 )
 
 var SequenceNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)

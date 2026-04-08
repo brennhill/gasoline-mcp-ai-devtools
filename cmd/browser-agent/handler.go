@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/redaction"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
@@ -68,12 +69,8 @@ type RateLimiter interface {
 	Allow() bool
 }
 
-// RedactionEngine interface for response redaction.
-type RedactionEngine interface {
-	Redact(input string) string
-	RedactJSON(data json.RawMessage) json.RawMessage
-	RedactMapValues(data map[string]any) map[string]any
-}
+// RedactionEngine is the canonical redaction interface from the redaction package.
+type RedactionEngine = redaction.Redactor
 
 // NewMCPHandler creates a new MCP handler.
 func NewMCPHandler(server *Server, version string) *MCPHandler {

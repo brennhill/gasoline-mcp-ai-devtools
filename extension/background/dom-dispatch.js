@@ -3,7 +3,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 import { domFrameProbe } from './dom-frame-probe.js';
-import { domPrimitive } from './dom-primitives.js';
+import { domPrimitiveRead } from './dom-primitives-read.js';
+import { domPrimitiveAction } from './dom-primitives-action.js';
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 import { domPrimitiveQuery } from './dom-primitives-query.js';
 import { domPrimitiveWaitForStable, domPrimitiveActionDiff } from './dom-primitives-stability.js';
@@ -77,7 +78,7 @@ async function executeWaitFor(target, params) {
     const quickCheck = await chrome.scripting.executeScript({
         target,
         world: 'MAIN',
-        func: domPrimitive,
+        func: domPrimitiveRead,
         args: [domAction, selector, domOpts]
     });
     const quickPicked = pickFrameResult(quickCheck);
@@ -92,7 +93,7 @@ async function executeWaitFor(target, params) {
         const probeResults = await chrome.scripting.executeScript({
             target,
             world: 'MAIN',
-            func: domPrimitive,
+            func: domPrimitiveRead,
             args: [domAction, selector, domOpts]
         });
         const picked = pickFrameResult(probeResults);
@@ -119,11 +120,19 @@ async function executeWaitFor(target, params) {
         message: label || `Element not found within ${timeoutMs}ms: ${selector}`
     };
 }
+const READ_ACTIONS_DISPATCH = new Set(['get_text', 'get_value', 'get_attribute']);
+function resolveStandardPrimitive(act) {
+    if (READ_ACTIONS_DISPATCH.has(act))
+        return domPrimitiveRead;
+    // All mutating selector-based actions use domPrimitiveAction
+    return domPrimitiveAction;
+}
 async function executeStandardAction(target, params) {
+    const func = resolveStandardPrimitive(params.action);
     return chrome.scripting.executeScript({
         target,
         world: 'MAIN',
-        func: domPrimitive,
+        func,
         args: [
             params.action,
             params.selector || '',

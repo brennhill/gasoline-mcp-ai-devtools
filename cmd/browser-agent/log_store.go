@@ -58,6 +58,33 @@ func NewLogStore(logFile string, maxEntries int, addWarning func(string)) *LogSt
 	}
 }
 
+// Snapshot returns a thread-safe copy of all log entries.
+func (ls *LogStore) Snapshot() []LogEntry {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	entries := make([]LogEntry, len(ls.entries))
+	copy(entries, ls.entries)
+	return entries
+}
+
+// SnapshotWithTimestamps returns a thread-safe copy of all log entries and their add-times.
+func (ls *LogStore) SnapshotWithTimestamps() ([]LogEntry, []time.Time) {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	entries := make([]LogEntry, len(ls.entries))
+	copy(entries, ls.entries)
+	addedAt := make([]time.Time, len(ls.logAddedAt))
+	copy(addedAt, ls.logAddedAt)
+	return entries, addedAt
+}
+
+// Len returns the current number of log entries (thread-safe).
+func (ls *LogStore) Len() int {
+	ls.mu.RLock()
+	defer ls.mu.RUnlock()
+	return len(ls.entries)
+}
+
 // SetOnEntries sets the callback invoked when new log entries are added.
 // Thread-safe: acquires the write lock to avoid racing with addEntries.
 func (ls *LogStore) SetOnEntries(cb func([]LogEntry)) {

@@ -35,6 +35,12 @@ export interface DeferredPromise<T> {
  */
 export declare function createDeferredPromise<T>(): DeferredPromise<T>;
 /**
+ * Race a promise against a timeout. Properly clears the timer when the promise
+ * settles first so no dangling setTimeout keeps the service worker alive.
+ * Rejects with a plain Error carrying the provided message on timeout.
+ */
+export declare function withTimeoutReject<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T>;
+/**
  * Options for withTimeoutAndCleanup
  */
 export interface TimeoutCleanupOptions<T> {

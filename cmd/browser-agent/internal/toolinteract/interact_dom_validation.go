@@ -5,52 +5,53 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"fmt"
 )
 
 // resolveDOMSelectorFromIndex resolves index -> selector for primitive actions that omitted selector/element_id.
-func (h *InteractActionHandler) resolveDOMSelectorFromIndex(req JSONRPCRequest, args json.RawMessage, params *DOMPrimitiveParams) (json.RawMessage, JSONRPCResponse, bool) {
+func (h *InteractActionHandler) resolveDOMSelectorFromIndex(req mcp.JSONRPCRequest, args json.RawMessage, params *DOMPrimitiveParams) (json.RawMessage, mcp.JSONRPCResponse, bool) {
 	if params.Index == nil || params.Selector != "" || params.ElementID != "" {
-		return args, JSONRPCResponse{}, false
+		return args, mcp.JSONRPCResponse{}, false
 	}
 
 	sel, ok, stale, latestGeneration := h.resolveIndexToSelector(req.ClientID, params.TabID, *params.Index, params.IndexGen)
 	if stale {
-		return args, fail(req, ErrInvalidParam,
+		return args, mcp.Fail(req, mcp.ErrInvalidParam,
 			formatIndexGenerationConflict(params.IndexGen, latestGeneration),
 			"Re-run interact with what='list_interactive' for the current page context, then retry with the returned index_generation.",
-			withParam("index_generation"), withParam("index"),
+			mcp.WithParam("index_generation"), mcp.WithParam("index"),
 		), true
 	}
 	if !ok {
-		return args, fail(req, ErrInvalidParam,
+		return args, mcp.Fail(req, mcp.ErrInvalidParam,
 			fmt.Sprintf("Element index %d not found for tab_id=%d. Call list_interactive first to refresh the element index for this tab/client scope.", *params.Index, params.TabID),
 			"Call interact with what='list_interactive' first (same tab/client scope), then use the returned index.",
-			withParam("index"), withParam("tab_id"),
+			mcp.WithParam("index"), mcp.WithParam("tab_id"),
 		), true
 	}
 
 	params.Selector = sel
-	return updateArgsSelector(args, sel), JSONRPCResponse{}, false
+	return updateArgsSelector(args, sel), mcp.JSONRPCResponse{}, false
 }
 
-func validateDOMSelectorRequirement(req JSONRPCRequest, action string, params DOMPrimitiveParams) (JSONRPCResponse, bool) {
+func validateDOMSelectorRequirement(req mcp.JSONRPCRequest, action string, params DOMPrimitiveParams) (mcp.JSONRPCResponse, bool) {
 	_, selectorOptional := domSelectorOptionalActions[action]
 	if params.Selector != "" || params.ElementID != "" || selectorOptional {
-		return JSONRPCResponse{}, false
+		return mcp.JSONRPCResponse{}, false
 	}
 
-	return fail(req, ErrMissingParam,
+	return mcp.Fail(req, mcp.ErrMissingParam,
 		"Required parameter 'selector', 'element_id', or 'index' is missing",
 		"Add 'selector' (CSS or semantic selector), or use 'element_id'/'index' from list_interactive results.",
-		withParam("selector"),
+		mcp.WithParam("selector"),
 	), true
 }
 
-func validateWaitForConditions(req JSONRPCRequest, action string, params DOMPrimitiveParams) (JSONRPCResponse, bool) {
+func validateWaitForConditions(req mcp.JSONRPCRequest, action string, params DOMPrimitiveParams) (mcp.JSONRPCResponse, bool) {
 	if action != "wait_for" {
-		return JSONRPCResponse{}, false
+		return mcp.JSONRPCResponse{}, false
 	}
 
 	hasSelector := params.Selector != "" || params.ElementID != ""
@@ -69,42 +70,42 @@ func validateWaitForConditions(req JSONRPCRequest, action string, params DOMPrim
 	}
 
 	if conditionCount == 0 {
-		return fail(req, ErrMissingParam,
+		return mcp.Fail(req, mcp.ErrMissingParam,
 			"wait_for requires at least one condition: selector, text, or url_contains",
 			"Provide 'selector' (wait for element), 'text' (wait for text), or 'url_contains' (wait for URL change).",
-			withParam("selector"),
+			mcp.WithParam("selector"),
 		), true
 	}
 	if conditionCount > 1 {
-		return fail(req, ErrInvalidParam,
+		return mcp.Fail(req, mcp.ErrInvalidParam,
 			"wait_for conditions are mutually exclusive: use only one of selector, text, or url_contains",
 			"Choose a single wait condition per call.",
 		), true
 	}
 	if params.Absent && !hasSelector {
-		return fail(req, ErrMissingParam,
+		return mcp.Fail(req, mcp.ErrMissingParam,
 			"wait_for with absent requires a selector",
 			"Provide 'selector' to specify which element to wait to disappear.",
-			withParam("selector"),
+			mcp.WithParam("selector"),
 		), true
 	}
-	return JSONRPCResponse{}, false
+	return mcp.JSONRPCResponse{}, false
 }
 
-func domActionContextOptions(action, selector string) []func(*StructuredError) {
-	opts := []func(*StructuredError){withAction(action)}
+func domActionContextOptions(action, selector string) []func(*mcp.StructuredError) {
+	opts := []func(*mcp.StructuredError){mcp.WithAction(action)}
 	if selector != "" {
-		opts = append(opts, withSelector(selector))
+		opts = append(opts, mcp.WithSelector(selector))
 	}
 	return opts
 }
 
 // ValidateDOMActionParams checks action-specific required parameters.
 // Returns (response, true) if validation failed, or (zero, false) if valid.
-func ValidateDOMActionParams(req JSONRPCRequest, action, text, value, name string) (JSONRPCResponse, bool) {
+func ValidateDOMActionParams(req mcp.JSONRPCRequest, action, text, value, name string) (mcp.JSONRPCResponse, bool) {
 	rule, ok := domActionRequiredParams[action]
 	if !ok {
-		return JSONRPCResponse{}, false
+		return mcp.JSONRPCResponse{}, false
 	}
 
 	var paramValue string
@@ -117,7 +118,7 @@ func ValidateDOMActionParams(req JSONRPCRequest, action, text, value, name strin
 		paramValue = name
 	}
 	if paramValue == "" {
-		return fail(req, ErrMissingParam, rule.Message, rule.Retry, withParam(rule.Field)), true
+		return mcp.Fail(req, mcp.ErrMissingParam, rule.Message, rule.Retry, mcp.WithParam(rule.Field)), true
 	}
-	return JSONRPCResponse{}, false
+	return mcp.JSONRPCResponse{}, false
 }

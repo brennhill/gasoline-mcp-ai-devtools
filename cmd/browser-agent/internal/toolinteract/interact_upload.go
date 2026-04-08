@@ -4,6 +4,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -30,9 +31,9 @@ type uploadParams struct {
 
 // handleUpload dispatches the "upload" interact action.
 // Validates parameters and queues the upload operation.
-func (u *UploadInteractHandler) HandleUpload(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (u *UploadInteractHandler) HandleUpload(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params uploadParams
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -59,47 +60,47 @@ func (u *UploadInteractHandler) HandleUpload(req JSONRPCRequest, args json.RawMe
 }
 
 // validateUploadParams checks required parameters for the upload action.
-func validateUploadParams(req JSONRPCRequest, params uploadParams) *JSONRPCResponse {
-	if resp, blocked := requireString(req, params.FilePath, "file_path", "Add the 'file_path' parameter with an absolute path to the file"); blocked {
+func validateUploadParams(req mcp.JSONRPCRequest, params uploadParams) *mcp.JSONRPCResponse {
+	if resp, blocked := mcp.RequireString(req, params.FilePath, "file_path", "Add the 'file_path' parameter with an absolute path to the file"); blocked {
 		return &resp
 	}
 	if params.Selector == "" && params.APIEndpoint == "" {
-		resp := fail(req, ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'api_endpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'api_endpoint'", withParam("selector"))
+		resp := mcp.Fail(req, mcp.ErrMissingParam, "Required parameter 'selector' is missing. Provide a CSS selector for the file input element, or use 'api_endpoint' for direct API uploads.", "Add the 'selector' parameter (e.g., '#Filedata') or 'api_endpoint'", mcp.WithParam("selector"))
 		return &resp
 	}
 	if !filepath.IsAbs(params.FilePath) {
-		resp := fail(req, ErrPathNotAllowed, "file_path must be an absolute path. Relative paths are not allowed for security.", "Use an absolute path like '/Users/user/Videos/video.mp4'", withParam("file_path"))
+		resp := mcp.Fail(req, mcp.ErrPathNotAllowed, "file_path must be an absolute path. Relative paths are not allowed for security.", "Use an absolute path like '/Users/user/Videos/video.mp4'", mcp.WithParam("file_path"))
 		return &resp
 	}
 	return nil
 }
 
 // validateUploadFile checks that the file exists, is readable, and is not a directory.
-func validateUploadFile(req JSONRPCRequest, filePath string) (os.FileInfo, *JSONRPCResponse) {
+func validateUploadFile(req mcp.JSONRPCRequest, filePath string) (os.FileInfo, *mcp.JSONRPCResponse) {
 	info, err := os.Stat(filePath)
 	if err != nil {
 		resp := uploadFileStatError(req, filePath, err)
 		return nil, &resp
 	}
 	if info.IsDir() {
-		resp := fail(req, ErrInvalidParam, "Path is a directory, not a file: "+filePath, "Provide a path to a file, not a directory", withParam("file_path"))
+		resp := mcp.Fail(req, mcp.ErrInvalidParam, "Path is a directory, not a file: "+filePath, "Provide a path to a file, not a directory", mcp.WithParam("file_path"))
 		return nil, &resp
 	}
 	return info, nil
 }
 
-func uploadFileStatError(req JSONRPCRequest, filePath string, err error) JSONRPCResponse {
+func uploadFileStatError(req mcp.JSONRPCRequest, filePath string, err error) mcp.JSONRPCResponse {
 	if os.IsNotExist(err) {
-		return fail(req, ErrInvalidParam, "File not found: "+filePath+". Verify the file path is correct.", "Check the file path and try again", withParam("file_path"))
+		return mcp.Fail(req, mcp.ErrInvalidParam, "File not found: "+filePath+". Verify the file path is correct.", "Check the file path and try again", mcp.WithParam("file_path"))
 	}
 	if os.IsPermission(err) {
-		return fail(req, ErrPathNotAllowed, "Permission denied reading file: "+filePath+". Check file permissions.", "Fix file permissions with: chmod +r "+filePath, withParam("file_path"))
+		return mcp.Fail(req, mcp.ErrPathNotAllowed, "Permission denied reading file: "+filePath+". Check file permissions.", "Fix file permissions with: chmod +r "+filePath, mcp.WithParam("file_path"))
 	}
-	return fail(req, ErrInternal, "Failed to access file: "+err.Error(), "Check the file path and permissions")
+	return mcp.Fail(req, mcp.ErrInternal, "Failed to access file: "+err.Error(), "Check the file path and permissions")
 }
 
 // queueUpload builds the upload payload and queues it for the extension.
-func (u *UploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMessage, params uploadParams, info os.FileInfo) JSONRPCResponse {
+func (u *UploadInteractHandler) queueUpload(req mcp.JSONRPCRequest, args json.RawMessage, params uploadParams, info os.FileInfo) mcp.JSONRPCResponse {
 	if params.EscalationTimeoutMs <= 0 {
 		params.EscalationTimeoutMs = defaultEscalationTimeoutMs
 	}
@@ -108,7 +109,7 @@ func (u *UploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 	mimeType := detectMimeType(fileName)
 	fileSize := info.Size()
 	progressTier := getProgressTier(fileSize)
-	correlationID := newCorrelationID("upload")
+	correlationID := mcp.NewCorrelationID("upload")
 	u.actionHandler.ArmEvidenceForCommand(correlationID, "upload", args, req.ClientID)
 
 	uploadPayload := map[string]any{
@@ -135,7 +136,7 @@ func (u *UploadInteractHandler) queueUpload(req JSONRPCRequest, args json.RawMes
 		"progress_tier": string(progressTier),
 	})
 
-	return succeed(req, "Upload queued", map[string]any{
+	return mcp.Succeed(req, "Upload queued", map[string]any{
 		"status": "queued", "correlation_id": correlationID,
 		"file_name": fileName, "file_size": fileSize,
 		"mime_type": mimeType, "progress_tier": string(progressTier),

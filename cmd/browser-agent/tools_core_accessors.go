@@ -27,13 +27,7 @@ func (h *ToolHandler) GetCapture() *capture.Store {
 // GetLogEntries returns a snapshot of the server's log entries and their timestamps.
 // The returned slices are copies — safe to use without holding the server lock.
 func (h *ToolHandler) GetLogEntries() ([]LogEntry, []time.Time) {
-	h.server.logs.mu.RLock()
-	defer h.server.logs.mu.RUnlock()
-	entries := make([]LogEntry, len(h.server.logs.entries))
-	copy(entries, h.server.logs.entries)
-	addedAt := make([]time.Time, len(h.server.logs.logAddedAt))
-	copy(addedAt, h.server.logs.logAddedAt)
-	return entries, addedAt
+	return h.server.logs.SnapshotWithTimestamps()
 }
 
 // GetLogTotalAdded returns the monotonic counter of total log entries ever added.

@@ -16,4 +16,9 @@ export declare function formatFileSize(bytes: number): string;
  * Chrome blocks content scripts from these pages, so tracking is impossible.
  */
 export declare function isInternalUrl(url: string | undefined): boolean;
+/**
+ * Start a recurring timer display that shows elapsed time as "M:SS" in the given element.
+ * Returns a cleanup function that stops the interval.
+ */
+export declare function startTimerDisplay(statusEl: HTMLElement, startTime: number): () => void;
 //# sourceMappingURL=ui-utils.d.ts.map

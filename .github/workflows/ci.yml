@@ -134,16 +134,16 @@ jobs:
           KABOOM_STATE_DIR="${STATE_DIR}" go test -race ./cmd/browser-agent -run TestFastStart_ResourceWorkflowSoak -count=3 -timeout=12m
           go run ./cmd/browser-agent --check --state-dir "${STATE_DIR}" --fastpath-min-samples 100 --fastpath-max-failure-ratio 0.02
 
-      - name: Go test coverage (70% minimum)
+      - name: Go test coverage (89% minimum — aligned with Makefile test-cover)
         run: |
           go test -coverprofile=coverage.out ./cmd/browser-agent/...
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
-            echo "FAIL: Coverage ${COVERAGE}% is below 70% threshold"
+          if (( $(echo "$COVERAGE < 89" | bc -l) )); then
+            echo "FAIL: Coverage ${COVERAGE}% is below 89% threshold"
             exit 1
           fi
-          echo "OK: Coverage ${COVERAGE}% meets 70% threshold"
+          echo "OK: Coverage ${COVERAGE}% meets 89% threshold"
 
       - name: Verify zero external dependencies
         run: |
@@ -156,6 +156,23 @@ jobs:
             exit 1
           fi
           echo "OK: Zero external dependencies verified"
+
+  invariants:
+    name: Invariant Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run invariant checks
+        run: make check-invariants
 
   javascript:
     name: JavaScript Checks
@@ -247,7 +264,7 @@ jobs:
           CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
           CODACY_ORGANIZATION_PROVIDER: gh
           CODACY_USERNAME: brennhill
-          CODACY_PROJECT_NAME: gasoline-agentic-browser-devtools-mcp
+          CODACY_PROJECT_NAME: kaboom-agentic-browser-devtools-mcp
         run: |
           if [ -z "$CODACY_API_TOKEN" ]; then
             echo "WARNING: Codacy API token not configured (skipping scan)"

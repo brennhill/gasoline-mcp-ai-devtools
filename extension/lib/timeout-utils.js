@@ -77,6 +77,17 @@ async function withTimeout(promise, timeoutMs, fallback) {
     });
 }
 /**
+ * Race a promise against a timeout. Properly clears the timer when the promise
+ * settles first so no dangling setTimeout keeps the service worker alive.
+ * Rejects with a plain Error carrying the provided message on timeout.
+ */
+export function withTimeoutReject(promise, timeoutMs, message) {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+        promise.then((value) => { clearTimeout(timer); resolve(value); }, (err) => { clearTimeout(timer); reject(err); });
+    });
+}
+/**
  * Race a promise against a timeout with cleanup on timeout.
  * Merges the former messageWithTimeout, promiseRaceWithCleanup, and executeWithTimeoutAndCleanup.
  *

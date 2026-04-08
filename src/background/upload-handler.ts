@@ -16,6 +16,7 @@ import { getServerUrl } from './state.js'
 import { DebugCategory } from './debug.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { buildDaemonHeaders, buildDaemonJSONRequestInit } from '../lib/daemon-http.js'
+import type { FileReadResponse, OSAutomationResponse } from '../types/wire-upload.js'
 
 // ============================================
 // Timing Constants
@@ -31,7 +32,7 @@ const DAEMON_FETCH_TIMEOUT_MS = 15000
 const VERIFY_BACKOFF_MS = [300, 500, 800, 1200, 1800]
 
 // ============================================
-// Types
+// Types (local-only — not wire types)
 // ============================================
 
 interface UploadParams {
@@ -40,15 +41,6 @@ interface UploadParams {
   file_name: string
   mime_type: string
   file_size?: number
-}
-
-interface FileReadResponse {
-  success: boolean
-  file_name?: string
-  file_size?: number
-  mime_type?: string
-  data_base64?: string
-  error?: string
 }
 
 interface VerifyResult {
@@ -68,14 +60,6 @@ interface EscalationResult {
   escalation_reason?: string
   file_name?: string
   error?: string
-}
-
-interface OSAutomationResponse {
-  success: boolean
-  stage?: number
-  error?: string
-  file_name?: string
-  suggestions?: string[]
 }
 
 // ============================================

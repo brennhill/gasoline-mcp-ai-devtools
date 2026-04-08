@@ -423,69 +423,87 @@ function forwardInjectQuery(
   return true
 }
 
+// =============================================================================
+// INJECT QUERY REGISTRY — single dispatch for all inject-bridged queries
+// =============================================================================
+
+interface InjectQueryEntry {
+  queryType: string
+  responseType: string
+  label: string
+}
+
+const INJECT_QUERY_REGISTRY: Record<string, InjectQueryEntry> = {
+  computed_styles: {
+    queryType: 'kaboom_computed_styles_query',
+    responseType: 'kaboom_computed_styles_response',
+    label: 'Computed styles query'
+  },
+  form_discovery: {
+    queryType: 'kaboom_form_discovery_query',
+    responseType: 'kaboom_form_discovery_response',
+    label: 'Form discovery'
+  },
+  form_state: {
+    queryType: 'kaboom_form_state_query',
+    responseType: 'kaboom_form_state_response',
+    label: 'Form state'
+  },
+  data_table: {
+    queryType: 'kaboom_data_table_query',
+    responseType: 'kaboom_data_table_response',
+    label: 'Data table extraction'
+  },
+  link_health: {
+    queryType: 'kaboom_link_health_query',
+    responseType: 'kaboom_link_health_response',
+    label: 'Link health check'
+  }
+}
+
+function dispatchInjectQuery(
+  key: string,
+  params: string | Record<string, unknown>,
+  sendResponse: (result: unknown) => void
+): boolean {
+  const entry = INJECT_QUERY_REGISTRY[key]
+  if (!entry) return false
+  return forwardInjectQuery(entry.queryType, entry.responseType, entry.label, params, sendResponse)
+}
+
 export function handleComputedStylesQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery(
-    'kaboom_computed_styles_query',
-    'kaboom_computed_styles_response',
-    'Computed styles query',
-    params,
-    sendResponse
-  )
+  return dispatchInjectQuery('computed_styles', params, sendResponse)
 }
 
 export function handleFormDiscoveryQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery(
-    'kaboom_form_discovery_query',
-    'kaboom_form_discovery_response',
-    'Form discovery',
-    params,
-    sendResponse
-  )
+  return dispatchInjectQuery('form_discovery', params, sendResponse)
 }
 
 export function handleFormStateQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery(
-    'kaboom_form_state_query',
-    'kaboom_form_state_response',
-    'Form state',
-    params,
-    sendResponse
-  )
+  return dispatchInjectQuery('form_state', params, sendResponse)
 }
 
 export function handleDataTableQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery(
-    'kaboom_data_table_query',
-    'kaboom_data_table_response',
-    'Data table extraction',
-    params,
-    sendResponse
-  )
+  return dispatchInjectQuery('data_table', params, sendResponse)
 }
 
 export function handleLinkHealthQuery(
   params: string | Record<string, unknown>,
   sendResponse: (result: unknown) => void
 ): boolean {
-  return forwardInjectQuery(
-    'kaboom_link_health_query',
-    'kaboom_link_health_response',
-    'Link health check',
-    params,
-    sendResponse
-  )
+  return dispatchInjectQuery('link_health', params, sendResponse)
 }
 
 // ============================================

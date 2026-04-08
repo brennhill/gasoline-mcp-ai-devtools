@@ -429,14 +429,44 @@
   }
 
   // extension/content/request-tracking.js
-  var pendingHighlightRequests = /* @__PURE__ */ new Map();
-  var highlightRequestId = 0;
-  var pendingExecuteRequests = /* @__PURE__ */ new Map();
-  var executeRequestId = 0;
-  var pendingA11yRequests = /* @__PURE__ */ new Map();
-  var a11yRequestId = 0;
-  var pendingDomRequests = /* @__PURE__ */ new Map();
-  var domRequestId = 0;
+  var PendingRequestTracker = class {
+    pending = /* @__PURE__ */ new Map();
+    nextId = 0;
+    /** Register a resolver and return the assigned request ID. */
+    register(resolve) {
+      const id = ++this.nextId;
+      this.pending.set(id, resolve);
+      return id;
+    }
+    /** Resolve a pending request by ID and remove it from the tracker. */
+    resolve(id, result) {
+      const resolver = this.pending.get(id);
+      if (resolver) {
+        this.pending.delete(id);
+        resolver(result);
+      }
+    }
+    /** Check whether a request ID is still pending. */
+    has(id) {
+      return this.pending.has(id);
+    }
+    /** Remove a pending request without resolving it. */
+    delete(id) {
+      this.pending.delete(id);
+    }
+    /** Remove all pending requests. */
+    clear() {
+      this.pending.clear();
+    }
+    /** Number of pending requests. */
+    get size() {
+      return this.pending.size;
+    }
+  };
+  var highlightTracker = new PendingRequestTracker();
+  var executeTracker = new PendingRequestTracker();
+  var a11yTracker = new PendingRequestTracker();
+  var domTracker = new PendingRequestTracker();
   var CLEANUP_INTERVAL_MS = 3e4;
   var cleanupTimer = null;
   var requestTimestamps = /* @__PURE__ */ new Map();
@@ -448,10 +478,10 @@
     return timestamps;
   }
   function clearPendingRequests() {
-    pendingHighlightRequests.clear();
-    pendingExecuteRequests.clear();
-    pendingA11yRequests.clear();
-    pendingDomRequests.clear();
+    highlightTracker.clear();
+    executeTracker.clear();
+    a11yTracker.clear();
+    domTracker.clear();
     requestTimestamps.clear();
   }
   function performPeriodicCleanup() {
@@ -459,93 +489,69 @@
     const staleThreshold = 6e4;
     for (const [id, timestamp] of getRequestTimestamps()) {
       if (now - timestamp > staleThreshold) {
-        pendingHighlightRequests.delete(id);
-        pendingExecuteRequests.delete(id);
-        pendingA11yRequests.delete(id);
-        pendingDomRequests.delete(id);
+        highlightTracker.delete(id);
+        executeTracker.delete(id);
+        a11yTracker.delete(id);
+        domTracker.delete(id);
         requestTimestamps.delete(id);
       }
     }
   }
   function getPendingRequestStats() {
     return {
-      highlight: pendingHighlightRequests.size,
-      execute: pendingExecuteRequests.size,
-      a11y: pendingA11yRequests.size,
-      dom: pendingDomRequests.size
+      highlight: highlightTracker.size,
+      execute: executeTracker.size,
+      a11y: a11yTracker.size,
+      dom: domTracker.size
     };
   }
   function registerHighlightRequest(resolve) {
-    const requestId = ++highlightRequestId;
-    pendingHighlightRequests.set(requestId, resolve);
-    return requestId;
+    return highlightTracker.register(resolve);
   }
   function resolveHighlightRequest(requestId, result) {
-    const resolve = pendingHighlightRequests.get(requestId);
-    if (resolve) {
-      pendingHighlightRequests.delete(requestId);
-      resolve(result);
-    }
+    highlightTracker.resolve(requestId, result);
   }
   function hasHighlightRequest(requestId) {
-    return pendingHighlightRequests.has(requestId);
+    return highlightTracker.has(requestId);
   }
   function deleteHighlightRequest(requestId) {
-    pendingHighlightRequests.delete(requestId);
+    highlightTracker.delete(requestId);
   }
   function registerExecuteRequest(resolve) {
-    const requestId = ++executeRequestId;
-    pendingExecuteRequests.set(requestId, resolve);
-    return requestId;
+    return executeTracker.register(resolve);
   }
   function resolveExecuteRequest(requestId, result) {
-    const resolve = pendingExecuteRequests.get(requestId);
-    if (resolve) {
-      pendingExecuteRequests.delete(requestId);
-      resolve(result);
-    }
+    executeTracker.resolve(requestId, result);
   }
   function hasExecuteRequest(requestId) {
-    return pendingExecuteRequests.has(requestId);
+    return executeTracker.has(requestId);
   }
   function deleteExecuteRequest(requestId) {
-    pendingExecuteRequests.delete(requestId);
+    executeTracker.delete(requestId);
   }
   function registerA11yRequest(resolve) {
-    const requestId = ++a11yRequestId;
-    pendingA11yRequests.set(requestId, resolve);
-    return requestId;
+    return a11yTracker.register(resolve);
   }
   function resolveA11yRequest(requestId, result) {
-    const resolve = pendingA11yRequests.get(requestId);
-    if (resolve) {
-      pendingA11yRequests.delete(requestId);
-      resolve(result);
-    }
+    a11yTracker.resolve(requestId, result);
   }
   function hasA11yRequest(requestId) {
-    return pendingA11yRequests.has(requestId);
+    return a11yTracker.has(requestId);
   }
   function deleteA11yRequest(requestId) {
-    pendingA11yRequests.delete(requestId);
+    a11yTracker.delete(requestId);
   }
   function registerDomRequest(resolve) {
-    const requestId = ++domRequestId;
-    pendingDomRequests.set(requestId, resolve);
-    return requestId;
+    return domTracker.register(resolve);
   }
   function resolveDomRequest(requestId, result) {
-    const resolve = pendingDomRequests.get(requestId);
-    if (resolve) {
-      pendingDomRequests.delete(requestId);
-      resolve(result);
-    }
+    domTracker.resolve(requestId, result);
   }
   function hasDomRequest(requestId) {
-    return pendingDomRequests.has(requestId);
+    return domTracker.has(requestId);
   }
   function deleteDomRequest(requestId) {
-    pendingDomRequests.delete(requestId);
+    domTracker.delete(requestId);
   }
   function cleanupRequestTracking() {
     if (cleanupTimer) {
@@ -1273,20 +1279,53 @@
     }).then((result) => sendResponse(result), () => sendResponse({ error: `${label} failed` }));
     return true;
   }
+  var INJECT_QUERY_REGISTRY = {
+    computed_styles: {
+      queryType: "kaboom_computed_styles_query",
+      responseType: "kaboom_computed_styles_response",
+      label: "Computed styles query"
+    },
+    form_discovery: {
+      queryType: "kaboom_form_discovery_query",
+      responseType: "kaboom_form_discovery_response",
+      label: "Form discovery"
+    },
+    form_state: {
+      queryType: "kaboom_form_state_query",
+      responseType: "kaboom_form_state_response",
+      label: "Form state"
+    },
+    data_table: {
+      queryType: "kaboom_data_table_query",
+      responseType: "kaboom_data_table_response",
+      label: "Data table extraction"
+    },
+    link_health: {
+      queryType: "kaboom_link_health_query",
+      responseType: "kaboom_link_health_response",
+      label: "Link health check"
+    }
+  };
+  function dispatchInjectQuery(key, params, sendResponse) {
+    const entry = INJECT_QUERY_REGISTRY[key];
+    if (!entry)
+      return false;
+    return forwardInjectQuery(entry.queryType, entry.responseType, entry.label, params, sendResponse);
+  }
   function handleComputedStylesQuery(params, sendResponse) {
-    return forwardInjectQuery("kaboom_computed_styles_query", "kaboom_computed_styles_response", "Computed styles query", params, sendResponse);
+    return dispatchInjectQuery("computed_styles", params, sendResponse);
   }
   function handleFormDiscoveryQuery(params, sendResponse) {
-    return forwardInjectQuery("kaboom_form_discovery_query", "kaboom_form_discovery_response", "Form discovery", params, sendResponse);
+    return dispatchInjectQuery("form_discovery", params, sendResponse);
   }
   function handleFormStateQuery(params, sendResponse) {
-    return forwardInjectQuery("kaboom_form_state_query", "kaboom_form_state_response", "Form state", params, sendResponse);
+    return dispatchInjectQuery("form_state", params, sendResponse);
   }
   function handleDataTableQuery(params, sendResponse) {
-    return forwardInjectQuery("kaboom_data_table_query", "kaboom_data_table_response", "Data table extraction", params, sendResponse);
+    return dispatchInjectQuery("data_table", params, sendResponse);
   }
   function handleLinkHealthQuery(params, sendResponse) {
-    return forwardInjectQuery("kaboom_link_health_query", "kaboom_link_health_response", "Link health check", params, sendResponse);
+    return dispatchInjectQuery("link_health", params, sendResponse);
   }
   function handleGetReadable(sendResponse) {
     try {
@@ -1886,150 +1925,10 @@
     });
   }
 
-  // extension/content/runtime-message-listener.js
-  var actionToastsEnabled = true;
-  var subtitlesEnabled = true;
-  function applyOverlayToggleState(result) {
-    if (result.actionToastsEnabled !== void 0)
-      actionToastsEnabled = result.actionToastsEnabled;
-    if (result.subtitlesEnabled !== void 0)
-      subtitlesEnabled = result.subtitlesEnabled;
-  }
-  function hydrateOverlayToggleState() {
-    if (typeof chrome === "undefined" || !chrome.storage?.local)
-      return;
-    try {
-      const maybePromise = chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], applyOverlayToggleState);
-      if (maybePromise && typeof maybePromise.then === "function") {
-        void maybePromise.then((result) => applyOverlayToggleState(result));
-      }
-    } catch {
-    }
-  }
-  function initRuntimeMessageListener() {
-    actionToastsEnabled = true;
-    subtitlesEnabled = true;
-    hydrateOverlayToggleState();
-    const syncHandlers = {
-      kaboom_ping: () => {
-      },
-      kaboom_action_toast: (msg) => {
-        if (!actionToastsEnabled)
-          return false;
-        const m = msg;
-        if (m.text)
-          showActionToast(m.text, m.detail, m.state || "trying", m.duration_ms);
-        return false;
-      },
-      kaboom_toggle_chat: (msg) => {
-        toggleChatWidget(msg.client_name);
-        return false;
-      },
-      kaboom_recording_watermark: (msg) => {
-        toggleRecordingWatermark(msg.visible ?? false);
-        return false;
-      },
-      kaboom_subtitle: (msg) => {
-        if (!subtitlesEnabled)
-          return false;
-        showSubtitle(msg.text ?? "");
-        return false;
-      },
-      [SettingName.ACTION_TOASTS]: (msg) => {
-        actionToastsEnabled = msg.enabled;
-        return false;
-      },
-      [SettingName.SUBTITLES]: (msg) => {
-        subtitlesEnabled = msg.enabled;
-        return false;
-      }
-    };
-    const delegatedHandlers = {
-      kaboom_draw_mode_start: (msg, sr) => {
-        const m = msg;
-        import(
-          /* webpackIgnore: true */
-          chrome.runtime.getURL("content/draw-mode.js")
-        ).then((mod) => {
-          const result = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
-          sr(result);
-        }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
-        return true;
-      },
-      kaboom_draw_mode_stop: (_msg, sr) => {
-        import(
-          /* webpackIgnore: true */
-          chrome.runtime.getURL("content/draw-mode.js")
-        ).then((mod) => {
-          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
-          sr(result || { status: "stopped" });
-        }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
-        return true;
-      },
-      kaboom_get_annotations: (_msg, sr) => {
-        import(
-          /* webpackIgnore: true */
-          chrome.runtime.getURL("content/draw-mode.js")
-        ).then((mod) => {
-          sr({ draw_mode_active: mod.isDrawModeActive?.() ?? false });
-        }).catch(() => sr({ draw_mode_active: false }));
-        return true;
-      },
-      kaboom_highlight: (msg, sr) => {
-        forwardHighlightMessage({ params: msg.params }).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
-        return true;
-      },
-      kaboom_manage_state: (msg, sr) => {
-        handleStateCommand(msg.params).then((r) => sr(r)).catch((e) => sr({ error: e.message }));
-        return true;
-      },
-      kaboom_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
-      kaboom_execute_query: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
-      a11y_query: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
-      dom_query: (msg, sr) => handleDomQuery(msg.params || {}, sr),
-      get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
-      link_health_query: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
-      computed_styles_query: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
-      form_discovery_query: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
-      form_state_query: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
-      data_table_query: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
-      kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
-      kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
-      kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
-    };
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (!isValidBackgroundSender(sender)) {
-        console.warn(KABOOM_LOG_PREFIX, "Rejected message from untrusted sender:", sender.id);
-        return false;
-      }
-      if (message.type === "kaboom_ping")
-        return handlePing(sendResponse);
-      const syncHandler = syncHandlers[message.type];
-      if (syncHandler) {
-        syncHandler(message);
-        return false;
-      }
-      handleToggleMessage(message);
-      const delegated = delegatedHandlers[message.type];
-      if (delegated)
-        return delegated(message, sendResponse);
-      return void 0;
-    });
-  }
-
   // extension/content/favicon-replacer.js
   var originalFaviconHref = null;
   var flickerInterval = null;
   function initFaviconReplacer() {
-    chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
-      if (sender.id !== chrome.runtime.id)
-        return false;
-      if (message.type === "tracking_state_changed") {
-        const newState = message.state;
-        updateFavicon(newState);
-      }
-      return false;
-    });
     chrome.runtime.sendMessage({ type: "get_tracking_state" }, (response) => {
       if (response && response.state) {
         updateFavicon(response.state);
@@ -2112,6 +2011,142 @@
       clearInterval(flickerInterval);
       flickerInterval = null;
     }
+  }
+
+  // extension/content/runtime-message-listener.js
+  var actionToastsEnabled = true;
+  var subtitlesEnabled = true;
+  function applyOverlayToggleState(result) {
+    if (result.actionToastsEnabled !== void 0)
+      actionToastsEnabled = result.actionToastsEnabled;
+    if (result.subtitlesEnabled !== void 0)
+      subtitlesEnabled = result.subtitlesEnabled;
+  }
+  function hydrateOverlayToggleState() {
+    if (typeof chrome === "undefined" || !chrome.storage?.local)
+      return;
+    try {
+      const maybePromise = chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], applyOverlayToggleState);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        void maybePromise.then((result) => applyOverlayToggleState(result));
+      }
+    } catch {
+    }
+  }
+  function initRuntimeMessageListener() {
+    actionToastsEnabled = true;
+    subtitlesEnabled = true;
+    hydrateOverlayToggleState();
+    const syncHandlers = {
+      kaboom_ping: () => {
+      },
+      kaboom_action_toast: (msg) => {
+        if (!actionToastsEnabled)
+          return false;
+        const m = msg;
+        if (m.text)
+          showActionToast(m.text, m.detail, m.state || "trying", m.duration_ms);
+        return false;
+      },
+      kaboom_toggle_chat: (msg) => {
+        toggleChatWidget(msg.client_name);
+        return false;
+      },
+      kaboom_recording_watermark: (msg) => {
+        toggleRecordingWatermark(msg.visible ?? false);
+        return false;
+      },
+      kaboom_subtitle: (msg) => {
+        if (!subtitlesEnabled)
+          return false;
+        showSubtitle(msg.text ?? "");
+        return false;
+      },
+      [SettingName.ACTION_TOASTS]: (msg) => {
+        actionToastsEnabled = msg.enabled;
+        return false;
+      },
+      [SettingName.SUBTITLES]: (msg) => {
+        subtitlesEnabled = msg.enabled;
+        return false;
+      },
+      tracking_state_changed: (msg) => {
+        const state = msg.state;
+        updateFavicon(state);
+        return false;
+      }
+    };
+    const delegatedHandlers = {
+      kaboom_draw_mode_start: (msg, sr) => {
+        const m = msg;
+        import(
+          /* webpackIgnore: true */
+          chrome.runtime.getURL("content/draw-mode.js")
+        ).then((mod) => {
+          const result = mod.activateDrawMode(m.started_by || "user", m.annot_session_name || "", m.correlation_id || "");
+          sr(result);
+        }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
+        return true;
+      },
+      kaboom_draw_mode_stop: (_msg, sr) => {
+        import(
+          /* webpackIgnore: true */
+          chrome.runtime.getURL("content/draw-mode.js")
+        ).then((mod) => {
+          const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
+          sr(result || { status: "stopped" });
+        }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
+        return true;
+      },
+      kaboom_get_annotations: (_msg, sr) => {
+        import(
+          /* webpackIgnore: true */
+          chrome.runtime.getURL("content/draw-mode.js")
+        ).then((mod) => {
+          sr({ draw_mode_active: mod.isDrawModeActive?.() ?? false });
+        }).catch(() => sr({ draw_mode_active: false }));
+        return true;
+      },
+      kaboom_highlight: (msg, sr) => {
+        forwardHighlightMessage({ params: msg.params }).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
+        return true;
+      },
+      kaboom_manage_state: (msg, sr) => {
+        handleStateCommand(msg.params).then((r) => sr(r)).catch((e) => sr({ error: e.message }));
+        return true;
+      },
+      kaboom_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+      kaboom_execute_query: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
+      a11y_query: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
+      dom_query: (msg, sr) => handleDomQuery(msg.params || {}, sr),
+      get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
+      link_health_query: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
+      computed_styles_query: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
+      form_discovery_query: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
+      form_state_query: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
+      data_table_query: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
+      kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
+      kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
+      kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
+    };
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (!isValidBackgroundSender(sender)) {
+        console.warn(KABOOM_LOG_PREFIX, "Rejected message from untrusted sender:", sender.id);
+        return false;
+      }
+      if (message.type === "kaboom_ping")
+        return handlePing(sendResponse);
+      const syncHandler = syncHandlers[message.type];
+      if (syncHandler) {
+        syncHandler(message);
+        return false;
+      }
+      handleToggleMessage(message);
+      const delegated = delegatedHandlers[message.type];
+      if (delegated)
+        return delegated(message, sendResponse);
+      return void 0;
+    });
   }
 
   // extension/lib/request-audit.js

@@ -66,10 +66,10 @@ func (h *configureSessionHandler) toolConfigureStore(req JSONRPCRequest, args js
 	}
 
 	// Sync active_codebase to server-level field for terminal CWD fallback.
-	if compositeArgs.Key == "active_codebase" && action == "save" && h.server != nil {
+	if compositeArgs.Key == "active_codebase" && action == "save" {
 		var path string
 		if err := json.Unmarshal(data, &path); err == nil {
-			h.server.SetActiveCodebase(path)
+			h.deps.SetActiveCodebase(path)
 		}
 	}
 

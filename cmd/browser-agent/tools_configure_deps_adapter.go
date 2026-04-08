@@ -15,12 +15,11 @@ func (h *ToolHandler) NoiseConfig() *noise.NoiseConfig {
 
 // ConsoleEntries satisfies toolconfigure.Deps.
 func (h *ToolHandler) ConsoleEntries() []noise.LogEntry {
-	h.server.logs.mu.RLock()
-	entries := make([]noise.LogEntry, len(h.server.logs.entries))
-	for i, e := range h.server.logs.entries {
+	snapshot := h.server.logs.Snapshot()
+	entries := make([]noise.LogEntry, len(snapshot))
+	for i, e := range snapshot {
 		entries[i] = noise.LogEntry(e)
 	}
-	h.server.logs.mu.RUnlock()
 	return entries
 }
 

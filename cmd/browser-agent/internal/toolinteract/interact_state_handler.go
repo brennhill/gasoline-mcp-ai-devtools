@@ -10,14 +10,14 @@ import (
 
 // StateInteractHandler handles state save/load/list/delete operations.
 type StateInteractHandler struct {
-	deps *Deps
+	deps Deps
 
 	// Concrete session store injected at construction.
 	sessionStoreImpl *persistence.SessionStore
 }
 
 // NewStateInteractHandler creates a new StateInteractHandler with the given dependencies.
-func NewStateInteractHandler(deps *Deps, store *persistence.SessionStore) *StateInteractHandler {
+func NewStateInteractHandler(deps Deps, store *persistence.SessionStore) *StateInteractHandler {
 	return &StateInteractHandler{
 		deps:             deps,
 		sessionStoreImpl: store,

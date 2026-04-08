@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 // handleFillFormAndSubmit fills multiple form fields and clicks a submit button.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *InteractActionHandler) HandleFillFormAndSubmit(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleFillFormAndSubmit(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Fields         []FormField `json:"fields"`
 		SubmitSelector string      `json:"submit_selector"`
@@ -21,14 +22,14 @@ func (h *InteractActionHandler) HandleFillFormAndSubmit(req JSONRPCRequest, args
 		TabID          int         `json:"tab_id,omitempty"`
 		TimeoutMs      int         `json:"timeout_ms,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 	if len(params.Fields) == 0 {
-		return fail(req, ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", withParam("fields"))
+		return mcp.Fail(req, mcp.ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", mcp.WithParam("fields"))
 	}
 	if params.SubmitSelector == "" && params.SubmitIndex == nil {
-		return fail(req, ErrMissingParam, "Required parameter 'submit_selector' or 'submit_index' is missing", "Add the selector or index of the submit button", withParam("submit_selector"))
+		return mcp.Fail(req, mcp.ErrMissingParam, "Required parameter 'submit_selector' or 'submit_index' is missing", "Add the selector or index of the submit button", mcp.WithParam("submit_selector"))
 	}
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 15_000
@@ -67,17 +68,17 @@ func (h *InteractActionHandler) HandleFillFormAndSubmit(req JSONRPCRequest, args
 
 // handleFillForm fills multiple form fields without submitting.
 // Gates (requirePilot, requireExtension, requireTabTracking) are applied by the delegated handlers.
-func (h *InteractActionHandler) HandleFillForm(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleFillForm(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Fields    []FormField `json:"fields"`
 		TabID     int         `json:"tab_id,omitempty"`
 		TimeoutMs int         `json:"timeout_ms,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 	if len(params.Fields) == 0 {
-		return fail(req, ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", withParam("fields"))
+		return mcp.Fail(req, mcp.ErrMissingParam, "Required parameter 'fields' is empty", "Provide at least one {selector, value} field entry", mcp.WithParam("fields"))
 	}
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 15_000
@@ -91,7 +92,7 @@ func (h *InteractActionHandler) HandleFillForm(req JSONRPCRequest, args json.Raw
 		return *errResp
 	}
 
-	lastResp := succeed(req, "Form filled", map[string]any{
+	lastResp := mcp.Succeed(req, "Form filled", map[string]any{
 		"status":       "filled",
 		"fields_count": len(params.Fields),
 	})
@@ -99,7 +100,7 @@ func (h *InteractActionHandler) HandleFillForm(req JSONRPCRequest, args json.Raw
 }
 
 // fillWorkflowFields executes all field entry steps for fill_form* workflows.
-func (h *InteractActionHandler) fillWorkflowFields(req JSONRPCRequest, workflowName string, fields []FormField, tabID int, trace []WorkflowStep, workflowStart time.Time) ([]WorkflowStep, *JSONRPCResponse) {
+func (h *InteractActionHandler) fillWorkflowFields(req mcp.JSONRPCRequest, workflowName string, fields []FormField, tabID int, trace []WorkflowStep, workflowStart time.Time) ([]WorkflowStep, *mcp.JSONRPCResponse) {
 	for i, field := range fields {
 		if field.Selector == "" && field.Index == nil {
 			trace = append(trace, WorkflowStep{
@@ -107,10 +108,10 @@ func (h *InteractActionHandler) fillWorkflowFields(req JSONRPCRequest, workflowN
 				Status: "error",
 				Detail: "Missing selector and index",
 			})
-			resp := workflowResult(req, workflowName, trace, fail(req, ErrMissingParam,
+			resp := workflowResult(req, workflowName, trace, mcp.Fail(req, mcp.ErrMissingParam,
 				fmt.Sprintf("Field %d missing 'selector' or 'index'", i),
 				"Each field needs a 'selector' or 'index'",
-				withParam("fields")), workflowStart)
+				mcp.WithParam("fields")), workflowStart)
 			return trace, &resp
 		}
 
@@ -131,7 +132,7 @@ func (h *InteractActionHandler) fillWorkflowFields(req JSONRPCRequest, workflowN
 }
 
 // executeFillFieldStep sends a type action and falls back to select for non-typeable elements.
-func (h *InteractActionHandler) executeFillFieldStep(req JSONRPCRequest, field FormField, tabID int) (string, JSONRPCResponse) {
+func (h *InteractActionHandler) executeFillFieldStep(req mcp.JSONRPCRequest, field FormField, tabID int) (string, mcp.JSONRPCResponse) {
 	typeArgs := map[string]any{
 		"action": "type",
 		"text":   field.Value,
@@ -175,7 +176,7 @@ func workflowFieldLabel(field FormField) string {
 }
 
 // IsNotTypeableError checks whether response payload indicates extension-side not_typeable.
-func IsNotTypeableError(resp JSONRPCResponse) bool {
+func IsNotTypeableError(resp mcp.JSONRPCResponse) bool {
 	if resp.Error != nil || resp.Result == nil {
 		return false
 	}

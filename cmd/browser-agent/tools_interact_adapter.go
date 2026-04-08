@@ -1,5 +1,5 @@
 // tools_interact_adapter.go — Bridges the toolinteract package to the main ToolHandler.
-// Purpose: Constructs toolinteract.Deps from *ToolHandler and provides accessor methods.
+// Purpose: Implements toolinteract.Deps interface by delegating to *ToolHandler methods.
 // Why: Keeps the toolinteract package decoupled from the main package's god object.
 
 package main
@@ -7,87 +7,156 @@ package main
 import (
 	"encoding/json"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolinteract"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/observe"
 )
 
+// interactDepsAdapter implements toolinteract.Deps by delegating to *ToolHandler.
+type interactDepsAdapter struct {
+	h *ToolHandler
+}
+
+// Compile-time check that interactDepsAdapter satisfies toolinteract.Deps.
+var _ toolinteract.Deps = (*interactDepsAdapter)(nil)
+
 // buildInteractDeps constructs a toolinteract.Deps wired to the given ToolHandler.
-func buildInteractDeps(h *ToolHandler) *toolinteract.Deps {
-	return &toolinteract.Deps{
-		// Gate checks
-		RequirePilot:       h.requirePilot,
-		RequireExtension:   h.requireExtension,
-		RequireTabTracking: h.requireTabTracking,
-		RequireCSPClear:    h.requireCSPClear,
+func buildInteractDeps(h *ToolHandler) toolinteract.Deps {
+	return &interactDepsAdapter{h: h}
+}
 
-		// Command dispatch
-		EnqueuePendingQuery: h.EnqueuePendingQuery,
-		MaybeWaitForCommand: h.MaybeWaitForCommand,
+// -- Gate checks --
 
-		// Capture store
-		Capture: func() *capture.Store { return h.capture },
+func (a *interactDepsAdapter) RequirePilot(req mcp.JSONRPCRequest, opts ...func(*mcp.StructuredError)) (mcp.JSONRPCResponse, bool) {
+	return a.h.requirePilot(req, opts...)
+}
 
-		// Recording
-		RecordAIAction: h.recordAIAction,
-		RecordAIEnhancedAction: func(action capture.EnhancedAction) {
-			h.recordAIEnhancedAction(action)
-		},
-		RecordDOMPrimitiveAction: h.recordDOMPrimitiveAction,
+func (a *interactDepsAdapter) RequireExtension(req mcp.JSONRPCRequest, opts ...func(*mcp.StructuredError)) (mcp.JSONRPCResponse, bool) {
+	return a.h.requireExtension(req, opts...)
+}
 
-		// Cross-tool dispatch
-		ToolInteract:  h.toolInteract,
-		ToolAnalyze:   h.toolAnalyze,
-		ToolExportSARIF: h.toolExportSARIF,
+func (a *interactDepsAdapter) RequireTabTracking(req mcp.JSONRPCRequest, opts ...func(*mcp.StructuredError)) (mcp.JSONRPCResponse, bool) {
+	return a.h.requireTabTracking(req, opts...)
+}
 
-		// Response enrichment
-		EnrichNavigateResponse: h.enrichNavigateResponse,
-		InjectCSPBlockedActions: h.injectCSPBlockedActions,
+func (a *interactDepsAdapter) RequireCSPClear(req mcp.JSONRPCRequest, world string) (mcp.JSONRPCResponse, bool) {
+	return a.h.requireCSPClear(req, world)
+}
 
-		// Screenshot/observe proxies
-		GetScreenshot: func(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return observe.GetScreenshot(h, req, args)
-		},
-		GetPageInfo: func(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return observe.GetPageInfo(h, req, args)
-		},
+// -- Command dispatch --
 
-		// Annotation store
-		MarkDrawStarted: func() {
-			if h.annotationStore != nil {
-				h.annotationStore.MarkDrawStarted()
-			}
-		},
+func (a *interactDepsAdapter) EnqueuePendingQuery(req mcp.JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (mcp.JSONRPCResponse, bool) {
+	return a.h.EnqueuePendingQuery(req, query, timeout)
+}
 
-		// Server info
-		GetListenPort: func() int {
-			if h.server != nil {
-				return h.server.getListenPort()
-			}
-			return defaultPort
-		},
+func (a *interactDepsAdapter) MaybeWaitForCommand(req mcp.JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) mcp.JSONRPCResponse {
+	return a.h.MaybeWaitForCommand(req, correlationID, args, queuedSummary)
+}
 
-		// Evidence capture
-		DefaultEvidenceCapture: func(clientID string) toolinteract.EvidenceShot {
-			return defaultEvidenceCaptureImpl(h, clientID)
-		},
+// -- Capture store --
 
-		// Session store
-		RequireSessionStore: h.requireSessionStore,
-		DiagnosticHint:      h.diagnosticHint,
-		GetRedactionEngine: func() toolinteract.RedactionEngine {
-			return h.GetRedactionEngine()
-		},
-		GetCommandResult: func(correlationID string) (*queries.CommandResult, bool) {
-			return h.capture.GetCommandResult(correlationID)
-		},
+func (a *interactDepsAdapter) Capture() *capture.Store {
+	return a.h.capture
+}
 
-		// Shared mutex for batch/replay serialization
-		ReplayMu: &replayMu,
+// -- Recording --
+
+func (a *interactDepsAdapter) RecordAIAction(action, url string, extra map[string]any) {
+	a.h.recordAIAction(action, url, extra)
+}
+
+func (a *interactDepsAdapter) RecordAIEnhancedAction(action capture.EnhancedAction) {
+	a.h.recordAIEnhancedAction(action)
+}
+
+func (a *interactDepsAdapter) RecordDOMPrimitiveAction(action, selector, text, value string) {
+	a.h.recordDOMPrimitiveAction(action, selector, text, value)
+}
+
+// -- Cross-tool dispatch --
+
+func (a *interactDepsAdapter) ToolInteract(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	return a.h.toolInteract(req, args)
+}
+
+func (a *interactDepsAdapter) ToolAnalyze(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	return a.h.toolAnalyze(req, args)
+}
+
+func (a *interactDepsAdapter) ToolExportSARIF(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	return a.h.toolExportSARIF(req, args)
+}
+
+// -- Response enrichment --
+
+func (a *interactDepsAdapter) EnrichNavigateResponse(resp mcp.JSONRPCResponse, req mcp.JSONRPCRequest, tabID int) mcp.JSONRPCResponse {
+	return a.h.enrichNavigateResponse(resp, req, tabID)
+}
+
+func (a *interactDepsAdapter) InjectCSPBlockedActions(resp mcp.JSONRPCResponse) mcp.JSONRPCResponse {
+	return a.h.injectCSPBlockedActions(resp)
+}
+
+// -- Screenshot/observe proxies --
+
+func (a *interactDepsAdapter) GetScreenshot(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	return observe.GetScreenshot(a.h, req, args)
+}
+
+func (a *interactDepsAdapter) GetPageInfo(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
+	return observe.GetPageInfo(a.h, req, args)
+}
+
+// -- Annotation store --
+
+func (a *interactDepsAdapter) MarkDrawStarted() {
+	if a.h.annotationStore != nil {
+		a.h.annotationStore.MarkDrawStarted()
 	}
+}
+
+// -- Server info --
+
+func (a *interactDepsAdapter) GetListenPort() int {
+	if a.h.server != nil {
+		return a.h.server.getListenPort()
+	}
+	return defaultPort
+}
+
+// -- Evidence capture --
+
+func (a *interactDepsAdapter) DefaultEvidenceCapture(clientID string) toolinteract.EvidenceShot {
+	return defaultEvidenceCaptureImpl(a.h, clientID)
+}
+
+// -- Session store --
+
+func (a *interactDepsAdapter) RequireSessionStore(req mcp.JSONRPCRequest) (mcp.JSONRPCResponse, bool) {
+	return a.h.requireSessionStore(req)
+}
+
+func (a *interactDepsAdapter) DiagnosticHint() func(*mcp.StructuredError) {
+	return a.h.diagnosticHint()
+}
+
+func (a *interactDepsAdapter) GetRedactionEngine() toolinteract.MapValueRedactor {
+	return a.h.GetRedactionEngine()
+}
+
+func (a *interactDepsAdapter) GetCommandResult(correlationID string) (*queries.CommandResult, bool) {
+	return a.h.capture.GetCommandResult(correlationID)
+}
+
+// -- Shared concurrency --
+
+func (a *interactDepsAdapter) GetReplayMu() *sync.Mutex {
+	return &replayMu
 }
 
 // interactAction returns the interact action handler from the toolinteract package.

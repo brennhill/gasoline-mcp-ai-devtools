@@ -17,110 +17,112 @@ import (
 // GuardCheck mirrors the main package's guardCheck type.
 type GuardCheck = func(req mcp.JSONRPCRequest, opts ...func(*mcp.StructuredError)) (mcp.JSONRPCResponse, bool)
 
-// Deps holds all external dependencies interact handlers need from the caller.
-type Deps struct {
+// Deps declares all external dependencies interact handlers need from the caller.
+// The main package's ToolHandler satisfies this interface via tools_interact_adapter.go.
+type Deps interface {
 	// -- Gate checks --
 
 	// RequirePilot checks that pilot mode is enabled.
-	RequirePilot GuardCheck
+	RequirePilot(req mcp.JSONRPCRequest, opts ...func(*mcp.StructuredError)) (mcp.JSONRPCResponse, bool)
 
 	// RequireExtension checks that the extension is connected.
-	RequireExtension GuardCheck
+	RequireExtension(req mcp.JSONRPCRequest, opts ...func(*mcp.StructuredError)) (mcp.JSONRPCResponse, bool)
 
 	// RequireTabTracking checks that tab tracking is active.
-	RequireTabTracking GuardCheck
+	RequireTabTracking(req mcp.JSONRPCRequest, opts ...func(*mcp.StructuredError)) (mcp.JSONRPCResponse, bool)
 
 	// RequireCSPClear checks CSP restrictions for a given world.
-	RequireCSPClear func(req mcp.JSONRPCRequest, world string) (mcp.JSONRPCResponse, bool)
+	RequireCSPClear(req mcp.JSONRPCRequest, world string) (mcp.JSONRPCResponse, bool)
 
 	// -- Command dispatch --
 
 	// EnqueuePendingQuery queues a command for the extension.
-	EnqueuePendingQuery func(req mcp.JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (mcp.JSONRPCResponse, bool)
+	EnqueuePendingQuery(req mcp.JSONRPCRequest, query queries.PendingQuery, timeout time.Duration) (mcp.JSONRPCResponse, bool)
 
 	// MaybeWaitForCommand waits for a command result or returns queued status.
-	MaybeWaitForCommand func(req mcp.JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) mcp.JSONRPCResponse
+	MaybeWaitForCommand(req mcp.JSONRPCRequest, correlationID string, args json.RawMessage, queuedSummary string) mcp.JSONRPCResponse
 
 	// -- Capture store --
 
 	// Capture returns the capture store.
-	Capture func() *capture.Store
+	Capture() *capture.Store
 
 	// -- Recording --
 
 	// RecordAIAction records an AI-driven action to the enhanced actions buffer.
-	RecordAIAction func(action, url string, extra map[string]any)
+	RecordAIAction(action, url string, extra map[string]any)
 
 	// RecordAIEnhancedAction records a fully populated AI-driven action.
-	RecordAIEnhancedAction func(action capture.EnhancedAction)
+	RecordAIEnhancedAction(action capture.EnhancedAction)
 
 	// RecordDOMPrimitiveAction records a DOM primitive action for reproduction.
-	RecordDOMPrimitiveAction func(action, selector, text, value string)
+	RecordDOMPrimitiveAction(action, selector, text, value string)
 
 	// -- Cross-tool dispatch --
 
 	// ToolInteract dispatches an interact request (used by batch for nested calls).
-	ToolInteract func(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
+	ToolInteract(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
 
 	// ToolAnalyze dispatches an analyze request (used by a11y+SARIF workflow).
-	ToolAnalyze func(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
+	ToolAnalyze(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
 
 	// ToolExportSARIF dispatches a SARIF export request.
-	ToolExportSARIF func(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
+	ToolExportSARIF(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
 
 	// -- Response enrichment --
 
 	// EnrichNavigateResponse appends page content to a navigate response.
-	EnrichNavigateResponse func(resp mcp.JSONRPCResponse, req mcp.JSONRPCRequest, tabID int) mcp.JSONRPCResponse
+	EnrichNavigateResponse(resp mcp.JSONRPCResponse, req mcp.JSONRPCRequest, tabID int) mcp.JSONRPCResponse
 
 	// InjectCSPBlockedActions adds CSP-blocked action warnings to a response.
-	InjectCSPBlockedActions func(resp mcp.JSONRPCResponse) mcp.JSONRPCResponse
+	InjectCSPBlockedActions(resp mcp.JSONRPCResponse) mcp.JSONRPCResponse
 
 	// -- Screenshot/observe proxies --
 
 	// GetScreenshot captures a screenshot via the observe tool.
-	GetScreenshot func(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
+	GetScreenshot(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
 
 	// GetPageInfo returns page info via the observe tool.
-	GetPageInfo func(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
+	GetPageInfo(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse
 
 	// -- Annotation store --
 
 	// MarkDrawStarted signals that draw mode has been initiated.
-	MarkDrawStarted func()
+	MarkDrawStarted()
 
 	// -- Server info --
 
 	// GetListenPort returns the daemon's listening port.
-	GetListenPort func() int
+	GetListenPort() int
 
 	// -- Evidence capture --
 
 	// DefaultEvidenceCapture captures an evidence screenshot.
-	DefaultEvidenceCapture func(clientID string) EvidenceShot
+	DefaultEvidenceCapture(clientID string) EvidenceShot
 
 	// -- Session store --
 
 	// RequireSessionStore checks that the session store is available.
-	RequireSessionStore func(req mcp.JSONRPCRequest) (mcp.JSONRPCResponse, bool)
+	RequireSessionStore(req mcp.JSONRPCRequest) (mcp.JSONRPCResponse, bool)
 
 	// DiagnosticHint returns a StructuredError option for diagnostic hints.
-	DiagnosticHint func() func(*mcp.StructuredError)
+	DiagnosticHint() func(*mcp.StructuredError)
 
 	// GetRedactionEngine returns the redaction engine (may be nil).
-	GetRedactionEngine func() RedactionEngine
+	GetRedactionEngine() MapValueRedactor
 
 	// GetCommandResult retrieves a command result by correlation ID.
-	GetCommandResult func(correlationID string) (*queries.CommandResult, bool)
+	GetCommandResult(correlationID string) (*queries.CommandResult, bool)
 
 	// -- Shared concurrency --
 
-	// ReplayMu is the shared mutex for batch/replay serialization.
-	// Points to the same mutex used by sequence replay in the main package.
-	ReplayMu *sync.Mutex
+	// GetReplayMu returns the shared mutex for batch/replay serialization.
+	GetReplayMu() *sync.Mutex
 }
 
-// RedactionEngine mirrors the main package's RedactionEngine interface.
-type RedactionEngine interface {
+// MapValueRedactor is the narrow redaction interface for toolinteract.
+// It intentionally declares only the single method this package needs,
+// rather than duplicating the full redaction.Redactor interface.
+type MapValueRedactor interface {
 	RedactMapValues(m map[string]any) map[string]any
 }

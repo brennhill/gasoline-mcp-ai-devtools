@@ -40,11 +40,10 @@ const OUTPUT_PATH = path.join(ROOT, 'src', 'background', 'dom-primitives.ts')
 const CHECK_ONLY = process.argv.includes('--check')
 
 const GENERATED_BANNER = `// AUTO-GENERATED FILE. DO NOT EDIT DIRECTLY.
-// Source: scripts/templates/dom-primitives.ts.tpl + partials/
-//   _dom-selectors.tpl, _dom-semantic-resolvers.tpl, _dom-overlay-helpers.tpl,
-//   _dom-intent.tpl, _dom-intent-actions.tpl, _dom-ranking.tpl,
-//   _dom-action-helpers.tpl, _dom-action-handlers-core.tpl,
-//   _dom-action-handlers-input.tpl, _dom-action-handlers-overlay.tpl
+// Source: scripts/templates/dom-primitives.ts.tpl
+// Action logic extracted to self-contained modules:
+//   dom-primitives-read.ts, dom-primitives-action.ts,
+//   dom-primitives-intent.ts, dom-primitives-overlay.ts, dom-primitives-stability.ts
 // Generator: scripts/generate-dom-primitives.js
 
 `

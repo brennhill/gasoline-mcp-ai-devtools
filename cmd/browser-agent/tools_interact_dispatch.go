@@ -80,84 +80,68 @@ func getInteractHandlers() map[string]ModeHandler {
 	return cachedInteractHandlers
 }
 
+// interactMethod adapts an InteractActionHandler method to a ModeHandler,
+// removing the need for a one-line closure thunk per action.
+func interactMethod(fn func(*toolinteract.InteractActionHandler, JSONRPCRequest, json.RawMessage) JSONRPCResponse) ModeHandler {
+	return func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return fn(h.interactAction(), req, args)
+	}
+}
+
+// stateMethod adapts a StateInteractHandler method to a ModeHandler.
+func stateMethod(fn func(*toolinteract.StateInteractHandler, JSONRPCRequest, json.RawMessage) JSONRPCResponse) ModeHandler {
+	return func(h *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+		return fn(h.stateInteract(), req, args)
+	}
+}
+
 // buildInteractHandlers constructs the full interact handler map.
 func buildInteractHandlers() map[string]ModeHandler {
 	handlers := map[string]ModeHandler{
-		"highlight": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleHighlightImpl(req, args)
-		},
-		"save_state": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateSave(req, args)
-		},
-		"state_save": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateSave(req, args)
-		},
-		"load_state": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateLoad(req, args)
-		},
-		"state_load": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateLoad(req, args)
-		},
-		"list_states": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateList(req, args)
-		},
-		"state_list": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateList(req, args)
-		},
-		"delete_state": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateDelete(req, args)
-		},
-		"state_delete": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.stateInteract().HandleStateDelete(req, args)
-		},
-		"set_storage": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleSetStorage(req, args)
-		},
-		"delete_storage": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleDeleteStorage(req, args)
-		},
-		"clear_storage": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleClearStorage(req, args)
-		},
-		"set_cookie": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleSetCookie(req, args)
-		},
-		"delete_cookie": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleDeleteCookie(req, args)
-		},
-		"execute_js": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleExecuteJSImpl(req, args)
-		},
-		"navigate": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBrowserActionNavigateImpl(req, args)
-		},
-		"refresh": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBrowserActionRefreshImpl(req, args)
-		},
-		"back": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBrowserActionBackImpl(req, args)
-		},
-		"forward": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBrowserActionForwardImpl(req, args)
-		},
-		"new_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBrowserActionNewTabImpl(req, args)
-		},
-		"switch_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBrowserActionSwitchTabImpl(req, args)
-		},
-		"close_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBrowserActionCloseTabImpl(req, args)
-		},
-		"screenshot": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleScreenshotAliasImpl(req, args)
-		},
-		"subtitle": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleSubtitleImpl(req, args)
-		},
-		"list_interactive": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleListInteractive(req, args)
-		},
+		"highlight":              interactMethod((*toolinteract.InteractActionHandler).HandleHighlightImpl),
+		"save_state":             stateMethod((*toolinteract.StateInteractHandler).HandleStateSave),
+		"state_save":             stateMethod((*toolinteract.StateInteractHandler).HandleStateSave),
+		"load_state":             stateMethod((*toolinteract.StateInteractHandler).HandleStateLoad),
+		"state_load":             stateMethod((*toolinteract.StateInteractHandler).HandleStateLoad),
+		"list_states":            stateMethod((*toolinteract.StateInteractHandler).HandleStateList),
+		"state_list":             stateMethod((*toolinteract.StateInteractHandler).HandleStateList),
+		"delete_state":           stateMethod((*toolinteract.StateInteractHandler).HandleStateDelete),
+		"state_delete":           stateMethod((*toolinteract.StateInteractHandler).HandleStateDelete),
+		"set_storage":            interactMethod((*toolinteract.InteractActionHandler).HandleSetStorage),
+		"delete_storage":         interactMethod((*toolinteract.InteractActionHandler).HandleDeleteStorage),
+		"clear_storage":          interactMethod((*toolinteract.InteractActionHandler).HandleClearStorage),
+		"set_cookie":             interactMethod((*toolinteract.InteractActionHandler).HandleSetCookie),
+		"delete_cookie":          interactMethod((*toolinteract.InteractActionHandler).HandleDeleteCookie),
+		"execute_js":             interactMethod((*toolinteract.InteractActionHandler).HandleExecuteJSImpl),
+		"navigate":               interactMethod((*toolinteract.InteractActionHandler).HandleBrowserActionNavigateImpl),
+		"refresh":                interactMethod((*toolinteract.InteractActionHandler).HandleBrowserActionRefreshImpl),
+		"back":                   interactMethod((*toolinteract.InteractActionHandler).HandleBrowserActionBackImpl),
+		"forward":                interactMethod((*toolinteract.InteractActionHandler).HandleBrowserActionForwardImpl),
+		"new_tab":                interactMethod((*toolinteract.InteractActionHandler).HandleBrowserActionNewTabImpl),
+		"switch_tab":             interactMethod((*toolinteract.InteractActionHandler).HandleBrowserActionSwitchTabImpl),
+		"close_tab":              interactMethod((*toolinteract.InteractActionHandler).HandleBrowserActionCloseTabImpl),
+		"screenshot":             interactMethod((*toolinteract.InteractActionHandler).HandleScreenshotAliasImpl),
+		"subtitle":               interactMethod((*toolinteract.InteractActionHandler).HandleSubtitleImpl),
+		"list_interactive":       interactMethod((*toolinteract.InteractActionHandler).HandleListInteractive),
+		"draw_mode_start":        interactMethod((*toolinteract.InteractActionHandler).HandleDrawModeStart),
+		"hardware_click":         interactMethod((*toolinteract.InteractActionHandler).HandleHardwareClick),
+		"activate_tab":           interactMethod((*toolinteract.InteractActionHandler).HandleActivateTabImpl),
+		"get_readable":           interactMethod((*toolinteract.InteractActionHandler).HandleGetReadable),
+		"get_markdown":           interactMethod((*toolinteract.InteractActionHandler).HandleGetMarkdown),
+		"navigate_and_wait_for":  interactMethod((*toolinteract.InteractActionHandler).HandleNavigateAndWaitFor),
+		"navigate_and_document":  interactMethod((*toolinteract.InteractActionHandler).HandleNavigateAndDocument),
+		"fill_form_and_submit":   interactMethod((*toolinteract.InteractActionHandler).HandleFillFormAndSubmit),
+		"fill_form":              interactMethod((*toolinteract.InteractActionHandler).HandleFillForm),
+		"run_a11y_and_export_sarif": interactMethod((*toolinteract.InteractActionHandler).HandleRunA11yAndExportSARIF),
+		"explore_page":           interactMethod((*toolinteract.InteractActionHandler).HandleExplorePage),
+		"wait_for_stable":        interactMethod((*toolinteract.InteractActionHandler).HandleWaitForStable),
+		"auto_dismiss_overlays":  interactMethod((*toolinteract.InteractActionHandler).HandleAutoDismissOverlays),
+		"batch":                  interactMethod((*toolinteract.InteractActionHandler).HandleBatch),
+		"clipboard_read":         interactMethod((*toolinteract.InteractActionHandler).HandleClipboardRead),
+		"clipboard_write":        interactMethod((*toolinteract.InteractActionHandler).HandleClipboardWrite),
+
+		// Recording and upload handlers access different sub-handlers on ToolHandler,
+		// so they keep explicit closures.
 		"screen_recording_start": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.recordingInteractHandler.handleRecordStart(req, args)
 		},
@@ -172,54 +156,6 @@ func buildInteractHandlers() map[string]ModeHandler {
 		},
 		"upload": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.uploadInteractHandler.HandleUpload(req, args)
-		},
-		"draw_mode_start": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleDrawModeStart(req, args)
-		},
-		"hardware_click": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleHardwareClick(req, args)
-		},
-		"activate_tab": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleActivateTabImpl(req, args)
-		},
-		"get_readable": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleGetReadable(req, args)
-		},
-		"get_markdown": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleGetMarkdown(req, args)
-		},
-		"navigate_and_wait_for": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleNavigateAndWaitFor(req, args)
-		},
-		"navigate_and_document": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleNavigateAndDocument(req, args)
-		},
-		"fill_form_and_submit": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleFillFormAndSubmit(req, args)
-		},
-		"fill_form": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleFillForm(req, args)
-		},
-		"run_a11y_and_export_sarif": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleRunA11yAndExportSARIF(req, args)
-		},
-		"explore_page": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleExplorePage(req, args)
-		},
-		"wait_for_stable": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleWaitForStable(req, args)
-		},
-		"auto_dismiss_overlays": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleAutoDismissOverlays(req, args)
-		},
-		"batch": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleBatch(req, args)
-		},
-		"clipboard_read": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleClipboardRead(req, args)
-		},
-		"clipboard_write": func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
-			return th.interactAction().HandleClipboardWrite(req, args)
 		},
 	}
 

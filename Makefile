@@ -317,7 +317,7 @@ ci: check test test-js validate-deps-versions
 
 # --- Local CI (mirrors GitHub Actions) ---
 
-ci-local: ci-go ci-js ci-security
+ci-local: ci-go ci-js ci-security check-invariants
 	@echo "All CI checks passed locally"
 
 ci-e2e:
@@ -340,6 +340,7 @@ release-check: ci-local ci-e2e smoke-mcp-transport
 
 ci-go:
 	go vet $(CMD_PKG)/
+	@command -v golangci-lint >/dev/null 2>&1 && golangci-lint run --enable-only depguard ./cmd/browser-agent/... ./internal/... || echo "golangci-lint not installed (skipping depguard — GitHub Actions will verify)"
 	make test-race
 	make test-cover
 	make build

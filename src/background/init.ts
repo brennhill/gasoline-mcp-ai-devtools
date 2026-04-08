@@ -61,26 +61,30 @@ import {
   clearScreenshotTimestamps
 } from './state-manager.js'
 import {
-  loadDebugModeState,
   installStartupListener,
-  loadAiWebPilotState,
-  loadSavedSettings,
   installStorageChangeListener,
   setupChromeAlarms,
   installAlarmListener,
   installTabRemovedListener,
   installTabUpdatedListener,
-  installDrawModeCommandListener,
-  installRecordingShortcutCommandListener,
-  installScreenRecordingCommandListener,
-  installContextMenus,
-  saveSetting,
-  forwardToAllContentScripts,
-  getActiveTab,
-  sendTabToast,
   handleTrackedTabClosed,
   handleTrackedTabUrlChange
 } from './event-listeners.js'
+import {
+  installDrawModeCommandListener,
+  installRecordingShortcutCommandListener,
+  installScreenRecordingCommandListener
+} from './keyboard-shortcuts.js'
+import { installContextMenus } from './context-menus.js'
+import {
+  loadDebugModeState,
+  loadAiWebPilotState,
+  loadSavedSettings,
+  saveSetting,
+  forwardToAllContentScripts,
+  getActiveTab,
+  sendTabToast
+} from './tab-state.js'
 import { installPushCommandListener, installChatCommandListener } from './push-handler.js'
 import { isRecording, startRecording, stopRecording } from './recording.js'
 import type { MessageHandlerDependencies } from './message-handlers.js'

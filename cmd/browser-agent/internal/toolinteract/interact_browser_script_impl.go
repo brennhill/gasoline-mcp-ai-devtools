@@ -5,6 +5,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 
 	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
@@ -16,17 +17,17 @@ var validWorldValues = act.ValidWorldValues
 // truncateToLen delegates to the interact package.
 var truncateToLen = act.TruncateToLen
 
-func (h *InteractActionHandler) HandleHighlightImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleHighlightImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Selector   string `json:"selector"`
 		DurationMs int    `json:"duration_ms,omitempty"`
 		TabID      int    `json:"tab_id,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
-	if resp, blocked := requireString(req, params.Selector, "selector", "Add the 'selector' parameter"); blocked {
+	if resp, blocked := mcp.RequireString(req, params.Selector, "selector", "Add the 'selector' parameter"); blocked {
 		return resp
 	}
 
@@ -42,18 +43,18 @@ func (h *InteractActionHandler) HandleHighlightImpl(req JSONRPCRequest, args jso
 		execute(req, args)
 }
 
-func (h *InteractActionHandler) HandleExecuteJSImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleExecuteJSImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		Script    string `json:"script"`
 		TimeoutMs int    `json:"timeout_ms,omitempty"`
 		TabID     int    `json:"tab_id,omitempty"`
 		World     string `json:"world,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
-	if resp, blocked := requireString(req, params.Script, "script", "Add the 'script' parameter and call again"); blocked {
+	if resp, blocked := mcp.RequireString(req, params.Script, "script", "Add the 'script' parameter and call again"); blocked {
 		return resp
 	}
 
@@ -61,7 +62,7 @@ func (h *InteractActionHandler) HandleExecuteJSImpl(req JSONRPCRequest, args jso
 		params.World = "auto"
 	}
 	if !validWorldValues[params.World] {
-		return fail(req, ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", withParam("world"))
+		return mcp.Fail(req, mcp.ErrInvalidParam, "Invalid 'world' value: "+params.World, "Use 'auto' (default, tries main then isolated), 'main' (page JS access), or 'isolated' (bypasses CSP, DOM only)", mcp.WithParam("world"))
 	}
 
 	return h.newCommand("execute_js").

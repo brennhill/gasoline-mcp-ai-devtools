@@ -8,6 +8,7 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 	"time"
 )
@@ -22,12 +23,12 @@ const (
 // handleContentExtraction is the shared handler for get_readable, get_markdown, and page_summary.
 // All three use the same pattern: gate checks, timeout validation, create a pending query with
 // the dedicated query type, and wait for the content script to respond.
-func (h *InteractActionHandler) HandleContentExtraction(req JSONRPCRequest, args json.RawMessage, queryType string, correlationPrefix string) JSONRPCResponse {
+func (h *InteractActionHandler) HandleContentExtraction(req mcp.JSONRPCRequest, args json.RawMessage, queryType string, correlationPrefix string) mcp.JSONRPCResponse {
 	var params struct {
 		TabID     int `json:"tab_id,omitempty"`
 		TimeoutMs int `json:"timeout_ms,omitempty"`
 	}
-	lenientUnmarshal(args, &params)
+	mcp.LenientUnmarshal(args, &params)
 
 	if params.TimeoutMs <= 0 {
 		params.TimeoutMs = 10_000
@@ -49,11 +50,11 @@ func (h *InteractActionHandler) HandleContentExtraction(req JSONRPCRequest, args
 		execute(req, args)
 }
 
-func (h *InteractActionHandler) HandleGetReadable(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleGetReadable(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	return h.HandleContentExtraction(req, args, "get_readable", "readable")
 }
 
-func (h *InteractActionHandler) HandleGetMarkdown(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleGetMarkdown(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	return h.HandleContentExtraction(req, args, "get_markdown", "markdown")
 }
 

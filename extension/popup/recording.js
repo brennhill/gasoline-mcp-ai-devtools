@@ -11,6 +11,7 @@
 import { StorageKey } from '../lib/constants.js';
 import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
 import { getLocal, removeLocal, onStorageChanged } from '../lib/storage-utils.js';
+import { startTimerDisplay } from './ui-utils.js';
 import { sendRecordingGestureDecision, handleStartClick, handleStopClick } from './recording-io.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
@@ -56,13 +57,8 @@ function showRecording(els, state, name, startTime) {
     if (els.optionsEl)
         els.optionsEl.style.display = 'none';
     if (state.timerInterval)
-        clearInterval(state.timerInterval);
-    state.timerInterval = setInterval(() => {
-        const elapsed = Math.round((Date.now() - startTime) / 1000);
-        const mins = Math.floor(elapsed / 60);
-        const secs = elapsed % 60;
-        els.statusEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
-    }, 1000);
+        state.timerInterval();
+    state.timerInterval = startTimerDisplay(els.statusEl, startTime);
     if (!wasRecording && Date.now() - startTime <= RECENT_RECORDING_START_MS) {
         showTopNotice(els, 'Recording started');
     }
@@ -76,7 +72,7 @@ function showIdle(els, state) {
     if (els.optionsEl)
         els.optionsEl.style.display = 'block';
     if (state.timerInterval) {
-        clearInterval(state.timerInterval);
+        state.timerInterval();
         state.timerInterval = null;
     }
 }

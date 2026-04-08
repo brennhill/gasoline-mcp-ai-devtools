@@ -29,3 +29,19 @@ export function isInternalUrl(url: string | undefined): boolean {
   const internalPrefixes = ['chrome://', 'chrome-extension://', 'about:', 'edge://', 'brave://', 'devtools://']
   return internalPrefixes.some((prefix) => url.startsWith(prefix))
 }
+
+/**
+ * Start a recurring timer display that shows elapsed time as "M:SS" in the given element.
+ * Returns a cleanup function that stops the interval.
+ */
+export function startTimerDisplay(statusEl: HTMLElement, startTime: number): () => void {
+  const update = (): void => {
+    const elapsed = Math.round((Date.now() - startTime) / 1000)
+    const mins = Math.floor(elapsed / 60)
+    const secs = elapsed % 60
+    statusEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+  update()
+  const interval = setInterval(update, 1000)
+  return () => clearInterval(interval)
+}

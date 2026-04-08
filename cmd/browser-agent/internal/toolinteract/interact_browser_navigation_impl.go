@@ -5,36 +5,37 @@
 package toolinteract
 
 import (
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"encoding/json"
 )
 
-func (h *InteractActionHandler) HandleBrowserActionNavigateImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBrowserActionNavigateImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		URL            string `json:"url"`
 		TabID          int    `json:"tab_id,omitempty"`
 		IncludeContent bool   `json:"include_content,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
-	if resp, blocked := requireString(req, params.URL, "url", "Add the 'url' parameter and call again"); blocked {
+	if resp, blocked := mcp.RequireString(req, params.URL, "url", "Add the 'url' parameter and call again"); blocked {
 		return resp
 	}
 	resolvedURL, err := h.ResolveNavigateURLImpl(params.URL)
 	if err != nil {
-		return fail(req, ErrInvalidParam,
+		return mcp.Fail(req, mcp.ErrInvalidParam,
 			err.Error(),
 			"Enable configure(what='security_mode', mode='insecure_proxy', confirm=true), or use a standard http(s) URL.",
-			withParam("url"))
+			mcp.WithParam("url"))
 	}
 
 	actionParams := make(map[string]any)
-	lenientUnmarshal(args, &actionParams)
+	mcp.LenientUnmarshal(args, &actionParams)
 	actionParams["action"] = "navigate"
 	// Ensure required URL is present even if caller used alias forms.
 	actionParams["url"] = resolvedURL
-	actionPayload := buildQueryParams(actionParams)
+	actionPayload := mcp.BuildQueryParams(actionParams)
 
 	resp := h.newCommand("navigate").
 		correlationPrefix("nav").
@@ -63,11 +64,11 @@ func (h *InteractActionHandler) HandleBrowserActionNavigateImpl(req JSONRPCReque
 	return resp
 }
 
-func (h *InteractActionHandler) HandleBrowserActionRefreshImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBrowserActionRefreshImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	var params struct {
 		TabID int `json:"tab_id,omitempty"`
 	}
-	if resp, stop := parseArgs(req, args, &params); stop {
+	if resp, stop := mcp.ParseArgs(req, args, &params); stop {
 		return resp
 	}
 
@@ -84,7 +85,7 @@ func (h *InteractActionHandler) HandleBrowserActionRefreshImpl(req JSONRPCReques
 		execute(req, args)
 }
 
-func (h *InteractActionHandler) HandleBrowserActionBackImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBrowserActionBackImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	return h.queueBrowserAction(req, args, browserActionOpts{
 		action:         "back",
 		correlationPfx: "back",
@@ -92,7 +93,7 @@ func (h *InteractActionHandler) HandleBrowserActionBackImpl(req JSONRPCRequest, 
 	})
 }
 
-func (h *InteractActionHandler) HandleBrowserActionForwardImpl(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
+func (h *InteractActionHandler) HandleBrowserActionForwardImpl(req mcp.JSONRPCRequest, args json.RawMessage) mcp.JSONRPCResponse {
 	return h.queueBrowserAction(req, args, browserActionOpts{
 		action:         "forward",
 		correlationPfx: "forward",

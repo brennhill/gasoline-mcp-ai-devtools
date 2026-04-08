@@ -6,11 +6,11 @@ package toolinteract
 
 // UploadInteractHandler handles file upload operations.
 type UploadInteractHandler struct {
-	deps          *Deps
+	deps          Deps
 	actionHandler *InteractActionHandler
 }
 
 // NewUploadInteractHandler creates a new UploadInteractHandler with the given dependencies.
-func NewUploadInteractHandler(deps *Deps, actionHandler *InteractActionHandler) *UploadInteractHandler {
+func NewUploadInteractHandler(deps Deps, actionHandler *InteractActionHandler) *UploadInteractHandler {
 	return &UploadInteractHandler{deps: deps, actionHandler: actionHandler}
 }

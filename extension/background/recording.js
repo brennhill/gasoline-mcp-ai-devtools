@@ -6,7 +6,7 @@
 // Delegates tab capture / offscreen plumbing to recording-capture.ts and
 // chrome runtime listener registration to recording-listeners.ts.
 import { getServerUrl } from './state.js';
-import { pingContentScript, waitForTabLoad, getActiveTab, sendTabToast } from './event-listeners.js';
+import { pingContentScript, waitForTabLoad, getActiveTab, sendTabToast } from './tab-state.js';
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
 import { ensureOffscreenDocument, getStreamIdWithRecovery, requestRecordingGesture } from './recording-capture.js';
@@ -35,6 +35,17 @@ let tabUpdateListener = null;
 // Clear stale recording state from previous session (e.g., browser crash during recording)
 console.log(LOG, 'Module loaded, clearing stale recording state from storage');
 removeLocal(StorageKey.RECORDING).catch(() => { });
+// Defensive: stop any orphaned offscreen recording from a previous SW session.
+// If the SW restarted mid-recording, the offscreen document may still be capturing.
+chrome.runtime
+    .getContexts({ contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT] })
+    .then((contexts) => {
+    if (contexts.length > 0) {
+        console.warn(LOG, 'Offscreen document found on module load — sending defensive stop');
+        chrome.runtime.sendMessage({ target: 'offscreen', type: 'offscreen_stop_recording' }).catch(() => { });
+    }
+})
+    .catch(() => { });
 // =============================================================================
 // STATE QUERIES
 // =============================================================================
