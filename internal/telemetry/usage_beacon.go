@@ -4,7 +4,6 @@ package telemetry
 
 import (
 	"context"
-	"strconv"
 	"sync"
 	"time"
 
@@ -62,12 +61,7 @@ func startUsageBeaconLoopWithInterval(ctx context.Context, counter *UsageCounter
 				callOnTick()
 				continue // no activity, skip beacon
 			}
-			props := make(map[string]string)
-			props["window_m"] = strconv.Itoa(int(interval.Minutes()))
-			for key, count := range snapshot {
-				props[key] = strconv.Itoa(count)
-			}
-			BeaconEvent("usage_summary", props)
+			BeaconUsageSummary(int(interval.Minutes()), snapshot)
 			callOnTick()
 		}
 	}

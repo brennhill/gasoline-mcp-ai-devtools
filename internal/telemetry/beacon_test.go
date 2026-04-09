@@ -101,6 +101,15 @@ func TestBeaconError_FormatsJSON(t *testing.T) {
 	if !regexp.MustCompile(`^[0-9a-f]{12}$`).MatchString(iid) {
 		t.Errorf("iid = %q, want 12-char hex string", iid)
 	}
+
+	// Verify session ID is present and is 16-char hex.
+	sid, ok := body["sid"].(string)
+	if !ok {
+		t.Fatalf("missing or non-string 'sid' field in beacon payload")
+	}
+	if !regexp.MustCompile(`^[0-9a-f]{16}$`).MatchString(sid) {
+		t.Errorf("sid = %q, want 16-char hex string", sid)
+	}
 }
 
 func TestBeaconEvent_IncludesVersion(t *testing.T) {
