@@ -20,23 +20,28 @@ var session struct {
 }
 
 // GetSessionID returns the current session ID, creating or rotating as needed.
-// A new session is minted if none exists or the previous one expired (30min inactivity).
+// Read-only: does NOT refresh lastSeen. Only TouchSession (called from
+// UsageCounter.Increment and feature callbacks) extends the session.
+// A new session is minted if none exists or the previous one expired.
 func GetSessionID() string {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
-	now := time.Now()
-	if session.id == "" || now.Sub(session.lastSeen) > sessionTimeout {
+	if session.id == "" || (!session.lastSeen.IsZero() && time.Since(session.lastSeen) > sessionTimeout) {
 		session.id = generateSessionID()
+		session.lastSeen = time.Now()
 	}
-	session.lastSeen = now
 	return session.id
 }
 
-// TouchSession refreshes the session's last-seen timestamp without returning the ID.
+// TouchSession refreshes the session's last-seen timestamp.
 // Called when telemetry-bearing activity occurs (tool calls, feature usage).
+// Mints a new session if none exists yet.
 func TouchSession() {
 	session.mu.Lock()
+	if session.id == "" {
+		session.id = generateSessionID()
+	}
 	session.lastSeen = time.Now()
 	session.mu.Unlock()
 }

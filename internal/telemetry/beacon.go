@@ -44,6 +44,9 @@ const maxConcurrentBeacons = 50
 // sem caps the number of concurrent beacon goroutines to prevent runaway growth.
 var sem = make(chan struct{}, maxConcurrentBeacons)
 
+// beaconClient is a shared HTTP client for all beacons. Reuses connections.
+var beaconClient = &http.Client{Timeout: 2 * time.Second}
+
 // buildEnvelope returns the base fields included in every beacon.
 func buildEnvelope(event string) map[string]any {
 	beaconMu.RLock()
@@ -119,8 +122,7 @@ func fireBeacon(payload map[string]any) {
 		util.SafeGo(func() {
 			defer func() { <-sem }()
 
-			client := &http.Client{Timeout: 2 * time.Second}
-			resp, err := client.Post(ep, "application/json", bytes.NewReader(data))
+			resp, err := beaconClient.Post(ep, "application/json", bytes.NewReader(data))
 			if err != nil {
 				return // best-effort
 			}
