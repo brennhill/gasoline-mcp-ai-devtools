@@ -44,41 +44,73 @@ const maxConcurrentBeacons = 50
 // sem caps the number of concurrent beacon goroutines to prevent runaway growth.
 var sem = make(chan struct{}, maxConcurrentBeacons)
 
+// beaconClient is a shared HTTP client for all beacons. Reuses connections.
+var beaconClient = &http.Client{Timeout: 2 * time.Second}
+
+// buildEnvelope returns the base fields included in every beacon.
+func buildEnvelope(event string) map[string]any {
+	beaconMu.RLock()
+	llm := llmName
+	beaconMu.RUnlock()
+
+	env := map[string]any{
+		"event": event,
+		"v":     Version,
+		"os":    runtime.GOOS + "-" + runtime.GOARCH,
+		"iid":   GetInstallID(),
+		"sid":   GetSessionID(),
+	}
+	if llm != "" {
+		env["llm"] = llm
+	}
+	return env
+}
+
 // BeaconError fires an anonymous error event to the telemetry endpoint.
 // Fire-and-forget: backgrounded, 2s timeout, never blocks caller, never panics.
 func BeaconError(event string, props map[string]string) {
-	beacon(event, props)
+	sendBeacon(event, props)
 }
 
 // BeaconEvent fires an anonymous lifecycle event.
 // Fire-and-forget: backgrounded, 2s timeout, never blocks caller, never panics.
 func BeaconEvent(event string, props map[string]string) {
-	beacon(event, props)
+	sendBeacon(event, props)
 }
 
-func beacon(event string, props map[string]string) {
+// BeaconUsageSummary fires an aggregated usage beacon with integer counters.
+// window_m is the aggregation window in minutes. props keys are "tool:mode" or "ext:feature".
+func BeaconUsageSummary(windowMinutes int, props map[string]int) {
 	if os.Getenv("Kaboom_TELEMETRY") == "off" {
 		return
 	}
 
-	// Snapshot mutable state under lock before spawning goroutine.
-	beaconMu.RLock()
-	ep := endpoint
-	llm := llmName
-	beaconMu.RUnlock()
-
-	payload := map[string]any{
-		"event": event,
-		"v":     Version,
-		"os":    runtime.GOOS + "-" + runtime.GOARCH,
-		"iid":   GetInstallID(),
-	}
-	if llm != "" {
-		payload["llm"] = llm
-	}
+	payload := buildEnvelope("usage_summary")
+	payload["window_m"] = windowMinutes
 	if props != nil {
 		payload["props"] = props
 	}
+
+	fireBeacon(payload)
+}
+
+func sendBeacon(event string, props map[string]string) {
+	if os.Getenv("Kaboom_TELEMETRY") == "off" {
+		return
+	}
+
+	payload := buildEnvelope(event)
+	if props != nil {
+		payload["props"] = props
+	}
+
+	fireBeacon(payload)
+}
+
+func fireBeacon(payload map[string]any) {
+	beaconMu.RLock()
+	ep := endpoint
+	beaconMu.RUnlock()
 
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -90,8 +122,7 @@ func beacon(event string, props map[string]string) {
 		util.SafeGo(func() {
 			defer func() { <-sem }()
 
-			client := &http.Client{Timeout: 2 * time.Second}
-			resp, err := client.Post(ep, "application/json", bytes.NewReader(data))
+			resp, err := beaconClient.Post(ep, "application/json", bytes.NewReader(data))
 			if err != nil {
 				return // best-effort
 			}

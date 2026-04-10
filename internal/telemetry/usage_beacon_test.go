@@ -56,17 +56,25 @@ func TestUsageBeaconLoop_FiresOnActivity(t *testing.T) {
 		t.Errorf("event = %v, want usage_summary", body["event"])
 	}
 
+	// window_m is top-level (JSON number → float64).
+	if wm, ok := body["window_m"].(float64); !ok || wm != 0 {
+		t.Errorf("window_m = %v, want 0 (sub-minute test interval)", body["window_m"])
+	}
+
+	// sid must be present (16-char hex).
+	if sid, ok := body["sid"].(string); !ok || len(sid) != 16 {
+		t.Errorf("sid = %v, want 16-char hex string", body["sid"])
+	}
+
 	props, ok := body["props"].(map[string]any)
 	if !ok {
 		t.Fatalf("props is not a map: %T", body["props"])
 	}
-	if props["window_m"] != "0" {
-		t.Errorf("window_m = %v, want 0 (sub-minute test interval)", props["window_m"])
-	}
-	if props["observe:errors"] != "2" {
+	// Props values are integers (JSON number → float64).
+	if props["observe:errors"] != float64(2) {
 		t.Errorf("observe:errors = %v, want 2", props["observe:errors"])
 	}
-	if props["interact:click"] != "1" {
+	if props["interact:click"] != float64(1) {
 		t.Errorf("interact:click = %v, want 1", props["interact:click"])
 	}
 }

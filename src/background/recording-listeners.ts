@@ -13,6 +13,7 @@ import { StorageKey } from '../lib/constants.js'
 import { getLocal } from '../lib/storage-utils.js'
 import type { OffscreenRecordingStoppedMessage } from '../types/runtime-messages.js'
 import { errorMessage } from '../lib/error-utils.js'
+import { trackUIFeature } from './ui-usage-tracker.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
 import { buildScreenRecordingSlug } from './recording-utils.js'
 import type { ScreenRecordingHandlers } from './keyboard-shortcuts.js'
@@ -85,6 +86,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
       // Only accept messages from the extension itself (popup)
       if (sender.id !== chrome.runtime.id) return false
       if (message.type === 'screen_recording_start') {
+        trackUIFeature('video')
         console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio })
         resolvePopupRecordingTargetTab().then((targetTab) => {
           const slug = buildScreenRecordingSlug(targetTab?.url)

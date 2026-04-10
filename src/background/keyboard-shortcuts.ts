@@ -11,6 +11,7 @@ import { errorMessage } from '../lib/error-utils.js'
 import { getActiveTab, sendTabToast } from './event-listeners.js'
 import { toggleDrawModeForTab } from './draw-mode-toggle.js'
 import { buildScreenRecordingSlug } from './recording-utils.js'
+import { trackUIFeature } from './ui-usage-tracker.js'
 export interface RecordingShortcutHandlers {
   isRecording: () => boolean
   startRecording: (
@@ -99,6 +100,7 @@ export function installDrawModeCommandListener(logFn?: (message: string) => void
       if (!tab?.id) return
 
       try {
+        trackUIFeature('annotations')
         await toggleDrawModeForTab(tab.id)
       } catch {
         if (logFn) logFn('Cannot reach content script for draw mode toggle')
@@ -181,6 +183,7 @@ export function installScreenRecordingCommandListener(
     try {
       const tab = await getActiveTab()
       if (!tab?.id) return
+      trackUIFeature('video')
       await toggleScreenRecording(handlers, tab, logFn)
     } catch (err) {
       if (logFn) logFn(`Screen recording shortcut error: ${errorMessage(err)}`)

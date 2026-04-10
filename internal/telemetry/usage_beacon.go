@@ -4,7 +4,6 @@ package telemetry
 
 import (
 	"context"
-	"strconv"
 	"sync"
 	"time"
 
@@ -12,7 +11,7 @@ import (
 )
 
 // usageBeaconInterval is the default interval for aggregated usage beacons.
-const usageBeaconInterval = 10 * time.Minute
+const usageBeaconInterval = 5 * time.Minute
 
 // onTickMu protects the onTick test hook from concurrent access.
 var onTickMu sync.Mutex
@@ -39,7 +38,7 @@ func callOnTick() {
 }
 
 // StartUsageBeaconLoop starts a background goroutine that fires a usage_summary
-// beacon every 10 minutes if there was activity. Respects ctx.Done() for clean shutdown.
+// beacon every 5 minutes if there was activity. Respects ctx.Done() for clean shutdown.
 func StartUsageBeaconLoop(ctx context.Context, counter *UsageCounter) {
 	util.SafeGo(func() {
 		startUsageBeaconLoopWithInterval(ctx, counter, usageBeaconInterval)
@@ -62,12 +61,7 @@ func startUsageBeaconLoopWithInterval(ctx context.Context, counter *UsageCounter
 				callOnTick()
 				continue // no activity, skip beacon
 			}
-			props := make(map[string]string)
-			props["window_m"] = strconv.Itoa(int(interval.Minutes()))
-			for key, count := range snapshot {
-				props[key] = strconv.Itoa(count)
-			}
-			BeaconEvent("usage_summary", props)
+			BeaconUsageSummary(int(interval.Minutes()), snapshot)
 			callOnTick()
 		}
 	}
