@@ -9,7 +9,7 @@ The Go server is the **sole analytics sender**. The extension sends no independe
 ```
 Extension UI action ──> sync payload (features_used) ──┐
                                                         ├──> Go UsageCounter + Session Manager ──> usage_summary / lifecycle beacon
-MCP tool call ──> server-side Increment("tool:mode") ──┘
+MCP tool call ──> server-side Increment("<family>:<what>") ──┘
 ```
 
 ## Install ID
@@ -80,12 +80,12 @@ All telemetry beacons use this top-level envelope:
 
 | Prefix | Source | Example |
 |--------|--------|---------|
-| `tool:mode` | MCP tool call (server-side) | `observe:errors`, `interact:click`, `generate:test` |
-| `ext:feature` | Extension UI action (via sync) | `ext:screenshot`, `ext:annotations`, `ext:video`, `ext:dom_action` |
+| `observe:*`, `interact:*`, `generate:*`, `analyze:*`, `configure:*` | MCP tool call (server-side) | `observe:errors`, `interact:click`, `generate:test`, `analyze:performance`, `configure:noise_rule` |
+| `ext:*` | Extension UI action (via sync) | `ext:screenshot`, `ext:annotations`, `ext:video`, `ext:dom_action` |
 
 ### MCP Tool Tracking
 
-All 5 tools dispatch on the `what` parameter. The server increments `tool:what` on every call:
+All 5 tools dispatch on the `what` parameter. The server increments `<family>:what` on every call, where `family` is one of `observe`, `interact`, `generate`, `analyze`, or `configure`:
 
 - `observe:errors`, `observe:logs`, `observe:screenshot`, `observe:network_waterfall`, `observe:actions`, `observe:page`, ...
 - `interact:click`, `interact:type`, `interact:navigate`, `interact:execute_js`, ...
@@ -93,7 +93,7 @@ All 5 tools dispatch on the `what` parameter. The server increments `tool:what` 
 - `configure:noise_rule`, `configure:streaming`, `configure:health`, ...
 - `analyze:accessibility`, `analyze:performance`, ...
 
-If `what` is missing, the key is `tool:unknown`.
+If `what` is missing, the server should not emit a malformed metric key.
 
 ### Extension UI Feature Tracking
 

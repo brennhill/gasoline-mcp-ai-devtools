@@ -6,11 +6,11 @@ export default defineConfig({
   site: 'https://gokaboom.dev',
   integrations: [
     starlight({
-      title: 'KaBOOM',
+      title: 'KaBOOM!',
       description: 'Build web apps faster with interactive design, coding, and debugging.',
       logo: {
         src: './src/assets/logo.svg',
-        alt: 'KaBOOM'
+        alt: 'KaBOOM!'
       },
       favicon: '/images/logo.png',
       social: [

@@ -242,62 +242,6 @@ const solutions = [
       <p>Resources are lazy-loaded (only fetched when read), so they don't count on init. Max token load is under 10k, but most workflows stay under 4k.</p>
     </header>
 
-    <div class="gmodern-token-table">
-      <table>
-        <thead>
-          <tr>
-            <th>Component</th>
-            <th>Chars</th>
-            <th>~Tokens</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>Server instructions</strong></td>
-            <td>2,392</td>
-            <td>~600</td>
-          </tr>
-          <tr>
-            <td><strong>observe</strong> schema</td>
-            <td>5,764</td>
-            <td>~1,440</td>
-          </tr>
-          <tr>
-            <td><strong>analyze</strong> schema</td>
-            <td>5,302</td>
-            <td>~1,325</td>
-          </tr>
-          <tr>
-            <td><strong>generate</strong> schema</td>
-            <td>5,349</td>
-            <td>~1,337</td>
-          </tr>
-          <tr>
-            <td><strong>configure</strong> schema</td>
-            <td>7,972</td>
-            <td>~1,993</td>
-          </tr>
-          <tr>
-            <td><strong>interact</strong> schema</td>
-            <td>12,218</td>
-            <td>~3,054</td>
-          </tr>
-          <tr>
-            <td colspan="2"><strong>Total (all schemas loaded)</strong></td>
-            <td>~9,750</td>
-          </tr>
-          <tr>
-            <td colspan="2"><strong>Typical observe + analyze</strong></td>
-            <td>~3,400</td>
-          </tr>
-          <tr>
-            <td colspan="2"><strong>Typical debugging workflow</strong></td>
-            <td>~2,600</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
     <div class="gmodern-token-callout">
       <p><strong>Lazy-load strategy:</strong> Load only the schemas you need for your task. Observe errors? Load just observe (~1.4k). Debugging? Load observe + analyze (~2.6k). Full tool palette? All schemas load on demand, capped at ~9.75k.</p>
     </div>
