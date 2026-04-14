@@ -94,6 +94,17 @@ func BeaconUsageSummary(windowMinutes int, props map[string]int) {
 	fireBeacon(payload)
 }
 
+// BuildUsageSummaryPayload builds the beacon payload without sending it.
+// Used by debug endpoints to inspect what would be sent.
+func BuildUsageSummaryPayload(windowMinutes int, props map[string]int) map[string]any {
+	payload := buildEnvelope("usage_summary")
+	payload["window_m"] = windowMinutes
+	if props != nil {
+		payload["props"] = props
+	}
+	return payload
+}
+
 func sendBeacon(event string, props map[string]string) {
 	if os.Getenv("Kaboom_TELEMETRY") == "off" {
 		return

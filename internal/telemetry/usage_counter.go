@@ -26,6 +26,17 @@ func (u *UsageCounter) Increment(key string) {
 	TouchSession()
 }
 
+// Peek returns a copy of the current counts without resetting.
+func (u *UsageCounter) Peek() map[string]int {
+	u.mu.Lock()
+	copy := make(map[string]int, len(u.counts))
+	for k, v := range u.counts {
+		copy[k] = v
+	}
+	u.mu.Unlock()
+	return copy
+}
+
 // SwapAndReset atomically returns the current counts and replaces with an empty map.
 func (u *UsageCounter) SwapAndReset() map[string]int {
 	u.mu.Lock()
