@@ -5,7 +5,6 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 
@@ -27,16 +26,16 @@ func handleDebugUsage(mcp *MCPHandler) http.HandlerFunc {
 		}
 		counter := mcp.GetUsageCounter()
 		if counter == nil {
-			writeJSON(w, http.StatusOK, map[string]any{"counts": map[string]int{}})
+			jsonResponse(w, http.StatusOK, map[string]any{"counts": map[string]int{}})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"counts": counter.Peek()})
+		jsonResponse(w, http.StatusOK, map[string]any{"counts": counter.Peek()})
 	}
 }
 
 // handleDebugBeaconFlush forces an immediate SwapAndReset on the UsageCounter
 // and returns the beacon payload that would be sent (with iid, sid, props).
-// Also fires the real beacon so the full pipeline is exercised.
+// Does NOT fire a real beacon — returns the payload for inspection only.
 // POST /debug/beacon-flush → {"payload": {"event":"usage_summary","iid":"...","sid":"...","props":{...},...}}
 func handleDebugBeaconFlush(mcp *MCPHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +45,7 @@ func handleDebugBeaconFlush(mcp *MCPHandler) http.HandlerFunc {
 		}
 		counter := mcp.GetUsageCounter()
 		if counter == nil {
-			writeJSON(w, http.StatusOK, map[string]any{
+			jsonResponse(w, http.StatusOK, map[string]any{
 				"payload":  nil,
 				"flushed":  0,
 				"message":  "no usage counter available",
@@ -55,7 +54,7 @@ func handleDebugBeaconFlush(mcp *MCPHandler) http.HandlerFunc {
 		}
 		snapshot := counter.SwapAndReset()
 		if len(snapshot) == 0 {
-			writeJSON(w, http.StatusOK, map[string]any{
+			jsonResponse(w, http.StatusOK, map[string]any{
 				"payload":  nil,
 				"flushed":  0,
 				"message":  "no activity since last flush",
@@ -66,15 +65,9 @@ func handleDebugBeaconFlush(mcp *MCPHandler) http.HandlerFunc {
 		// Build the payload to return for inspection (does not fire a real beacon).
 		payload := telemetry.BuildUsageSummaryPayload(0, snapshot)
 
-		writeJSON(w, http.StatusOK, map[string]any{
+		jsonResponse(w, http.StatusOK, map[string]any{
 			"payload": payload,
 			"flushed": len(snapshot),
 		})
 	}
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }

@@ -184,7 +184,7 @@ func TestUsageBeaconLoop_RespectsOptOut(t *testing.T) {
 	mu.Unlock()
 
 	if count != 0 {
-		t.Fatalf("beacon fired %d times with Kaboom_TELEMETRY=off, want 0", count)
+		t.Fatalf("beacon fired %d times with KABOOM_TELEMETRY=off, want 0", count)
 	}
 }
 

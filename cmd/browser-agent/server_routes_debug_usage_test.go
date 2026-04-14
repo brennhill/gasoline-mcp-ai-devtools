@@ -11,12 +11,37 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
-// stubMCPHandler returns an MCPHandler with a real ToolHandler and UsageCounter.
+// stubMCPHandler returns an MCPHandler with a ToolHandler that has the given UsageCounter.
+// Other ToolHandler fields are left at zero values — only usageCounter is needed for debug endpoints.
 func stubMCPHandler(counter *telemetry.UsageCounter) *MCPHandler {
 	h := &MCPHandler{}
-	th := &ToolHandler{usageCounter: counter}
-	h.toolHandler = th
+	if counter != nil {
+		th := &ToolHandler{usageCounter: counter}
+		h.toolHandler = th
+	}
 	return h
+}
+
+// M5: debugEndpointsEnabled respects KABOOM_DEBUG env var.
+func TestDebugEndpointsEnabled_Unset(t *testing.T) {
+	t.Setenv("KABOOM_DEBUG", "")
+	if debugEndpointsEnabled() {
+		t.Fatal("debugEndpointsEnabled() = true, want false when KABOOM_DEBUG is empty")
+	}
+}
+
+func TestDebugEndpointsEnabled_Set(t *testing.T) {
+	t.Setenv("KABOOM_DEBUG", "1")
+	if !debugEndpointsEnabled() {
+		t.Fatal("debugEndpointsEnabled() = false, want true when KABOOM_DEBUG=1")
+	}
+}
+
+func TestDebugEndpointsEnabled_WrongValue(t *testing.T) {
+	t.Setenv("KABOOM_DEBUG", "true")
+	if debugEndpointsEnabled() {
+		t.Fatal("debugEndpointsEnabled() = true, want false when KABOOM_DEBUG=true (must be exactly '1')")
+	}
 }
 
 func TestDebugUsage_GET_EmptyCounter(t *testing.T) {

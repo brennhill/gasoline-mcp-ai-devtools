@@ -3,6 +3,7 @@
 package telemetry
 
 import (
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -95,6 +96,7 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 					swapResults = append(swapResults, snapshot)
 					swapMu.Unlock()
 				}
+				runtime.Gosched() // yield to avoid burning CPU in tight loop
 			}
 		}
 	}()

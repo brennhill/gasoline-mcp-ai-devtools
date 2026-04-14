@@ -1,5 +1,7 @@
 // beacon_test.go — Tests for anonymous telemetry beacons.
-// Tests in this package must NOT use t.Parallel() due to shared package-level state.
+// Tests in this package must NOT use t.Parallel() due to shared package-level state
+// (endpoint, llmName, sem, session, installID). Refactoring to an injectable Beacon
+// struct would unlock parallelism — tracked as design debt, not a correctness issue.
 
 package telemetry
 
@@ -15,6 +17,15 @@ import (
 func TestBeaconError_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
 
+	fired := make(chan bool, 1)
+	setOnFireBeacon(func(sent bool) {
+		select {
+		case fired <- sent:
+		default:
+		}
+	})
+	defer setOnFireBeacon(nil)
+
 	var called bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
@@ -27,11 +38,17 @@ func TestBeaconError_DisabledByEnv(t *testing.T) {
 
 	BeaconError("test_event", map[string]string{"key": "val"})
 
-	// Give goroutine time to run (if it were going to).
-	time.Sleep(50 * time.Millisecond)
+	select {
+	case sent := <-fired:
+		if sent {
+			t.Fatal("beacon was sent despite KABOOM_TELEMETRY=off")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("onFireBeacon hook not called")
+	}
 
 	if called {
-		t.Fatal("BeaconError should not make HTTP calls when Kaboom_TELEMETRY=off")
+		t.Fatal("HTTP endpoint should not have been called when KABOOM_TELEMETRY=off")
 	}
 }
 
@@ -150,14 +167,20 @@ func TestBeaconEvent_IncludesVersion(t *testing.T) {
 }
 
 func TestBeaconError_IgnoresHTTPFailure(t *testing.T) {
-	// Point at a closed server — should not panic.
+	drainSem() // ensure clean semaphore from prior tests
+	// Point at a closed server — should not panic or block the caller.
 	overrideEndpoint("http://127.0.0.1:1") // nothing listening
 	defer resetEndpoint()
 
-	// Should not panic or block.
+	start := time.Now()
 	BeaconError("unreachable", map[string]string{"key": "val"})
-	time.Sleep(100 * time.Millisecond)
-	// If we got here without panic, the test passes.
+	elapsed := time.Since(start)
+
+	if elapsed > 100*time.Millisecond {
+		t.Fatalf("BeaconError blocked for %v on unreachable server, expected fire-and-forget", elapsed)
+	}
+	// The goroutine will fail in the background — that's fine. Give it time to clean up.
+	time.Sleep(50 * time.Millisecond)
 }
 
 // drainSem empties the semaphore so tests start from a clean state.
@@ -299,30 +322,95 @@ func TestBeacon_OmitsLLMNameWhenEmpty(t *testing.T) {
 func TestBeaconEvent_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
 
-	var called bool
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
+	fired := make(chan bool, 1)
+	setOnFireBeacon(func(sent bool) {
+		select {
+		case fired <- sent:
+		default:
+		}
+	})
+	defer setOnFireBeacon(nil)
 
-	overrideEndpoint(srv.URL)
+	overrideEndpoint("http://198.51.100.1:1")
 	defer resetEndpoint()
 
 	BeaconEvent("should_not_fire", nil)
-	time.Sleep(50 * time.Millisecond)
 
-	if called {
-		t.Fatal("BeaconEvent should not fire when KABOOM_TELEMETRY=off")
+	select {
+	case sent := <-fired:
+		if sent {
+			t.Fatal("BeaconEvent was sent despite KABOOM_TELEMETRY=off")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("onFireBeacon hook not called")
 	}
 }
 
 func TestBeaconUsageSummary_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
 
-	var called bool
+	fired := make(chan bool, 1)
+	setOnFireBeacon(func(sent bool) {
+		select {
+		case fired <- sent:
+		default:
+		}
+	})
+	defer setOnFireBeacon(nil)
+
+	overrideEndpoint("http://198.51.100.1:1")
+	defer resetEndpoint()
+
+	BeaconUsageSummary(5, map[string]int{"observe:page": 1})
+
+	select {
+	case sent := <-fired:
+		if sent {
+			t.Fatal("BeaconUsageSummary was sent despite KABOOM_TELEMETRY=off")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("onFireBeacon hook not called")
+	}
+}
+
+// M4: Case-insensitive opt-out.
+func TestBeaconEvent_DisabledByEnv_CaseInsensitive(t *testing.T) {
+	t.Setenv("KABOOM_TELEMETRY", "OFF")
+
+	fired := make(chan bool, 1)
+	setOnFireBeacon(func(sent bool) {
+		select {
+		case fired <- sent:
+		default:
+		}
+	})
+	defer setOnFireBeacon(nil)
+
+	overrideEndpoint("http://198.51.100.1:1")
+	defer resetEndpoint()
+
+	BeaconEvent("case_test", nil)
+
+	select {
+	case sent := <-fired:
+		if sent {
+			t.Fatal("BeaconEvent was sent despite KABOOM_TELEMETRY=OFF (uppercase)")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("onFireBeacon hook not called")
+	}
+}
+
+// L1: BeaconUsageSummary with nil props.
+func TestBeaconUsageSummary_NilProps(t *testing.T) {
+	received := make(chan map[string]any, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -330,11 +418,21 @@ func TestBeaconUsageSummary_DisabledByEnv(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
-	BeaconUsageSummary(5, map[string]int{"observe:page": 1})
-	time.Sleep(50 * time.Millisecond)
+	BeaconUsageSummary(5, nil)
 
-	if called {
-		t.Fatal("BeaconUsageSummary should not fire when KABOOM_TELEMETRY=off")
+	var body map[string]any
+	select {
+	case body = <-received:
+	case <-time.After(2 * time.Second):
+		t.Fatal("beacon not received")
+	}
+
+	if body["event"] != "usage_summary" {
+		t.Errorf("event = %v, want usage_summary", body["event"])
+	}
+	// nil props should not produce a "props" key
+	if _, exists := body["props"]; exists {
+		t.Errorf("props should be absent for nil input, got %v", body["props"])
 	}
 }
 

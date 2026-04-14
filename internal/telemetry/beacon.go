@@ -118,8 +118,32 @@ func telemetryOptedOut() bool {
 	return strings.EqualFold(os.Getenv("KABOOM_TELEMETRY"), "off")
 }
 
+// onFireBeaconMu protects the onFireBeacon test hook from concurrent access.
+var onFireBeaconMu sync.Mutex
+
+// onFireBeacon is a test hook called after fireBeacon decides to send or drop.
+// When nil (production), no notification is sent. The bool arg is true if sent, false if dropped.
+var onFireBeacon func(sent bool)
+
+// setOnFireBeacon sets the test hook (use nil to clear).
+func setOnFireBeacon(fn func(sent bool)) {
+	onFireBeaconMu.Lock()
+	onFireBeacon = fn
+	onFireBeaconMu.Unlock()
+}
+
+func callOnFireBeacon(sent bool) {
+	onFireBeaconMu.Lock()
+	fn := onFireBeacon
+	onFireBeaconMu.Unlock()
+	if fn != nil {
+		fn(sent)
+	}
+}
+
 func fireBeacon(payload map[string]any) {
 	if telemetryOptedOut() {
+		callOnFireBeacon(false)
 		return
 	}
 
@@ -139,14 +163,17 @@ func fireBeacon(payload map[string]any) {
 
 			resp, err := beaconClient.Post(ep, "application/json", bytes.NewReader(data))
 			if err != nil {
+				callOnFireBeacon(false)
 				return // best-effort
 			}
 			// Drain body before close so the HTTP transport can reuse the connection.
 			_, _ = io.Copy(io.Discard, resp.Body)
 			_ = resp.Body.Close()
+			callOnFireBeacon(true)
 		})
 	default:
 		// At capacity, drop this beacon silently
+		callOnFireBeacon(false)
 	}
 }
 
