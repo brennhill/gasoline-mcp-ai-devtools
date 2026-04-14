@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-04-03
+last_reviewed: 2026-04-13
 owners:
   - Brenn
-last_verified_version: 0.8.1
-last_verified_date: 2026-04-03
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-13
 ---
 
 # Flow Maps
@@ -50,6 +50,7 @@ Each flow map should include:
 - [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
 - [DOM Selector Resolution and Disambiguation](./dom-selector-resolution-and-disambiguation.md)
 - [DRY Test Helpers and Daemon Header Consolidation](./dry-test-helper-and-daemon-header-consolidation.md)
+- [Extension Heartbeat Connection Status](./extension-heartbeat-connection-status.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
 - [Network Recording Control](./network-recording-control.md)
 - [Observe Dispatch and Augmentation](./observe-dispatch-and-augmentation.md)

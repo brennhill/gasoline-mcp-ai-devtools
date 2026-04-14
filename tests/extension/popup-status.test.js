@@ -105,7 +105,7 @@ describe('Popup State Display', () => {
     assert.strictEqual(entriesEl.textContent, '42 / 1000')
   })
 
-  test('should display disconnected status when server is down', async () => {
+  test('should display offline status when server is down', async () => {
     const { updateConnectionStatus } = await import('../../extension/popup.js')
 
     updateConnectionStatus({
@@ -116,7 +116,7 @@ describe('Popup State Display', () => {
     const statusEl = mockDocument.getElementById('status')
 
     assert.ok(statusEl.classList.add.mock.calls.some((c) => c.arguments[0] === 'disconnected'))
-    assert.ok(statusEl.textContent.toLowerCase().includes('disconnected'))
+    assert.ok(statusEl.textContent.toLowerCase().includes('offline'))
   })
 
   test('should show error message when disconnected', async () => {
@@ -129,6 +129,21 @@ describe('Popup State Display', () => {
 
     const errorEl = mockDocument.getElementById('error-message')
     assert.ok(errorEl.textContent.includes('Connection refused'))
+  })
+
+  test('should render offline when daemon is reachable but heartbeat is missing', async () => {
+    const { updateConnectionStatus } = await import('../../extension/popup.js')
+
+    updateConnectionStatus({
+      connected: false,
+      error: 'Server reachable, but extension heartbeat is missing. Open the Kaboom popup and click "Track This Tab".'
+    })
+
+    const statusEl = mockDocument.getElementById('status')
+    const errorEl = mockDocument.getElementById('error-message')
+
+    assert.ok(statusEl.textContent.toLowerCase().includes('offline'))
+    assert.ok(errorEl.textContent.includes('heartbeat'))
   })
 
   test('should show insecure debug warning when security mode is insecure_proxy', async () => {
@@ -305,7 +320,7 @@ describe('Status Updates', () => {
     await initPopup()
 
     // Simulate status update from background
-    messageHandler({ type: 'statusUpdate', status: { connected: true, entries: 100 } })
+    messageHandler({ type: 'status_update', status: { connected: true, entries: 100 } })
 
     const statusEl = mockDocument.getElementById('status')
     assert.ok(statusEl.classList.add.mock.calls.some((c) => c.arguments[0] === 'connected'))
@@ -323,7 +338,7 @@ describe('Status Updates', () => {
     await initPopup()
 
     messageHandler({
-      type: 'statusUpdate',
+      type: 'status_update',
       status: {
         connected: true,
         errorCount: 5
