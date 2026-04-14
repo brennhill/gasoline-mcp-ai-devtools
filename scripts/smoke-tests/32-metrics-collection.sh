@@ -10,6 +10,17 @@ ensure_daemon
 USAGE_URL="http://127.0.0.1:${PORT}/debug/usage"
 FLUSH_URL="http://127.0.0.1:${PORT}/debug/beacon-flush"
 
+# Debug endpoints require KABOOM_DEBUG=1. Check if they're available.
+_debug_probe=$(curl -s --connect-timeout 2 "$USAGE_URL" 2>/dev/null || echo "")
+if echo "$_debug_probe" | grep -q '"error"' || [ -z "$_debug_probe" ]; then
+    echo "  NOTE: Debug endpoints not available (start daemon with KABOOM_DEBUG=1)."
+    echo "  Skipping metrics collection tests."
+    skip "Debug endpoints require KABOOM_DEBUG=1. Restart daemon with: KABOOM_DEBUG=1 kaboom-agentic-browser --daemon --port $PORT"
+    skip "Debug endpoints require KABOOM_DEBUG=1."
+    skip "Debug endpoints require KABOOM_DEBUG=1."
+    return 0 2>/dev/null || exit 0
+fi
+
 # ── Test 32.1: Tool calls populate UsageCounter ──────────
 begin_test "32.1" "[DAEMON ONLY] All 5 tools populate UsageCounter" \
     "Call each tool once, verify /debug/usage has tool:mode keys for all 5" \

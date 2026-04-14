@@ -1,14 +1,21 @@
 // server_routes_debug_usage.go — Debug endpoints for telemetry usage inspection.
 // Why: Exposes UsageCounter state and beacon payload for smoke testing the analytics pipeline.
+// Gated behind KABOOM_DEBUG=1 environment variable — not registered in production.
 
 package main
 
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
+
+// debugEndpointsEnabled returns true when KABOOM_DEBUG=1 is set.
+func debugEndpointsEnabled() bool {
+	return os.Getenv("KABOOM_DEBUG") == "1"
+}
 
 // handleDebugUsage returns the current UsageCounter snapshot without resetting.
 // GET /debug/usage → {"counts": {"observe:page": 3, "interact:click": 1, ...}}
@@ -56,11 +63,8 @@ func handleDebugBeaconFlush(mcp *MCPHandler) http.HandlerFunc {
 			return
 		}
 
-		// Build the payload to return for inspection.
+		// Build the payload to return for inspection (does not fire a real beacon).
 		payload := telemetry.BuildUsageSummaryPayload(0, snapshot)
-
-		// Fire the real beacon so the full pipeline is exercised.
-		telemetry.BeaconUsageSummary(0, snapshot)
 
 		writeJSON(w, http.StatusOK, map[string]any{
 			"payload": payload,

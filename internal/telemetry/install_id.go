@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -42,8 +43,11 @@ func loadOrGenerateInstallID() string {
 
 	// Try to read existing file.
 	data, err := os.ReadFile(idPath)
-	if err == nil && len(data) > 0 {
-		return string(data)
+	if err == nil {
+		id := strings.TrimSpace(string(data))
+		if id != "" {
+			return id
+		}
 	}
 
 	// Generate a new random ID.

@@ -20,9 +20,9 @@ var session struct {
 }
 
 // GetSessionID returns the current session ID, creating or rotating as needed.
-// Read-only: does NOT refresh lastSeen. Only TouchSession (called from
+// Does NOT refresh lastSeen on existing sessions — only TouchSession (called from
 // UsageCounter.Increment and feature callbacks) extends the session.
-// A new session is minted if none exists or the previous one expired.
+// When minting a new session (first call or after timeout), sets lastSeen to now.
 func GetSessionID() string {
 	session.mu.Lock()
 	defer session.mu.Unlock()

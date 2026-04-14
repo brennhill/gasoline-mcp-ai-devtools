@@ -133,7 +133,7 @@ func TestUsageBeaconLoop_SkipsWhenIdle(t *testing.T) {
 }
 
 func TestUsageBeaconLoop_RespectsOptOut(t *testing.T) {
-	t.Setenv("Kaboom_TELEMETRY", "off")
+	t.Setenv("KABOOM_TELEMETRY", "off")
 
 	var mu sync.Mutex
 	callCount := 0

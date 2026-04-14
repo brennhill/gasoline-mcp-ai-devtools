@@ -417,11 +417,12 @@ start_daemon() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
     # --parallel: isolate state dir so parallel test daemons don't trigger takeover logic
+    # KABOOM_DEBUG=1: enable debug endpoints (/debug/usage, /debug/beacon-flush) for metrics tests
     if [ -n "${KABOOM_UAT_GOCOVERDIR:-}" ]; then
         mkdir -p "${KABOOM_UAT_GOCOVERDIR}"
-        nohup env GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --parallel --port "$PORT" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --parallel --port "$PORT" >/dev/null 2>&1 < /dev/null &
     else
-        nohup "$WRAPPER" --daemon --parallel --port "$PORT" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 "$WRAPPER" --daemon --parallel --port "$PORT" >/dev/null 2>&1 < /dev/null &
     fi
     DAEMON_PID=$!
     if ! wait_for_health 50; then
@@ -438,11 +439,12 @@ start_daemon_with_flags() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
     # --parallel: isolate state dir so parallel test daemons don't trigger takeover logic
+    # KABOOM_DEBUG=1: enable debug endpoints for metrics tests
     if [ -n "${KABOOM_UAT_GOCOVERDIR:-}" ]; then
         mkdir -p "${KABOOM_UAT_GOCOVERDIR}"
-        nohup env GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --parallel --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --parallel --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
     else
-        nohup "$WRAPPER" --daemon --parallel --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 "$WRAPPER" --daemon --parallel --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
     fi
     DAEMON_PID=$!
     if ! wait_for_health 50; then

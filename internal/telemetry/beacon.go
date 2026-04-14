@@ -1,13 +1,15 @@
-// beacon.go — Anonymous telemetry beacons. Disable with Kaboom_TELEMETRY=off.
+// beacon.go — Anonymous telemetry beacons. Disable with KABOOM_TELEMETRY=off.
 
 package telemetry
 
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -81,10 +83,6 @@ func BeaconEvent(event string, props map[string]string) {
 // BeaconUsageSummary fires an aggregated usage beacon with integer counters.
 // window_m is the aggregation window in minutes. props keys are "tool:mode" or "ext:feature".
 func BeaconUsageSummary(windowMinutes int, props map[string]int) {
-	if os.Getenv("Kaboom_TELEMETRY") == "off" {
-		return
-	}
-
 	payload := buildEnvelope("usage_summary")
 	payload["window_m"] = windowMinutes
 	if props != nil {
@@ -106,10 +104,6 @@ func BuildUsageSummaryPayload(windowMinutes int, props map[string]int) map[strin
 }
 
 func sendBeacon(event string, props map[string]string) {
-	if os.Getenv("Kaboom_TELEMETRY") == "off" {
-		return
-	}
-
 	payload := buildEnvelope(event)
 	if props != nil {
 		payload["props"] = props
@@ -118,7 +112,17 @@ func sendBeacon(event string, props map[string]string) {
 	fireBeacon(payload)
 }
 
+// telemetryOptedOut returns true if the user has disabled telemetry.
+// Accepts KABOOM_TELEMETRY=off (case-insensitive).
+func telemetryOptedOut() bool {
+	return strings.EqualFold(os.Getenv("KABOOM_TELEMETRY"), "off")
+}
+
 func fireBeacon(payload map[string]any) {
+	if telemetryOptedOut() {
+		return
+	}
+
 	beaconMu.RLock()
 	ep := endpoint
 	beaconMu.RUnlock()
@@ -137,6 +141,8 @@ func fireBeacon(payload map[string]any) {
 			if err != nil {
 				return // best-effort
 			}
+			// Drain body before close so the HTTP transport can reuse the connection.
+			_, _ = io.Copy(io.Discard, resp.Body)
 			_ = resp.Body.Close()
 		})
 	default:

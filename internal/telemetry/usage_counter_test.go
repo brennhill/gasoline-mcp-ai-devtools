@@ -152,6 +152,22 @@ func TestUsageCounter_Peek(t *testing.T) {
 	}
 }
 
+func TestUsageCounter_PeekEmpty(t *testing.T) {
+	c := NewUsageCounter()
+	peeked := c.Peek()
+	if len(peeked) != 0 {
+		t.Fatalf("Peek on new counter returned %d entries, want 0", len(peeked))
+	}
+}
+
+func TestUsageCounter_SwapAndResetEmpty(t *testing.T) {
+	c := NewUsageCounter()
+	snapshot := c.SwapAndReset()
+	if len(snapshot) != 0 {
+		t.Fatalf("SwapAndReset on new counter returned %d entries, want 0", len(snapshot))
+	}
+}
+
 func TestUsageCounter_MultipleKeys(t *testing.T) {
 	c := NewUsageCounter()
 	c.Increment("observe:errors")

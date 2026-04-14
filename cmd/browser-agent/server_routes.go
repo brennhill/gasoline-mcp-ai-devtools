@@ -124,9 +124,12 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 	// NOT MCP — Token savings tracking from hook scripts (POST from output-compression-hook.sh)
 	mux.HandleFunc("/api/token-savings", corsMiddleware(tracking.HandleRecordTokenSavings(server.tokenTracker)))
 
-	// NOT MCP — Debug: telemetry usage counter inspection and beacon flush
-	mux.HandleFunc("/debug/usage", corsMiddleware(handleDebugUsage(mcp)))
-	mux.HandleFunc("/debug/beacon-flush", corsMiddleware(handleDebugBeaconFlush(mcp)))
+	// NOT MCP — Debug: telemetry usage counter inspection and beacon flush.
+	// Gated behind KABOOM_DEBUG=1 to prevent accidental exposure in production.
+	if debugEndpointsEnabled() {
+		mux.HandleFunc("/debug/usage", corsMiddleware(handleDebugUsage(mcp)))
+		mux.HandleFunc("/debug/beacon-flush", corsMiddleware(handleDebugBeaconFlush(mcp)))
+	}
 
 	// NOT MCP — Graceful shutdown (use CLI --stop flag, not MCP)
 	mux.HandleFunc("/shutdown", corsMiddleware(extensionOnly(func(w http.ResponseWriter, r *http.Request) {

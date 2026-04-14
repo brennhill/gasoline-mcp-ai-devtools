@@ -174,6 +174,8 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 		}
 	}
 
+	// Health metrics: local-only monotonic counters for the MCP health dashboard.
+	// Never beaconed — survives counter resets. Exposed via configure(what='health').
 	if h.healthMetrics != nil {
 		h.healthMetrics.IncrementRequest(name)
 		if resp.Error != nil || resultIsError {
@@ -186,7 +188,8 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 
 	h.recordAuditToolCall(req, name, args, resp, start)
 
-	// Increment usage counter for periodic beacon aggregation.
+	// Usage counter: anonymous aggregated telemetry beaconed every 5 min, then reset.
+	// Separate from healthMetrics — different lifecycle and purpose.
 	if h.usageCounter != nil {
 		what := extractWhatParam(args)
 		if what == "" {
