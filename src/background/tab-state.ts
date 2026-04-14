@@ -407,7 +407,14 @@ export async function setKaboomOverlayVisibility(tabId: number, visible: boolean
         ]
         for (const id of ids) {
           const el = document.getElementById(id)
-          if (el) el.style.display = show ? '' : 'none'
+          if (!el) continue
+          if (show) {
+            // Restore display:flex (the launcher root is a flex container).
+            // Setting '' would clear it to block, breaking the layout.
+            el.style.display = 'flex'
+          } else {
+            el.style.display = 'none'
+          }
         }
       },
       args: [visible]
