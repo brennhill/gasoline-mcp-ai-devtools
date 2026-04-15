@@ -10,6 +10,7 @@ import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
 import { getLocal } from '../lib/storage-utils.js';
 import { errorMessage } from '../lib/error-utils.js';
+import { trackUIFeature } from './ui-usage-tracker.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { buildScreenRecordingSlug } from './recording-utils.js';
 import { stopRecordingBadgeTimer } from './recording-badge.js';
@@ -65,6 +66,7 @@ export function installRecordingListeners(deps) {
         if (sender.id !== chrome.runtime.id)
             return false;
         if (message.type === 'screen_recording_start') {
+            trackUIFeature('video');
             console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio });
             resolvePopupRecordingTargetTab().then((targetTab) => {
                 const slug = buildScreenRecordingSlug(targetTab?.url);

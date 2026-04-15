@@ -139,7 +139,7 @@ else:
     if echo "$validation" | grep -q "VERDICT:PASS"; then
         pass "Refresh returns perf_diff with structured metrics + summary. $(echo "$validation" | head -1)"
     elif echo "$validation" | grep -q "VERDICT:NO_PERF_DIFF"; then
-        skip "Refresh succeeded but perf_diff is absent in current response contract."
+        skip "Refresh succeeded but perf_diff is absent — no baseline snapshot available for diff."
     else
         fail "Refresh perf_diff validation failed. $(echo "$validation" | head -1). Result: $(truncate "$INTERACT_RESULT" 300)"
     fi

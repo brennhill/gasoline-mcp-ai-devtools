@@ -15,6 +15,17 @@ export interface ServerHealthResponse {
     error?: string;
     version?: string;
     availableVersion?: string;
+    capture?: {
+        available?: boolean;
+        pilot_enabled?: boolean;
+        pilot_state?: string;
+        extension_connected?: boolean;
+        extension_last_seen?: string;
+        extension_client_id?: string;
+        security_mode?: string;
+        production_parity?: boolean;
+        insecure_rewrites?: number;
+    };
     logs?: {
         logFile?: string;
         logFileSize?: number;

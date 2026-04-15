@@ -10,6 +10,7 @@ import { toggleScreenRecording, buildActionSequenceRecordingName } from './keybo
 import { errorMessage } from '../lib/error-utils.js'
 import { toggleDrawModeForTab } from './draw-mode-toggle.js'
 import { setTrackedTab, clearTrackedTab } from './tab-state.js'
+import { trackUIFeature } from './ui-usage-tracker.js'
 
 // =============================================================================
 // CONTEXT MENU IDS
@@ -122,12 +123,14 @@ export function installContextMenus(
       }
     } else if (info.menuItemId === MENU_ID_SCREENSHOT) {
       try {
+        trackUIFeature('screenshot')
         chrome.tabs.sendMessage(tab.id, { type: 'capture_screenshot' })
       } catch {
         if (logFn) logFn('Cannot reach content script for screenshot via context menu')
       }
     } else if (info.menuItemId === MENU_ID_RECORD) {
       try {
+        trackUIFeature('video')
         await toggleScreenRecording(recordingHandlers, tab, logFn)
       } catch (err) {
         if (logFn) logFn(`Context menu recording error: ${errorMessage(err)}`)
@@ -145,6 +148,7 @@ export function installContextMenus(
       }
     } else if (info.menuItemId === MENU_ID_ANNOTATE) {
       try {
+        trackUIFeature('annotations')
         await toggleDrawModeForTab(tab.id)
       } catch {
         if (logFn) logFn('Cannot reach content script for annotation via context menu')

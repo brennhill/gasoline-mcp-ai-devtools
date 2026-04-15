@@ -8,6 +8,7 @@ import { toggleScreenRecording, buildActionSequenceRecordingName } from './keybo
 import { errorMessage } from '../lib/error-utils.js';
 import { toggleDrawModeForTab } from './draw-mode-toggle.js';
 import { setTrackedTab, clearTrackedTab } from './tab-state.js';
+import { trackUIFeature } from './ui-usage-tracker.js';
 // =============================================================================
 // CONTEXT MENU IDS
 // =============================================================================
@@ -103,6 +104,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_SCREENSHOT) {
             try {
+                trackUIFeature('screenshot');
                 chrome.tabs.sendMessage(tab.id, { type: 'capture_screenshot' });
             }
             catch {
@@ -112,6 +114,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_RECORD) {
             try {
+                trackUIFeature('video');
                 await toggleScreenRecording(recordingHandlers, tab, logFn);
             }
             catch (err) {
@@ -136,6 +139,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_ANNOTATE) {
             try {
+                trackUIFeature('annotations');
                 await toggleDrawModeForTab(tab.id);
             }
             catch {

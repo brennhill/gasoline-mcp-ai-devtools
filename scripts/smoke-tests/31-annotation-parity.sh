@@ -5,6 +5,9 @@ set -eo pipefail
 
 begin_category "31" "Annotation Parity Gate" "8"
 
+# Ensure daemon is running — a prior test (e.g. 24.1) may have restarted it.
+ensure_daemon
+
 PARITY_SESSION_NAME="parity-${SMOKE_MARKER:-$(date +%s)}"
 PARITY_TAB_A=31001
 PARITY_TAB_B=31002

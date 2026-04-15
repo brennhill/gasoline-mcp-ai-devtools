@@ -127,7 +127,7 @@ No code-only refactor is considered complete until this documentation contract i
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **kaboom** (40282 symbols, 99146 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **gasoline** (40314 symbols, 99330 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -143,7 +143,7 @@ This project is indexed by GitNexus as **kaboom** (40282 symbols, 99146 relation
 
 1. `gitnexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
 2. `gitnexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
-3. `READ gitnexus://repo/kaboom/process/{processName}` — trace the full execution flow step by step
+3. `READ gitnexus://repo/gasoline/process/{processName}` — trace the full execution flow step by step
 4. For regressions: `gitnexus_detect_changes({scope: "compare", base_ref: "main"})` — see what your branch changed
 
 ## When Refactoring
@@ -182,10 +182,10 @@ This project is indexed by GitNexus as **kaboom** (40282 symbols, 99146 relation
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/kaboom/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/kaboom/clusters` | All functional areas |
-| `gitnexus://repo/kaboom/processes` | All execution flows |
-| `gitnexus://repo/kaboom/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/gasoline/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/gasoline/clusters` | All functional areas |
+| `gitnexus://repo/gasoline/processes` | All execution flows |
+| `gitnexus://repo/gasoline/process/{name}` | Step-by-step execution trace |
 
 ## Self-Check Before Finishing
 

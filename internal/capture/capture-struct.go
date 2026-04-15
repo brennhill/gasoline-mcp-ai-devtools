@@ -106,6 +106,7 @@ type Capture struct {
 
 	lifecycle          *LifecycleObserver // Typed event bus for lifecycle events (circuit breaker, extension state, buffer overflow). Has own lock — independent of Capture.mu. Delegates to internal/lifecycle.
 	navigationCallback func()             // Optional callback fired after a navigation action is ingested (called outside lock)
+	featuresCallback   func(map[string]bool) // Optional callback fired when extension reports feature usage (called outside lock)
 
 	// ============================================
 	// Version Information

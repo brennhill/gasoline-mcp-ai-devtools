@@ -18,10 +18,23 @@ func NewUsageCounter() *UsageCounter {
 }
 
 // Increment adds 1 to the count for the given key (e.g., "observe:errors").
+// Also refreshes the telemetry session to keep it alive during activity.
 func (u *UsageCounter) Increment(key string) {
 	u.mu.Lock()
 	u.counts[key]++
 	u.mu.Unlock()
+	TouchSession()
+}
+
+// Peek returns a copy of the current counts without resetting.
+func (u *UsageCounter) Peek() map[string]int {
+	u.mu.Lock()
+	copy := make(map[string]int, len(u.counts))
+	for k, v := range u.counts {
+		copy[k] = v
+	}
+	u.mu.Unlock()
+	return copy
 }
 
 // SwapAndReset atomically returns the current counts and replaces with an empty map.

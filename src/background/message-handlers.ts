@@ -29,6 +29,7 @@ import { errorMessage } from '../lib/error-utils.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
 import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js'
 import { resolveTerminalWorkspaceTarget, setKaboomOverlayVisibility } from './tab-state.js'
+import { trackUIFeature } from './ui-usage-tracker.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -279,6 +280,7 @@ function handleMessage(
       return true
 
     case 'capture_screenshot':
+      trackUIFeature('screenshot')
       handleCaptureScreenshot(sendResponse, deps)
       return true
 

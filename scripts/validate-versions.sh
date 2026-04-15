@@ -71,10 +71,17 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-if grep -q 'var version = "dev"' internal/export/export_sarif.go; then
-    echo "✅ internal/export/export_sarif.go uses build-time injected version fallback"
+if grep -q 'var version = "dev"' internal/export/export_sarif_types.go; then
+    echo "✅ internal/export/export_sarif_types.go uses build-time injected version fallback"
 else
-    echo "❌ internal/export/export_sarif.go missing build-time version fallback (var version = \"dev\")"
+    echo "❌ internal/export/export_sarif_types.go missing build-time version fallback (var version = \"dev\")"
+    ERRORS=$((ERRORS + 1))
+fi
+
+if grep -q "\"@anthropic/kaboom-ci\": \"$VERSION\"" packages/kaboom-playwright/package.json; then
+    echo "✅ packages/kaboom-playwright/package.json pins @anthropic/kaboom-ci to $VERSION"
+else
+    echo "❌ packages/kaboom-playwright/package.json does not pin @anthropic/kaboom-ci to $VERSION"
     ERRORS=$((ERRORS + 1))
 fi
 

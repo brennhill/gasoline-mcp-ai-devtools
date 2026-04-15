@@ -4,7 +4,6 @@
  */
 import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { StorageKey } from '../lib/constants.js';
-import { ALARM_NAME_ANALYTICS } from './analytics.js';
 import { getLocal, setLocal, setLocals, onStorageChanged } from '../lib/storage-utils.js';
 import { clearTrackedTab as clearTrackedTabState } from './tab-state.js';
 // Re-exports removed — consumers now import directly from tab-state.js, keyboard-shortcuts.js, context-menus.js
@@ -91,9 +90,6 @@ export function installAlarmListener(handlers) {
                 break;
             case ALARM_NAMES.ERROR_GROUP_CLEANUP:
                 handlers.onErrorGroupCleanup();
-                break;
-            case ALARM_NAME_ANALYTICS:
-                await handlers.onAnalyticsPing();
                 break;
         }
     });

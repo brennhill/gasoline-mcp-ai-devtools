@@ -29,12 +29,33 @@ export interface ServerHealthResponse {
   error?: string
   version?: string
   availableVersion?: string
+  capture?: {
+    available?: boolean
+    pilot_enabled?: boolean
+    pilot_state?: string
+    extension_connected?: boolean
+    extension_last_seen?: string
+    extension_client_id?: string
+    security_mode?: string
+    production_parity?: boolean
+    insecure_rewrites?: number
+  }
   logs?: {
     logFile?: string
     logFileSize?: number
     entries?: number
     maxEntries?: number
   }
+}
+
+function buildHeartbeatStatusError(capture: ServerHealthResponse['capture']): string {
+  if (!capture || typeof capture.extension_connected !== 'boolean') {
+    return 'Server reachable, but extension heartbeat status is unavailable. Update the server and extension, then reopen the popup.'
+  }
+  if (capture.extension_last_seen && capture.extension_last_seen.trim().length > 0) {
+    return `Server reachable, but extension heartbeat is stale (last seen ${capture.extension_last_seen}). Reopen the Kaboom popup and click "Track This Tab".`
+  }
+  return 'Server reachable, but extension heartbeat is missing. Open the Kaboom popup and click "Track This Tab".'
 }
 
 /**
@@ -155,6 +176,13 @@ export async function checkServerHealth(serverUrl: string): Promise<ServerHealth
       return {
         connected: false,
         error: 'Server returned invalid response - check Server URL in options'
+      }
+    }
+    if (data.capture?.extension_connected !== true) {
+      return {
+        ...data,
+        connected: false,
+        error: buildHeartbeatStatusError(data.capture)
       }
     }
     return {

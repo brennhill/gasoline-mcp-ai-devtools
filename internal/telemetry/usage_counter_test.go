@@ -3,6 +3,7 @@
 package telemetry
 
 import (
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -95,6 +96,7 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 					swapResults = append(swapResults, snapshot)
 					swapMu.Unlock()
 				}
+				runtime.Gosched() // yield to avoid burning CPU in tight loop
 			}
 		}
 	}()
@@ -121,6 +123,50 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 	expected := incrementors * incrementsEach
 	if total != expected {
 		t.Fatalf("total count = %d, want %d (counts were lost)", total, expected)
+	}
+}
+
+func TestUsageCounter_Peek(t *testing.T) {
+	c := NewUsageCounter()
+	c.Increment("observe:page")
+	c.Increment("observe:page")
+	c.Increment("interact:click")
+
+	peeked := c.Peek()
+	if peeked["observe:page"] != 2 {
+		t.Fatalf("peeked observe:page = %d, want 2", peeked["observe:page"])
+	}
+	if peeked["interact:click"] != 1 {
+		t.Fatalf("peeked interact:click = %d, want 1", peeked["interact:click"])
+	}
+
+	// Peek should not reset — counts should still be there.
+	peeked2 := c.Peek()
+	if peeked2["observe:page"] != 2 {
+		t.Fatalf("second peek observe:page = %d, want 2 (Peek should not reset)", peeked2["observe:page"])
+	}
+
+	// Mutating the returned map should not affect the counter.
+	peeked["observe:page"] = 999
+	peeked3 := c.Peek()
+	if peeked3["observe:page"] != 2 {
+		t.Fatalf("peek after mutation = %d, want 2 (returned map should be a copy)", peeked3["observe:page"])
+	}
+}
+
+func TestUsageCounter_PeekEmpty(t *testing.T) {
+	c := NewUsageCounter()
+	peeked := c.Peek()
+	if len(peeked) != 0 {
+		t.Fatalf("Peek on new counter returned %d entries, want 0", len(peeked))
+	}
+}
+
+func TestUsageCounter_SwapAndResetEmpty(t *testing.T) {
+	c := NewUsageCounter()
+	snapshot := c.SwapAndReset()
+	if len(snapshot) != 0 {
+		t.Fatalf("SwapAndReset on new counter returned %d entries, want 0", len(snapshot))
 	}
 }
 

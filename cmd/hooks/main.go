@@ -15,7 +15,7 @@ import (
 )
 
 // version is set at build time via -ldflags "-X main.version=..."
-var version = "0.8.1"
+var version = "0.8.2"
 
 const defaultDaemonPort = "7890"
 

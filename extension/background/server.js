@@ -6,6 +6,15 @@ import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { getExtensionVersion } from './version-check.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { buildDaemonHeaders } from '../lib/daemon-http.js';
+function buildHeartbeatStatusError(capture) {
+    if (!capture || typeof capture.extension_connected !== 'boolean') {
+        return 'Server reachable, but extension heartbeat status is unavailable. Update the server and extension, then reopen the popup.';
+    }
+    if (capture.extension_last_seen && capture.extension_last_seen.trim().length > 0) {
+        return `Server reachable, but extension heartbeat is stale (last seen ${capture.extension_last_seen}). Reopen the Kaboom popup and click "Track This Tab".`;
+    }
+    return 'Server reachable, but extension heartbeat is missing. Open the Kaboom popup and click "Track This Tab".';
+}
 /**
  * Get standard headers for API requests including version header
  */
@@ -90,6 +99,13 @@ export async function checkServerHealth(serverUrl) {
             return {
                 connected: false,
                 error: 'Server returned invalid response - check Server URL in options'
+            };
+        }
+        if (data.capture?.extension_connected !== true) {
+            return {
+                ...data,
+                connected: false,
+                error: buildHeartbeatStatusError(data.capture)
             };
         }
         return {

@@ -86,6 +86,41 @@ func TestGetInstallID_CreatesDirectory(t *testing.T) {
 	}
 }
 
+// #7: Install ID file with trailing newline should be trimmed.
+func TestGetInstallID_TrimsWhitespace(t *testing.T) {
+	dir := t.TempDir()
+	resetInstallIDState()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
+
+	// Write ID with trailing newline (common from echo "id" > file).
+	if err := os.WriteFile(filepath.Join(dir, "install_id"), []byte("aabbccddeeff\n"), 0600); err != nil {
+		t.Fatalf("failed to write test install_id: %v", err)
+	}
+
+	id := GetInstallID()
+	if id != "aabbccddeeff" {
+		t.Fatalf("GetInstallID() = %q, want %q (should trim whitespace)", id, "aabbccddeeff")
+	}
+}
+
+// #7: Install ID with spaces and carriage return should be trimmed.
+func TestGetInstallID_TrimsCarriageReturn(t *testing.T) {
+	dir := t.TempDir()
+	resetInstallIDState()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "install_id"), []byte("  aabbccddeeff\r\n"), 0600); err != nil {
+		t.Fatalf("failed to write test install_id: %v", err)
+	}
+
+	id := GetInstallID()
+	if id != "aabbccddeeff" {
+		t.Fatalf("GetInstallID() = %q, want %q", id, "aabbccddeeff")
+	}
+}
+
 func TestGetInstallID_ReadFailure(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("chmod 000 not effective on Windows")

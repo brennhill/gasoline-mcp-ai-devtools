@@ -4,7 +4,7 @@ feature_id: feature-backend-log-streaming
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-04-13
 code_paths:
   - internal/capture/accessor.go
   - internal/capture/buffer_clear.go
@@ -51,6 +51,7 @@ code_paths:
   - internal/capture/websocket-types.go
   - internal/capture/websocket.go
   - src/background/server.ts
+  - src/background/index.ts
   - src/background/sync-client.ts
   - src/lib/daemon-http.ts
   - src/lib/network.ts
@@ -64,8 +65,10 @@ test_paths:
   - internal/capture/extension_log_store_test.go
   - internal/capture/buffer_clear_test.go
   - tests/extension/sync-client.test.js
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+  - tests/extension/server.test.js
+  - tests/extension/background-batching.test.js
+last_verified_version: 0.8.1
+last_verified_date: 2026-04-13
 ---
 
 # Backend Log Streaming
@@ -95,3 +98,4 @@ last_verified_date: 2026-03-05
 - `internal/capture/sync_test_helpers_test.go` centralizes `/sync` request marshaling, transport dispatch, and response decoding helpers.
 - `internal/capture/sync_test.go` now reuses those helpers across heartbeat, adaptive polling, and command lifecycle tests.
 - Additional capture contract tests (`settings_path_test`, `coverage_gaps_part2_test`, `api_contract_test`) now reuse shared helper assertions to keep endpoint/status checks consistent.
+- `src/background/server.ts` now treats popup/background `connected` as daemon-confirmed heartbeat state instead of raw `/health` reachability.

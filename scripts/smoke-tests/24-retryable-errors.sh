@@ -14,7 +14,7 @@ run_test_24_1() {
     # Disconnect extension by stopping and restarting daemon fresh
     kill_server
     sleep 1
-    start_server_and_wait
+    start_daemon
 
     # Call observe immediately before extension can reconnect
     local response
@@ -126,3 +126,9 @@ run_test_24_2() {
     fi
 }
 run_test_24_2
+
+# Test 24.1 kills and restarts the daemon, which disconnects the extension.
+# Wait for the extension to reconnect so subsequent tests aren't poisoned.
+if type wait_for_extension &>/dev/null; then
+    wait_for_extension 10 || true
+fi

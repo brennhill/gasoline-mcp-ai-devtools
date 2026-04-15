@@ -153,6 +153,7 @@ MODULES=(
     "28-proof-first.sh"
     "29-framework-selector-resilience.sh"
     "31-annotation-parity.sh"
+    "32-metrics-collection.sh"
     "30-stability-shutdown.sh" # 30 must be last: it kills the daemon
 )
 

@@ -396,7 +396,8 @@ kill_server() {
 wait_for_health() {
     local max_attempts="${1:-50}"
     for i in $(seq 1 "$max_attempts"); do
-        if curl -s --connect-timeout 3 "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+        # Use 127.0.0.1 (not localhost) to skip IPv6 ::1 fallback delay — daemon binds IPv4 only
+        if curl -s --connect-timeout 3 "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
             return 0
         fi
         # Exponential backoff: 10ms → 50ms → 100ms
@@ -415,11 +416,13 @@ wait_for_health() {
 start_daemon() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
+    # --parallel: isolate state dir so parallel test daemons don't trigger takeover logic
+    # KABOOM_DEBUG=1: enable debug endpoints (/debug/usage, /debug/beacon-flush) for metrics tests
     if [ -n "${KABOOM_UAT_GOCOVERDIR:-}" ]; then
         mkdir -p "${KABOOM_UAT_GOCOVERDIR}"
-        nohup env GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --parallel --port "$PORT" >/dev/null 2>&1 < /dev/null &
     else
-        nohup "$WRAPPER" --daemon --port "$PORT" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 "$WRAPPER" --daemon --parallel --port "$PORT" >/dev/null 2>&1 < /dev/null &
     fi
     DAEMON_PID=$!
     if ! wait_for_health 50; then
@@ -428,18 +431,20 @@ start_daemon() {
     fi
     # Print daemon version to catch stale binary issues
     local daemon_ver
-    daemon_ver="$(curl -s --connect-timeout 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
+    daemon_ver="$(curl -s --connect-timeout 3 "http://127.0.0.1:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
     echo "  Daemon started: v${daemon_ver} (PID $DAEMON_PID, port $PORT)"
 }
 
 start_daemon_with_flags() {
     # Kill any existing daemon first to prevent PID leaks
     kill_server
+    # --parallel: isolate state dir so parallel test daemons don't trigger takeover logic
+    # KABOOM_DEBUG=1: enable debug endpoints for metrics tests
     if [ -n "${KABOOM_UAT_GOCOVERDIR:-}" ]; then
         mkdir -p "${KABOOM_UAT_GOCOVERDIR}"
-        nohup env GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 GOCOVERDIR="${KABOOM_UAT_GOCOVERDIR}" "$WRAPPER" --daemon --parallel --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
     else
-        nohup "$WRAPPER" --daemon --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
+        nohup env KABOOM_DEBUG=1 "$WRAPPER" --daemon --parallel --port "$PORT" "$@" >/dev/null 2>&1 < /dev/null &
     fi
     DAEMON_PID=$!
     if ! wait_for_health 50; then
@@ -448,12 +453,12 @@ start_daemon_with_flags() {
     fi
     # Print daemon version to catch stale binary issues
     local daemon_ver
-    daemon_ver="$(curl -s --connect-timeout 3 "http://localhost:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
+    daemon_ver="$(curl -s --connect-timeout 3 "http://127.0.0.1:${PORT}/health" 2>/dev/null | jq -r '.version // "unknown"' 2>/dev/null || echo "unknown")"
     echo "  Daemon started: v${daemon_ver} (PID $DAEMON_PID, port $PORT)"
 }
 
 ensure_daemon() {
-    if ! curl -s --connect-timeout 3 "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+    if ! curl -s --connect-timeout 3 "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
         start_daemon
     fi
 }

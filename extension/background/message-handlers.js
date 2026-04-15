@@ -9,6 +9,7 @@ import { errorMessage } from '../lib/error-utils.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { getLocal, getLocals } from '../lib/storage-utils.js';
 import { resolveTerminalWorkspaceTarget, setKaboomOverlayVisibility } from './tab-state.js';
+import { trackUIFeature } from './ui-usage-tracker.js';
 async function openTerminalSidePanel(tabId) {
     if (typeof chrome === 'undefined' || !chrome.sidePanel?.open) {
         return { success: false, error: 'side panel unavailable' };
@@ -164,6 +165,7 @@ function handleMessage(message, sender, sendResponse, deps) {
             handleGetDiagnosticState(sendResponse, deps);
             return true;
         case 'capture_screenshot':
+            trackUIFeature('screenshot');
             handleCaptureScreenshot(sendResponse, deps);
             return true;
         case 'set_source_map_enabled':

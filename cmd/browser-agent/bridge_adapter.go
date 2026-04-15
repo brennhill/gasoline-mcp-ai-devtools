@@ -10,6 +10,7 @@ import (
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 
 	bridgepkg "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/bridge"
 )
@@ -42,6 +43,9 @@ func initBridge() {
 		StoreBridgeFraming:    storeBridgeFraming,
 		SetPushClientCapabilities: func(caps push.ClientCapabilities) {
 			setPushClientCapabilities(caps)
+			if caps.ClientName != "" {
+				telemetry.SetLLMName(caps.ClientName)
+			}
 		},
 		ExtractClientCapabilities: func(rawParams json.RawMessage) push.ClientCapabilities {
 			return extractClientCapabilities(rawParams)

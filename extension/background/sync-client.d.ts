@@ -2,6 +2,10 @@
  * Purpose: Unified sync client that replaces multiple polling loops with a single /sync endpoint, handling settings, commands, and extension logs.
  * Docs: docs/features/feature/backend-log-streaming/index.md
  */
+/** Returns the server's install ID, or undefined if not yet received. */
+export declare function getServerInstallId(): string | undefined;
+/** Load persisted install ID from storage (call once on startup). */
+export declare function loadServerInstallId(): Promise<void>;
 /** Settings to send to server */
 export interface SyncSettings {
     pilot_enabled: boolean;
