@@ -20,6 +20,15 @@ var cachedInstallID string
 // installIDOnce ensures the install ID is loaded/generated exactly once.
 var installIDOnce sync.Once
 
+// firstToolCallMu protects first-tool-call state across goroutines.
+var firstToolCallMu sync.Mutex
+
+// firstToolCallOnce ensures the persisted state is loaded once per process.
+var firstToolCallOnce sync.Once
+
+// cachedFirstToolCallInstallID is the install ID that has already emitted first_tool_call.
+var cachedFirstToolCallInstallID string
+
 func defaultKaboomDir() string {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -61,6 +70,41 @@ func loadOrGenerateInstallID() string {
 	return id
 }
 
+func loadFirstToolCallInstallID() string {
+	data, err := os.ReadFile(filepath.Join(kaboomDir, "first_tool_call_install_id"))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+// markFirstToolCallEmittedForInstall persists first-tool state and returns true
+// only the first time it is called for the current install ID.
+func markFirstToolCallEmittedForInstall() bool {
+	firstToolCallMu.Lock()
+	defer firstToolCallMu.Unlock()
+
+	firstToolCallOnce.Do(func() {
+		cachedFirstToolCallInstallID = loadFirstToolCallInstallID()
+	})
+
+	installID := GetInstallID()
+	if cachedFirstToolCallInstallID == installID {
+		return false
+	}
+
+	cachedFirstToolCallInstallID = installID
+	if err := os.MkdirAll(kaboomDir, 0700); err == nil {
+		_ = os.WriteFile(
+			filepath.Join(kaboomDir, "first_tool_call_install_id"),
+			[]byte(installID),
+			0600,
+		)
+	}
+
+	return true
+}
+
 func generateRandomID() string {
 	b := make([]byte, 6)
 	if _, err := rand.Read(b); err != nil {
@@ -84,4 +128,10 @@ func resetKaboomDir() {
 func resetInstallIDState() {
 	installIDOnce = sync.Once{}
 	cachedInstallID = ""
+}
+
+// resetFirstToolCallState clears the cached first-tool-call state for testing.
+func resetFirstToolCallState() {
+	firstToolCallOnce = sync.Once{}
+	cachedFirstToolCallInstallID = ""
 }

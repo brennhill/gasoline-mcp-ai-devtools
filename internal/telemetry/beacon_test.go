@@ -330,6 +330,8 @@ func TestBeacon_OmitsLLMNameWhenEmpty(t *testing.T) {
 // #14: Opt-out tests for BeaconEvent and BeaconUsageSummary.
 func TestBeaconEvent_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
+	drainSem()
+	time.Sleep(10 * time.Millisecond) // let stale goroutines finish
 
 	fired := make(chan bool, 1)
 	setOnFireBeacon(func(sent bool) {

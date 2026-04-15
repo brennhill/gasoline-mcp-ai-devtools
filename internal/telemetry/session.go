@@ -30,28 +30,15 @@ func SetSessionEndCallback(fn func(reason string)) {
 	session.mu.Unlock()
 }
 
-// GetSessionID returns the current session ID, creating or rotating as needed.
-// Does NOT refresh lastSeen on existing sessions — only TouchSession (called from
-// UsageTracker.RecordToolCall and feature callbacks) extends the session.
-// When minting a new session (first call or after timeout), sets lastSeen to now.
-// Emits session_end("timeout") when rotating due to inactivity.
+// GetSessionID returns the current session ID, minting one if none exists.
+// Does NOT detect timeout rotation — that happens in TouchSession, which
+// is always called from RecordToolCall right after GetSessionID.
+// This keeps GetSessionID simple and race-free (no unlock/relock).
 func GetSessionID() string {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
-	rotated := false
-	if session.id != "" && !session.lastSeen.IsZero() && time.Since(session.lastSeen) > sessionTimeout {
-		rotated = true
-		cb := sessionEndCallback
-		// Unlock before callback to avoid deadlock (callback may call TouchSession).
-		session.mu.Unlock()
-		if cb != nil {
-			cb("timeout")
-		}
-		session.mu.Lock()
-	}
-
-	if session.id == "" || rotated {
+	if session.id == "" {
 		session.id = generateSessionID()
 		session.lastSeen = time.Now()
 	}
@@ -59,15 +46,29 @@ func GetSessionID() string {
 }
 
 // TouchSession refreshes the session's last-seen timestamp.
-// Called when telemetry-bearing activity occurs (tool calls, feature usage).
-// Mints a new session if none exists yet.
+// Detects timeout-based rotation: if lastSeen is older than sessionTimeout,
+// fires the session_end callback and mints a new session.
+// The callback is fired AFTER all state is updated and the lock is released,
+// so it's safe for the callback to call GetSessionID (no deadlock, no TOCTOU).
 func TouchSession() {
 	session.mu.Lock()
 	if session.id == "" {
 		session.id = generateSessionID()
 	}
+
+	var cb func(string)
+	if !session.lastSeen.IsZero() && time.Since(session.lastSeen) > sessionTimeout {
+		cb = sessionEndCallback
+		// Mint new session BEFORE releasing lock — no TOCTOU window.
+		session.id = generateSessionID()
+	}
 	session.lastSeen = time.Now()
 	session.mu.Unlock()
+
+	// Fire callback outside the lock. State is already consistent.
+	if cb != nil {
+		cb("timeout")
+	}
 }
 
 func generateSessionID() string {

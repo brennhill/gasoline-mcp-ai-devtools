@@ -28,7 +28,7 @@ func TestGetSessionID_StableWithinTimeout(t *testing.T) {
 	}
 }
 
-func TestGetSessionID_RotatesAfterInactivity(t *testing.T) {
+func TestTouchSession_RotatesAfterInactivity(t *testing.T) {
 	resetSessionState()
 	TouchSession()
 	id1 := GetSessionID()
@@ -38,10 +38,11 @@ func TestGetSessionID_RotatesAfterInactivity(t *testing.T) {
 	session.lastSeen = time.Now().Add(-sessionTimeout - time.Second)
 	session.mu.Unlock()
 
-	// GetSessionID detects expiry and mints a new session.
+	// TouchSession detects expiry and mints a new session.
+	TouchSession()
 	id2 := GetSessionID()
 	if id1 == id2 {
-		t.Error("GetSessionID() should have rotated after inactivity timeout")
+		t.Error("session should have rotated after inactivity timeout")
 	}
 }
 

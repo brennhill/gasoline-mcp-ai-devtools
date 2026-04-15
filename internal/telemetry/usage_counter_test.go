@@ -3,6 +3,9 @@
 package telemetry
 
 import (
+    "encoding/json"
+    "net/http"
+    "net/http/httptest"
 	"runtime"
 	"sync"
 	"testing"
@@ -222,6 +225,7 @@ func TestUsageTracker_RecordAsyncOutcome(t *testing.T) {
 	c := NewUsageTracker()
 	c.RecordAsyncOutcome("complete")
 	c.RecordAsyncOutcome("complete")
+	c.RecordAsyncOutcome("error")
 	c.RecordAsyncOutcome("timeout")
 	c.RecordAsyncOutcome("expired")
 
@@ -232,9 +236,279 @@ func TestUsageTracker_RecordAsyncOutcome(t *testing.T) {
 	if snapshot["async:timeout"] != 1 {
 		t.Fatalf("async:timeout = %d, want 1", snapshot["async:timeout"])
 	}
+	if snapshot["async:error"] != 1 {
+		t.Fatalf("async:error = %d, want 1", snapshot["async:error"])
+	}
 	if snapshot["async:expired"] != 1 {
 		t.Fatalf("async:expired = %d, want 1", snapshot["async:expired"])
 	}
+}
+
+func TestUsageTracker_FirstToolCallOnlyOncePerProcess(t *testing.T) {
+	drainSem()
+	t.Cleanup(drainSem)
+
+	resetInstallIDState()
+	dir := t.TempDir()
+	overrideKaboomDir(dir)
+	t.Cleanup(func() {
+		resetInstallIDState()
+		resetKaboomDir()
+	})
+
+	received := make(chan map[string]any, 20)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	tracker := NewUsageTracker()
+
+	// First call should fire session_start + tool_call + first_tool_call.
+	tracker.RecordToolCall("observe:page", 0, false)
+
+	waitForEvent := func(event string) map[string]any {
+		t.Helper()
+		for {
+			select {
+			case body := <-received:
+				if body["event"] == event {
+					return body
+				}
+			case <-time.After(3 * time.Second):
+				t.Fatalf("timed out waiting for %s beacon", event)
+			}
+		}
+	}
+
+	// All 3 events should arrive. Collect them all within timeout.
+	events := map[string]bool{}
+	for len(events) < 3 {
+		select {
+		case body := <-received:
+			if e, ok := body["event"].(string); ok {
+				events[e] = true
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatalf("timed out waiting for all 3 events, got: %v", events)
+		}
+	}
+	if !events["session_start"] {
+		t.Error("missing session_start")
+	}
+	if !events["tool_call"] {
+		t.Error("missing tool_call")
+	}
+	if !events["first_tool_call"] {
+		t.Error("missing first_tool_call")
+	}
+
+	// Second call on the same tracker should NOT fire first_tool_call again.
+	tracker.RecordToolCall("observe:errors", 0, false)
+	waitForEvent("tool_call")
+
+	// Brief wait — no first_tool_call should arrive.
+	select {
+	case body := <-received:
+		if body["event"] == "first_tool_call" {
+			t.Fatal("first_tool_call fired twice on the same tracker instance")
+		}
+	case <-time.After(200 * time.Millisecond):
+		// Good — no duplicate.
+	}
+}
+
+func TestUsageTracker_SessionStartOnlyOnFirstCall(t *testing.T) {
+	drainSem()
+	t.Cleanup(drainSem)
+
+	received := make(chan map[string]any, 20)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	tracker := NewUsageTracker()
+	tracker.RecordToolCall("a", 0, false)
+	tracker.RecordToolCall("b", 0, false)
+
+	// Drain all events.
+	sessionStarts := 0
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case body := <-received:
+			if body["event"] == "session_start" {
+				sessionStarts++
+			}
+		case <-deadline:
+			goto done
+		}
+	}
+done:
+	if sessionStarts != 1 {
+		t.Fatalf("session_start fired %d times, want exactly 1", sessionStarts)
+	}
+}
+
+func TestTouchSession_TimeoutEmitsSessionEnd(t *testing.T) {
+	drainSem()
+	t.Cleanup(drainSem)
+
+	received := make(chan map[string]any, 20)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	resetSessionState()
+	tracker := NewUsageTracker()
+	tracker.RecordToolCall("observe:page", 0, false)
+
+	// Simulate inactivity beyond timeout.
+	session.mu.Lock()
+	session.lastSeen = time.Now().Add(-sessionTimeout - time.Second)
+	session.mu.Unlock()
+
+	// TouchSession should detect expiry and fire session_end via callback.
+	TouchSession()
+
+	// Drain events looking for session_end.
+	for {
+		select {
+		case body := <-received:
+			if body["event"] == "session_end" {
+				if body["reason"] != "timeout" {
+					t.Errorf("session_end reason = %v, want timeout", body["reason"])
+				}
+				goto found
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatal("session_end(timeout) beacon not received")
+		}
+	}
+found:
+}
+
+func TestEmitSessionEnd_NoOpWhenNoCalls(t *testing.T) {
+	tracker := NewUsageTracker()
+
+	var called bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	tracker.EmitSessionEnd("test")
+	time.Sleep(50 * time.Millisecond)
+	if called {
+		t.Fatal("EmitSessionEnd should not fire when no calls were made")
+	}
+}
+
+func TestAppError_PayloadStructure(t *testing.T) {
+	drainSem()
+	received := make(chan map[string]any, 10)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	AppError("daemon_panic", "runtime error", map[string]string{"extra": "info"})
+
+	for {
+		select {
+		case body := <-received:
+			if body["event"] == "app_error" {
+				if body["category"] != "daemon_panic" {
+					t.Errorf("category = %v, want daemon_panic", body["category"])
+				}
+				if body["detail"] != "runtime error" {
+					t.Errorf("detail = %v, want runtime error", body["detail"])
+				}
+				if body["extra"] != "info" {
+					t.Errorf("extra = %v, want info", body["extra"])
+				}
+				if _, ok := body["iid"].(string); !ok {
+					t.Error("missing iid")
+				}
+				if _, ok := body["ts"].(string); !ok {
+					t.Error("missing ts")
+				}
+				goto done
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("app_error beacon not received")
+		}
+	}
+done:
+}
+
+func TestAppError_NilProps(t *testing.T) {
+	drainSem()
+	received := make(chan map[string]any, 10)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		select {
+		case received <- body:
+		default:
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	AppError("test_error", "detail", nil) // nil props should not panic
+
+	for {
+		select {
+		case body := <-received:
+			if body["event"] == "app_error" {
+				goto done
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("app_error beacon not received")
+		}
+	}
+done:
 }
 
 func TestUsageTracker_SessionDepth(t *testing.T) {
