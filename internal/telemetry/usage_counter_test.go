@@ -9,40 +9,40 @@ import (
 	"time"
 )
 
-func TestUsageCounter_Increment(t *testing.T) {
-	c := NewUsageCounter()
-	c.Increment("observe:errors")
-	c.Increment("observe:errors")
-	c.Increment("observe:errors")
+func TestUsageTracker_Increment(t *testing.T) {
+	c := NewUsageTracker()
+	c.RecordToolCall("observe:errors", 0, false)
+	c.RecordToolCall("observe:errors", 0, false)
+	c.RecordToolCall("observe:errors", 0, false)
 
-	counts := c.SwapAndReset()
+	counts := c.Peek()
 	if counts["observe:errors"] != 3 {
 		t.Fatalf("count = %d, want 3", counts["observe:errors"])
 	}
 }
 
-func TestUsageCounter_SwapAndReset(t *testing.T) {
-	c := NewUsageCounter()
-	c.Increment("observe:errors")
-	c.Increment("interact:click")
+func TestUsageTracker_SwapAndReset(t *testing.T) {
+	c := NewUsageTracker()
+	c.RecordToolCall("observe:errors", 0, false)
+	c.RecordToolCall("interact:click", 0, false)
 
-	old := c.SwapAndReset()
-	if old["observe:errors"] != 1 {
-		t.Fatalf("old[observe:errors] = %d, want 1", old["observe:errors"])
+	snapshot := c.SwapAndReset()
+	if snapshot == nil {
+		t.Fatal("snapshot is nil")
 	}
-	if old["interact:click"] != 1 {
-		t.Fatalf("old[interact:click] = %d, want 1", old["interact:click"])
+	if len(snapshot.ToolStats) != 2 {
+		t.Fatalf("ToolStats length = %d, want 2", len(snapshot.ToolStats))
 	}
 
-	// After swap, new map should be empty.
+	// After swap, should be empty.
 	fresh := c.SwapAndReset()
-	if len(fresh) != 0 {
-		t.Fatalf("fresh map has %d entries, want 0", len(fresh))
+	if fresh != nil {
+		t.Fatalf("second SwapAndReset returned %+v, want nil", fresh)
 	}
 }
 
-func TestUsageCounter_ConcurrentIncrement(t *testing.T) {
-	c := NewUsageCounter()
+func TestUsageTracker_ConcurrentIncrement(t *testing.T) {
+	c := NewUsageTracker()
 	const goroutines = 100
 
 	var wg sync.WaitGroup
@@ -50,24 +50,23 @@ func TestUsageCounter_ConcurrentIncrement(t *testing.T) {
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			defer wg.Done()
-			c.Increment("concurrent:key")
+			c.RecordToolCall("concurrent:key", 0, false)
 		}()
 	}
 	wg.Wait()
 
-	counts := c.SwapAndReset()
+	counts := c.Peek()
 	if counts["concurrent:key"] != goroutines {
 		t.Fatalf("count = %d, want %d", counts["concurrent:key"], goroutines)
 	}
 }
 
-func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
-	c := NewUsageCounter()
+func TestUsageTracker_ConcurrentSwapAndIncrement(t *testing.T) {
+	c := NewUsageTracker()
 	const incrementors = 100
 	const incrementsEach = 50
 
 	var wg sync.WaitGroup
-	var swapResults []map[string]int
 	var swapMu sync.Mutex
 
 	// Start incrementor goroutines.
@@ -76,7 +75,7 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < incrementsEach; j++ {
-				c.Increment("key")
+				c.RecordToolCall("key", 0, false)
 			}
 		}()
 	}
@@ -84,6 +83,7 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 	// Start a swapper goroutine that runs concurrently with incrementors.
 	stopSwapper := make(chan struct{})
 	swapperDone := make(chan struct{})
+	var snapshots []*UsageSnapshot
 	go func() {
 		defer close(swapperDone)
 		for {
@@ -92,9 +92,9 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 				return
 			default:
 				snapshot := c.SwapAndReset()
-				if len(snapshot) > 0 {
+				if snapshot != nil {
 					swapMu.Lock()
-					swapResults = append(swapResults, snapshot)
+					snapshots = append(snapshots, snapshot)
 					swapMu.Unlock()
 				}
 				runtime.Gosched() // yield to avoid burning CPU in tight loop
@@ -110,15 +110,18 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 	<-swapperDone
 
 	// Collect the final snapshot.
-	finalSnapshot := c.SwapAndReset()
-	if len(finalSnapshot) > 0 {
-		swapResults = append(swapResults, finalSnapshot)
+	if final := c.SwapAndReset(); final != nil {
+		snapshots = append(snapshots, final)
 	}
 
-	// Sum all counts across all swap results.
+	// Sum all counts across all snapshots.
 	total := 0
-	for _, snapshot := range swapResults {
-		total += snapshot["key"]
+	for _, snap := range snapshots {
+		for _, stat := range snap.ToolStats {
+			if stat.Tool == "key" {
+				total += stat.Count
+			}
+		}
 	}
 
 	expected := incrementors * incrementsEach
@@ -127,11 +130,11 @@ func TestUsageCounter_ConcurrentSwapAndIncrement(t *testing.T) {
 	}
 }
 
-func TestUsageCounter_Peek(t *testing.T) {
-	c := NewUsageCounter()
-	c.Increment("observe:page")
-	c.Increment("observe:page")
-	c.Increment("interact:click")
+func TestUsageTracker_Peek(t *testing.T) {
+	c := NewUsageTracker()
+	c.RecordToolCall("observe:page", 0, false)
+	c.RecordToolCall("observe:page", 0, false)
+	c.RecordToolCall("interact:click", 0, false)
 
 	peeked := c.Peek()
 	if peeked["observe:page"] != 2 {
@@ -155,50 +158,58 @@ func TestUsageCounter_Peek(t *testing.T) {
 	}
 }
 
-func TestUsageCounter_PeekEmpty(t *testing.T) {
-	c := NewUsageCounter()
+func TestUsageTracker_PeekEmpty(t *testing.T) {
+	c := NewUsageTracker()
 	peeked := c.Peek()
 	if len(peeked) != 0 {
 		t.Fatalf("Peek on new counter returned %d entries, want 0", len(peeked))
 	}
 }
 
-func TestUsageCounter_SwapAndResetEmpty(t *testing.T) {
-	c := NewUsageCounter()
+func TestUsageTracker_SwapAndResetEmpty(t *testing.T) {
+	c := NewUsageTracker()
 	snapshot := c.SwapAndReset()
-	if len(snapshot) != 0 {
-		t.Fatalf("SwapAndReset on new counter returned %d entries, want 0", len(snapshot))
+	if snapshot != nil {
+		t.Fatalf("SwapAndReset on empty tracker returned %+v, want nil", snapshot)
 	}
 }
 
-func TestUsageCounter_IncrementWithLatency(t *testing.T) {
-	c := NewUsageCounter()
-	c.IncrementWithLatency("observe:page", 50*time.Millisecond)
-	c.IncrementWithLatency("observe:page", 150*time.Millisecond)
-	c.IncrementWithLatency("interact:click", 30*time.Millisecond)
+func TestUsageTracker_RecordToolCallWithLatency(t *testing.T) {
+	c := NewUsageTracker()
+	c.RecordToolCall("observe:page", 50*time.Millisecond, false)
+	c.RecordToolCall("observe:page", 150*time.Millisecond, false)
+	c.RecordToolCall("interact:click", 30*time.Millisecond, false)
 
 	snapshot := c.SwapAndReset()
-	if snapshot["observe:page"] != 2 {
-		t.Fatalf("observe:page count = %d, want 2", snapshot["observe:page"])
+	if snapshot == nil {
+		t.Fatal("snapshot is nil")
 	}
-	if snapshot["lat_avg:observe:page"] != 100 {
-		t.Fatalf("lat_avg:observe:page = %d, want 100", snapshot["lat_avg:observe:page"])
-	}
-	if snapshot["lat_max:observe:page"] != 150 {
-		t.Fatalf("lat_max:observe:page = %d, want 150", snapshot["lat_max:observe:page"])
-	}
-	if snapshot["lat_avg:interact:click"] != 30 {
-		t.Fatalf("lat_avg:interact:click = %d, want 30", snapshot["lat_avg:interact:click"])
+	for _, s := range snapshot.ToolStats {
+		if s.Tool == "observe:page" {
+			if s.Count != 2 {
+				t.Fatalf("observe:page count = %d, want 2", s.Count)
+			}
+			if s.LatencyAvgMs != 100 {
+				t.Fatalf("observe:page lat_avg = %d, want 100", s.LatencyAvgMs)
+			}
+			if s.LatencyMaxMs != 150 {
+				t.Fatalf("observe:page lat_max = %d, want 150", s.LatencyMaxMs)
+			}
+		}
+		if s.Tool == "interact:click" {
+			if s.LatencyAvgMs != 30 {
+				t.Fatalf("interact:click lat_avg = %d, want 30", s.LatencyAvgMs)
+			}
+		}
 	}
 }
 
-func TestUsageCounter_IncrementError(t *testing.T) {
-	c := NewUsageCounter()
-	c.Increment("observe:page")
-	c.Increment("observe:page")
-	c.IncrementError("observe:page")
+func TestUsageTracker_RecordToolCallError(t *testing.T) {
+	c := NewUsageTracker()
+	c.RecordToolCall("observe:page", 0, false)
+	c.RecordToolCall("observe:page", 0, true) // error
 
-	snapshot := c.SwapAndReset()
+	snapshot := c.Peek()
 	if snapshot["observe:page"] != 2 {
 		t.Fatalf("observe:page = %d, want 2", snapshot["observe:page"])
 	}
@@ -207,14 +218,14 @@ func TestUsageCounter_IncrementError(t *testing.T) {
 	}
 }
 
-func TestUsageCounter_RecordAsyncOutcome(t *testing.T) {
-	c := NewUsageCounter()
+func TestUsageTracker_RecordAsyncOutcome(t *testing.T) {
+	c := NewUsageTracker()
 	c.RecordAsyncOutcome("complete")
 	c.RecordAsyncOutcome("complete")
 	c.RecordAsyncOutcome("timeout")
 	c.RecordAsyncOutcome("expired")
 
-	snapshot := c.SwapAndReset()
+	snapshot := c.Peek()
 	if snapshot["async:complete"] != 2 {
 		t.Fatalf("async:complete = %d, want 2", snapshot["async:complete"])
 	}
@@ -226,15 +237,15 @@ func TestUsageCounter_RecordAsyncOutcome(t *testing.T) {
 	}
 }
 
-func TestUsageCounter_SessionDepth(t *testing.T) {
-	c := NewUsageCounter()
+func TestUsageTracker_SessionDepth(t *testing.T) {
+	c := NewUsageTracker()
 	if c.SessionDepth() != 0 {
 		t.Fatalf("initial session depth = %d, want 0", c.SessionDepth())
 	}
 
-	c.Increment("a")
-	c.Increment("b")
-	c.IncrementWithLatency("c", time.Millisecond)
+	c.RecordToolCall("a", 0, false)
+	c.RecordToolCall("b", 0, false)
+	c.RecordToolCall("c", time.Millisecond, false)
 
 	if c.SessionDepth() != 3 {
 		t.Fatalf("session depth = %d, want 3", c.SessionDepth())
@@ -242,40 +253,43 @@ func TestUsageCounter_SessionDepth(t *testing.T) {
 
 	// SwapAndReset should include session_depth but NOT reset it.
 	snapshot := c.SwapAndReset()
-	if snapshot["session_depth"] != 3 {
-		t.Fatalf("session_depth in snapshot = %d, want 3", snapshot["session_depth"])
+	if snapshot == nil {
+		t.Fatal("snapshot is nil")
+	}
+	if snapshot.SessionDepth != 3 {
+		t.Fatalf("session_depth in snapshot = %d, want 3", snapshot.SessionDepth)
 	}
 	if c.SessionDepth() != 3 {
 		t.Fatalf("session depth after swap = %d, want 3 (should not reset)", c.SessionDepth())
 	}
 
 	// Further calls add to the running total.
-	c.Increment("d")
+	c.RecordToolCall("d", 0, false)
 	if c.SessionDepth() != 4 {
 		t.Fatalf("session depth after +1 = %d, want 4", c.SessionDepth())
 	}
 }
 
-func TestUsageCounter_LatencyNotIncludedWhenNoLatencyRecorded(t *testing.T) {
-	c := NewUsageCounter()
-	c.Increment("observe:page") // no latency variant
+func TestUsageTracker_LatencyNotIncludedWhenNoLatencyRecorded(t *testing.T) {
+	c := NewUsageTracker()
+	c.RecordToolCall("observe:page", 0, false) // no latency variant
 
-	snapshot := c.SwapAndReset()
+	snapshot := c.Peek()
 	if _, exists := snapshot["lat_avg:observe:page"]; exists {
 		t.Fatal("lat_avg should not exist when no latency was recorded")
 	}
 }
 
-func TestUsageCounter_MultipleKeys(t *testing.T) {
-	c := NewUsageCounter()
-	c.Increment("observe:errors")
-	c.Increment("observe:errors")
-	c.Increment("interact:click")
-	c.Increment("analyze:performance")
-	c.Increment("analyze:performance")
-	c.Increment("analyze:performance")
+func TestUsageTracker_MultipleKeys(t *testing.T) {
+	c := NewUsageTracker()
+	c.RecordToolCall("observe:errors", 0, false)
+	c.RecordToolCall("observe:errors", 0, false)
+	c.RecordToolCall("interact:click", 0, false)
+	c.RecordToolCall("analyze:performance", 0, false)
+	c.RecordToolCall("analyze:performance", 0, false)
+	c.RecordToolCall("analyze:performance", 0, false)
 
-	counts := c.SwapAndReset()
+	counts := c.Peek()
 	if counts["observe:errors"] != 2 {
 		t.Fatalf("observe:errors = %d, want 2", counts["observe:errors"])
 	}

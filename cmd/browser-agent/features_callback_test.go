@@ -10,20 +10,20 @@ import (
 )
 
 // makeFeaturesCallback reproduces the wiring from tools_core_constructor.go.
-func makeFeaturesCallback(counter *telemetry.UsageCounter) func(map[string]bool) {
+func makeFeaturesCallback(counter *telemetry.UsageTracker) func(map[string]bool) {
 	return func(features map[string]bool) {
 		for key, used := range features {
 			if used {
-				counter.Increment("ext:" + key)
+				counter.RecordToolCall("ext:"+key, 0, false)
 			}
 		}
 	}
 }
 
-func TestFeaturesCallbackWiresIntoUsageCounter(t *testing.T) {
+func TestFeaturesCallbackWiresIntoUsageTracker(t *testing.T) {
 	t.Parallel()
 
-	counter := telemetry.NewUsageCounter()
+	counter := telemetry.NewUsageTracker()
 	cb := makeFeaturesCallback(counter)
 
 	cb(map[string]bool{
@@ -33,7 +33,7 @@ func TestFeaturesCallbackWiresIntoUsageCounter(t *testing.T) {
 		"dom_action":  true,
 	})
 
-	counts := counter.SwapAndReset()
+	counts := counter.Peek()
 
 	if counts["ext:screenshot"] != 1 {
 		t.Errorf("ext:screenshot = %d, want 1", counts["ext:screenshot"])
@@ -52,7 +52,7 @@ func TestFeaturesCallbackWiresIntoUsageCounter(t *testing.T) {
 func TestFeaturesCallback_OnlyTrueValuesIncrement(t *testing.T) {
 	t.Parallel()
 
-	counter := telemetry.NewUsageCounter()
+	counter := telemetry.NewUsageTracker()
 	cb := makeFeaturesCallback(counter)
 
 	cb(map[string]bool{
@@ -60,7 +60,7 @@ func TestFeaturesCallback_OnlyTrueValuesIncrement(t *testing.T) {
 		"annotations": false,
 	})
 
-	counts := counter.SwapAndReset()
+	counts := counter.Peek()
 	if len(counts) != 0 {
 		t.Errorf("Expected empty counts for all-false features, got %v", counts)
 	}
@@ -69,13 +69,13 @@ func TestFeaturesCallback_OnlyTrueValuesIncrement(t *testing.T) {
 func TestFeaturesCallback_MultipleInvocations_Accumulate(t *testing.T) {
 	t.Parallel()
 
-	counter := telemetry.NewUsageCounter()
+	counter := telemetry.NewUsageTracker()
 	cb := makeFeaturesCallback(counter)
 
 	cb(map[string]bool{"screenshot": true})
 	cb(map[string]bool{"screenshot": true, "video": true})
 
-	counts := counter.SwapAndReset()
+	counts := counter.Peek()
 	if counts["ext:screenshot"] != 2 {
 		t.Errorf("ext:screenshot = %d, want 2", counts["ext:screenshot"])
 	}

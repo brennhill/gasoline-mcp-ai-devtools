@@ -110,43 +110,43 @@ func TestUsageKey_CommandResultMapsToOriginalCommand(t *testing.T) {
 	}
 }
 
-func TestGetUsageCounter(t *testing.T) {
+func TestGetUsageTracker(t *testing.T) {
 	t.Run("happy path returns counter", func(t *testing.T) {
 		handler := createTestToolHandler(t)
-		counter := telemetry.NewUsageCounter()
-		handler.usageCounter = counter
+		counter := telemetry.NewUsageTracker()
+		handler.usageTracker = counter
 
 		mcpHandler := NewMCPHandler(nil, "test")
 		mcpHandler.SetToolHandler(handler)
 
-		got := mcpHandler.GetUsageCounter()
+		got := mcpHandler.GetUsageTracker()
 		if got != counter {
-			t.Fatalf("GetUsageCounter() = %p, want %p", got, counter)
+			t.Fatalf("GetUsageTracker() = %p, want %p", got, counter)
 		}
 	})
 
 	t.Run("nil tool handler returns nil", func(t *testing.T) {
 		mcpHandler := NewMCPHandler(nil, "test")
 		// toolHandler is nil — should return nil.
-		got := mcpHandler.GetUsageCounter()
+		got := mcpHandler.GetUsageTracker()
 		if got != nil {
-			t.Fatalf("GetUsageCounter() = %p, want nil when toolHandler is nil", got)
+			t.Fatalf("GetUsageTracker() = %p, want nil when toolHandler is nil", got)
 		}
 	})
 
 	t.Run("test double returns nil", func(t *testing.T) {
 		mcpHandler := NewMCPHandler(nil, "test")
 		mcpHandler.SetToolHandler(&fakeToolHandlerForMCP{})
-		got := mcpHandler.GetUsageCounter()
+		got := mcpHandler.GetUsageTracker()
 		if got != nil {
-			t.Fatalf("GetUsageCounter() = %p, want nil for test double", got)
+			t.Fatalf("GetUsageTracker() = %p, want nil for test double", got)
 		}
 	})
 }
 
-func TestHandleToolCall_NilUsageCounter(t *testing.T) {
+func TestHandleToolCall_NilUsageTracker(t *testing.T) {
 	handler := createTestToolHandler(t)
-	// usageCounter is nil by default.
+	// usageTracker is nil by default.
 
 	req := JSONRPCRequest{
 		JSONRPC: JSONRPCVersion,
@@ -154,11 +154,11 @@ func TestHandleToolCall_NilUsageCounter(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	// Verify tool dispatch works when usageCounter is nil.
+	// Verify tool dispatch works when usageTracker is nil.
 	args := json.RawMessage(`{"what":"errors"}`)
 	resp, handled := handler.HandleToolCall(req, "observe", args)
 	if !handled {
-		t.Fatal("observe tool was not handled with nil usageCounter")
+		t.Fatal("observe tool was not handled with nil usageTracker")
 	}
 
 	// Verify the response is a valid JSON-RPC response (tool ran, not a panic).
@@ -167,11 +167,11 @@ func TestHandleToolCall_NilUsageCounter(t *testing.T) {
 	}
 }
 
-func TestHandleToolCall_IncrementsUsageCounter(t *testing.T) {
+func TestHandleToolCall_IncrementsUsageTracker(t *testing.T) {
 	handler := createTestToolHandler(t)
 
-	counter := telemetry.NewUsageCounter()
-	handler.usageCounter = counter
+	counter := telemetry.NewUsageTracker()
+	handler.usageTracker = counter
 
 	req := JSONRPCRequest{
 		JSONRPC: JSONRPCVersion,
@@ -188,17 +188,17 @@ func TestHandleToolCall_IncrementsUsageCounter(t *testing.T) {
 	// The tool may return an error (no extension) but the counter should still increment.
 	_ = resp
 
-	counts := counter.SwapAndReset()
+	counts := counter.Peek()
 	if counts["observe:errors"] != 1 {
 		t.Fatalf("observe:errors count = %d, want 1", counts["observe:errors"])
 	}
 }
 
-func TestHandleToolCall_IncrementsUsageCounter_NoWhatParam(t *testing.T) {
+func TestHandleToolCall_IncrementsUsageTracker_NoWhatParam(t *testing.T) {
 	handler := createTestToolHandler(t)
 
-	counter := telemetry.NewUsageCounter()
-	handler.usageCounter = counter
+	counter := telemetry.NewUsageTracker()
+	handler.usageTracker = counter
 
 	req := JSONRPCRequest{
 		JSONRPC: JSONRPCVersion,
@@ -214,7 +214,7 @@ func TestHandleToolCall_IncrementsUsageCounter_NoWhatParam(t *testing.T) {
 	}
 	_ = resp
 
-	counts := counter.SwapAndReset()
+	counts := counter.Peek()
 	if counts["configure:unknown"] != 1 {
 		t.Fatalf("configure:unknown count = %d, want 1", counts["configure:unknown"])
 	}
@@ -223,8 +223,8 @@ func TestHandleToolCall_IncrementsUsageCounter_NoWhatParam(t *testing.T) {
 func TestHandleToolCall_RecordsLatency(t *testing.T) {
 	handler := createTestToolHandler(t)
 
-	counter := telemetry.NewUsageCounter()
-	handler.usageCounter = counter
+	counter := telemetry.NewUsageTracker()
+	handler.usageTracker = counter
 
 	req := JSONRPCRequest{
 		JSONRPC: JSONRPCVersion,
@@ -235,21 +235,30 @@ func TestHandleToolCall_RecordsLatency(t *testing.T) {
 	args := json.RawMessage(`{"what":"errors"}`)
 	handler.HandleToolCall(req, "observe", args)
 
-	counts := counter.SwapAndReset()
-	// Latency should be recorded (at least 0ms).
-	if _, exists := counts["lat_avg:observe:errors"]; !exists {
-		t.Fatal("lat_avg:observe:errors not present — latency should be recorded")
+	snapshot := counter.SwapAndReset()
+	if snapshot == nil {
+		t.Fatal("snapshot is nil")
 	}
-	if _, exists := counts["lat_max:observe:errors"]; !exists {
-		t.Fatal("lat_max:observe:errors not present — latency should be recorded")
+	found := false
+	for _, s := range snapshot.ToolStats {
+		if s.Tool == "observe:errors" {
+			found = true
+			// Latency should be >= 0ms.
+			if s.LatencyAvgMs < 0 {
+				t.Fatalf("LatencyAvgMs = %d, want >= 0", s.LatencyAvgMs)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("observe:errors not found in tool stats")
 	}
 }
 
 func TestHandleToolCall_RecordsErrorRate(t *testing.T) {
 	handler := createTestToolHandler(t)
 
-	counter := telemetry.NewUsageCounter()
-	handler.usageCounter = counter
+	counter := telemetry.NewUsageTracker()
+	handler.usageTracker = counter
 
 	req := JSONRPCRequest{
 		JSONRPC: JSONRPCVersion,
@@ -261,7 +270,7 @@ func TestHandleToolCall_RecordsErrorRate(t *testing.T) {
 	args := json.RawMessage(`{}`)
 	handler.HandleToolCall(req, "interact", args)
 
-	counts := counter.SwapAndReset()
+	counts := counter.Peek()
 	if counts["interact:unknown"] != 1 {
 		t.Fatalf("interact:unknown = %d, want 1", counts["interact:unknown"])
 	}
@@ -273,8 +282,8 @@ func TestHandleToolCall_RecordsErrorRate(t *testing.T) {
 func TestHandleToolCall_TracksSessionDepth(t *testing.T) {
 	handler := createTestToolHandler(t)
 
-	counter := telemetry.NewUsageCounter()
-	handler.usageCounter = counter
+	counter := telemetry.NewUsageTracker()
+	handler.usageTracker = counter
 
 	req := JSONRPCRequest{
 		JSONRPC: JSONRPCVersion,
@@ -291,15 +300,18 @@ func TestHandleToolCall_TracksSessionDepth(t *testing.T) {
 		t.Fatalf("session depth = %d, want 3", counter.SessionDepth())
 	}
 
-	counts := counter.SwapAndReset()
-	if counts["session_depth"] != 3 {
-		t.Fatalf("session_depth in snapshot = %d, want 3", counts["session_depth"])
+	snapshot := counter.SwapAndReset()
+	if snapshot == nil {
+		t.Fatal("snapshot is nil")
+	}
+	if snapshot.SessionDepth != 3 {
+		t.Fatalf("session_depth in snapshot = %d, want 3", snapshot.SessionDepth)
 	}
 }
 
-func TestHandleToolCall_NilUsageCounter_NoPanic(t *testing.T) {
+func TestHandleToolCall_NilUsageTracker_NoPanic(t *testing.T) {
 	handler := createTestToolHandler(t)
-	// usageCounter is nil by default — should not panic.
+	// usageTracker is nil by default — should not panic.
 
 	req := JSONRPCRequest{
 		JSONRPC: JSONRPCVersion,

@@ -136,7 +136,7 @@ type ToolHandler struct {
 
 	// usageCounter tracks tool:action call counts for periodic usage beacons.
 	// When nil, usage counting is disabled (backwards compatible).
-	usageCounter *telemetry.UsageCounter
+	usageTracker *telemetry.UsageTracker
 }
 
 // maybeWaitForCommand, formatCommandResult, and related async infrastructure
@@ -189,18 +189,14 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 
 	h.recordAuditToolCall(req, name, args, resp, start)
 
-	// Usage counter: anonymous aggregated telemetry beaconed every 5 min, then reset.
+	// Usage tracker: per-call telemetry beaconed immediately + aggregated every 5 min.
 	// Separate from healthMetrics — different lifecycle and purpose.
-	if h.usageCounter != nil {
+	if h.usageTracker != nil {
 		key := usageKey(args)
 		if key == "" {
 			key = "unknown"
 		}
-		fullKey := name + ":" + key
-		h.usageCounter.IncrementWithLatency(fullKey, time.Since(start))
-		if resp.Error != nil || resultIsError {
-			h.usageCounter.IncrementError(fullKey)
-		}
+		h.usageTracker.RecordToolCall(name+":"+key, time.Since(start), resp.Error != nil || resultIsError)
 	}
 
 	return resp, true

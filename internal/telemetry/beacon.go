@@ -80,25 +80,37 @@ func BeaconEvent(event string, props map[string]string) {
 	sendBeacon(event, props)
 }
 
-// BeaconUsageSummary fires an aggregated usage beacon with integer counters.
-// window_m is the aggregation window in minutes. props keys are "tool:mode" or "ext:feature".
-func BeaconUsageSummary(windowMinutes int, props map[string]int) {
-	payload := buildEnvelope("usage_summary")
-	payload["window_m"] = windowMinutes
-	if props != nil {
-		payload["props"] = props
+// BeaconUsageSummary fires a structured usage_summary beacon.
+func BeaconUsageSummary(windowMinutes int, snapshot *UsageSnapshot) {
+	if snapshot == nil {
+		return
 	}
-
+	payload := buildEnvelope("usage_summary")
+	payload["ts"] = time.Now().UTC().Format(time.RFC3339)
+	payload["channel"] = Channel
+	payload["window_m"] = windowMinutes
+	payload["tool_stats"] = snapshot.ToolStats
+	payload["async_outcomes"] = snapshot.AsyncOutcomes
+	if snapshot.SessionDepth > 0 {
+		payload["session_depth"] = snapshot.SessionDepth
+	}
 	fireBeacon(payload)
 }
 
 // BuildUsageSummaryPayload builds the beacon payload without sending it.
 // Used by debug endpoints to inspect what would be sent.
-func BuildUsageSummaryPayload(windowMinutes int, props map[string]int) map[string]any {
+func BuildUsageSummaryPayload(windowMinutes int, snapshot *UsageSnapshot) map[string]any {
+	if snapshot == nil {
+		return nil
+	}
 	payload := buildEnvelope("usage_summary")
+	payload["ts"] = time.Now().UTC().Format(time.RFC3339)
+	payload["channel"] = Channel
 	payload["window_m"] = windowMinutes
-	if props != nil {
-		payload["props"] = props
+	payload["tool_stats"] = snapshot.ToolStats
+	payload["async_outcomes"] = snapshot.AsyncOutcomes
+	if snapshot.SessionDepth > 0 {
+		payload["session_depth"] = snapshot.SessionDepth
 	}
 	return payload
 }

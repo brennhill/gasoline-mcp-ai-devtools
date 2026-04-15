@@ -1,131 +1,241 @@
-// usage_counter.go — Aggregated tool usage counters for periodic beacon.
+// usage_counter.go — Structured tool usage tracking for telemetry beacons.
 
 package telemetry
 
 import (
+	"strings"
 	"sync"
 	"time"
 )
 
-// UsageCounter is a thread-safe counter map that tracks tool:action call counts,
-// latency totals, error counts, and async command outcomes.
-type UsageCounter struct {
-	mu          sync.Mutex
-	counts      map[string]int
-	latencySum  map[string]int64 // key → total milliseconds
-	latencyMax  map[string]int64 // key → max milliseconds
-	sessionCall        int  // total calls this session (for session depth)
-	lastReportedDepth  int  // depth at last SwapAndReset (to avoid re-sending same value)
-	everCalled         bool // false until first Increment (for first-use detection)
+// Channel is the release channel (e.g., "stable", "beta", "dev").
+var Channel = "dev"
+
+// ToolStat holds per-tool aggregated metrics for one beacon window.
+type ToolStat struct {
+	Tool         string `json:"tool"`          // "observe:page"
+	Family       string `json:"family"`        // "observe"
+	Name         string `json:"name"`          // "page"
+	Count        int    `json:"count"`
+	ErrorCount   int    `json:"error_count"`
+	LatencyAvgMs int64  `json:"latency_avg_ms"`
+	LatencyMaxMs int64  `json:"latency_max_ms"`
 }
 
-// NewUsageCounter creates a new empty usage counter.
-func NewUsageCounter() *UsageCounter {
-	return &UsageCounter{
-		counts:     make(map[string]int),
-		latencySum: make(map[string]int64),
-		latencyMax: make(map[string]int64),
+// UsageSnapshot is the structured output of SwapAndReset.
+type UsageSnapshot struct {
+	ToolStats     []ToolStat     `json:"tool_stats"`
+	AsyncOutcomes map[string]int `json:"async_outcomes"`
+	SessionDepth  int            `json:"session_depth,omitempty"`
+}
+
+// toolAccum accumulates per-tool metrics within one beacon window.
+type toolAccum struct {
+	count      int
+	errCount   int
+	latencySum int64
+	latencyMax int64
+}
+
+// UsageTracker is a thread-safe tracker for tool call analytics.
+type UsageTracker struct {
+	mu            sync.Mutex
+	tools         map[string]*toolAccum // key: "family:name"
+	asyncOutcomes map[string]int        // "complete", "timeout", etc.
+	sessionCalls  int                   // total calls this session
+	sessionStart  time.Time             // when session started (for duration calc)
+	lastReported  int                   // session depth at last SwapAndReset
+	everCalled    bool                  // first-use detection
+}
+
+// NewUsageTracker creates a new empty usage tracker.
+func NewUsageTracker() *UsageTracker {
+	return &UsageTracker{
+		tools:         make(map[string]*toolAccum),
+		asyncOutcomes: make(map[string]int),
 	}
 }
 
-// Increment adds 1 to the count for the given key (e.g., "observe:errors").
-// Also refreshes the telemetry session to keep it alive during activity.
-func (u *UsageCounter) Increment(key string) {
-	u.mu.Lock()
-	u.counts[key]++
-	u.sessionCall++
-	firstEver := !u.everCalled
-	u.everCalled = true
-	u.mu.Unlock()
-	TouchSession()
-
-	if firstEver {
-		BeaconEvent("first_tool_call", map[string]string{"tool": key})
+// splitKey splits "observe:page" into ("observe", "page").
+func splitKey(key string) (family, name string) {
+	if i := strings.IndexByte(key, ':'); i >= 0 {
+		return key[:i], key[i+1:]
 	}
+	return key, ""
 }
 
-// IncrementWithLatency adds 1 to the count and records latency for the key.
-func (u *UsageCounter) IncrementWithLatency(key string, elapsed time.Duration) {
+// RecordToolCall records a tool call with latency and outcome.
+// Fires a per-call tool_call beacon and aggregates for usage_summary.
+func (u *UsageTracker) RecordToolCall(key string, elapsed time.Duration, isError bool) {
 	ms := elapsed.Milliseconds()
+	family, name := splitKey(key)
+
 	u.mu.Lock()
-	u.counts[key]++
-	u.sessionCall++
-	u.latencySum[key] += ms
-	if _, exists := u.latencyMax[key]; !exists || ms > u.latencyMax[key] {
-		u.latencyMax[key] = ms
+	acc := u.tools[key]
+	if acc == nil {
+		acc = &toolAccum{}
+		u.tools[key] = acc
+	}
+	acc.count++
+	acc.latencySum += ms
+	if ms > acc.latencyMax {
+		acc.latencyMax = ms
+	}
+	if isError {
+		acc.errCount++
+	}
+	u.sessionCalls++
+	if u.sessionStart.IsZero() {
+		u.sessionStart = time.Now()
 	}
 	firstEver := !u.everCalled
 	u.everCalled = true
 	u.mu.Unlock()
+
 	TouchSession()
 
-	if firstEver {
-		BeaconEvent("first_tool_call", map[string]string{"tool": key})
+	// Fire per-call beacon.
+	outcome := "success"
+	if isError {
+		outcome = "error"
 	}
-}
+	fireStructuredBeacon(map[string]any{
+		"event":         "tool_call",
+		"family":        family,
+		"name":          name,
+		"tool":          key,
+		"outcome":       outcome,
+		"latency_ms":    ms,
+		"async_outcome": nil,
+	})
 
-// IncrementError records a tool error for analytics (separate from call count).
-func (u *UsageCounter) IncrementError(key string) {
-	u.mu.Lock()
-	u.counts["err:"+key]++
-	u.mu.Unlock()
+	if firstEver {
+		fireStructuredBeacon(map[string]any{
+			"event":  "first_tool_call",
+			"family": family,
+			"name":   name,
+			"tool":   key,
+		})
+	}
 }
 
 // RecordAsyncOutcome tracks the terminal status of an async command.
-// status is one of: complete, error, timeout, expired, cancelled.
-func (u *UsageCounter) RecordAsyncOutcome(status string) {
+func (u *UsageTracker) RecordAsyncOutcome(status string) {
 	u.mu.Lock()
-	u.counts["async:"+status]++
+	u.asyncOutcomes[status]++
 	u.mu.Unlock()
 }
 
 // SessionDepth returns the total tool calls in the current session.
-func (u *UsageCounter) SessionDepth() int {
+func (u *UsageTracker) SessionDepth() int {
 	u.mu.Lock()
-	d := u.sessionCall
+	d := u.sessionCalls
 	u.mu.Unlock()
 	return d
 }
 
-// Peek returns a copy of the current counts without resetting.
-func (u *UsageCounter) Peek() map[string]int {
+// Peek returns a flat count map for the debug endpoint (backward compat).
+func (u *UsageTracker) Peek() map[string]int {
 	u.mu.Lock()
-	cp := make(map[string]int, len(u.counts))
-	for k, v := range u.counts {
-		cp[k] = v
+	defer u.mu.Unlock()
+	cp := make(map[string]int)
+	for key, acc := range u.tools {
+		cp[key] = acc.count
+		if acc.errCount > 0 {
+			cp["err:"+key] = acc.errCount
+		}
 	}
-	u.mu.Unlock()
+	for k, v := range u.asyncOutcomes {
+		cp["async:"+k] = v
+	}
 	return cp
 }
 
-// SwapAndReset atomically returns the aggregated snapshot and resets all counters.
-// The returned map includes counts, latency (as lat_avg:key and lat_max:key), and session depth.
-func (u *UsageCounter) SwapAndReset() map[string]int {
+// SwapAndReset atomically returns the structured snapshot and resets counters.
+func (u *UsageTracker) SwapAndReset() *UsageSnapshot {
 	u.mu.Lock()
-	old := u.counts
 
-	// Merge latency into the snapshot as lat_avg:key and lat_max:key (milliseconds).
-	for key, total := range u.latencySum {
-		count := old[key]
-		if count > 0 {
-			old["lat_avg:"+key] = int(total / int64(count))
+	if len(u.tools) == 0 && len(u.asyncOutcomes) == 0 && u.sessionCalls <= u.lastReported {
+		u.mu.Unlock()
+		return nil // nothing to report
+	}
+
+	stats := make([]ToolStat, 0, len(u.tools))
+	for key, acc := range u.tools {
+		family, name := splitKey(key)
+		avgMs := int64(0)
+		if acc.count > 0 {
+			avgMs = acc.latencySum / int64(acc.count)
+		}
+		stats = append(stats, ToolStat{
+			Tool:         key,
+			Family:       family,
+			Name:         name,
+			Count:        acc.count,
+			ErrorCount:   acc.errCount,
+			LatencyAvgMs: avgMs,
+			LatencyMaxMs: acc.latencyMax,
+		})
+	}
+
+	outcomes := make(map[string]int, len(u.asyncOutcomes))
+	for k, v := range u.asyncOutcomes {
+		outcomes[k] = v
+	}
+
+	depth := 0
+	if u.sessionCalls > u.lastReported {
+		depth = u.sessionCalls
+		u.lastReported = u.sessionCalls
+	}
+
+	u.tools = make(map[string]*toolAccum)
+	u.asyncOutcomes = make(map[string]int)
+	u.mu.Unlock()
+
+	return &UsageSnapshot{
+		ToolStats:     stats,
+		AsyncOutcomes: outcomes,
+		SessionDepth:  depth,
+	}
+}
+
+// EmitSessionEnd fires a session_end beacon. Called when the session rotates.
+func (u *UsageTracker) EmitSessionEnd(reason string) {
+	u.mu.Lock()
+	calls := u.sessionCalls
+	start := u.sessionStart
+	u.sessionCalls = 0
+	u.sessionStart = time.Time{}
+	u.lastReported = 0
+	u.mu.Unlock()
+
+	if calls == 0 {
+		return
+	}
+
+	durationS := int64(0)
+	if !start.IsZero() {
+		durationS = int64(time.Since(start).Seconds())
+	}
+
+	fireStructuredBeacon(map[string]any{
+		"event":      "session_end",
+		"reason":     reason,
+		"duration_s": durationS,
+		"tool_calls": calls,
+	})
+}
+
+// fireStructuredBeacon sends a beacon with the standard envelope + extra fields.
+func fireStructuredBeacon(fields map[string]any) {
+	payload := buildEnvelope(fields["event"].(string))
+	payload["ts"] = time.Now().UTC().Format(time.RFC3339)
+	payload["channel"] = Channel
+	for k, v := range fields {
+		if k != "event" { // event already in envelope
+			payload[k] = v
 		}
 	}
-	for key, max := range u.latencyMax {
-		old["lat_max:"+key] = int(max)
-	}
-
-	// Include session depth only if it increased since last report.
-	if u.sessionCall > u.lastReportedDepth {
-		old["session_depth"] = u.sessionCall
-		u.lastReportedDepth = u.sessionCall
-	}
-
-	u.counts = make(map[string]int)
-	u.latencySum = make(map[string]int64)
-	u.latencyMax = make(map[string]int64)
-	// Note: sessionCall is NOT reset — it accumulates across the full session.
-	// It resets naturally when the session rotates (30-min inactivity).
-	u.mu.Unlock()
-	return old
+	fireBeacon(payload)
 }

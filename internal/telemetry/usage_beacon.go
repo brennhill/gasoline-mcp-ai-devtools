@@ -39,25 +39,27 @@ func callOnTick() {
 
 // StartUsageBeaconLoop starts a background goroutine that fires a usage_summary
 // beacon every 5 minutes if there was activity. Respects ctx.Done() for clean shutdown.
-func StartUsageBeaconLoop(ctx context.Context, counter *UsageCounter) {
+func StartUsageBeaconLoop(ctx context.Context, tracker *UsageTracker) {
 	util.SafeGo(func() {
-		startUsageBeaconLoopWithInterval(ctx, counter, usageBeaconInterval)
+		startUsageBeaconLoopWithInterval(ctx, tracker, usageBeaconInterval)
 	})
 }
 
 // startUsageBeaconLoopWithInterval runs the beacon loop with a configurable interval.
 // Blocks until ctx is cancelled. Used directly in tests with short intervals.
-func startUsageBeaconLoopWithInterval(ctx context.Context, counter *UsageCounter, interval time.Duration) {
+func startUsageBeaconLoopWithInterval(ctx context.Context, tracker *UsageTracker, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
+			// Session ending due to daemon shutdown.
+			tracker.EmitSessionEnd("shutdown")
 			return
 		case <-ticker.C:
-			snapshot := counter.SwapAndReset()
-			if len(snapshot) == 0 {
+			snapshot := tracker.SwapAndReset()
+			if snapshot == nil {
 				callOnTick()
 				continue // no activity, skip beacon
 			}

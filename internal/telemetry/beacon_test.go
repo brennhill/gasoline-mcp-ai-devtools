@@ -68,7 +68,8 @@ func TestBeaconError_FireAndForget(t *testing.T) {
 }
 
 func TestBeaconError_FormatsJSON(t *testing.T) {
-	received := make(chan map[string]any, 1)
+	drainSem()
+	received := make(chan map[string]any, 10)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
@@ -88,12 +89,20 @@ func TestBeaconError_FormatsJSON(t *testing.T) {
 
 	BeaconError("test_error", map[string]string{"error_code": "conn_refused", "port": "7890"})
 
+	// Drain until we find our specific event (stale goroutines may send others first).
 	var body map[string]any
-	select {
-	case body = <-received:
-	case <-time.After(2 * time.Second):
-		t.Fatal("beacon not received within timeout")
+	for {
+		select {
+		case b := <-received:
+			if b["event"] == "test_error" {
+				body = b
+				goto found
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("beacon not received within timeout")
+		}
 	}
+found:
 
 	if body["event"] != "test_error" {
 		t.Errorf("event = %v, want test_error", body["event"])
@@ -348,6 +357,8 @@ func TestBeaconEvent_DisabledByEnv(t *testing.T) {
 
 func TestBeaconUsageSummary_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
+	drainSem()
+	time.Sleep(10 * time.Millisecond) // let stale goroutines finish
 
 	fired := make(chan bool, 1)
 	setOnFireBeacon(func(sent bool) {
@@ -361,7 +372,9 @@ func TestBeaconUsageSummary_DisabledByEnv(t *testing.T) {
 	overrideEndpoint("http://198.51.100.1:1")
 	defer resetEndpoint()
 
-	BeaconUsageSummary(5, map[string]int{"observe:page": 1})
+	BeaconUsageSummary(5, &UsageSnapshot{
+		ToolStats: []ToolStat{{Tool: "observe:page", Family: "observe", Name: "page", Count: 1}},
+	})
 
 	select {
 	case sent := <-fired:
@@ -401,16 +414,11 @@ func TestBeaconEvent_DisabledByEnv_CaseInsensitive(t *testing.T) {
 	}
 }
 
-// L1: BeaconUsageSummary with nil props.
-func TestBeaconUsageSummary_NilProps(t *testing.T) {
-	received := make(chan map[string]any, 1)
+// L1: BeaconUsageSummary with nil snapshot — should not fire.
+func TestBeaconUsageSummary_NilSnapshot(t *testing.T) {
+	var called bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body map[string]any
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		select {
-		case received <- body:
-		default:
-		}
+		called = true
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
@@ -419,20 +427,10 @@ func TestBeaconUsageSummary_NilProps(t *testing.T) {
 	defer resetEndpoint()
 
 	BeaconUsageSummary(5, nil)
+	time.Sleep(50 * time.Millisecond)
 
-	var body map[string]any
-	select {
-	case body = <-received:
-	case <-time.After(2 * time.Second):
-		t.Fatal("beacon not received")
-	}
-
-	if body["event"] != "usage_summary" {
-		t.Errorf("event = %v, want usage_summary", body["event"])
-	}
-	// nil props should not produce a "props" key
-	if _, exists := body["props"]; exists {
-		t.Errorf("props should be absent for nil input, got %v", body["props"])
+	if called {
+		t.Fatal("BeaconUsageSummary should not fire with nil snapshot")
 	}
 }
 
@@ -445,8 +443,15 @@ func TestBuildUsageSummaryPayload_Structure(t *testing.T) {
 	resetSessionState()
 	TouchSession()
 
-	props := map[string]int{"observe:page": 3, "interact:click": 1}
-	payload := BuildUsageSummaryPayload(5, props)
+	snapshot := &UsageSnapshot{
+		ToolStats: []ToolStat{
+			{Tool: "observe:page", Family: "observe", Name: "page", Count: 3, LatencyAvgMs: 45, LatencyMaxMs: 100},
+			{Tool: "interact:click", Family: "interact", Name: "click", Count: 1},
+		},
+		AsyncOutcomes: map[string]int{"complete": 2},
+		SessionDepth:  4,
+	}
+	payload := BuildUsageSummaryPayload(5, snapshot)
 
 	if payload["event"] != "usage_summary" {
 		t.Errorf("event = %v, want usage_summary", payload["event"])
@@ -466,12 +471,24 @@ func TestBuildUsageSummaryPayload_Structure(t *testing.T) {
 	if _, ok := payload["os"].(string); !ok {
 		t.Error("missing os field")
 	}
-	p, ok := payload["props"].(map[string]int)
-	if !ok {
-		t.Fatalf("props type = %T, want map[string]int", payload["props"])
+	if _, ok := payload["ts"].(string); !ok {
+		t.Error("missing ts field")
 	}
-	if p["observe:page"] != 3 {
-		t.Errorf("props observe:page = %d, want 3", p["observe:page"])
+	if _, ok := payload["channel"].(string); !ok {
+		t.Error("missing channel field")
+	}
+	stats, ok := payload["tool_stats"].([]ToolStat)
+	if !ok {
+		t.Fatalf("tool_stats type = %T, want []ToolStat", payload["tool_stats"])
+	}
+	if len(stats) != 2 {
+		t.Fatalf("tool_stats length = %d, want 2", len(stats))
+	}
+	if stats[0].Tool != "observe:page" || stats[0].Count != 3 {
+		t.Errorf("tool_stats[0] = %+v, want observe:page count=3", stats[0])
+	}
+	if payload["session_depth"] != 4 {
+		t.Errorf("session_depth = %v, want 4", payload["session_depth"])
 	}
 }
 

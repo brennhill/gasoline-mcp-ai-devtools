@@ -92,11 +92,11 @@ func (h *MCPHandler) SetToolHandler(th ToolHandlerInterface) {
 	h.toolHandler = th
 }
 
-// GetUsageCounter returns the usage counter from the concrete ToolHandler.
+// GetUsageTracker returns the usage tracker from the concrete ToolHandler.
 // Returns nil if toolHandler is a test double.
-func (h *MCPHandler) GetUsageCounter() *telemetry.UsageCounter {
+func (h *MCPHandler) GetUsageTracker() *telemetry.UsageTracker {
 	if th, ok := h.toolHandler.(*ToolHandler); ok {
-		return th.usageCounter
+		return th.usageTracker
 	}
 	return nil
 }

@@ -38,8 +38,8 @@ func (h *ToolHandler) formatCommandResult(req JSONRPCRequest, cmd queries.Comman
 	attachTraceSummary(responseData, cmd)
 
 	// Track async command outcome for analytics.
-	if h.usageCounter != nil && cmd.Status != "pending" {
-		h.usageCounter.RecordAsyncOutcome(cmd.Status)
+	if h.usageTracker != nil && cmd.Status != "pending" {
+		h.usageTracker.RecordAsyncOutcome(cmd.Status)
 	}
 
 	switch cmd.Status {

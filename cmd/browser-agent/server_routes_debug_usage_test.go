@@ -11,12 +11,12 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
 
-// stubMCPHandler returns an MCPHandler with a ToolHandler that has the given UsageCounter.
-// Other ToolHandler fields are left at zero values — only usageCounter is needed for debug endpoints.
-func stubMCPHandler(counter *telemetry.UsageCounter) *MCPHandler {
+// stubMCPHandler returns an MCPHandler with a ToolHandler that has the given UsageTracker.
+// Other ToolHandler fields are left at zero values — only usageTracker is needed for debug endpoints.
+func stubMCPHandler(counter *telemetry.UsageTracker) *MCPHandler {
 	h := &MCPHandler{}
 	if counter != nil {
-		th := &ToolHandler{usageCounter: counter}
+		th := &ToolHandler{usageTracker: counter}
 		h.toolHandler = th
 	}
 	return h
@@ -46,7 +46,7 @@ func TestDebugEndpointsEnabled_WrongValue(t *testing.T) {
 
 func TestDebugUsage_GET_EmptyCounter(t *testing.T) {
 	t.Parallel()
-	mcp := stubMCPHandler(telemetry.NewUsageCounter())
+	mcp := stubMCPHandler(telemetry.NewUsageTracker())
 	handler := handleDebugUsage(mcp)
 
 	req := httptest.NewRequest(http.MethodGet, "/debug/usage", nil)
@@ -75,10 +75,10 @@ func TestDebugUsage_GET_EmptyCounter(t *testing.T) {
 
 func TestDebugUsage_GET_PopulatedCounter(t *testing.T) {
 	t.Parallel()
-	counter := telemetry.NewUsageCounter()
-	counter.Increment("observe:page")
-	counter.Increment("observe:page")
-	counter.Increment("interact:click")
+	counter := telemetry.NewUsageTracker()
+	counter.RecordToolCall("observe:page", 0, false)
+	counter.RecordToolCall("observe:page", 0, false)
+	counter.RecordToolCall("interact:click", 0, false)
 
 	mcp := stubMCPHandler(counter)
 	handler := handleDebugUsage(mcp)
@@ -102,8 +102,8 @@ func TestDebugUsage_GET_PopulatedCounter(t *testing.T) {
 
 func TestDebugUsage_GET_DoesNotReset(t *testing.T) {
 	t.Parallel()
-	counter := telemetry.NewUsageCounter()
-	counter.Increment("observe:page")
+	counter := telemetry.NewUsageTracker()
+	counter.RecordToolCall("observe:page", 0, false)
 
 	mcp := stubMCPHandler(counter)
 	handler := handleDebugUsage(mcp)
@@ -128,7 +128,7 @@ func TestDebugUsage_GET_DoesNotReset(t *testing.T) {
 
 func TestDebugUsage_POST_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
-	mcp := stubMCPHandler(telemetry.NewUsageCounter())
+	mcp := stubMCPHandler(telemetry.NewUsageTracker())
 	handler := handleDebugUsage(mcp)
 
 	req := httptest.NewRequest(http.MethodPost, "/debug/usage", nil)
@@ -162,9 +162,9 @@ func TestDebugUsage_NilCounter(t *testing.T) {
 
 func TestDebugBeaconFlush_POST_WithData(t *testing.T) {
 	t.Parallel()
-	counter := telemetry.NewUsageCounter()
-	counter.Increment("observe:errors")
-	counter.Increment("configure:health")
+	counter := telemetry.NewUsageTracker()
+	counter.RecordToolCall("observe:errors", 0, false)
+	counter.RecordToolCall("configure:health", 0, false)
 
 	mcp := stubMCPHandler(counter)
 	handler := handleDebugBeaconFlush(mcp)
@@ -201,12 +201,13 @@ func TestDebugBeaconFlush_POST_WithData(t *testing.T) {
 		t.Error("missing sid in payload")
 	}
 
-	props, ok := payload["props"].(map[string]any)
+	// Verify tool_stats is present with entries.
+	stats, ok := payload["tool_stats"].([]any)
 	if !ok {
-		t.Fatalf("props type = %T, want map", payload["props"])
+		t.Fatalf("tool_stats type = %T, want []any", payload["tool_stats"])
 	}
-	if props["observe:errors"] != float64(1) {
-		t.Errorf("observe:errors = %v, want 1", props["observe:errors"])
+	if len(stats) == 0 {
+		t.Fatal("tool_stats is empty")
 	}
 
 	// Counter should be empty after flush.
@@ -218,7 +219,7 @@ func TestDebugBeaconFlush_POST_WithData(t *testing.T) {
 
 func TestDebugBeaconFlush_POST_Empty(t *testing.T) {
 	t.Parallel()
-	mcp := stubMCPHandler(telemetry.NewUsageCounter())
+	mcp := stubMCPHandler(telemetry.NewUsageTracker())
 	handler := handleDebugBeaconFlush(mcp)
 
 	req := httptest.NewRequest(http.MethodPost, "/debug/beacon-flush", nil)
@@ -253,7 +254,7 @@ func TestDebugBeaconFlush_POST_NilCounter(t *testing.T) {
 
 func TestDebugBeaconFlush_GET_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
-	mcp := stubMCPHandler(telemetry.NewUsageCounter())
+	mcp := stubMCPHandler(telemetry.NewUsageTracker())
 	handler := handleDebugBeaconFlush(mcp)
 
 	req := httptest.NewRequest(http.MethodGet, "/debug/beacon-flush", nil)

@@ -35,10 +35,10 @@ func TestUsageBeaconLoop_FiresOnActivity(t *testing.T) {
 	overrideKaboomDir(dir)
 	defer resetKaboomDir()
 
-	counter := NewUsageCounter()
-	counter.Increment("observe:errors")
-	counter.Increment("observe:errors")
-	counter.Increment("interact:click")
+	counter := NewUsageTracker()
+	counter.RecordToolCall("observe:errors", 0, false)
+	counter.RecordToolCall("observe:errors", 0, false)
+	counter.RecordToolCall("interact:click", 0, false)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,16 +75,30 @@ found:
 		t.Errorf("sid = %v, want 16-char hex string", body["sid"])
 	}
 
-	props, ok := body["props"].(map[string]any)
+	// Verify tool_stats is an array with the expected entries.
+	toolStats, ok := body["tool_stats"].([]any)
 	if !ok {
-		t.Fatalf("props is not a map: %T", body["props"])
+		t.Fatalf("tool_stats is not an array: %T", body["tool_stats"])
 	}
-	// Props values are integers (JSON number → float64).
-	if props["observe:errors"] != float64(2) {
-		t.Errorf("observe:errors = %v, want 2", props["observe:errors"])
+	if len(toolStats) == 0 {
+		t.Fatal("tool_stats is empty, expected at least 1 entry")
 	}
-	if props["interact:click"] != float64(1) {
-		t.Errorf("interact:click = %v, want 1", props["interact:click"])
+	// Verify at least one stat has observe:errors
+	foundObserve := false
+	for _, s := range toolStats {
+		stat, ok := s.(map[string]any)
+		if !ok {
+			continue
+		}
+		if stat["tool"] == "observe:errors" {
+			foundObserve = true
+			if stat["count"] != float64(2) {
+				t.Errorf("observe:errors count = %v, want 2", stat["count"])
+			}
+		}
+	}
+	if !foundObserve {
+		t.Errorf("tool_stats missing observe:errors entry, got %v", toolStats)
 	}
 }
 
@@ -113,7 +127,7 @@ func TestUsageBeaconLoop_SkipsWhenIdle(t *testing.T) {
 	})
 	defer setOnTick(nil)
 
-	counter := NewUsageCounter()
+	counter := NewUsageTracker()
 	// Don't increment — should skip.
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -168,9 +182,9 @@ func TestUsageBeaconLoop_RespectsOptOut(t *testing.T) {
 	})
 	defer setOnTick(nil)
 
-	counter := NewUsageCounter()
-	counter.Increment("observe:errors")
-	counter.Increment("interact:click")
+	counter := NewUsageTracker()
+	counter.RecordToolCall("observe:errors", 0, false)
+	counter.RecordToolCall("interact:click", 0, false)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -206,7 +220,7 @@ func TestUsageBeaconLoop_StopsOnContextCancel(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
-	counter := NewUsageCounter()
+	counter := NewUsageTracker()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	done := make(chan struct{})

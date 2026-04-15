@@ -58,17 +58,17 @@ func NewToolHandler(server *Server, capture *capture.Store) *MCPHandler {
 		networkRecording: &toolconfigure.NetworkRecordingState{},
 	}
 
-	// Initialize usage counter for periodic telemetry beacons.
-	handler.usageCounter = telemetry.NewUsageCounter()
+	// Initialize usage tracker for structured telemetry beacons.
+	handler.usageTracker = telemetry.NewUsageTracker()
 
-	// Wire extension UI feature flags into the usage counter so they appear
-	// in the aggregated usage_summary beacon alongside MCP tool counts.
+	// Wire extension UI feature flags into the tracker so they appear
+	// in the aggregated usage_summary beacon alongside MCP tool stats.
 	if capture != nil {
-		counter := handler.usageCounter
+		tracker := handler.usageTracker
 		capture.SetFeaturesCallback(func(features map[string]bool) {
 			for key, used := range features {
 				if used {
-					counter.Increment("ext:" + key)
+					tracker.RecordToolCall("ext:"+key, 0, false)
 				}
 			}
 		})

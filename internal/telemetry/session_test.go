@@ -125,12 +125,12 @@ func TestGetSessionID_ConcurrentAccess(t *testing.T) {
 	}
 }
 
-func TestUsageCounter_Increment_TouchesSession(t *testing.T) {
+func TestUsageTracker_Increment_TouchesSession(t *testing.T) {
 	resetSessionState()
 	TouchSession()
 	id1 := GetSessionID()
 
-	counter := NewUsageCounter()
+	counter := NewUsageTracker()
 
 	// Backdate to near-expiry.
 	session.mu.Lock()
@@ -138,7 +138,7 @@ func TestUsageCounter_Increment_TouchesSession(t *testing.T) {
 	session.mu.Unlock()
 
 	// Increment should touch session, refreshing lastSeen.
-	counter.Increment("observe:errors")
+	counter.RecordToolCall("observe:errors", 0, false)
 
 	// Verify lastSeen was refreshed (not still near-expiry).
 	session.mu.Lock()
