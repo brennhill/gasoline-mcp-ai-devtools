@@ -19,15 +19,39 @@ var session struct {
 	lastSeen time.Time
 }
 
+// sessionEndCallback is called when a session rotates due to timeout.
+// Set by UsageTracker to emit session_end beacons.
+var sessionEndCallback func(reason string)
+
+// SetSessionEndCallback registers a callback for session timeout rotation.
+func SetSessionEndCallback(fn func(reason string)) {
+	session.mu.Lock()
+	sessionEndCallback = fn
+	session.mu.Unlock()
+}
+
 // GetSessionID returns the current session ID, creating or rotating as needed.
 // Does NOT refresh lastSeen on existing sessions — only TouchSession (called from
-// UsageCounter.Increment and feature callbacks) extends the session.
+// UsageTracker.RecordToolCall and feature callbacks) extends the session.
 // When minting a new session (first call or after timeout), sets lastSeen to now.
+// Emits session_end("timeout") when rotating due to inactivity.
 func GetSessionID() string {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
-	if session.id == "" || (!session.lastSeen.IsZero() && time.Since(session.lastSeen) > sessionTimeout) {
+	rotated := false
+	if session.id != "" && !session.lastSeen.IsZero() && time.Since(session.lastSeen) > sessionTimeout {
+		rotated = true
+		cb := sessionEndCallback
+		// Unlock before callback to avoid deadlock (callback may call TouchSession).
+		session.mu.Unlock()
+		if cb != nil {
+			cb("timeout")
+		}
+		session.mu.Lock()
+	}
+
+	if session.id == "" || rotated {
 		session.id = generateSessionID()
 		session.lastSeen = time.Now()
 	}

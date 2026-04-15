@@ -49,11 +49,16 @@ type UsageTracker struct {
 }
 
 // NewUsageTracker creates a new empty usage tracker.
+// Registers a session-end callback so timeout-based rotation emits session_end.
 func NewUsageTracker() *UsageTracker {
-	return &UsageTracker{
+	t := &UsageTracker{
 		tools:         make(map[string]*toolAccum),
 		asyncOutcomes: make(map[string]int),
 	}
+	SetSessionEndCallback(func(reason string) {
+		t.EmitSessionEnd(reason)
+	})
+	return t
 }
 
 // splitKey splits "observe:page" into ("observe", "page").
@@ -85,7 +90,8 @@ func (u *UsageTracker) RecordToolCall(key string, elapsed time.Duration, isError
 		acc.errCount++
 	}
 	u.sessionCalls++
-	if u.sessionStart.IsZero() {
+	newSession := u.sessionStart.IsZero()
+	if newSession {
 		u.sessionStart = time.Now()
 	}
 	firstEver := !u.everCalled
@@ -93,6 +99,13 @@ func (u *UsageTracker) RecordToolCall(key string, elapsed time.Duration, isError
 	u.mu.Unlock()
 
 	TouchSession()
+
+	// Emit session_start on first call of a new session.
+	if newSession {
+		fireStructuredBeacon(map[string]any{
+			"event": "session_start",
+		})
+	}
 
 	// Fire per-call beacon.
 	outcome := "success"

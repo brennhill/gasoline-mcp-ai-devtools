@@ -76,7 +76,7 @@ func dispatchMode(server *Server, cfg *serverConfig) {
 	case modeDaemon:
 		server.logLifecycle("daemon_mode_start", cfg.port, nil)
 		if err := runMCPMode(server, cfg.port, cfg.apiKey, daemonLaunchOptions{Parallel: cfg.parallelMode}); err != nil {
-			telemetry.BeaconError("daemon_start_failed", map[string]string{"reason": "mcp_mode_error"})
+			telemetry.AppError("daemon_start_failed", "mcp_mode_error", nil)
 			diagPath := appendExitDiagnostic("daemon_start_failed", map[string]any{
 				"port":  cfg.port,
 				"error": err.Error(),

@@ -70,8 +70,24 @@ func buildEnvelope(event string) map[string]any {
 
 // BeaconError fires an anonymous error event to the telemetry endpoint.
 // Fire-and-forget: backgrounded, 2s timeout, never blocks caller, never panics.
+// Deprecated: prefer AppError for structured app_error events.
 func BeaconError(event string, props map[string]string) {
 	sendBeacon(event, props)
+}
+
+// AppError fires a structured app_error event.
+func AppError(category string, detail string, props map[string]string) {
+	fields := map[string]any{
+		"event":    "app_error",
+		"category": category,
+		"detail":   detail,
+	}
+	if props != nil {
+		for k, v := range props {
+			fields[k] = v
+		}
+	}
+	fireStructuredBeacon(fields)
 }
 
 // BeaconEvent fires an anonymous lifecycle event.

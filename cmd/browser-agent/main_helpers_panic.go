@@ -34,7 +34,7 @@ func handlePanicRecovery(r any) {
 			panicTypeName = panicTypeName[idx+1:]
 		}
 	}
-	telemetry.BeaconError("daemon_panic", map[string]string{"type": panicTypeName})
+	telemetry.AppError("daemon_panic", panicTypeName, nil)
 
 	fmt.Fprintf(os.Stderr, "\n[Kaboom] FATAL ERROR\n")
 
