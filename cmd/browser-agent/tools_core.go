@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"sync"
 	"time"
 
@@ -191,11 +192,11 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	// Usage counter: anonymous aggregated telemetry beaconed every 5 min, then reset.
 	// Separate from healthMetrics — different lifecycle and purpose.
 	if h.usageCounter != nil {
-		what := extractWhatParam(args)
-		if what == "" {
-			what = "unknown"
+		key := usageKey(args)
+		if key == "" {
+			key = "unknown"
 		}
-		h.usageCounter.Increment(name + ":" + what)
+		h.usageCounter.Increment(name + ":" + key)
 	}
 
 	return resp, true
@@ -226,6 +227,35 @@ func extractWhatParam(args json.RawMessage) string {
 		return ""
 	}
 	return parsed.What
+}
+
+// usageKey builds the analytics key from tool args.
+// For command_result calls, extracts the original command prefix from correlation_id
+// (e.g. "nav_17083_123" → "command_result:nav") so analytics map back to the original action.
+// For all other calls, returns the "what" param as-is.
+func usageKey(args json.RawMessage) string {
+	if len(args) == 0 {
+		return ""
+	}
+	var parsed struct {
+		What          string `json:"what"`
+		CorrelationID string `json:"correlation_id"`
+	}
+	if json.Unmarshal(args, &parsed) != nil {
+		return ""
+	}
+	if parsed.What != "command_result" {
+		return parsed.What
+	}
+	// Extract the command prefix from correlation_id (format: prefix_timestamp_random).
+	if parsed.CorrelationID == "" {
+		return "command_result"
+	}
+	prefix := parsed.CorrelationID
+	if idx := strings.IndexByte(prefix, '_'); idx > 0 {
+		prefix = prefix[:idx]
+	}
+	return "command_result:" + prefix
 }
 
 func (h *ToolHandler) ensureToolSchemas() {

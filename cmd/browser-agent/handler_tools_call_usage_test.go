@@ -52,6 +52,64 @@ func TestExtractWhatParam(t *testing.T) {
 	}
 }
 
+func TestUsageKey_CommandResultMapsToOriginalCommand(t *testing.T) {
+	tests := []struct {
+		name string
+		args json.RawMessage
+		want string
+	}{
+		{
+			name: "command_result with nav prefix",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"nav_1708300000_123"}`),
+			want: "command_result:nav",
+		},
+		{
+			name: "command_result with click prefix",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"click_1708300000_456"}`),
+			want: "command_result:click",
+		},
+		{
+			name: "command_result with draw prefix",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"draw_1708300000_789"}`),
+			want: "command_result:draw",
+		},
+		{
+			name: "command_result with ann_ prefix",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"ann_1708300000_123"}`),
+			want: "command_result:ann",
+		},
+		{
+			name: "command_result without correlation_id",
+			args: json.RawMessage(`{"what":"command_result"}`),
+			want: "command_result",
+		},
+		{
+			name: "command_result with empty correlation_id",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":""}`),
+			want: "command_result",
+		},
+		{
+			name: "command_result with no-underscore correlation_id",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"plainid"}`),
+			want: "command_result:plainid",
+		},
+		{
+			name: "regular what param unaffected",
+			args: json.RawMessage(`{"what":"page","correlation_id":"nav_123"}`),
+			want: "page",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := usageKey(tt.args)
+			if got != tt.want {
+				t.Errorf("usageKey(%s) = %q, want %q", string(tt.args), got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGetUsageCounter(t *testing.T) {
 	t.Run("happy path returns counter", func(t *testing.T) {
 		handler := createTestToolHandler(t)
