@@ -45,12 +45,21 @@ func TestUsageBeaconLoop_FiresOnActivity(t *testing.T) {
 
 	go startUsageBeaconLoopWithInterval(ctx, counter, 50*time.Millisecond)
 
+	// Drain received until we find the usage_summary event.
+	// Other events (e.g. first_tool_call) may arrive first.
 	var body map[string]any
-	select {
-	case body = <-received:
-	case <-time.After(2 * time.Second):
-		t.Fatal("usage beacon not received within timeout")
+	for {
+		select {
+		case b := <-received:
+			if b["event"] == "usage_summary" {
+				body = b
+				goto found
+			}
+		case <-time.After(2 * time.Second):
+			t.Fatal("usage beacon not received within timeout")
+		}
 	}
+found:
 
 	if body["event"] != "usage_summary" {
 		t.Errorf("event = %v, want usage_summary", body["event"])

@@ -182,8 +182,9 @@ func TestDebugBeaconFlush_POST_WithData(t *testing.T) {
 		t.Fatalf("invalid JSON: %v", err)
 	}
 
-	if body["flushed"] != float64(2) {
-		t.Errorf("flushed = %v, want 2", body["flushed"])
+	// flushed >= 2 (may include session_depth key).
+	if flushed, ok := body["flushed"].(float64); !ok || flushed < 2 {
+		t.Errorf("flushed = %v, want >= 2", body["flushed"])
 	}
 
 	payload, ok := body["payload"].(map[string]any)

@@ -220,6 +220,83 @@ func TestHandleToolCall_IncrementsUsageCounter_NoWhatParam(t *testing.T) {
 	}
 }
 
+func TestHandleToolCall_RecordsLatency(t *testing.T) {
+	handler := createTestToolHandler(t)
+
+	counter := telemetry.NewUsageCounter()
+	handler.usageCounter = counter
+
+	req := JSONRPCRequest{
+		JSONRPC: JSONRPCVersion,
+		ID:      1,
+		Method:  "tools/call",
+	}
+
+	args := json.RawMessage(`{"what":"errors"}`)
+	handler.HandleToolCall(req, "observe", args)
+
+	counts := counter.SwapAndReset()
+	// Latency should be recorded (at least 0ms).
+	if _, exists := counts["lat_avg:observe:errors"]; !exists {
+		t.Fatal("lat_avg:observe:errors not present — latency should be recorded")
+	}
+	if _, exists := counts["lat_max:observe:errors"]; !exists {
+		t.Fatal("lat_max:observe:errors not present — latency should be recorded")
+	}
+}
+
+func TestHandleToolCall_RecordsErrorRate(t *testing.T) {
+	handler := createTestToolHandler(t)
+
+	counter := telemetry.NewUsageCounter()
+	handler.usageCounter = counter
+
+	req := JSONRPCRequest{
+		JSONRPC: JSONRPCVersion,
+		ID:      1,
+		Method:  "tools/call",
+	}
+
+	// Call interact with missing required params — guaranteed to produce an error.
+	args := json.RawMessage(`{}`)
+	handler.HandleToolCall(req, "interact", args)
+
+	counts := counter.SwapAndReset()
+	if counts["interact:unknown"] != 1 {
+		t.Fatalf("interact:unknown = %d, want 1", counts["interact:unknown"])
+	}
+	if counts["err:interact:unknown"] != 1 {
+		t.Fatalf("err:interact:unknown = %d, want 1 (missing params = error)", counts["err:interact:unknown"])
+	}
+}
+
+func TestHandleToolCall_TracksSessionDepth(t *testing.T) {
+	handler := createTestToolHandler(t)
+
+	counter := telemetry.NewUsageCounter()
+	handler.usageCounter = counter
+
+	req := JSONRPCRequest{
+		JSONRPC: JSONRPCVersion,
+		ID:      1,
+		Method:  "tools/call",
+	}
+
+	// Make 3 tool calls.
+	for i := 0; i < 3; i++ {
+		handler.HandleToolCall(req, "observe", json.RawMessage(`{"what":"errors"}`))
+	}
+
+	if counter.SessionDepth() != 3 {
+		t.Fatalf("session depth = %d, want 3", counter.SessionDepth())
+	}
+
+	counts := counter.SwapAndReset()
+	if counts["session_depth"] != 3 {
+		t.Fatalf("session_depth in snapshot = %d, want 3", counts["session_depth"])
+	}
+}
+
 func TestHandleToolCall_NilUsageCounter_NoPanic(t *testing.T) {
 	handler := createTestToolHandler(t)
 	// usageCounter is nil by default — should not panic.

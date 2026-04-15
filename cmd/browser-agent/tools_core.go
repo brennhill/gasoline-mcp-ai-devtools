@@ -196,7 +196,11 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 		if key == "" {
 			key = "unknown"
 		}
-		h.usageCounter.Increment(name + ":" + key)
+		fullKey := name + ":" + key
+		h.usageCounter.IncrementWithLatency(fullKey, time.Since(start))
+		if resp.Error != nil || resultIsError {
+			h.usageCounter.IncrementError(fullKey)
+		}
 	}
 
 	return resp, true

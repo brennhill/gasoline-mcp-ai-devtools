@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestUsageCounter_Increment(t *testing.T) {
@@ -167,6 +168,101 @@ func TestUsageCounter_SwapAndResetEmpty(t *testing.T) {
 	snapshot := c.SwapAndReset()
 	if len(snapshot) != 0 {
 		t.Fatalf("SwapAndReset on new counter returned %d entries, want 0", len(snapshot))
+	}
+}
+
+func TestUsageCounter_IncrementWithLatency(t *testing.T) {
+	c := NewUsageCounter()
+	c.IncrementWithLatency("observe:page", 50*time.Millisecond)
+	c.IncrementWithLatency("observe:page", 150*time.Millisecond)
+	c.IncrementWithLatency("interact:click", 30*time.Millisecond)
+
+	snapshot := c.SwapAndReset()
+	if snapshot["observe:page"] != 2 {
+		t.Fatalf("observe:page count = %d, want 2", snapshot["observe:page"])
+	}
+	if snapshot["lat_avg:observe:page"] != 100 {
+		t.Fatalf("lat_avg:observe:page = %d, want 100", snapshot["lat_avg:observe:page"])
+	}
+	if snapshot["lat_max:observe:page"] != 150 {
+		t.Fatalf("lat_max:observe:page = %d, want 150", snapshot["lat_max:observe:page"])
+	}
+	if snapshot["lat_avg:interact:click"] != 30 {
+		t.Fatalf("lat_avg:interact:click = %d, want 30", snapshot["lat_avg:interact:click"])
+	}
+}
+
+func TestUsageCounter_IncrementError(t *testing.T) {
+	c := NewUsageCounter()
+	c.Increment("observe:page")
+	c.Increment("observe:page")
+	c.IncrementError("observe:page")
+
+	snapshot := c.SwapAndReset()
+	if snapshot["observe:page"] != 2 {
+		t.Fatalf("observe:page = %d, want 2", snapshot["observe:page"])
+	}
+	if snapshot["err:observe:page"] != 1 {
+		t.Fatalf("err:observe:page = %d, want 1", snapshot["err:observe:page"])
+	}
+}
+
+func TestUsageCounter_RecordAsyncOutcome(t *testing.T) {
+	c := NewUsageCounter()
+	c.RecordAsyncOutcome("complete")
+	c.RecordAsyncOutcome("complete")
+	c.RecordAsyncOutcome("timeout")
+	c.RecordAsyncOutcome("expired")
+
+	snapshot := c.SwapAndReset()
+	if snapshot["async:complete"] != 2 {
+		t.Fatalf("async:complete = %d, want 2", snapshot["async:complete"])
+	}
+	if snapshot["async:timeout"] != 1 {
+		t.Fatalf("async:timeout = %d, want 1", snapshot["async:timeout"])
+	}
+	if snapshot["async:expired"] != 1 {
+		t.Fatalf("async:expired = %d, want 1", snapshot["async:expired"])
+	}
+}
+
+func TestUsageCounter_SessionDepth(t *testing.T) {
+	c := NewUsageCounter()
+	if c.SessionDepth() != 0 {
+		t.Fatalf("initial session depth = %d, want 0", c.SessionDepth())
+	}
+
+	c.Increment("a")
+	c.Increment("b")
+	c.IncrementWithLatency("c", time.Millisecond)
+
+	if c.SessionDepth() != 3 {
+		t.Fatalf("session depth = %d, want 3", c.SessionDepth())
+	}
+
+	// SwapAndReset should include session_depth but NOT reset it.
+	snapshot := c.SwapAndReset()
+	if snapshot["session_depth"] != 3 {
+		t.Fatalf("session_depth in snapshot = %d, want 3", snapshot["session_depth"])
+	}
+	if c.SessionDepth() != 3 {
+		t.Fatalf("session depth after swap = %d, want 3 (should not reset)", c.SessionDepth())
+	}
+
+	// Further calls add to the running total.
+	c.Increment("d")
+	if c.SessionDepth() != 4 {
+		t.Fatalf("session depth after +1 = %d, want 4", c.SessionDepth())
+	}
+}
+
+func TestUsageCounter_LatencyNotIncludedWhenNoLatencyRecorded(t *testing.T) {
+	c := NewUsageCounter()
+	c.Increment("observe:page") // no latency variant
+
+	snapshot := c.SwapAndReset()
+	if _, exists := snapshot["lat_avg:observe:page"]; exists {
+		t.Fatal("lat_avg should not exist when no latency was recorded")
 	}
 }
 
