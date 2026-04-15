@@ -34,13 +34,9 @@ npx kaboom-mcp
 
 Kaboom is a **browser extension + local MCP server** that streams real-time browser data to autonomous coding agents. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all and fixes issues without you lifting a finger.
 
-## Smart Teams Cook With Kaboom
+## Smart Teams Use KaBOOM!
 
-<img src="/assets/images/sparky-cook-with-kaboom-1.png" alt="Sparky cooking with kaboom" style="float: right; width: clamp(60px, 15vw, 120px); height: auto; margin: 0 0 1rem 1.5rem; border-radius: 8px;">
-
-<span style="color: #22c55e;">Sparky says: No more copy-paste debugging. Just code, fix, and ship.</span>
-
-<div style="clear: both;"></div>
+<span style="color: #22c55e;">No more copy-paste debugging. Just code, fix, and ship.</span>
 
 **No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Kaboom uses a standard extension — your browser stays secure and unmodified.
 

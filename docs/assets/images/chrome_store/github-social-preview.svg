@@ -30,7 +30,7 @@
   </g>
 
   <!-- Title -->
-  <text x="640" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#302d2a" text-anchor="middle">Kaboom</text>
+  <text x="640" y="380" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="72" font-weight="600" fill="#302d2a" text-anchor="middle">KaBOOM!</text>
 
   <!-- Tagline -->
   <text x="640" y="430" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="28" font-weight="400" fill="#6e7681" text-anchor="middle">Agentic Browser Devtools - rapid e2e web development</text>
