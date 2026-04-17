@@ -78,9 +78,9 @@ cat <<'EOF'
 EOF
 echo -e "${NC}"
 if [ "$HOOKS_ONLY" = "1" ]; then
-    echo -e "${ORANGE}${BOLD}Kaboom Hooks Installer${NC} (hooks-only mode)"
+    echo -e "${ORANGE}${BOLD}KaBOOM! Hooks Installer${NC} (hooks-only mode)"
 else
-    echo -e "${ORANGE}${BOLD}Kaboom Installer${NC}"
+    echo -e "${ORANGE}${BOLD}KaBOOM! Installer${NC}"
 fi
 echo -e "${BLUE}--------------------------------------------------${NC}"
 if [ "$STRICT_CHECKSUM" = "1" ]; then
@@ -307,7 +307,7 @@ kill_stale_kaboom_processes() {
     fi
 
     if [ -n "$pids" ]; then
-        echo -e "  Stopping running Kaboom/legacy processes..."
+        echo -e "  Stopping running KaBOOM!/legacy processes..."
         for pid in $pids; do
             # Don't kill ourselves.
             if [ "$pid" != "$$" ]; then
@@ -649,7 +649,7 @@ PLIST
 
             cat > "$service_path" <<SERVICE
 [Unit]
-Description=Kaboom Browser AI Devtools Daemon
+Description=KaBOOM! Browser AI Devtools Daemon
 After=network.target
 
 [Service]
@@ -678,7 +678,7 @@ SERVICE
             cat > "$desktop_path" <<DESKTOP
 [Desktop Entry]
 Type=Application
-Name=Kaboom Daemon
+Name=KaBOOM! Daemon
 Exec=$CANONICAL_KABOOM_BIN --daemon --port 7890
 Hidden=false
 NoDisplay=true
@@ -760,10 +760,10 @@ if [ "$HOOKS_ONLY" = "1" ]; then
     echo -e "  kaboom-hooks quality-gate   (check code against project standards)"
     echo -e "  kaboom-hooks compress-output (compress verbose test/build output)"
     echo ""
-    echo -e "Want the full Kaboom suite (browser devtools, MCP server, extension)?"
+    echo -e "Want the full KaBOOM! suite (browser devtools, MCP server, extension)?"
     echo -e "  curl -fsSL https://gokaboom.dev/install.sh | sh"
 elif [ "$IS_UPGRADE" = "1" ] && [ -n "$PREVIOUS_VERSION" ]; then
-    echo -e "${GREEN}${BOLD}Kaboom upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
+    echo -e "${GREEN}${BOLD}KaBOOM! upgraded: v$PREVIOUS_VERSION -> v$VERSION${NC}"
 else
-    echo -e "${GREEN}${BOLD}Kaboom v$VERSION installed successfully.${NC}"
+    echo -e "${GREEN}${BOLD}KaBOOM! v$VERSION installed successfully.${NC}"
 fi
