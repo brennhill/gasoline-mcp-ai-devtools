@@ -40,13 +40,13 @@ export function domPrimitiveListInteractive(
   }
 
   function getElementHandleStore(): ElementHandleStore {
-    const root = globalThis as typeof globalThis & { __gasolineElementHandles?: ElementHandleStore }
-    if (root.__gasolineElementHandles) {
+    const root = globalThis as typeof globalThis & { __kaboomElementHandles?: ElementHandleStore }
+    if (root.__kaboomElementHandles) {
       // Migrate legacy stores that lack selectorByID (#361)
-      if (!root.__gasolineElementHandles.selectorByID) {
-        root.__gasolineElementHandles.selectorByID = new Map<string, string>()
+      if (!root.__kaboomElementHandles.selectorByID) {
+        root.__kaboomElementHandles.selectorByID = new Map<string, string>()
       }
-      return root.__gasolineElementHandles
+      return root.__kaboomElementHandles
     }
     const created: ElementHandleStore = {
       byElement: new WeakMap<Element, string>(),
@@ -54,7 +54,7 @@ export function domPrimitiveListInteractive(
       selectorByID: new Map<string, string>(),
       nextID: 1
     }
-    root.__gasolineElementHandles = created
+    root.__kaboomElementHandles = created
     return created
   }
 
@@ -195,17 +195,20 @@ export function domPrimitiveListInteractive(
     return false
   }
 
-  // #369: Detect if an element is inside a navigation container (nav, header, role=navigation)
-  function isInsideNavigation(el: Element): boolean {
-    let node: Element | null = el
+  const LANDMARK_TAGS = new Set(['nav', 'header', 'footer', 'aside', 'main'])
+  const LANDMARK_ROLES = new Set(['navigation', 'banner', 'contentinfo', 'complementary', 'main'])
+
+  function findNearestLandmark(el: Element): { tag: string; role?: string } | undefined {
+    let node: Element | null = el.parentElement
     while (node && node !== document.documentElement) {
       const tag = node.tagName.toLowerCase()
-      if (tag === 'nav' || tag === 'header') return true
-      const role = node.getAttribute('role')
-      if (role === 'navigation' || role === 'banner') return true
+      const role = node.getAttribute('role') || undefined
+      if (LANDMARK_TAGS.has(tag) || (role && LANDMARK_ROLES.has(role))) {
+        return { tag, role }
+      }
       node = node.parentElement
     }
-    return false
+    return undefined
   }
 
   function extractBoundingBox(el: Element): { x: number; y: number; width: number; height: number } {
@@ -373,6 +376,8 @@ export function domPrimitiveListInteractive(
     visible: boolean
     in_overlay?: boolean
     distance_px?: number // #448: distance from scope_rect center
+    landmark_tag?: string
+    landmark_role?: string
   }[] = []
 
   // First pass: collect raw entries with their base selectors
@@ -391,6 +396,8 @@ export function domPrimitiveListInteractive(
     visible: boolean
     inOverlay: boolean
     distance_px?: number // #448: computed when scopeRect is present
+    landmarkTag?: string
+    landmarkRole?: string
   }[] = []
 
   const scopeRoot = resolveScopeRoot(scopeSelector)
@@ -416,7 +423,10 @@ export function domPrimitiveListInteractive(
 
       // #369: Apply filters early to maximize useful elements within the 100-cap
       if (visibleOnly && !visible) continue
-      if (excludeNav && isInsideNavigation(el)) continue
+      if (excludeNav) {
+        const lm = findNearestLandmark(el)
+        if (lm && (lm.tag === 'nav' || lm.tag === 'header' || lm.role === 'navigation' || lm.role === 'banner')) continue
+      }
 
       const bbox = extractBoundingBox(el)
 
@@ -438,6 +448,7 @@ export function domPrimitiveListInteractive(
       const ariaRole = el.getAttribute('role') || ''
       if (roleFilter && elementType !== roleFilter && ariaRole.toLowerCase() !== roleFilter) continue
 
+      const landmark = findNearestLandmark(el)
       rawEntries.push({
         el,
         htmlEl,
@@ -451,12 +462,84 @@ export function domPrimitiveListInteractive(
         placeholder: el.getAttribute('placeholder') || undefined,
         bbox,
         visible,
-        inOverlay: isInsideOverlay(el)
+        inOverlay: isInsideOverlay(el),
+        landmarkTag: landmark?.tag,
+        landmarkRole: landmark?.role
       })
 
       if (rawEntries.length >= 100) break
     }
     if (rawEntries.length >= 100) break
+  }
+
+  // Second pass: find cursor:pointer elements not caught by selector scan.
+  // Catches framework-bound click handlers (React onClick, Vue @click, etc.)
+  // that render as plain divs/spans with no semantic interactive attributes.
+  if (rawEntries.length < 100) {
+    const cursorPointerTags = new Set(['div', 'span', 'li', 'td', 'p', 'img', 'svg', 'label', 'figure', 'section', 'article'])
+    const candidates = scopeRoot.querySelectorAll('*')
+    let checked = 0
+    const maxCheck = 500 // Budget: don't scan more than 500 elements for cursor style
+    for (const el of candidates) {
+      if (rawEntries.length >= 100) break
+      if (checked >= maxCheck) break
+      if (seen.has(el)) continue
+      const tag = el.tagName.toLowerCase()
+      if (!cursorPointerTags.has(tag)) continue
+      checked++
+
+      const htmlEl = el as HTMLElement
+      if (!htmlEl.offsetParent && htmlEl !== document.body) continue
+
+      let cursor: string
+      try { cursor = getComputedStyle(htmlEl).cursor } catch { continue }
+      if (cursor !== 'pointer') continue
+
+      // Confirmed: cursor:pointer on a non-interactive element
+      seen.add(el)
+      const rect = htmlEl.getBoundingClientRect()
+      const visible = rect.width > 0 && rect.height > 0
+      if (visibleOnly && !visible) continue
+      if (!intersectsScopeRect(el)) continue
+
+      const bbox = extractBoundingBox(el)
+      const shadowSel = buildShadowSelector(el)
+      const baseSelector = shadowSel || buildUniqueSelector(el, htmlEl, '*')
+
+      const label =
+        el.getAttribute('aria-label') ||
+        el.getAttribute('title') ||
+        (htmlEl.textContent || '').trim().slice(0, 60) ||
+        tag
+
+      if (textContains && !label.toLowerCase().includes(textContains)) continue
+      const ariaRole = el.getAttribute('role') || ''
+      if (roleFilter && ariaRole.toLowerCase() !== roleFilter) continue
+
+      if (excludeNav) {
+        const lm = findNearestLandmark(el)
+        if (lm && (lm.tag === 'nav' || lm.tag === 'header' || lm.role === 'navigation' || lm.role === 'banner')) continue
+      }
+
+      const landmark = findNearestLandmark(el)
+      rawEntries.push({
+        el,
+        htmlEl,
+        baseSelector,
+        finalSelector: baseSelector,
+        tag,
+        inputType: undefined,
+        elementType: 'clickable',
+        label,
+        role: ariaRole || undefined,
+        placeholder: undefined,
+        bbox,
+        visible,
+        inOverlay: isInsideOverlay(el),
+        landmarkTag: landmark?.tag,
+        landmarkRole: landmark?.role
+      })
+    }
   }
 
   // Disambiguate selectors in DOM order BEFORE dedup and spatial sort.
@@ -558,7 +641,9 @@ export function domPrimitiveListInteractive(
       bbox: entry.bbox,
       visible: entry.visible,
       ...(distPx !== undefined ? { distance_px: distPx } : {}),
-      ...(entry.inOverlay ? { in_overlay: true } : {})
+      ...(entry.inOverlay ? { in_overlay: true } : {}),
+      ...(entry.landmarkTag ? { landmark_tag: entry.landmarkTag } : {}),
+      ...(entry.landmarkRole ? { landmark_role: entry.landmarkRole } : {})
     })
   }
 

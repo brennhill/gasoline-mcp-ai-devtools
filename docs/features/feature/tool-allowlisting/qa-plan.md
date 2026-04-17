@@ -52,7 +52,7 @@ last_verified_date: 2026-03-05
 ### Scenario 1: Production Profile (Observation-Only) (Happy Path)
 1. Setup:
    - Create allowlist-production.yaml: `allowed_tools: [observe.*, generate.*, analyze.dom]`
-   - Start server: `gasoline --allowlist-config=allowlist-production.yaml`
+   - Start server: `kaboom --allowlist-config=allowlist-production.yaml`
 2. Steps:
    - [ ] Check status: `configure({action:"health"})` — verify allowlist_enabled: true
    - [ ] Observe logs: `observe({what: "logs"})` — succeeds
@@ -90,7 +90,7 @@ last_verified_date: 2026-03-05
 1. Setup:
    - Create malformed YAML: `allowed_tools: [observe.*, missing_quote`
 2. Steps:
-   - [ ] Attempt server start: `gasoline --allowlist-config=bad.yaml`
+   - [ ] Attempt server start: `kaboom --allowlist-config=bad.yaml`
    - [ ] Verify server fails to start
    - [ ] Verify error message explains YAML parse failure
 3. Expected Result: Server fails fast with clear error

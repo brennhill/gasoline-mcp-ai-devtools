@@ -23,9 +23,9 @@ Canonical documents:
 - Command/option traceability: `docs/core/mcp-command-option-matrix.md`
 
 Implementation anchors:
-- MCP handler: `cmd/dev-console/handler.go`
-- Tool schemas: `cmd/dev-console/tools_schema.go`
-- Tool dispatch: `cmd/dev-console/tools_core.go`
+- MCP handler: `cmd/browser-agent/handler.go`
+- Tool schemas: `cmd/browser-agent/tools_schema.go`
+- Tool dispatch: `cmd/browser-agent/tools_core.go`
 - Query lifecycle: `internal/capture/queries.go`
 - Unified sync endpoint: `internal/capture/sync.go`
 - Extension sync executor: `src/background/sync-client.ts`, `src/background/pending-queries.ts`

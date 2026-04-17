@@ -1,7 +1,7 @@
 // mic-permission.js — Requests microphone access from a full extension page.
 // Chrome MV3 CSP blocks inline scripts, so this must be a separate file.
 // After granting, tells the background to close this tab and show a toast
-// guiding the user to click the Gasoline icon (which auto-starts recording).
+// guiding the user to click the Kaboom icon (which auto-starts recording).
 
 const btn = document.getElementById('grant-btn')
 const statusEl = document.getElementById('status')
@@ -13,7 +13,7 @@ function onPermissionGranted() {
   statusEl.textContent = 'Granted! Closing...'
   btn.textContent = 'Granted'
   btn.disabled = true
-  chrome.runtime.sendMessage({ type: 'MIC_GRANTED_CLOSE_TAB' })
+  chrome.runtime.sendMessage({ type: 'mic_granted_close_tab' })
 }
 
 // Check current permission state on load

@@ -12,7 +12,7 @@ last_reviewed: 2026-02-16
 
 1. **Test the wire, not the internals** — Every assertion validates what MCP clients actually receive
 2. **Fail-first verification** — Each test must be able to fail. If removing the feature wouldn't fail the test, the test is worthless
-3. **No mocks** — Tests run against the real `gasoline-mcp` binary from PATH (the npm-installed version)
+3. **No mocks** — Tests run against the real `kaboom-agentic-browser` binary from PATH (the npm-installed version)
 4. **Deterministic** — No timing-dependent assertions. Use retries with backoff, not sleeps
 5. **Self-diagnosing** — On failure, print the actual response so you can debug without re-running
 
@@ -32,7 +32,7 @@ These tests verify MCP JSON-RPC 2.0 correctness. Failures here mean no MCP clien
 |-------|-------|
 | **Type** | Contract |
 | **What** | Send `initialize` request, verify response has `capabilities.tools` |
-| **Assert** | `response.result.capabilities.tools` exists, `response.result.serverInfo.name == "gasoline-mcp"`, `response.result.serverInfo.version` matches VERSION file |
+| **Assert** | `response.result.capabilities.tools` exists, `response.result.serverInfo.name == "kaboom-browser-devtools"`, `response.result.serverInfo.version` matches VERSION file |
 | **Trust because** | If capabilities are wrong, Claude/Cursor won't know what tools exist. Version mismatch means wrong binary is installed. |
 
 ### 1.2 — tools/list returns exactly 5 tools
@@ -593,7 +593,7 @@ Each mode must return a valid response shape, even with no data.
 | Field | Value |
 |-------|-------|
 | **Type** | Lifecycle |
-| **What** | Start daemon, verify health, run `gasoline-mcp --stop --port $PORT` |
+| **What** | Start daemon, verify health, run `kaboom-agentic-browser --stop --port $PORT` |
 | **Assert** | --stop exits 0. Port is freed (nothing listening). PID file is cleaned up. |
 | **Trust because** | Ungraceful shutdown leaves orphan processes. PID file check prevents stale state. |
 
@@ -650,21 +650,21 @@ Each mode must return a valid response shape, even with no data.
 
 ## Category 8: Security
 
-### 8.1 — Extension endpoints reject requests without X-Gasoline-Client header
+### 8.1 — Extension endpoints reject requests without X-Kaboom-Client header
 
 | Field | Value |
 |-------|-------|
 | **Type** | Security |
-| **What** | `curl http://localhost:$PORT/sync` (no X-Gasoline-Client header) |
+| **What** | `curl http://localhost:$PORT/sync` (no X-Kaboom-Client header) |
 | **Assert** | Returns 403 Forbidden with error about missing header. |
 | **Trust because** | extensionOnly middleware must actually block. If it doesn't, any local process can inject data. |
 
-### 8.2 — Extension endpoints accept valid X-Gasoline-Client header
+### 8.2 — Extension endpoints accept valid X-Kaboom-Client header
 
 | Field | Value |
 |-------|-------|
 | **Type** | Security |
-| **What** | `curl -H 'X-Gasoline-Client: gasoline-extension/5.8.0' http://localhost:$PORT/sync` |
+| **What** | `curl -H 'X-Kaboom-Client: kaboom-extension/5.8.0' http://localhost:$PORT/sync` |
 | **Assert** | Does NOT return 403. (May return 400 for missing body, but not 403.) |
 | **Trust because** | The middleware must not over-block. Valid extension requests must pass. |
 
@@ -755,7 +755,7 @@ These tests exist because of specific bugs we've hit before.
 | Field | Value |
 |-------|-------|
 | **Type** | Regression |
-| **What** | `gasoline-mcp --version` output vs health endpoint version |
+| **What** | `kaboom-agentic-browser --version` output vs health endpoint version |
 | **Assert** | Both match. |
 | **Trust because** | We shipped binaries where --version and health reported different versions due to stale compilation. |
 

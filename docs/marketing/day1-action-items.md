@@ -22,7 +22,7 @@ last_reviewed: 2026-02-16
 ## 🎯 Remaining Today
 
 ### 1. Post to Reddit (30 minutes)
-**File:** [`docs/marketing/reddit-posts/01-intro-gasoline-mcp.md`](docs/marketing/reddit-posts/01-intro-gasoline-mcp.md:1)
+**File:** [`docs/marketing/reddit-posts/01-intro-kaboom-mcp.md`](docs/marketing/reddit-posts/01-intro-kaboom-mcp.md:1)
 
 **Subreddits to target:**
 - r/LocalLLaMA - Primary target (AI/LLM audience)
@@ -40,13 +40,13 @@ last_reviewed: 2026-02-16
 - Answer questions thoroughly
 
 ### 2. Publish First Blog Post (30 minutes)
-**File:** [`docs/marketing/blog-drafts/01-how-gasoline-captures-websocket-messages.md`](docs/marketing/blog-drafts/01-how-gasoline-captures-websocket-messages.md:1)
+**File:** [`docs/marketing/blog-drafts/01-how-kaboom-captures-websocket-messages.md`](docs/marketing/blog-drafts/01-how-kaboom-captures-websocket-messages.md:1)
 
 **Steps:**
 1. Add to your Jekyll blog section (`docs/_posts/`)
 2. Add front matter with today's date
 3. Review and edit as needed
-4. Publish to cookwithgasoline.com
+4. Publish to gokaboom.dev
 5. Share on social media
 
 ### 3. Prepare Blog Assets (15 minutes)
@@ -54,7 +54,7 @@ last_reviewed: 2026-02-16
 - WebSocket capture UI
 - Network request/response display
 - Console log view
-- Gasoline popup interface
+- Kaboom popup interface
 
 **Tools:** Use your browser's screenshot tool or Snagit/Skitch
 
@@ -89,7 +89,7 @@ Set up a `#welcome` or `#introductions` channel with:
 
 ### 2. Add Slack Invite to Website
 Add Slack invite link to:
-- cookwithgasoline.com header/footer
+- gokaboom.dev header/footer
 - README.md
 - Social media bios
 

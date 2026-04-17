@@ -11,7 +11,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This migration expands Gasoline from 4 MCP tools to 5, adding the `analyze` tool for structured analysis and auditing capabilities.
+This migration expands Kaboom from 4 MCP tools to 5, adding the `analyze` tool for structured analysis and auditing capabilities.
 
 ### Before:
 ```
@@ -59,19 +59,19 @@ However, cramming analysis capabilities into `observe` would violate principle #
 
 #### Files to create/modify:
 
-1. **`cmd/dev-console/analyze.go`** (new)
+1. **`cmd/browser-agent/analyze.go`** (new)
    - Tool registration
    - Request handling
    - Result correlation
 
-2. **`cmd/dev-console/mcp.go`** (modify)
+2. **`cmd/browser-agent/mcp.go`** (modify)
    - Add `analyze` to tool list
    - Register analyze handlers
 
-3. **`cmd/dev-console/pending.go`** (modify)
+3. **`cmd/browser-agent/pending.go`** (modify)
    - Extend pending query system for analyze requests
 
-4. **`cmd/dev-console/analyze_test.go`** (new)
+4. **`cmd/browser-agent/analyze_test.go`** (new)
    - Unit tests for analyze tool
 
 ### Phase 3: Extension Implementation
@@ -135,7 +135,7 @@ However, cramming analysis capabilities into `observe` would violate principle #
 ### Stage 3: General Availability
 - Release v7.0
 - Update marketing site
-- Blog post: "Gasoline now supports unified debugging lifecycle"
+- Blog post: "Kaboom now supports unified debugging lifecycle"
 
 ## Rollback Plan
 

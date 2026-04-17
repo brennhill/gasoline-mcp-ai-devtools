@@ -36,7 +36,7 @@ last_verified_date: 2026-03-05
 ### Negative Tests (must NOT leak)
 - [ ] 429 response body contains only `error`, `message`, `retry_after_ms`, `circuit_open`, `current_rate`, `threshold` -- no captured data
 - [ ] Health endpoint circuit breaker state contains only `circuit_open`, `opened_at`, `current_rate`, `memory_bytes`, `reason` -- no buffer contents
-- [ ] Extension backoff state is not accessible via `window.gasoline` or any injected global
+- [ ] Extension backoff state is not accessible via `window.kaboom` or any injected global
 - [ ] Data buffered during extension backoff is not exposed to content scripts or page JavaScript
 - [ ] Per-tool rate limit error does not reveal names of OTHER tools or their limits
 
@@ -191,7 +191,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web application that generates significant telemetry (console logs, network requests)
 - [ ] A tool to generate high-volume HTTP traffic (e.g., `ab`, `wrk`, or a simple script)
@@ -233,7 +233,7 @@ last_verified_date: 2026-03-05
 
 | # | Step (AI executes) | Human Observes | Expected Result | Pass |
 |---|-------------------|----------------|-----------------|------|
-| UAT-19 | Restart server with: `./dist/gasoline --port 7890 --rate-limits="observe=5"` | Server startup | Per-tool limits active | [ ] |
+| UAT-19 | Restart server with: `./dist/kaboom --port 7890 --rate-limits="observe=5"` | Server startup | Per-tool limits active | [ ] |
 | UAT-20 | AI calls observe 5 times rapidly | MCP responses | All 5 succeed | [ ] |
 | UAT-21 | AI calls observe a 6th time | MCP response | Error: `-32029`, `"Rate limit exceeded for tool 'observe': 5/min"` | [ ] |
 | UAT-22 | AI checks retry_after_seconds in error | Error data | `retry_after_seconds` field present with seconds until reset | [ ] |
@@ -247,7 +247,7 @@ last_verified_date: 2026-03-05
 |---|-------|--------|----------|------|
 | DL-UAT-1 | 429 response has no captured data | Inspect 429 JSON body | Only rate limit metadata fields | [ ] |
 | DL-UAT-2 | Health endpoint has no buffer contents | Call `configure({action:"health"})` | Memory sizes and counts only | [ ] |
-| DL-UAT-3 | Extension backoff state not in page context | Open browser console on page, type `window.gasoline` | Undefined or no backoff state exposed | [ ] |
+| DL-UAT-3 | Extension backoff state not in page context | Open browser console on page, type `window.kaboom` | Undefined or no backoff state exposed | [ ] |
 | DL-UAT-4 | Per-tool error does not reveal other tools' limits | Inspect -32029 error | Only the limited tool's info shown | [ ] |
 | DL-UAT-5 | Circuit breaker health has no buffer data | Inspect health response during circuit open | Only circuit state + operational metrics | [ ] |
 

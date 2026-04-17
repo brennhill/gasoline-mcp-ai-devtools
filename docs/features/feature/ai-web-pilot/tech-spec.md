@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Gasoline is capture-only by design — it observes browser state but doesn't act on it. AI Web Pilot breaks that rule intentionally to enable two workflows:
+Kaboom is capture-only by design — it observes browser state but doesn't act on it. AI Web Pilot breaks that rule intentionally to enable two workflows:
 
 1. **Human verification** — AI points at elements on screen ("this button") so developer can confirm understanding
 2. **Faster reproduction** — AI saves/restores browser state and tests expressions without clicking through flows
@@ -54,7 +54,7 @@ This prevents runaway agents from self-authorizing code execution or state manip
 #### How It Works:
 1. MCP tool receives CSS selector + optional duration (default 5000ms)
 2. Server forwards to extension via existing WebSocket channel
-3. Extension injects `#gasoline-highlighter` div with:
+3. Extension injects `#kaboom-highlighter` div with:
    - `position: fixed`
    - `border: 4px solid red`
    - `z-index: 2147483647` (max)
@@ -82,7 +82,7 @@ highlight_element
 2. **Load:** Extension clears existing state, restores from snapshot, optionally navigates to saved URL
 3. **List:** Returns available snapshot names with metadata (URL, timestamp, size)
 
-Snapshots stored in extension's `chrome.storage.local` under `gasoline_snapshots` namespace.
+Snapshots stored in extension's `chrome.storage.local` under `kaboom_state_snapshots` namespace.
 
 #### Tool Schema:
 ```
@@ -111,7 +111,7 @@ manage_state
 5. Execution timeout: 5000ms (prevents infinite loops)
 
 #### Security:
-- Localhost-only (Gasoline already binds to 127.0.0.1)
+- Localhost-only (Kaboom already binds to 127.0.0.1)
 - Human opt-in required (part of AI Web Pilot toggle)
 - No persistent side effects guaranteed (user's responsibility)
 
@@ -138,9 +138,9 @@ execute_javascript
 
 ```javascript
 // From server to extension (via background.js WebSocket)
-{ type: 'GASOLINE_HIGHLIGHT', payload: { selector, duration_ms } }
-{ type: 'GASOLINE_MANAGE_STATE', payload: { action, snapshot_name, include_url } }
-{ type: 'GASOLINE_EXECUTE_JS', payload: { script, timeout_ms, request_id } }
+{ type: 'KABOOM_HIGHLIGHT', payload: { selector, duration_ms } }
+{ type: 'KABOOM_MANAGE_STATE', payload: { action, snapshot_name, include_url } }
+{ type: 'KABOOM_EXECUTE_JS', payload: { script, timeout_ms, request_id } }
 
 // From extension to server (responses)
 { type: 'highlight_result', payload: { success, selector, bounds } }
@@ -237,5 +237,5 @@ Or as standalone tools if the composite pattern doesn't fit the use case.
 | `extension/popup.js` | Handle toggle state |
 | `extension/background.js` | Route new message types |
 | `extension/inject.js` | Implement highlight, state, execute handlers |
-| `cmd/dev-console/tools_core.go` | Add MCP tool handlers |
-| `cmd/dev-console/pilot.go` (new) | AI Web Pilot domain logic |
+| `cmd/browser-agent/tools_core.go` | Add MCP tool handlers |
+| `cmd/browser-agent/pilot.go` (new) | AI Web Pilot domain logic |

@@ -1,5 +1,5 @@
 ---
-feature: Gasoline CI Infrastructure
+feature: Kaboom CI Infrastructure
 status: proposed
 tool: observe, configure, interact
 mode: ci-cd, autonomous-repair, snapshots
@@ -11,7 +11,7 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Product Spec: Gasoline CI Infrastructure
+# Product Spec: Kaboom CI Infrastructure
 
 ## Problem Statement
 
@@ -28,7 +28,7 @@ CI/CD pipelines are where AI debugging breaks down:
 
 ## Solution
 
-**Gasoline CI Infrastructure** brings full browser observability to CI pipelines:
+**Kaboom CI Infrastructure** brings full browser observability to CI pipelines:
 
 1. **Snapshots:** Capture browser state (DOM, network, logs, console) when test fails
 2. **Test Isolation:** Mark which logs/network calls are "test-specific" vs "background noise"
@@ -39,11 +39,11 @@ CI/CD pipelines are where AI debugging breaks down:
 
 **Result:** Test failures diagnosed + repaired autonomously in 5 minutes (vs 45 minutes manual).
 
-## Why Gasoline vs Chrome DevTools Protocol
+## Why Kaboom vs Chrome DevTools Protocol
 
-Chrome has DevTools Protocol (CDP), but Gasoline solves a different problem. Here's why both exist:
+Chrome has DevTools Protocol (CDP), but Kaboom solves a different problem. Here's why both exist:
 
-| Aspect | Chrome DevTools Protocol | Gasoline CI Infrastructure |
+| Aspect | Chrome DevTools Protocol | Kaboom CI Infrastructure |
 |--------|--------------------------|---------------------------|
 | **Designed for** | Human developers with DevTools UI | AI agents operating autonomously |
 | **Telemetry capture** | On-demand (you request what you want) | Auto-buffered (everything captured continuously) |
@@ -70,7 +70,7 @@ page.on('response', response => {
 // Slow, error-prone
 ```
 
-With Gasoline:
+With Kaboom:
 ```javascript
 // Test fails (no pre-planning needed)
 // AI queries: observe({what: 'network_bodies', url: '/api/checkout'})
@@ -81,24 +81,24 @@ With Gasoline:
 
 ### Why not just use Chrome CDP via MCP?
 
-Chrome DevTools Protocol *can* be exposed via MCP, but Gasoline solves the operational problems:
+Chrome DevTools Protocol *can* be exposed via MCP, but Kaboom solves the operational problems:
 
-1. **Auto-capture:** Gasoline buffers everything automatically. CDP requires you to set up listeners BEFORE the failure happens.
-2. **No port forwarding:** Gasoline uses stdio (same as MCP). CDP requires exposing port 9222, which is a security/networking concern in CI.
-3. **Launch overhead:** CDP requires launching Chrome with `--remote-debugging-port`, waiting for port readiness, then connecting. Gasoline auto-loads as an extension.
-4. **Semantic queries:** Gasoline provides high-level queries (`observe({what: 'network_bodies', url: '/api/x', status_min: 400})`). CDP gives low-level primitives that agents must interpret.
-5. **Single protocol:** Agents already use MCP (observe, configure, interact). Gasoline extends that same protocol. CDP would require learning a second protocol.
-6. **Test boundaries:** Gasoline understands test structure (mark test start/end) and can filter noise automatically. CDP has no concept of "this log is test-specific."
-7. **Verification context:** When a test fails, Gasoline knows exactly which snapshot/boundary is relevant. CDP shows all Chrome events without context.
+1. **Auto-capture:** Kaboom buffers everything automatically. CDP requires you to set up listeners BEFORE the failure happens.
+2. **No port forwarding:** Kaboom uses stdio (same as MCP). CDP requires exposing port 9222, which is a security/networking concern in CI.
+3. **Launch overhead:** CDP requires launching Chrome with `--remote-debugging-port`, waiting for port readiness, then connecting. Kaboom auto-loads as an extension.
+4. **Semantic queries:** Kaboom provides high-level queries (`observe({what: 'network_bodies', url: '/api/x', status_min: 400})`). CDP gives low-level primitives that agents must interpret.
+5. **Single protocol:** Agents already use MCP (observe, configure, interact). Kaboom extends that same protocol. CDP would require learning a second protocol.
+6. **Test boundaries:** Kaboom understands test structure (mark test start/end) and can filter noise automatically. CDP has no concept of "this log is test-specific."
+7. **Verification context:** When a test fails, Kaboom knows exactly which snapshot/boundary is relevant. CDP shows all Chrome events without context.
 
-**Bottom Line:** CDP is low-level infrastructure. Gasoline is a purpose-built high-level abstraction for AI agents in test automation. They work together, not instead of each other.
+**Bottom Line:** CDP is low-level infrastructure. Kaboom is a purpose-built high-level abstraction for AI agents in test automation. They work together, not instead of each other.
 
 ## Requirements
 
 ### Core Capabilities
 
 #### 1. Test Snapshots
-- **Capture:** Full browser state at named checkpoint (`gasoline.snapshot('name')`)
+- **Capture:** Full browser state at named checkpoint (`kaboom.snapshot('name')`)
   - DOM tree (HTML structure)
   - Network calls (requests + responses, timing)
   - Console logs (info, warn, error, debug)
@@ -110,7 +110,7 @@ Chrome DevTools Protocol *can* be exposed via MCP, but Gasoline solves the opera
 - **Size:** Keep snapshots <10MB each (compress, prune non-essential data)
 
 #### 2. Test Boundaries
-- **Mark:** Developers call `gasoline.testBoundary('test-name')` to mark test-specific logs
+- **Mark:** Developers call `kaboom.testBoundary('test-name')` to mark test-specific logs
 - **Isolation:** Logs/network calls after boundary marked are tagged as "test-specific"
 - **Filtering:** When AI queries logs, filter out background noise (analytics, scheduled jobs)
 - **Noise Reduction:** 80%+ reduction in irrelevant logs (target: <50 relevant logs per test)
@@ -118,18 +118,18 @@ Chrome DevTools Protocol *can* be exposed via MCP, but Gasoline solves the opera
 
 #### 3. Network Mocking
 - **Mock API:** AI calls `configure({action: 'mock', endpoint: '/api/x', response: {...}})` to mock response
-- **Interception:** Gasoline intercepts requests to endpoint, returns mocked response
+- **Interception:** Kaboom intercepts requests to endpoint, returns mocked response
 - **Error Testing:** Can mock error responses (4xx, 5xx, timeouts) to test error handling
 - **Partial Mocks:** Can mock specific endpoints while others hit real backend
 - **Verification:** Re-run test with mocked endpoint to verify fix works
 - **Scope:** Applies only during test (automatically reverted after)
 
 #### 4. Test Snapshots for Fixtures
-- **Playwright:** Provide fixture to expose Gasoline API in Playwright tests
+- **Playwright:** Provide fixture to expose Kaboom API in Playwright tests
 - **Jest:** Similar fixture for Jest test setup
 - **Cypress:** Plugin for Cypress tests
-- **Setup/Teardown:** Initialize Gasoline on test start, cleanup on test end
-- **API Access:** Full Gasoline API available in tests (snapshot, boundary, mock, observe)
+- **Setup/Teardown:** Initialize Kaboom on test start, cleanup on test end
+- **API Access:** Full Kaboom API available in tests (snapshot, boundary, mock, observe)
 
 #### 5. Async Command Execution
 - **Prevent Hangs:** Long-running operations (re-run test: 30+ sec) wrapped in async handler
@@ -160,7 +160,7 @@ Chrome DevTools Protocol *can* be exposed via MCP, but Gasoline solves the opera
 ### Integration Points
 
 #### Test Runners
-- **Cypress:** `cy.gasoline.snapshot()`, `cy.gasoline.testBoundary()` commands
+- **Cypress:** `cy.kaboom.snapshot()`, `cy.kaboom.testBoundary()` commands
 - **Playwright:** Fixture-based API in tests
 - **Jest:** Similar fixture-based API
 - **Vitest:** Same as Jest
@@ -174,7 +174,7 @@ Chrome DevTools Protocol *can* be exposed via MCP, but Gasoline solves the opera
 #### AI Integration
 - **Self-Healing Tests (#33):** Consumes snapshots for root-cause diagnosis
 - **Context Streaming (#5):** Real-time snapshot push notifications
-- **MCP Server:** Gasoline MCP server is extended with snapshot/mock/boundary commands
+- **MCP Server:** Kaboom MCP server is extended with snapshot/mock/boundary commands
 
 ### Output & Reporting
 
@@ -242,7 +242,7 @@ GitHub Comment (Auto-Generated):
    ↓
 3. Test fails: "Expected 'Order Confirmed', got 'Loading'"
    ↓
-4. [AUTOMATIC] Gasoline captures snapshot
+4. [AUTOMATIC] Kaboom captures snapshot
    - DOM at failure moment
    - Network calls (pending POST /api/order)
    - Console logs
@@ -334,7 +334,7 @@ test('checkout', async ({ page }) => {
 #### AI Fix:
 ```javascript
 // Mock the slow endpoint
-await gasoline.configure({
+await kaboom.configure({
   action: 'mock',
   endpoint: '/api/order',
   response: { statusCode: 200, body: { success: true } }
@@ -387,7 +387,7 @@ const mockUser = {
 };
 
 // Instead of user_metadata, use user_info relationship
-await gasoline.configure({
+await kaboom.configure({
   action: 'mock',
   endpoint: '/api/users/1',
   response: { 
@@ -406,7 +406,7 @@ await gasoline.configure({
 
 ## Integration & Dependencies
 
-### Internal (Gasoline)
+### Internal (Kaboom)
 - **observe():** Extended to support `what: 'snapshots'`
 - **configure():** Extended to support `action: 'mock'`, `action: 'boundary'`
 - **interact():** Can restore to snapshot, re-run test
@@ -421,25 +421,25 @@ await gasoline.configure({
 ## Technical Approach (High-Level)
 
 ### Snapshot Capture
-1. Developer calls `gasoline.snapshot('name')`
-2. Gasoline collects: DOM, network calls, logs, perf metrics
+1. Developer calls `kaboom.snapshot('name')`
+2. Kaboom collects: DOM, network calls, logs, perf metrics
 3. Data compressed, stored in memory (ephemeral)
 4. AI can retrieve via `observe({what: 'snapshots'})`
 
 ### Test Boundary
-1. Developer calls `gasoline.testBoundary('test-name')`
+1. Developer calls `kaboom.testBoundary('test-name')`
 2. Subsequent logs/network tagged as "test-specific"
 3. Background noise (analytics, jobs) not tagged
 4. AI queries only "test-specific" logs
 
 ### Network Mocking
 1. AI calls `configure({action: 'mock', endpoint, response})`
-2. Gasoline intercepts requests to endpoint
+2. Kaboom intercepts requests to endpoint
 3. Returns mocked response instead of real request
 4. Test continues with mocked data
 
 ### Async Execution
-1. Wrap long operations in `gasoline.async(() => {...})`
+1. Wrap long operations in `kaboom.async(() => {...})`
 2. Operations run without blocking MCP server
 3. Results returned asynchronously
 

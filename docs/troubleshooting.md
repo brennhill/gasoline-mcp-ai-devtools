@@ -1,7 +1,7 @@
 ---
 title: "Troubleshooting"
-description: "Fix common Gasoline issues: extension not connecting, logs not appearing, MCP mode problems, port conflicts, and debug mode usage."
-keywords: "gasoline troubleshooting, extension not connecting, MCP not working, gasoline debug mode, port conflict fix"
+description: "Fix common Kaboom issues: extension not connecting, logs not appearing, MCP mode problems, port conflicts, and debug mode usage."
+keywords: "kaboom troubleshooting, extension not connecting, MCP not working, kaboom debug mode, port conflict fix"
 permalink: /troubleshooting/
 header:
   overlay_image: /assets/images/hero-banner.png
@@ -15,7 +15,7 @@ last_reviewed: 2026-02-16
 
 ## <i class="fas fa-unlink"></i> Extension Not Connecting to Server
 
-1. **Check server is running**: Look for `[gasoline] vX.Y.Z — HTTP on port 7890` on stderr
+1. **Check server is running**: Look for `[Kaboom] vX.Y.Z — HTTP on port 7890` on stderr
 2. **Check extension badge**: Red `!` means disconnected, green means connected
 3. **Check port conflict**: Another process may be using port 7890. Try `--port 7891`
 4. **Update extension URL**: If using a different port, go to Options and change the Server URL
@@ -25,7 +25,7 @@ last_reviewed: 2026-02-16
 
 1. **Check capture level**: Popup may be set to "Errors Only" — try "All Logs"
 2. **Check domain filter**: Options page may have filters excluding your domain
-3. **Check log file**: `cat ~/gasoline-logs.jsonl | tail -5` to see recent entries
+3. **Check log file**: `cat ~/kaboom-logs.jsonl | tail -5` to see recent entries
 4. **Reload the page**: Extension injects on page load
 
 ## <i class="fas fa-robot"></i> MCP Mode Not Working
@@ -33,36 +33,36 @@ last_reviewed: 2026-02-16
 1. **Check config path**: Must be in your AI tool's config directory
 2. **Restart your AI tool**: MCP servers are loaded on startup
 3. **Check for JSON errors**: Invalid JSON in config will silently fail
-4. **Verify with AI**: Ask _"What MCP tools do you have?"_ — Gasoline tools should appear
+4. **Verify with AI**: Ask _"What MCP tools do you have?"_ — Kaboom tools should appear
 
 ## <i class="fas fa-layer-group"></i> MCP Config Conflicts (User vs Project)
 
-**Symptom**: You added `.mcp.json` to your project but Gasoline uses wrong settings (different port, old path, etc.)
+**Symptom**: You added `.mcp.json` to your project but Kaboom uses wrong settings (different port, old path, etc.)
 
 **Cause**: Claude Code has multiple config levels with a precedence order:
 - **User-level**: Managed via `claude mcp add --scope user` (applies globally)
 - **Project-level**: `.mcp.json` in project root (applies to that project)
 
-**User-level config takes precedence.** If both define `"gasoline-browser-devtools"`, the user-level wins silently.
+**User-level config takes precedence.** If both define `"kaboom-browser-devtools"`, the user-level wins silently.
 
 **To diagnose**:
 ```bash
-# Check if gasoline is installed at user level
+# Check if Kaboom is installed at user level
 claude mcp list
 ```
 
 **To fix**:
-1. Remove user-level gasoline: `claude mcp remove --scope user gasoline-browser-devtools`
+1. Remove user-level Kaboom: `claude mcp remove --scope user kaboom-browser-devtools`
 2. Or update the user-level config to match your desired settings
 3. Restart Claude Code to pick up changes
 
-**Best practice**: Use project-level `.mcp.json` for Gasoline. This keeps the config with the project and avoids conflicts when working on multiple projects.
+**Best practice**: Use project-level `.mcp.json` for Kaboom. This keeps the config with the project and avoids conflicts when working on multiple projects.
 
 ## <i class="fas fa-times-circle"></i> MCP Server Shows "Failed"
 
-**Symptom**: `/mcp` shows gasoline as "failed" even though the config looks correct.
+**Symptom**: `/mcp` shows Kaboom as "failed" even though the config looks correct.
 
-**Common cause**: A stale gasoline process is holding the port from a previous session.
+**Common cause**: A stale Kaboom process is holding the port from a previous session.
 
 **To diagnose**:
 ```bash
@@ -80,23 +80,23 @@ Then retry `/mcp` — Claude Code will spawn a fresh instance.
 
 ## <i class="fas fa-sync-alt"></i> MCP Disconnected — Recovery
 
-When the AI client disconnects (closes its session), Gasoline logs the disconnect and exits after a brief grace period. This is by design — it frees the port so the next AI session can spawn a fresh process.
+When the AI client disconnects (closes its session), Kaboom logs the disconnect and exits after a brief grace period. This is by design — it frees the port so the next AI session can spawn a fresh process.
 
 **What you'll see on stderr:**
 ```
-[gasoline] MCP disconnected, shutting down in 100ms (port 7890 will be freed)
-[gasoline] Shutdown complete
+[Kaboom] MCP disconnected, shutting down in 100ms (port 7890 will be freed)
+[Kaboom] Shutdown complete
 ```
 
 **Want to keep the server running?** Use `--persist`:
 ```bash
-npx gasoline-mcp --persist
+npx kaboom-agentic-browser --persist
 ```
 This keeps the HTTP server running after MCP disconnect so the extension stays connected between AI sessions. Press Ctrl+C to stop.
 
-**To recover:** Simply start a new AI session. Your AI tool will spawn a fresh Gasoline process automatically. The extension reconnects to the new instance on its next poll.
+**To recover:** Simply start a new AI session. Your AI tool will spawn a fresh Kaboom process automatically. The extension reconnects to the new instance on its next poll.
 
-**If port is still in use:** A previous Gasoline process may not have exited cleanly. Kill it:
+**If port is still in use:** A previous Kaboom process may not have exited cleanly. Kill it:
 ```bash
 lsof -ti :7890 | xargs kill
 ```
@@ -106,12 +106,12 @@ lsof -ti :7890 | xargs kill
 If port 7890 is in use:
 
 ```bash
-npx gasoline-mcp --port 7891
+npx kaboom-agentic-browser --port 7891
 ```
 
 Then update the extension:
 
-1. Click the Gasoline extension icon
+1. Click the Kaboom extension icon
 2. Click "Options"
 3. Change **Server URL** to `http://localhost:7891`
 4. Click "Save Options"
@@ -120,7 +120,7 @@ Then update the extension:
 
 Run the built-in setup check:
 ```bash
-npx gasoline-mcp --check
+npx kaboom-agentic-browser --check
 ```
 
 This verifies port availability, log file directory, and prints next steps. You can also test from the extension: go to **Options** and click the **Test** button next to the Server URL.
@@ -132,7 +132,7 @@ This verifies port availability, log file directory, and prints next steps. You 
 **Cause**: The extension and server have different major versions (e.g., extension v4.x, server v5.x).
 
 **To fix**:
-1. Update the server: `npx gasoline-mcp@latest`
+1. Update the server: `npx kaboom-agentic-browser@latest`
 2. Update the extension: pull latest from GitHub and reload in chrome://extensions
 3. Both should show the same major version
 
@@ -160,12 +160,12 @@ The debug buffer holds 200 entries (circular — oldest are dropped). Logs are s
 
 ## <i class="fas fa-flag"></i> Reporting Issues
 
-[Open an issue](https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/new) with:
+[Open an issue](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues/new) with:
 
-1. **Environment**: OS, Chrome version, Gasoline version (`window.__gasoline.version`)
+1. **Environment**: OS, Chrome version, Kaboom version (`window.__kaboom.version`)
 2. **Steps to reproduce**
 3. **Expected vs actual behavior**
 4. **Extension popup screenshot**
 5. **Debug log export** (JSON file from popup)
 6. **Browser console errors** (right-click extension → Inspect → Console)
-7. **Server output** (any errors from `npx gasoline-mcp`)
+7. **Server output** (any errors from `npx kaboom-agentic-browser`)

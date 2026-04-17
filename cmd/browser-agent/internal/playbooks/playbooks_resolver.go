@@ -1,0 +1,76 @@
+// playbooks_resolver.go — Resolves playbook/demo resource URIs to canonical URIs and markdown content.
+// Why: Isolates URI parsing and alias normalization from large static documentation payloads.
+
+package playbooks
+
+import "strings"
+
+// CanonicalPlaybookCapability normalizes capability aliases to canonical playbook keys.
+func CanonicalPlaybookCapability(capability string) string {
+	switch strings.ToLower(strings.TrimSpace(capability)) {
+	case "performance", "performance_analysis":
+		return "performance"
+	case "accessibility", "accessibility_audit":
+		return "accessibility"
+	case "security", "security_audit":
+		return "security"
+	case "automation", "browser_automation", "interact":
+		return "automation"
+	default:
+		return ""
+	}
+}
+
+// ResolvePlaybookKey resolves "{capability}/{level}" and bare "{capability}" to canonical keys.
+func ResolvePlaybookKey(raw string) string {
+	trimmed := strings.Trim(strings.ToLower(strings.TrimSpace(raw)), "/")
+	if trimmed == "" {
+		return ""
+	}
+	parts := strings.Split(trimmed, "/")
+	switch len(parts) {
+	case 1:
+		capability := CanonicalPlaybookCapability(parts[0])
+		if capability == "" {
+			return ""
+		}
+		return capability + "/quick"
+	case 2:
+		capability := CanonicalPlaybookCapability(parts[0])
+		level := strings.TrimSpace(parts[1])
+		if capability == "" || level == "" {
+			return ""
+		}
+		return capability + "/" + level
+	default:
+		return ""
+	}
+}
+
+// ResolveResourceContent resolves a kaboom resource URI into canonical URI + markdown.
+func ResolveResourceContent(uri string) (string, string, bool) {
+	switch {
+	case uri == "kaboom://capabilities":
+		return uri, CapabilityIndex, true
+	case uri == "kaboom://guide":
+		return uri, GuideContent, true
+	case uri == "kaboom://quickstart":
+		return uri, QuickstartContent, true
+	case strings.HasPrefix(uri, "kaboom://playbook/"):
+		key := ResolvePlaybookKey(strings.TrimPrefix(uri, "kaboom://playbook/"))
+		text, ok := Playbooks[key]
+		if !ok {
+			return "", "", false
+		}
+		return "kaboom://playbook/" + key, text, true
+	case strings.HasPrefix(uri, "kaboom://demo/"):
+		name := strings.TrimPrefix(uri, "kaboom://demo/")
+		text, ok := DemoScripts[name]
+		if !ok {
+			return "", "", false
+		}
+		return uri, text, true
+	default:
+		return "", "", false
+	}
+}

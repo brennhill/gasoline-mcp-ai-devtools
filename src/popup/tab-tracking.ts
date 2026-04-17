@@ -11,8 +11,23 @@
 
 import { isInternalUrl } from './ui-utils.js'
 import { StorageKey } from '../lib/constants.js'
+import { getLocals, onStorageChanged } from '../lib/storage-utils.js' // async API only
+import { isDomainCloaked } from '../lib/cloaked-domains.js'
+import {
+  handleAuditClick,
+  handleStopTracking,
+  handleUrlClick,
+  handleTrackPageClick as handleTrackPageClickAPI
+} from './tab-tracking-api.js'
 
 let trackingStorageSyncInstalled = false
+
+function hideAuditButton(): void {
+  const trackingBarAudit = document.getElementById('tracking-bar-audit') as HTMLButtonElement | null
+  if (!trackingBarAudit) return
+  trackingBarAudit.style.display = 'none'
+  trackingBarAudit.onclick = null
+}
 
 /**
  * Initialize the Track This Tab button.
@@ -22,9 +37,20 @@ let trackingStorageSyncInstalled = false
 function showInternalPageState(btn: HTMLButtonElement): void {
   const trackingBar = document.getElementById('tracking-bar')
   if (trackingBar) trackingBar.style.display = 'none'
+  hideAuditButton()
   btn.disabled = true
   btn.textContent = 'Cannot Track Internal Pages'
   btn.title = 'Chrome blocks extensions on internal pages like chrome:// and about:'
+  Object.assign(btn.style, { opacity: '0.5', background: '#252525', color: '#888', borderColor: '#333' })
+}
+
+function showCloakedState(btn: HTMLButtonElement): void {
+  const trackingBar = document.getElementById('tracking-bar')
+  if (trackingBar) trackingBar.style.display = 'none'
+  hideAuditButton()
+  btn.disabled = true
+  btn.textContent = 'Tracking Disabled on This Site'
+  btn.title = 'This domain is in the cloaked domains list. KaBOOM! is disabled here to prevent interference.'
   Object.assign(btn.style, { opacity: '0.5', background: '#252525', color: '#888', borderColor: '#333' })
 }
 
@@ -42,6 +68,7 @@ function showTrackingState(
   // Show the compact tracking bar
   const trackingBar = document.getElementById('tracking-bar')
   const trackingBarUrl = document.getElementById('tracking-bar-url')
+  const trackingBarAudit = document.getElementById('tracking-bar-audit') as HTMLButtonElement | null
   const trackingBarStop = document.getElementById('tracking-bar-stop')
 
   if (trackingBar) trackingBar.style.display = 'flex'
@@ -51,10 +78,17 @@ function showTrackingState(
       void handleUrlClick(trackedTabId)
     }
   }
+  if (trackingBarAudit) {
+    trackingBarAudit.textContent = 'Audit'
+    trackingBarAudit.style.display = 'inline-flex'
+    trackingBarAudit.onclick = () => {
+      void handleAuditClick(trackedTabUrl)
+    }
+  }
   if (trackingBarStop) {
     trackingBarStop.onclick = (e: Event) => {
       e.stopPropagation()
-      handleStopTracking()
+      void handleStopTracking(showIdleState)
     }
   }
 }
@@ -79,6 +113,7 @@ function showIdleState(btn: HTMLButtonElement): void {
   // Hide the tracking bar
   const trackingBar = document.getElementById('tracking-bar')
   if (trackingBar) trackingBar.style.display = 'none'
+  hideAuditButton()
 
   // Show "no tracking" warning
   const noTrackEl = document.getElementById('no-tracking-warning')
@@ -86,18 +121,28 @@ function showIdleState(btn: HTMLButtonElement): void {
 }
 
 function syncTrackButtonState(btn: HTMLButtonElement): void {
-  chrome.storage.local.get(
-    [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL],
-    (result: { trackedTabId?: number; trackedTabUrl?: string }) => {
+  void getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]).then(
+    (result: Record<string, unknown>) => {
+      const trackedTabId = result[StorageKey.TRACKED_TAB_ID] as number | undefined
+      const trackedTabUrl = result[StorageKey.TRACKED_TAB_URL] as string | undefined
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
         const currentUrl = tabs?.[0]?.url
 
-        if (result.trackedTabId) {
-          showTrackingState(btn, result.trackedTabUrl, result.trackedTabId)
+        if (trackedTabId) {
+          showTrackingState(btn, trackedTabUrl, trackedTabId)
         } else if (isInternalUrl(currentUrl)) {
           showInternalPageState(btn)
         } else {
-          showIdleState(btn)
+          // Check cloaked domains (async)
+          let hostname = ''
+          try { hostname = currentUrl ? new URL(currentUrl).hostname : '' } catch { /* malformed URL */ }
+          isDomainCloaked(hostname).then((cloaked) => {
+            if (cloaked) {
+              showCloakedState(btn)
+            } else {
+              showIdleState(btn)
+            }
+          }).catch(() => showIdleState(btn))
         }
       })
     }
@@ -108,42 +153,10 @@ function installTrackingStorageSync(btn: HTMLButtonElement): void {
   if (trackingStorageSyncInstalled) return
   trackingStorageSyncInstalled = true
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  onStorageChanged((changes, areaName) => {
     if (areaName !== 'local') return
     if (!changes[StorageKey.TRACKED_TAB_ID] && !changes[StorageKey.TRACKED_TAB_URL]) return
     syncTrackButtonState(btn)
-  })
-}
-
-/**
- * Handle stop tracking from the compact tracking bar stop button.
- */
-function handleStopTracking(): void {
-  chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], (result: { trackedTabId?: number }) => {
-    const prevTabId = result.trackedTabId
-    if (!prevTabId) return
-
-    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], () => {
-      const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
-      if (btn) showIdleState(btn)
-
-      // Stop recording if active
-      chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, () => {
-        if (chrome.runtime.lastError) {
-          /* no recording active — expected */
-        }
-      })
-      // Notify content script so favicon restores without reload
-      chrome.tabs
-        .sendMessage(prevTabId, {
-          type: 'trackingStateChanged',
-          state: { isTracked: false, aiPilotEnabled: false }
-        })
-        .catch(() => {
-          /* tab may be closed */
-        })
-      console.log('[Gasoline] Stopped tracking via bar stop button')
-    })
   })
 }
 
@@ -153,90 +166,12 @@ export function initTrackPageButton(): void {
 
   syncTrackButtonState(btn)
   installTrackingStorageSync(btn)
-  btn.addEventListener('click', handleTrackPageClick)
-}
-
-/**
- * Handle clicking on the tracked URL.
- * Switches to the tracked tab.
- */
-export async function handleUrlClick(tabId: number | undefined): Promise<void> {
-  if (!tabId) return
-
-  try {
-    // Switch to the tracked tab and bring its window to focus
-    await chrome.tabs.update(tabId, { active: true })
-    const tab = await chrome.tabs.get(tabId)
-    if (tab.windowId) {
-      await chrome.windows.update(tab.windowId, { focused: true })
-    }
-    console.log('[Gasoline] Switched to tracked tab:', tabId)
-  } catch (err) {
-    console.error('[Gasoline] Failed to switch to tracked tab:', err)
-    // Tab might have been closed - clear tracking
-    chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL])
-  }
-}
-
-/**
- * Handle Track This Tab button click.
- * Toggles tracking on/off for the current tab.
- * Blocks tracking on internal Chrome pages.
- */
-// #lizard forgives
-export async function handleTrackPageClick(): Promise<void> {
-  const btn = document.getElementById('track-page-btn') as HTMLButtonElement | null
-
-  // Check if we're currently tracking
-  chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], async (result: { trackedTabId?: number }) => {
-    if (result.trackedTabId) {
-      // Untrack — delegate to the shared stop handler
-      handleStopTracking()
-    } else {
-      // Track current tab
-      // #lizard forgives
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
-        if (tabs[0]) {
-          const tab = tabs[0]
-
-          // Block tracking on internal Chrome pages
-          if (isInternalUrl(tab.url)) {
-            if (btn) {
-              btn.disabled = true
-              btn.textContent = 'Cannot Track Internal Pages'
-              btn.style.opacity = '0.5'
-            }
-            return
-          }
-
-          chrome.storage.local.set(
-            { trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || '' },
-            () => {
-              showTrackingState(btn!, tab.url, tab.id)
-
-              console.log('[Gasoline] Now tracking tab:', tab.id, tab.url)
-              // Only reload if content script is not already injected
-              if (tab.id) {
-                const tabId = tab.id
-                chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }, (response) => {
-                  if (chrome.runtime.lastError || !response?.status) {
-                    // Content script not loaded — reload to inject it
-                    console.log('[Gasoline] Content script not found, reloading tab', tabId)
-                    chrome.tabs.reload(tabId)
-                  } else {
-                    // Content script already running — notify it of tracking change
-                    console.log('[Gasoline] Content script already loaded, skipping reload')
-                    chrome.tabs.sendMessage(tabId, {
-                      type: 'trackingStateChanged',
-                      state: { isTracked: true, aiPilotEnabled: false }
-                    })
-                  }
-                })
-              }
-            }
-          )
-        }
-      })
-    }
+  btn.addEventListener('click', () => {
+    void handleTrackPageClickAPI(showInternalPageState, showCloakedState, showTrackingState, showIdleState)
   })
+}
+
+// Re-export for consumers that import handleTrackPageClick directly
+export async function handleTrackPageClick(): Promise<void> {
+  return handleTrackPageClickAPI(showInternalPageState, showCloakedState, showTrackingState, showIdleState)
 }

@@ -2,7 +2,7 @@
 // Why: Separates WebSocket diff classification from console and network helpers.
 package checkpoint
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 
 func classifyWSEvent(diff *WebSocketDiff, evt *capture.WebSocketEvent, severity string) {
 	switch evt.Event {

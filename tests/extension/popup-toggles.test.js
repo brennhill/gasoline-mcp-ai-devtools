@@ -95,18 +95,18 @@ describe('Network Body Capture Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-network-body-capture')
     assert.ok(toggle, 'Network body capture toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'networkBodyCaptureEnabled')
-    assert.strictEqual(toggle.messageType, 'setNetworkBodyCaptureEnabled')
+    assert.strictEqual(toggle.messageType, 'set_network_body_capture_enabled')
     assert.strictEqual(toggle.default, true)
   })
 
   test('should send setNetworkBodyCaptureEnabled message when toggled', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('networkBodyCaptureEnabled', 'setNetworkBodyCaptureEnabled', false)
+    handleFeatureToggle('networkBodyCaptureEnabled', 'set_network_body_capture_enabled', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setNetworkBodyCaptureEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_network_body_capture_enabled' && c.arguments[0].enabled === false
       )
     )
   })
@@ -114,11 +114,11 @@ describe('Network Body Capture Toggle', () => {
   test('should send message when network body capture toggled', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('networkBodyCaptureEnabled', 'setNetworkBodyCaptureEnabled', true)
+    handleFeatureToggle('networkBodyCaptureEnabled', 'set_network_body_capture_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setNetworkBodyCaptureEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_network_body_capture_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -143,7 +143,7 @@ describe('Network Waterfall Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-network-waterfall')
     assert.ok(toggle, 'Network waterfall toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'networkWaterfallEnabled')
-    assert.strictEqual(toggle.messageType, 'setNetworkWaterfallEnabled')
+    assert.strictEqual(toggle.messageType, 'set_network_waterfall_enabled')
     assert.strictEqual(toggle.default, true)
   })
 
@@ -174,11 +174,11 @@ describe('Network Waterfall Toggle', () => {
   test('should send setNetworkWaterfallEnabled message when toggled on', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('networkWaterfallEnabled', 'setNetworkWaterfallEnabled', true)
+    handleFeatureToggle('networkWaterfallEnabled', 'set_network_waterfall_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setNetworkWaterfallEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_network_waterfall_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -186,11 +186,11 @@ describe('Network Waterfall Toggle', () => {
   test('should send setNetworkWaterfallEnabled message when toggled off', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('networkWaterfallEnabled', 'setNetworkWaterfallEnabled', false)
+    handleFeatureToggle('networkWaterfallEnabled', 'set_network_waterfall_enabled', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setNetworkWaterfallEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_network_waterfall_enabled' && c.arguments[0].enabled === false
       )
     )
   })
@@ -215,7 +215,7 @@ describe('Performance Marks Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-performance-marks')
     assert.ok(toggle, 'Performance marks toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'performanceMarksEnabled')
-    assert.strictEqual(toggle.messageType, 'setPerformanceMarksEnabled')
+    assert.strictEqual(toggle.messageType, 'set_performance_marks_enabled')
     assert.strictEqual(toggle.default, true)
   })
 
@@ -246,11 +246,11 @@ describe('Performance Marks Toggle', () => {
   test('should send setPerformanceMarksEnabled message when toggled on', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('performanceMarksEnabled', 'setPerformanceMarksEnabled', true)
+    handleFeatureToggle('performanceMarksEnabled', 'set_performance_marks_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setPerformanceMarksEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_performance_marks_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -258,11 +258,11 @@ describe('Performance Marks Toggle', () => {
   test('should send setPerformanceMarksEnabled message when toggled off', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('performanceMarksEnabled', 'setPerformanceMarksEnabled', false)
+    handleFeatureToggle('performanceMarksEnabled', 'set_performance_marks_enabled', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setPerformanceMarksEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_performance_marks_enabled' && c.arguments[0].enabled === false
       )
     )
   })
@@ -287,7 +287,7 @@ describe('Action Replay Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-action-replay')
     assert.ok(toggle, 'Action replay toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'actionReplayEnabled')
-    assert.strictEqual(toggle.messageType, 'setActionReplayEnabled')
+    assert.strictEqual(toggle.messageType, 'set_action_replay_enabled')
     assert.strictEqual(toggle.default, true)
   })
 
@@ -318,11 +318,11 @@ describe('Action Replay Toggle', () => {
   test('should send setActionReplayEnabled message when toggled on', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('actionReplayEnabled', 'setActionReplayEnabled', true)
+    handleFeatureToggle('actionReplayEnabled', 'set_action_replay_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setActionReplayEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_action_replay_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -330,11 +330,11 @@ describe('Action Replay Toggle', () => {
   test('should send setActionReplayEnabled message when toggled off', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('actionReplayEnabled', 'setActionReplayEnabled', false)
+    handleFeatureToggle('actionReplayEnabled', 'set_action_replay_enabled', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setActionReplayEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_action_replay_enabled' && c.arguments[0].enabled === false
       )
     )
   })
@@ -359,7 +359,7 @@ describe('Screenshot on Error Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-screenshot')
     assert.ok(toggle, 'Screenshot toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'screenshotOnError')
-    assert.strictEqual(toggle.messageType, 'setScreenshotOnError')
+    assert.strictEqual(toggle.messageType, 'set_screenshot_on_error')
     assert.strictEqual(toggle.default, true)
   })
 
@@ -390,11 +390,11 @@ describe('Screenshot on Error Toggle', () => {
   test('should send setScreenshotOnError message when toggled on', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('screenshotOnError', 'setScreenshotOnError', true)
+    handleFeatureToggle('screenshotOnError', 'set_screenshot_on_error', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setScreenshotOnError' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_screenshot_on_error' && c.arguments[0].enabled === true
       )
     )
   })
@@ -402,11 +402,11 @@ describe('Screenshot on Error Toggle', () => {
   test('should send setScreenshotOnError message when toggled off', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('screenshotOnError', 'setScreenshotOnError', false)
+    handleFeatureToggle('screenshotOnError', 'set_screenshot_on_error', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setScreenshotOnError' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_screenshot_on_error' && c.arguments[0].enabled === false
       )
     )
   })
@@ -431,7 +431,7 @@ describe('Source Maps Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-source-maps')
     assert.ok(toggle, 'Source maps toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'sourceMapEnabled')
-    assert.strictEqual(toggle.messageType, 'setSourceMapEnabled')
+    assert.strictEqual(toggle.messageType, 'set_source_map_enabled')
     assert.strictEqual(toggle.default, true)
   })
 
@@ -462,11 +462,11 @@ describe('Source Maps Toggle', () => {
   test('should send setSourceMapEnabled message when toggled on', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('sourceMapEnabled', 'setSourceMapEnabled', true)
+    handleFeatureToggle('sourceMapEnabled', 'set_source_map_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setSourceMapEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_source_map_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -474,11 +474,11 @@ describe('Source Maps Toggle', () => {
   test('should send setSourceMapEnabled message when toggled off', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('sourceMapEnabled', 'setSourceMapEnabled', false)
+    handleFeatureToggle('sourceMapEnabled', 'set_source_map_enabled', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setSourceMapEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_source_map_enabled' && c.arguments[0].enabled === false
       )
     )
   })
@@ -503,7 +503,7 @@ describe('Action Toasts Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-action-toasts')
     assert.ok(toggle, 'Action toasts toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'actionToastsEnabled')
-    assert.strictEqual(toggle.messageType, 'setActionToastsEnabled')
+    assert.strictEqual(toggle.messageType, 'set_action_toasts_enabled')
     assert.strictEqual(toggle.default, true)
   })
 
@@ -534,11 +534,11 @@ describe('Action Toasts Toggle', () => {
   test('should send setActionToastsEnabled message when toggled on', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('actionToastsEnabled', 'setActionToastsEnabled', true)
+    handleFeatureToggle('actionToastsEnabled', 'set_action_toasts_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setActionToastsEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_action_toasts_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -546,11 +546,11 @@ describe('Action Toasts Toggle', () => {
   test('should send setActionToastsEnabled message when toggled off', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('actionToastsEnabled', 'setActionToastsEnabled', false)
+    handleFeatureToggle('actionToastsEnabled', 'set_action_toasts_enabled', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setActionToastsEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_action_toasts_enabled' && c.arguments[0].enabled === false
       )
     )
   })
@@ -575,7 +575,7 @@ describe('Subtitles Toggle', () => {
     const toggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-subtitles')
     assert.ok(toggle, 'Subtitles toggle should exist in FEATURE_TOGGLES')
     assert.strictEqual(toggle.storageKey, 'subtitlesEnabled')
-    assert.strictEqual(toggle.messageType, 'setSubtitlesEnabled')
+    assert.strictEqual(toggle.messageType, 'set_subtitles_enabled')
     assert.strictEqual(toggle.default, true)
   })
 
@@ -606,11 +606,11 @@ describe('Subtitles Toggle', () => {
   test('should send setSubtitlesEnabled message when toggled on', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('subtitlesEnabled', 'setSubtitlesEnabled', true)
+    handleFeatureToggle('subtitlesEnabled', 'set_subtitles_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setSubtitlesEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_subtitles_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -618,11 +618,11 @@ describe('Subtitles Toggle', () => {
   test('should send setSubtitlesEnabled message when toggled off', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('subtitlesEnabled', 'setSubtitlesEnabled', false)
+    handleFeatureToggle('subtitlesEnabled', 'set_subtitles_enabled', false)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setSubtitlesEnabled' && c.arguments[0].enabled === false
+        (c) => c.arguments[0].type === 'set_subtitles_enabled' && c.arguments[0].enabled === false
       )
     )
   })

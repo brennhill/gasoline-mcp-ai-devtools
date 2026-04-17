@@ -28,7 +28,7 @@ Tool allowlisting uses a configuration file (YAML) parsed at server start. The a
 ## Data Flows
 
 ```
-Server startup: gasoline --allowlist-config=allowlist.yaml
+Server startup: kaboom --allowlist-config=allowlist.yaml
   → Parse YAML file
   → Build in-memory allowlist: {observe: [*], generate: [*], interact: [navigate, refresh]}
   → Log: "Allowlist enabled, X tools/actions permitted"

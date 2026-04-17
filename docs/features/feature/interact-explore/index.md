@@ -4,31 +4,32 @@ feature_id: feature-interact-explore
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-06
 code_paths:
-  - cmd/dev-console/tools_interact_action_handler.go
-  - cmd/dev-console/tools_interact_entrypoint.go
-  - cmd/dev-console/tools_interact_dispatch.go
-  - cmd/dev-console/tools_pending_query_enqueue.go
-  - cmd/dev-console/tools_interact_browser_navigation_impl.go
-  - cmd/dev-console/tools_interact_browser_script_impl.go
-  - cmd/dev-console/tools_interact_browser_tabs.go
-  - cmd/dev-console/tools_interact_browser_util_impl.go
-  - cmd/dev-console/tools_interact_response_helpers.go
-  - cmd/dev-console/tools_interact_draw.go
-  - cmd/dev-console/tools_interact_dom.go
-  - cmd/dev-console/tools_interact_elements.go
-  - cmd/dev-console/tools_interact_storage.go
-  - cmd/dev-console/tools_interact_upload.go
-  - cmd/dev-console/tools_interact_evidence.go
-  - cmd/dev-console/tools_interact_retry_contract_strategy.go
-  - cmd/dev-console/tools_interact_retry_contract_state.go
-  - cmd/dev-console/tools_interact_retry_contract_response.go
-  - cmd/dev-console/tools_interact_workflow_navigate.go
-  - cmd/dev-console/tools_interact_workflow_navigate_document.go
-  - cmd/dev-console/tools_interact_workflow_forms.go
-  - cmd/dev-console/tools_interact_workflow_a11y_sarif.go
-  - cmd/dev-console/tools_interact_workflow_types.go
+  - cmd/browser-agent/tools_interact_command_builder.go
+  - cmd/browser-agent/tools_interact_action_handler.go
+  - cmd/browser-agent/tools_interact_entrypoint.go
+  - cmd/browser-agent/tools_interact_dispatch.go
+  - cmd/browser-agent/tools_pending_query_enqueue.go
+  - cmd/browser-agent/tools_interact_browser_navigation_impl.go
+  - cmd/browser-agent/tools_interact_browser_script_impl.go
+  - cmd/browser-agent/tools_interact_browser_tabs.go
+  - cmd/browser-agent/tools_interact_browser_util_impl.go
+  - cmd/browser-agent/tools_interact_response_helpers.go
+  - cmd/browser-agent/tools_interact_draw.go
+  - cmd/browser-agent/tools_interact_dom.go
+  - cmd/browser-agent/tools_interact_elements.go
+  - cmd/browser-agent/tools_interact_storage.go
+  - cmd/browser-agent/tools_interact_upload.go
+  - cmd/browser-agent/tools_interact_evidence.go
+  - cmd/browser-agent/tools_interact_retry_contract_strategy.go
+  - cmd/browser-agent/tools_interact_retry_contract_state.go
+  - cmd/browser-agent/tools_interact_retry_contract_response.go
+  - cmd/browser-agent/tools_interact_workflow_navigate.go
+  - cmd/browser-agent/tools_interact_workflow_navigate_document.go
+  - cmd/browser-agent/tools_interact_workflow_forms.go
+  - cmd/browser-agent/tools_interact_workflow_a11y_sarif.go
+  - cmd/browser-agent/tools_interact_workflow_types.go
   - internal/tools/interact/workflow.go
   - internal/schema/interact_actions.go
   - internal/schema/interact_properties_targeting.go
@@ -51,22 +52,26 @@ code_paths:
   - src/inject/execute-js.ts
   - src/content/runtime-message-listener.ts
   - src/background/dom-primitives-list-interactive.ts
+  - src/background/dom-primitives-intent.ts
+  - src/background/dom-primitives-overlay.ts
+  - src/background/dom-primitives-stability.ts
   - scripts/templates/partials/_dom-intent.tpl
   - scripts/templates/partials/_dom-selectors.tpl
   - scripts/templates/dom-primitives.ts.tpl
-  - cmd/dev-console/tools_async_result_normalization.go
-  - cmd/dev-console/tools_async_formatting.go
-  - cmd/dev-console/tools_summary_pref.go
+  - cmd/browser-agent/tools_async_result_normalization.go
+  - cmd/browser-agent/tools_async_formatting.go
+  - cmd/browser-agent/tools_summary_pref.go
 test_paths:
-  - cmd/dev-console/tools_interact_handler_test.go
-  - cmd/dev-console/tools_pending_query_enqueue_test.go
-  - cmd/dev-console/tools_interact_rich_test.go
-  - cmd/dev-console/tools_interact_upload_test.go
-  - cmd/dev-console/tools_interact_navigate_document_test.go
-  - cmd/dev-console/tools_schema_parity_test.go
-  - cmd/dev-console/tools_interact_retry_contract_test.go
-  - cmd/dev-console/tools_interact_evidence_test.go
-  - cmd/dev-console/tools_interact_state_test.go
+  - cmd/browser-agent/tools_interact_command_builder_test.go
+  - cmd/browser-agent/tools_interact_handler_test.go
+  - cmd/browser-agent/tools_pending_query_enqueue_test.go
+  - cmd/browser-agent/tools_interact_rich_test.go
+  - cmd/browser-agent/tools_interact_upload_test.go
+  - cmd/browser-agent/tools_interact_navigate_document_test.go
+  - cmd/browser-agent/tools_schema_parity_test.go
+  - cmd/browser-agent/tools_interact_retry_contract_test.go
+  - cmd/browser-agent/tools_interact_evidence_test.go
+  - cmd/browser-agent/tools_interact_state_test.go
   - extension/background/__tests__/dom-dispatch-structured.test.js
   - extension/background/dom-primitives.test.js
   - tests/extension/action-toast-labels.test.js
@@ -74,7 +79,7 @@ test_paths:
   - internal/tools/interact/workflow_test.go
   - internal/tools/configure/mode_specs_test.go
   - extension/background/dom-primitives-overlay.test.js
-  - cmd/dev-console/tools_async_enrich_test.go
+  - cmd/browser-agent/tools_async_enrich_test.go
   - tests/extension/interact-content-fallback.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
@@ -86,7 +91,7 @@ last_verified_date: 2026-03-05
 - Status: shipped
 - Tool: `interact`
 - Mode key: `what` (deprecated alias: `action`)
-- Contract source: `cmd/dev-console/tools_schema.go`
+- Contract source: `cmd/browser-agent/tools_schema.go`
 
 ## Specs
 - Product: `product-spec.md`

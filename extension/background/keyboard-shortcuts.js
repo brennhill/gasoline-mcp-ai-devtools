@@ -9,6 +9,7 @@ import { errorMessage } from '../lib/error-utils.js';
 import { getActiveTab, sendTabToast } from './event-listeners.js';
 import { toggleDrawModeForTab } from './draw-mode-toggle.js';
 import { buildScreenRecordingSlug } from './recording-utils.js';
+import { trackUIFeature } from './ui-usage-tracker.js';
 export function buildActionSequenceRecordingName(now = new Date()) {
     const yyyy = now.getFullYear();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -39,7 +40,7 @@ export async function toggleScreenRecording(handlers, tab, logFn) {
 // =============================================================================
 /**
  * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
- * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
+ * Sends KABOOM_DRAW_MODE_START or KABOOM_DRAW_MODE_STOP to the active tab's content script.
  */
 export function installDrawModeCommandListener(logFn) {
     if (typeof chrome === 'undefined' || !chrome.commands)
@@ -52,6 +53,7 @@ export function installDrawModeCommandListener(logFn) {
             if (!tab?.id)
                 return;
             try {
+                trackUIFeature('annotations');
                 await toggleDrawModeForTab(tab.id);
             }
             catch {
@@ -118,6 +120,7 @@ export function installScreenRecordingCommandListener(handlers, logFn) {
             const tab = await getActiveTab();
             if (!tab?.id)
                 return;
+            trackUIFeature('video');
             await toggleScreenRecording(handlers, tab, logFn);
         }
         catch (err) {

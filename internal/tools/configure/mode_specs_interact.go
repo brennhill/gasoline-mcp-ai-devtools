@@ -2,7 +2,7 @@
 // Docs: docs/features/describe_capabilities.md
 package configure
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/schema"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/schema"
 
 // interactModeSpecs derives directly from the canonical interact action registry
 // in internal/schema/interact_actions.go to keep schema + capabilities in sync.

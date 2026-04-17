@@ -53,10 +53,10 @@ kill_test_ports() {
     [[ -z "$pids" ]] && continue
     while IFS= read -r pid; do
       [[ -z "$pid" ]] && continue
-      # Only kill gasoline-test-binary processes, not production daemons
+      # Only kill kaboom-test-binary processes, not production daemons
       local cmd
       cmd="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
-      [[ "$cmd" == *gasoline-test-binary* ]] || continue
+      [[ "$cmd" == *kaboom-test-binary* ]] || continue
       kill -TERM "$pid" 2>/dev/null || true
     done <<< "$pids"
     sleep 0.05
@@ -66,7 +66,7 @@ kill_test_ports() {
       [[ -z "$pid" ]] && continue
       local cmd
       cmd="$(ps -p "$pid" -o comm= 2>/dev/null || true)"
-      [[ "$cmd" == *gasoline-test-binary* ]] || continue
+      [[ "$cmd" == *kaboom-test-binary* ]] || continue
       kill -KILL "$pid" 2>/dev/null || true
     done <<< "$pids"
   done
@@ -78,15 +78,15 @@ is_test_port() {
 }
 
 cleanup_pid_files() {
-  local state_root="${GASOLINE_STATE_DIR:-$HOME/.gasoline}"
+  local state_root="${KABOOM_STATE_DIR:-$HOME/.kaboom}"
   local run_dir="$state_root/run"
 
   if [[ -d "$run_dir" ]]; then
-    for pid_file in "$run_dir"/gasoline-*.pid; do
+    for pid_file in "$run_dir"/kaboom-*.pid; do
       [[ -e "$pid_file" ]] || break
       local base port
       base="$(basename "$pid_file")"
-      port="${base#gasoline-}"
+      port="${base#kaboom-}"
       port="${port%.pid}"
       if [[ "$port" =~ ^[0-9]+$ ]] && is_test_port "$port"; then
         rm -f "$pid_file"
@@ -95,18 +95,18 @@ cleanup_pid_files() {
   fi
 
   for port in $(seq 7890 7910); do
-    rm -f "$HOME/.gasoline-$port.pid" 2>/dev/null || true
+    rm -f "$HOME/.kaboom-$port.pid" 2>/dev/null || true
   done
   for port in $(seq 17890 17999); do
-    rm -f "$HOME/.gasoline-$port.pid" 2>/dev/null || true
+    rm -f "$HOME/.kaboom-$port.pid" 2>/dev/null || true
   done
 }
 
 if [[ "${OSTYPE:-}" == msys* || "${OSTYPE:-}" == cygwin* ]]; then
-  taskkill /F /IM gasoline-test-binary.exe >/dev/null 2>&1 || true
+  taskkill /F /IM kaboom-test-binary.exe >/dev/null 2>&1 || true
 else
-  kill_pattern "gasoline-test-binary --daemon --port" "gasoline test daemons"
-  kill_pattern "gasoline-test-binary --port" "gasoline test clients"
+  kill_pattern "kaboom-test-binary --daemon --port" "kaboom test daemons"
+  kill_pattern "kaboom-test-binary --port" "kaboom test clients"
   kill_test_ports 7890 7910
   kill_test_ports 17890 17999
 fi

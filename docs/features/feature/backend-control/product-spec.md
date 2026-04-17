@@ -15,10 +15,10 @@ last_verified_date: 2026-03-05
 # Backend Control
 
 ## Overview
-Backend Control enables AI to safely inspect, modify, and control backend services through a standardized gRPC/HTTP API exposed by Gasoline-compatible backend services. This feature allows developers to inject test data, simulate failures, modify environment variables, reset state, and verify backend behavior without manual CLI interaction. By integrating with the backend control plane, Gasoline becomes a true full-stack debugging and testing tool.
+Backend Control enables AI to safely inspect, modify, and control backend services through a standardized gRPC/HTTP API exposed by Kaboom-compatible backend services. This feature allows developers to inject test data, simulate failures, modify environment variables, reset state, and verify backend behavior without manual CLI interaction. By integrating with the backend control plane, Kaboom becomes a true full-stack debugging and testing tool.
 
 ## Problem
-Currently, Gasoline excels at frontend and network-level debugging, but backend state remains a black box. Developers must:
+Currently, Kaboom excels at frontend and network-level debugging, but backend state remains a black box. Developers must:
 - Manually SSH into servers or use CLI tools to reset database state
 - Use separate admin dashboards or CLIs to inject test data
 - Write scripts to simulate backend failures (circuit breaker errors, timeouts, rate limits)
@@ -28,7 +28,7 @@ Currently, Gasoline excels at frontend and network-level debugging, but backend 
 This friction prevents AI from autonomously validating full-stack behavior end-to-end.
 
 ## Solution
-Backend Control establishes a bidirectional API between Gasoline MCP and backend services. Backend services expose:
+Backend Control establishes a bidirectional API between Kaboom MCP and backend services. Backend services expose:
 1. **State Management** — Reset database, clear caches, reset feature flags to known states
 2. **Data Injection** — Create test users, products, payments, any domain objects
 3. **Failure Simulation** — Trigger circuit breakers, timeouts, rate limits, validation errors
@@ -44,14 +44,14 @@ All operations are:
 ## User Stories
 - As an AI agent, I want to reset the user database to a known state before each test so that tests are deterministic and don't interfere with each other
 - As an AI agent, I want to create test payment records with specific statuses (pending, failed, refunded) so that I can verify error handling paths
-- As a QA engineer, I want to simulate a payment gateway timeout so that Gasoline can capture how the frontend handles this failure gracefully
+- As a QA engineer, I want to simulate a payment gateway timeout so that Kaboom can capture how the frontend handles this failure gracefully
 - As an AI agent, I want to toggle feature flags on/off to verify A/B test logic is correct
 - As a developer, I want to manually inspect backend state (user count, cache hit rate) to verify that state management is working correctly
 - As an AI agent, I want to restore a previous state snapshot after a test fails so that I can retry the test with clean state
 
 ## Acceptance Criteria
-- [ ] Backend services can expose a `/.gasoline/control` gRPC endpoint with state management APIs
-- [ ] Gasoline MCP can discover available control operations via introspection
+- [ ] Backend services can expose a `/.kaboom/control` gRPC endpoint with state management APIs
+- [ ] Kaboom MCP can discover available control operations via introspection
 - [ ] State mutations are audited with timestamp, user, correlation ID, and operation details
 - [ ] State snapshots can be created and restored for deterministic test retries
 - [ ] Read operations (inspect state) complete in <50ms, write operations in <200ms
@@ -64,8 +64,8 @@ All operations are:
 - Long-lived transactions or complex multi-step orchestrations
 - Auto-repair of backend state (only reset/snapshot, no ML inference)
 - Direct database access (only service APIs)
-- Multi-tenant state isolation (Gasoline is single-tenant)
-- Backwards compatibility with non-Gasoline-aware backends
+- Multi-tenant state isolation (Kaboom is single-tenant)
+- Backwards compatibility with non-Kaboom-aware backends
 
 ## Data Structures
 

@@ -4,20 +4,49 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Setting Up CRX Distribution on cookwithgasoline.com
+# Setting Up CRX Distribution on gokaboom.dev
 
 ## TL;DR
 
 Host the CRX file and serve it as a direct download. Users drag-and-drop to install.
 
+## Pages Deployment Branch Strategy (`site`)
+
+Use a dedicated `site` branch for continuous website updates so `STABLE` history stays focused on product releases.
+
+### Initial setup
+
+```bash
+git checkout -B site
+git push -u origin site
+```
+
+Then in Cloudflare Pages:
+
+1. Open **Workers & Pages** and select the project.
+2. Go to **Settings -> Builds & deployments**.
+3. Set **Production branch** to `site`.
+4. Save and trigger a deploy.
+
+### Ongoing workflow
+
+- Commit and push website/docs changes to `site`.
+- Cloudflare auto-deploys from `site`.
+- Merge into `STABLE` only at explicit sync/release checkpoints.
+
+### Recommended branch protection
+
+- `STABLE`: require PRs, block direct pushes.
+- `site`: allow faster iteration (optional PR gate depending on team preference).
+
 ## Directory Structure
 
 ```
-cookwithgasoline.com/
+gokaboom.dev/
 ├── downloads/
-│   ├── gasoline-extension-v5.8.2.crx     # Latest release
-│   ├── gasoline-extension-v5.8.1.crx     # Archive
-│   ├── gasoline-extension-v5.8.0.crx     # Archive
+│   ├── kaboom-extension-v5.8.2.crx     # Latest release
+│   ├── kaboom-extension-v5.8.1.crx     # Archive
+│   ├── kaboom-extension-v5.8.0.crx     # Archive
 │   ├── latest.crx                         # Symlink to v5.8.2.crx (optional)
 │   └── checksums.txt                      # SHA256 hashes (optional)
 └── install/
@@ -32,7 +61,7 @@ Create `install/index.html`:
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Install Gasoline Extension</title>
+  <title>Install Kaboom Extension</title>
   <style>
     body { font-family: system-ui; max-width: 600px; margin: 40px auto; }
     .steps { list-style: none; counter-reset: step; }
@@ -74,10 +103,10 @@ Create `install/index.html`:
   </style>
 </head>
 <body>
-  <h1>Install Gasoline Extension</h1>
-  <p>Follow these steps to install the Gasoline browser extension:</p>
+  <h1>Install Kaboom Extension</h1>
+  <p>Follow these steps to install the Kaboom browser extension:</p>
 
-  <a href="/downloads/latest.crx" class="download-btn">↓ Download Gasoline</a>
+  <a href="/downloads/latest.crx" class="download-btn">↓ Download Kaboom</a>
 
   <ol class="steps">
     <li>
@@ -103,22 +132,22 @@ Create `install/index.html`:
   </div>
 
   <hr>
-  <h2>What's Gasoline?</h2>
-  <p>Gasoline is a real-time browser telemetry tool that captures network requests, performance metrics, and user interactions. All data stays local on your machine.</p>
+  <h2>What's Kaboom?</h2>
+  <p>Kaboom is a real-time browser telemetry tool that captures network requests, performance metrics, and user interactions. All data stays local on your machine.</p>
 
   <h2>Next Steps</h2>
   <ul>
-    <li>Read the <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/blob/main/README.md">documentation</a></li>
+    <li>Read the <a href="https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/blob/stable/README.md">documentation</a></li>
     <li>Join our <a href="https://discord.gg/example">community</a></li>
-    <li>Report issues on <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues">GitHub</a></li>
+    <li>Report issues on <a href="https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues">GitHub</a></li>
   </ul>
 
   <hr>
   <footer>
     <small>
-      Gasoline v5.8.2 |
+      Kaboom v5.8.2 |
       <a href="/downloads/checksums.txt">Verify checksums</a> |
-      <a href="https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp">View source</a>
+      <a href="https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp">View source</a>
     </small>
   </footer>
 </body>
@@ -136,20 +165,20 @@ Add to your CI/CD pipeline:
 # deploy-extension.sh
 
 VERSION=$(cat VERSION)
-CRX_FILE="dist/gasoline-extension-v${VERSION}.crx"
+CRX_FILE="dist/kaboom-extension-v${VERSION}.crx"
 
 # Build CRX
 make extension-crx
 
 # Upload to hosting
-scp "$CRX_FILE" user@cookwithgasoline.com:/var/www/downloads/
+scp "$CRX_FILE" user@gokaboom.dev:/var/www/downloads/
 
 # Update symlink
-ssh user@cookwithgasoline.com \
-  "cd /var/www/downloads && ln -sf gasoline-extension-v${VERSION}.crx latest.crx"
+ssh user@gokaboom.dev \
+  "cd /var/www/downloads && ln -sf kaboom-extension-v${VERSION}.crx latest.crx"
 
 # Generate checksums
-ssh user@cookwithgasoline.com \
+ssh user@gokaboom.dev \
   "cd /var/www/downloads && shasum -a 256 *.crx > checksums.txt"
 ```
 
@@ -160,13 +189,13 @@ ssh user@cookwithgasoline.com \
 make extension-crx
 
 # 2. Upload to your server
-scp dist/gasoline-extension-v5.8.2.crx \
-  you@cookwithgasoline.com:/path/to/downloads/
+scp dist/kaboom-extension-v5.8.2.crx \
+  you@gokaboom.dev:/path/to/downloads/
 
 # 3. SSH and update symlink
-ssh you@cookwithgasoline.com
+ssh you@gokaboom.dev
 cd /path/to/downloads
-ln -sf gasoline-extension-v5.8.2.crx latest.crx
+ln -sf kaboom-extension-v5.8.2.crx latest.crx
 shasum -a 256 *.crx > checksums.txt
 ```
 
@@ -175,10 +204,10 @@ shasum -a 256 *.crx > checksums.txt
 ### nginx
 
 ```nginx
-# /etc/nginx/sites-available/gasoline
+# /etc/nginx/sites-available/kaboom
 server {
     listen 443 ssl http2;
-    server_name cookwithgasoline.com;
+    server_name gokaboom.dev;
 
     location /downloads/ {
         # Allow CRX download
@@ -207,9 +236,9 @@ server {
 ### Apache
 
 ```apache
-# /etc/apache2/sites-available/gasoline.conf
+# /etc/apache2/sites-available/kaboom.conf
 <VirtualHost *:443>
-    ServerName cookwithgasoline.com
+    ServerName gokaboom.dev
     DocumentRoot /var/www
 
     <Directory /var/www/downloads>
@@ -241,7 +270,7 @@ This ensures:
 
 - ✅ HTTPS only (modern browsers require it)
 - ✅ CRX files are cryptographically signed (Chrome verifies)
-- ⚠️ Don't expose your private key (`~/.gasoline/extension-signing-key.pem`)
+- ⚠️ Don't expose your private key (`~/.kaboom/extension-signing-key.pem`)
 - ⚠️ Keep checksums for users to verify downloads
 
 ## Testing
@@ -250,7 +279,7 @@ Before going live:
 
 ```bash
 # 1. Download the CRX
-curl -o test.crx https://cookwithgasoline.com/downloads/gasoline-extension-v5.8.2.crx
+curl -o test.crx https://gokaboom.dev/downloads/kaboom-extension-v5.8.2.crx
 
 # 2. Verify MIME type
 file test.crx
@@ -291,9 +320,9 @@ Keep old versions available for users who report issues:
 ```bash
 # Keep at least 3 recent versions
 /downloads/
-  gasoline-extension-v5.8.2.crx  (current)
-  gasoline-extension-v5.8.1.crx  (fallback)
-  gasoline-extension-v5.8.0.crx  (archive)
+  kaboom-extension-v5.8.2.crx  (current)
+  kaboom-extension-v5.8.1.crx  (fallback)
+  kaboom-extension-v5.8.0.crx  (archive)
   latest.crx → v5.8.2.crx
 ```
 
@@ -308,7 +337,7 @@ Track downloads with web server logs:
 
 ```bash
 # Analyze download patterns
-tail -f /var/log/nginx/access.log | grep gasoline-extension
+tail -f /var/log/nginx/access.log | grep kaboom-extension
 ```
 
 This helps you understand:

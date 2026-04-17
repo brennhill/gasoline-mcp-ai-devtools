@@ -62,7 +62,7 @@ Covers the standalone branded upload harness used by smoke and UAT tests to vali
 ## Test Paths
 
 1. `scripts/smoke-tests/test-upload-server.py`
-2. `cmd/dev-console/smoke_upload_contract_test.go`
+2. `cmd/browser-agent/smoke_upload_contract_test.go`
 3. `scripts/smoke-tests/15-file-upload.sh`
 4. `scripts/tests/cat-24-upload.sh`
 

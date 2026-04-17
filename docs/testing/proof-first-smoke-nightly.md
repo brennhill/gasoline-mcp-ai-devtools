@@ -20,7 +20,7 @@ Each test captures reproducible evidence:
 
 Artifacts are written to:
 
-- `~/.gasoline/smoke-results/proof-first-artifacts.log`
+- `~/.kaboom/smoke-results/proof-first-artifacts.log`
 - screenshot paths returned by `observe({what:"screenshot"})`
 
 ## Preconditions
@@ -52,7 +52,7 @@ SMOKE_PROOF_FIRST=1 \
 SMOKE_SOCIAL=1 \
 SMOKE_LINKEDIN_URL="https://www.linkedin.com/feed/" \
 SMOKE_FACEBOOK_URL="https://www.facebook.com/" \
-SMOKE_SOCIAL_POST_TEXT="This post written with Gasoline MCP" \
+SMOKE_SOCIAL_POST_TEXT="This post written with Kaboom MCP" \
 ./smoketest --only 28
 ```
 

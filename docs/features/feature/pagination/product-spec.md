@@ -34,12 +34,12 @@ observe({what: "network_waterfall"})
 ```
 Returns: `440,000+ characters` — **exceeds Claude's MCP token limit**
 
-Result: AI cannot analyze network traffic, defeating the purpose of Gasoline.
+Result: AI cannot analyze network traffic, defeating the purpose of Kaboom.
 
 ### Who It Affects
 
 - **AI agents** debugging network issues
-- **Developers** using Claude Code with Gasoline
+- **Developers** using Claude Code with Kaboom
 - **Anyone** working on pages with >100 network requests
 
 ### Current Workarounds (All Bad)

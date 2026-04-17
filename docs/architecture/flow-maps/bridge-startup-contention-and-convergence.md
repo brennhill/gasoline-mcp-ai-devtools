@@ -6,22 +6,22 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/bridge_startup_orchestration.go (runBridgeMode, startDaemonSpawnCoordinator)
-  - cmd/dev-console/bridge.go (bridgeStdioToHTTPFast)
+  - cmd/browser-agent/bridge_startup_orchestration.go (runBridgeMode, startDaemonSpawnCoordinator)
+  - cmd/browser-agent/bridge.go (bridgeStdioToHTTPFast)
 code_paths:
-  - cmd/dev-console/bridge_startup.go
-  - cmd/dev-console/bridge_startup_orchestration.go
-  - cmd/dev-console/bridge_startup_lock.go
-  - cmd/dev-console/bridge_startup_state.go
-  - cmd/dev-console/bridge_startup_status.go
-  - cmd/dev-console/bridge_forward.go
-  - cmd/dev-console/bridge.go
+  - cmd/browser-agent/bridge_startup.go
+  - cmd/browser-agent/bridge_startup_orchestration.go
+  - cmd/browser-agent/bridge_startup_lock.go
+  - cmd/browser-agent/bridge_startup_state.go
+  - cmd/browser-agent/bridge_startup_status.go
+  - cmd/browser-agent/bridge_forward.go
+  - cmd/browser-agent/bridge.go
 test_paths:
-  - cmd/dev-console/bridge_startup_lock_test.go
-  - cmd/dev-console/bridge_spawn_race_test.go
-  - cmd/dev-console/bridge_startup_contention_test.go
-  - cmd/dev-console/bridge_faststart_extended_test.go
-  - cmd/dev-console/bridge_fastpath_unit_test.go
+  - cmd/browser-agent/bridge_startup_lock_test.go
+  - cmd/browser-agent/bridge_spawn_race_test.go
+  - cmd/browser-agent/bridge_startup_contention_test.go
+  - cmd/browser-agent/bridge_faststart_extended_test.go
+  - cmd/browser-agent/bridge_fastpath_unit_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -51,8 +51,8 @@ Covers bridge-mode daemon startup when multiple MCP clients start concurrently, 
 
 ## Error and Recovery Paths
 
-- Non-gasoline service on port: marked failed with actionable error.
-- Version mismatch against running gasoline daemon: bridge attempts controlled daemon recycle.
+- Non-kaboom service on port: marked failed with actionable error.
+- Version mismatch against running kaboom daemon: bridge attempts controlled daemon recycle.
 - Startup leader crash/stall: follower reclaims stale startup lock and takes over spawn.
 - Forwarding connection error after startup: respawn once and retry request.
 - Stale respawn wait state (no ready/failed signal): bridge times out, reclaims respawn leadership, and retries bounded startup.
@@ -70,20 +70,20 @@ Covers bridge-mode daemon startup when multiple MCP clients start concurrently, 
 
 ## Code Paths
 
-- `cmd/dev-console/bridge_startup.go`
-- `cmd/dev-console/bridge_startup_orchestration.go`
-- `cmd/dev-console/bridge_startup_lock.go`
-- `cmd/dev-console/bridge_startup_state.go`
-- `cmd/dev-console/bridge_startup_status.go`
-- `cmd/dev-console/bridge_forward.go`
-- `cmd/dev-console/bridge.go`
+- `cmd/browser-agent/bridge_startup.go`
+- `cmd/browser-agent/bridge_startup_orchestration.go`
+- `cmd/browser-agent/bridge_startup_lock.go`
+- `cmd/browser-agent/bridge_startup_state.go`
+- `cmd/browser-agent/bridge_startup_status.go`
+- `cmd/browser-agent/bridge_forward.go`
+- `cmd/browser-agent/bridge.go`
 
 ## Test Paths
 
-- `cmd/dev-console/bridge_startup_lock_test.go`
-- `cmd/dev-console/bridge_spawn_race_test.go`
-- `cmd/dev-console/bridge_startup_contention_test.go`
-- `cmd/dev-console/bridge_faststart_extended_test.go`
+- `cmd/browser-agent/bridge_startup_lock_test.go`
+- `cmd/browser-agent/bridge_spawn_race_test.go`
+- `cmd/browser-agent/bridge_startup_contention_test.go`
+- `cmd/browser-agent/bridge_faststart_extended_test.go`
 
 ## Edit Guardrails
 

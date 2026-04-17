@@ -4,7 +4,7 @@ import { execSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-const DOCS_PREFIX = 'cookwithgasoline.com/src/content/docs/';
+const DOCS_PREFIX = 'gokaboom.dev/src/content/docs/';
 const DOC_EXT_RE = /\.(md|mdx)$/;
 const STYLE_TARGET_RE = /\/(articles|blog|guides)\//;
 
@@ -261,4 +261,3 @@ main().catch((error) => {
   console.error('Failed to run style contract check:', error);
   process.exit(1);
 });
-

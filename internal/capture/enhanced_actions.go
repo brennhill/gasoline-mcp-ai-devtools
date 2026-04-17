@@ -7,18 +7,17 @@ package capture
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // AddEnhancedActions ingests action telemetry and optionally triggers navigation callback.
 //
 // Invariants:
-// - enhancedActions/actionAddedAt remain index-aligned.
+// - Each enhancedActionEntry stores the action and its ingestion timestamp together.
 // - actionTotalAdded is monotonic and never decremented outside explicit clear operations.
 // - navigationCallback is captured under lock and invoked after unlock.
 //
 // Failure semantics:
-// - Parallel-array mismatch is repaired by truncation to common prefix.
 // - Oversized action batches are accepted and oldest entries are evicted.
 func (c *Capture) AddEnhancedActions(actions []EnhancedAction) {
 	navCb := func() func() {

@@ -99,7 +99,7 @@ interact({                   start_boundary('replay-X')
 
 ### Recording Format (Metadata)
 
-**File:** `~/.gasoline/recordings/{recording-id}/metadata.json`
+**File:** `~/.kaboom/recordings/{recording-id}/metadata.json`
 
 ```json
 {
@@ -361,7 +361,7 @@ observe({what: 'logs', test_boundary: 'replay-checkout'})
 observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 // LLM internally diffs and analyzes
-// Gasoline provides structured diff via logs themselves
+// Kaboom provides structured diff via logs themselves
 ```
 
 ---
@@ -388,7 +388,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 #### Screenshot Capture:
 - Reuse existing screenshot functionality (used by error detection)
 - Capture on: page load, selector failure, error
-- Store locally at `~/.gasoline/recordings/{recording_id}/screenshots/`
+- Store locally at `~/.kaboom/recordings/{recording_id}/screenshots/`
 
 #### Why Minimal New Code:
 - Extension already captures click/input/keydown/navigation via `inject/action-capture.ts`
@@ -398,11 +398,11 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 ### Server Recording Storage (Go)
 
-**File:** `cmd/dev-console/recording.go` (new)
+**File:** `cmd/browser-agent/recording.go` (new)
 
 #### Responsibilities:
 - In-memory recording buffer (ring, max 100 recordings)
-- Persist recordings to disk (~/.gasoline/recordings/)
+- Persist recordings to disk (~/.kaboom/recordings/)
 - Query recordings by ID/name
 - Load recordings from disk on startup
 - Cleanup old recordings (manual, not auto)
@@ -416,7 +416,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 ### Playback Engine (Go)
 
-**File:** `cmd/dev-console/playback.go` (new)
+**File:** `cmd/browser-agent/playback.go` (new)
 
 #### Responsibilities:
 - Load recording by ID
@@ -451,7 +451,7 @@ observe({what: 'logs', test_boundary: 'variation-coupon-summer2026'})
 
 ### WebSocket Migration (Go + TypeScript) — Phase 1
 
-**Files:** `cmd/dev-console/websocket.go` (new), `extension/src/ws.ts` (new)
+**Files:** `cmd/browser-agent/websocket.go` (new), `extension/src/ws.ts` (new)
 
 **Problem:** Current polling-based recording (extension polls GET /pending-queries every 200ms) introduces timing inaccuracy (~100-200ms jitter). Recording needs millisecond precision for accurate playback.
 
@@ -501,7 +501,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 ### Element Selector Self-Healing (Go)
 
-**File:** `cmd/dev-console/playback.go` (in Playback section)
+**File:** `cmd/browser-agent/playback.go` (in Playback section)
 
 #### Strategy (Priority Order):
 1. Try data-testid match: `querySelector('[data-testid=X]')`
@@ -514,7 +514,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 ### Log Diffing Engine (Go)
 
-**File:** `cmd/dev-console/log-diff.go` (new)
+**File:** `cmd/browser-agent/log-diff.go` (new)
 
 #### Responsibilities:
 - Query logs from both test boundaries
@@ -543,7 +543,7 @@ Connection drop?           → Fall back to polling (graceful degradation)
 
 ### Test Boundary Tagging (Go)
 
-**File:** `cmd/dev-console/types.go` (modify existing)
+**File:** `cmd/browser-agent/types.go` (modify existing)
 
 Already implemented in prior work:
 - `Capture.activeTestIDs map[string]bool`
@@ -560,7 +560,7 @@ Already implemented in prior work:
 
 ### Naming Convention:
 ```
-~/.gasoline/recordings/{recording-id}/screenshots/
+~/.kaboom/recordings/{recording-id}/screenshots/
 ├── {date}-{recording-id}-{action-index}-{issue-type}.jpg
 ├── 20260130-shopping-checkout-001-page-load.jpg
 ├── 20260130-shopping-checkout-003-moved-selector.jpg
@@ -602,7 +602,7 @@ Already implemented in prior work:
 #### Storage Quota Enforcement (1GB Hard Limit):
 - At 80% capacity (800MB): Log warning to user: "Recording storage at 80%. Consider deleting old recordings."
 - At 100% capacity (1GB): `recording_start` returns error: "Recording storage at capacity (1GB). Delete old recordings to continue."
-- User must manually delete old recordings: `rm ~/.gasoline/recordings/{recording_id}`
+- User must manually delete old recordings: `rm ~/.kaboom/recordings/{recording_id}`
 - Next `recording_start` call still fails if capacity not freed
 - Design: No auto-delete (data loss risk per PRODUCT_SPEC)
 
@@ -610,7 +610,7 @@ Implementation in server:
 ```go
 // Check storage quota before starting new recording
 func (c *Capture) RecordingStart(name, url string) error {
-  totalSize := calculateRecordingStorageUsage() // sum all ~/.gasoline/recordings/
+  totalSize := calculateRecordingStorageUsage() // sum all ~/.kaboom/recordings/
 
   if totalSize >= 1.0 * GB {
     return fmt.Errorf("recording_storage_full: Recording storage at capacity (1GB). Delete old recordings via file system to continue.")
@@ -641,7 +641,7 @@ func (c *Capture) RecordingStart(name, url string) error {
 ## Security & Privacy
 
 ### Recording Data:
-- Stored locally at `~/.gasoline/recordings/` only
+- Stored locally at `~/.kaboom/recordings/` only
 - Not transmitted to cloud
 
 ### Sensitive Data Toggle (Credential Recording):
@@ -680,7 +680,7 @@ Implementation in extension:
 ### Orthogonal Concerns (But Coordinated):
 
 1. **Recording** captures action metadata (click, type, navigate, selector, x/y, screenshot)
-   - Stored to disk at `~/.gasoline/recordings/{recording_id}/metadata.json`
+   - Stored to disk at `~/.kaboom/recordings/{recording_id}/metadata.json`
    - Independent of test boundaries
 
 2. **Test Boundaries** tag LOGS, NETWORK, WEBSOCKET, ACTIONS with test context
@@ -738,20 +738,20 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 | `extension/background/recording.js` | Recording lifecycle + metadata + server communication | ~150 LOC |
 | `extension/inject/recording.ts` | Extend action capture with recording metadata | ~150 LOC |
 | `extension/background/ws.js` | WebSocket client + fallback to polling | ~150 LOC |
-| `cmd/dev-console/recording.go` | Store + query recordings (disk I/O, file management) | ~250 LOC |
-| `cmd/dev-console/websocket.go` | WebSocket upgrade + broadcast + buffer management | ~150 LOC |
-| `cmd/dev-console/playback.go` | Replay actions + self-healing selectors | ~250 LOC |
-| `cmd/dev-console/log-diff.go` | Compare logs, detect regressions | ~180 LOC |
-| `cmd/dev-console/recording_test.go` | Unit tests (storage, playback, diffing) | ~450 LOC |
+| `cmd/browser-agent/recording.go` | Store + query recordings (disk I/O, file management) | ~250 LOC |
+| `cmd/browser-agent/websocket.go` | WebSocket upgrade + broadcast + buffer management | ~150 LOC |
+| `cmd/browser-agent/playback.go` | Replay actions + self-healing selectors | ~250 LOC |
+| `cmd/browser-agent/log-diff.go` | Compare logs, detect regressions | ~180 LOC |
+| `cmd/browser-agent/recording_test.go` | Unit tests (storage, playback, diffing) | ~450 LOC |
 | `tests/extension/recording.test.js` | Extension tests (capture, playback, metadata) | ~300 LOC |
 
 ### Modified Files
 
 | File | Changes | Impact |
 |------|---------|--------|
-| `cmd/dev-console/tools_core.go` | Add recording_start, recording_stop, playback actions | ~50 LOC |
-| `cmd/dev-console/queries.go` | Add handlers for recordings, recording_actions, WebSocket upgrade | ~60 LOC |
-| `cmd/dev-console/main.go` | Initialize WebSocket router | ~20 LOC |
+| `cmd/browser-agent/tools_core.go` | Add recording_start, recording_stop, playback actions | ~50 LOC |
+| `cmd/browser-agent/queries.go` | Add handlers for recordings, recording_actions, WebSocket upgrade | ~60 LOC |
+| `cmd/browser-agent/main.go` | Initialize WebSocket router | ~20 LOC |
 | `extension/inject/action-capture.ts` | Extend with recording metadata (selector, x/y, screenshots) | ~30 LOC |
 | `extension/background/index.js` | Initialize recording module | ~15 LOC |
 
@@ -812,7 +812,7 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 
 **Zero External Dependencies** (production runtime)
 
-### Existing Gasoline Infrastructure Used:
+### Existing Kaboom Infrastructure Used:
 - Test boundaries (activeTestIDs, TestIDs tagging)
 - Ring buffers (logs, network, WebSocket, actions)
 - MCP tools (observe, interact, configure)
@@ -863,5 +863,5 @@ configure({action: 'test_boundary_end', test_id: 'replay-1'})
 1. **Principal Review** — Validate technical approach against product spec
 2. **QA Plan** — Define test cases (unit + integration + UAT)
 3. **Implementation** — TDD, write failing tests first
-4. **Release** — Tag as v6.0, deploy with existing Gasoline
+4. **Release** — Tag as v6.0, deploy with existing Kaboom
 

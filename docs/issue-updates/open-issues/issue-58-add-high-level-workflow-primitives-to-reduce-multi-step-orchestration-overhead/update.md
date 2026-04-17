@@ -1,12 +1,12 @@
 # Product Update: Issue #58
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/58
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/58
 - Title: Add high-level workflow primitives to reduce multi-step orchestration overhead
 - Last Updated: 2026-02-16T17:41:23Z
 
 ## Change Summary
-This update resolves or advances Issue #58 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #58 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Add high-level workflow primitives to reduce multi-step orchestration overhead

@@ -59,7 +59,7 @@ function contentExtractorCommand(messageType, errorCode) {
         }
     };
 }
-registerCommand('get_readable', contentExtractorCommand('GASOLINE_GET_READABLE', 'get_readable_failed'));
-registerCommand('get_markdown', contentExtractorCommand('GASOLINE_GET_MARKDOWN', 'get_markdown_failed'));
-registerCommand('page_summary', contentExtractorCommand('GASOLINE_PAGE_SUMMARY', 'page_summary_failed'));
+registerCommand('get_readable', contentExtractorCommand('kaboom_get_readable', 'get_readable_failed'));
+registerCommand('get_markdown', contentExtractorCommand('kaboom_get_markdown', 'get_markdown_failed'));
+registerCommand('page_summary', contentExtractorCommand('kaboom_page_summary', 'page_summary_failed'));
 //# sourceMappingURL=interact-content.js.map

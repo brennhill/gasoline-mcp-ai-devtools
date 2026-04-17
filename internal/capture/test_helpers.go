@@ -7,7 +7,7 @@ package capture
 import (
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // AddNetworkBodiesForTest adds network bodies directly to the buffer (TEST ONLY)
@@ -18,8 +18,10 @@ func (c *Capture) AddNetworkBodiesForTest(bodies []NetworkBody) {
 
 	now := time.Now()
 	for _, body := range bodies {
-		c.buffers.networkBodies = append(c.buffers.networkBodies, body)
-		c.buffers.networkAddedAt = append(c.buffers.networkAddedAt, now)
+		c.buffers.networkBodies = append(c.buffers.networkBodies, networkBodyEntry{
+			Body:    body,
+			AddedAt: now,
+		})
 		c.buffers.networkTotalAdded++
 		if body.Status >= 400 {
 			c.buffers.networkErrorTotalAdded++
@@ -34,8 +36,10 @@ func (c *Capture) AddWebSocketEventsForTest(events []WebSocketEvent) {
 
 	now := time.Now()
 	for _, event := range events {
-		c.buffers.wsEvents = append(c.buffers.wsEvents, event)
-		c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, now)
+		c.buffers.wsEvents = append(c.buffers.wsEvents, wsEventEntry{
+			Event:   event,
+			AddedAt: now,
+		})
 		c.buffers.wsTotalAdded++
 	}
 }
@@ -47,8 +51,10 @@ func (c *Capture) AddEnhancedActionsForTest(actions []EnhancedAction) {
 
 	now := time.Now()
 	for _, action := range actions {
-		c.buffers.enhancedActions = append(c.buffers.enhancedActions, action)
-		c.buffers.actionAddedAt = append(c.buffers.actionAddedAt, now)
+		c.buffers.enhancedActions = append(c.buffers.enhancedActions, enhancedActionEntry{
+			Action:  action,
+			AddedAt: now,
+		})
 		c.buffers.actionTotalAdded++
 	}
 }
@@ -88,32 +94,32 @@ func (c *Capture) SetClientRegistryForTest(reg ClientRegistry) {
 	c.SetClientRegistry(reg)
 }
 
-// SetWSParallelMismatchForTest sets up mismatched wsEvents/wsAddedAt arrays (TEST ONLY)
-// Adds extraEvents additional wsEvents entries beyond the wsAddedAt length to simulate mismatch.
-func (c *Capture) SetWSParallelMismatchForTest(extraEvents int, extraAddedAt int) {
+// AddExtraWSEventsForTest adds extra WebSocket event entries to the buffer (TEST ONLY).
+// This replaces SetWSParallelMismatchForTest since parallel arrays no longer exist.
+func (c *Capture) AddExtraWSEventsForTest(count int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	now := time.Now()
-	// Add extra wsEvents entries (without matching wsAddedAt)
-	for i := 0; i < extraEvents; i++ {
-		c.buffers.wsEvents = append(c.buffers.wsEvents, WebSocketEvent{
-			Event: "message",
-			Data:  "extra-event",
-			ID:    "ws-extra",
+	for i := 0; i < count; i++ {
+		c.buffers.wsEvents = append(c.buffers.wsEvents, wsEventEntry{
+			Event: WebSocketEvent{
+				Event: "message",
+				Data:  "extra-event",
+				ID:    "ws-extra",
+			},
+			AddedAt: now,
 		})
-	}
-	// Add extra wsAddedAt entries (without matching wsEvents)
-	for i := 0; i < extraAddedAt; i++ {
-		c.buffers.wsAddedAt = append(c.buffers.wsAddedAt, now)
 	}
 }
 
-// GetWSLengthsForTest returns wsEvents and wsAddedAt lengths (TEST ONLY)
+// GetWSLengthsForTest returns wsEvents count and memory total (TEST ONLY).
+// The addedAt return value always equals events since timestamps are embedded in entries.
 func (c *Capture) GetWSLengthsForTest() (events int, addedAt int, memoryTotal int64) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.buffers.wsEvents), len(c.buffers.wsAddedAt), c.buffers.wsMemoryTotal
+	n := len(c.buffers.wsEvents)
+	return n, n, c.buffers.wsMemoryTotal
 }
 
 // SimulateExtensionConnectForTest marks the extension as connected by

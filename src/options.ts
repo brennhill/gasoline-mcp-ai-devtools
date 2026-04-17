@@ -16,6 +16,7 @@
 
 import { SettingName, StorageKey, DEFAULT_SERVER_URL } from './lib/constants.js'
 import { buildDaemonHeaders, buildDaemonJSONRequestInit } from './lib/daemon-http.js'
+import { getLocal, getLocals, setLocals } from './lib/storage-utils.js'
 
 interface StorageResult {
   serverUrl?: string
@@ -24,8 +25,8 @@ interface StorageResult {
   deferralEnabled?: boolean
   debugMode?: boolean
   theme?: string
-  gasoline_terminal_ai_command?: string
-  gasoline_terminal_dev_root?: string
+  kaboom_terminal_ai_command?: string
+  kaboom_terminal_dev_root?: string
 }
 
 interface ExportResult {
@@ -45,8 +46,8 @@ interface ClearLogResponse {
  */
 function bootstrapTheme(): void {
   if (typeof document === 'undefined' || typeof chrome === 'undefined' || !chrome.storage?.local) return
-  chrome.storage.local.get([StorageKey.THEME], (result: Record<string, unknown>) => {
-    if (result[StorageKey.THEME] === 'light') {
+  void getLocal(StorageKey.THEME).then((value) => {
+    if (value === 'light') {
       document.body?.classList.add('light-theme')
     }
   })
@@ -96,69 +97,66 @@ function loadActiveCodebaseFromDaemon(serverUrl: string): void {
 /**
  * Load saved options
  */
-export function loadOptions(): void {
-  chrome.storage.local.get(
-    [
-      StorageKey.SERVER_URL,
-      StorageKey.SCREENSHOT_ON_ERROR,
-      StorageKey.SOURCE_MAP_ENABLED,
-      StorageKey.DEFERRAL_ENABLED,
-      StorageKey.DEBUG_MODE,
-      StorageKey.THEME,
-      StorageKey.TERMINAL_AI_COMMAND,
-      StorageKey.TERMINAL_DEV_ROOT
-    ],
-    (result: StorageResult) => {
-      // Set server URL
-      const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null
-      if (serverUrlInput) {
-        serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL
-      }
+export async function loadOptions(): Promise<void> {
+  const result = await getLocals([
+    StorageKey.SERVER_URL,
+    StorageKey.SCREENSHOT_ON_ERROR,
+    StorageKey.SOURCE_MAP_ENABLED,
+    StorageKey.DEFERRAL_ENABLED,
+    StorageKey.DEBUG_MODE,
+    StorageKey.THEME,
+    StorageKey.TERMINAL_AI_COMMAND,
+    StorageKey.TERMINAL_DEV_ROOT
+  ]) as StorageResult
 
-      // Set theme toggle state (default: dark, toggle active = light)
-      const themeToggle = document.getElementById('theme-toggle')
-      if (result.theme === 'light') {
-        themeToggle?.classList.add('active')
-        document.body.classList.add('light-theme')
-      }
+  // Set server URL
+  const serverUrlInput = document.getElementById('server-url-input') as HTMLInputElement | null
+  if (serverUrlInput) {
+    serverUrlInput.value = result.serverUrl || DEFAULT_SERVER_URL
+  }
 
-      // Set screenshot toggle state
-      const screenshotToggle = document.getElementById('screenshot-toggle')
-      if (result.screenshotOnError) {
-        screenshotToggle?.classList.add('active')
-      }
+  // Set theme toggle state (default: dark, toggle active = light)
+  const themeToggle = document.getElementById('theme-toggle')
+  if (result.theme === 'light') {
+    themeToggle?.classList.add('active')
+    document.body.classList.add('light-theme')
+  }
 
-      // Set source map toggle state
-      const sourcemapToggle = document.getElementById('sourcemap-toggle')
-      if (result.sourceMapEnabled) {
-        sourcemapToggle?.classList.add('active')
-      }
+  // Set screenshot toggle state
+  const screenshotToggle = document.getElementById('screenshot-toggle')
+  if (result.screenshotOnError) {
+    screenshotToggle?.classList.add('active')
+  }
 
-      // Set deferral toggle state (default: enabled/active)
-      const deferralToggle = document.getElementById('deferral-toggle')
-      if (result.deferralEnabled !== false) {
-        deferralToggle?.classList.add('active')
-      }
+  // Set source map toggle state
+  const sourcemapToggle = document.getElementById('sourcemap-toggle')
+  if (result.sourceMapEnabled) {
+    sourcemapToggle?.classList.add('active')
+  }
 
-      // Set debug mode toggle state
-      const debugToggle = document.getElementById('debug-mode-toggle')
-      if (result.debugMode) {
-        debugToggle?.classList.add('active')
-      }
+  // Set deferral toggle state (default: enabled/active)
+  const deferralToggle = document.getElementById('deferral-toggle')
+  if (result.deferralEnabled !== false) {
+    deferralToggle?.classList.add('active')
+  }
 
-      // Set terminal AI command
-      const aiCmdInput = document.getElementById('terminal-ai-command') as HTMLInputElement | null
-      if (aiCmdInput) {
-        aiCmdInput.value = result.gasoline_terminal_ai_command || 'claude'
-      }
+  // Set debug mode toggle state
+  const debugToggle = document.getElementById('debug-mode-toggle')
+  if (result.debugMode) {
+    debugToggle?.classList.add('active')
+  }
 
-      // Set terminal dev root
-      const devRootInput = document.getElementById('terminal-dev-root') as HTMLInputElement | null
-      if (devRootInput) {
-        devRootInput.value = result.gasoline_terminal_dev_root || ''
-      }
-    }
-  )
+  // Set terminal AI command
+  const aiCmdInput = document.getElementById('terminal-ai-command') as HTMLInputElement | null
+  if (aiCmdInput) {
+    aiCmdInput.value = result.kaboom_terminal_ai_command || 'claude'
+  }
+
+  // Set terminal dev root
+  const devRootInput = document.getElementById('terminal-dev-root') as HTMLInputElement | null
+  if (devRootInput) {
+    devRootInput.value = result.kaboom_terminal_dev_root || ''
+  }
 }
 
 /**
@@ -195,40 +193,37 @@ export function saveOptions(): void {
   const devRootInput = document.getElementById('terminal-dev-root') as HTMLInputElement | null
   const terminalDevRoot = devRootInput?.value.trim() || ''
 
-  chrome.storage.local.set(
-    {
-      serverUrl,
-      screenshotOnError,
-      sourceMapEnabled,
-      deferralEnabled,
-      debugMode,
-      theme,
-      [StorageKey.TERMINAL_AI_COMMAND]: terminalAICommand,
-      [StorageKey.TERMINAL_DEV_ROOT]: terminalDevRoot
-    },
-    () => {
-      // Show saved message
-      const message = document.getElementById('saved-message')
-      message?.classList.add('show')
+  setLocals({
+    serverUrl,
+    screenshotOnError,
+    sourceMapEnabled,
+    deferralEnabled,
+    debugMode,
+    theme,
+    [StorageKey.TERMINAL_AI_COMMAND]: terminalAICommand,
+    [StorageKey.TERMINAL_DEV_ROOT]: terminalDevRoot
+  }).then(() => {
+    // Show saved message
+    const message = document.getElementById('saved-message')
+    message?.classList.add('show')
 
-      // Notify background of changes so it can update its in-memory state
-      chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl })
-      chrome.runtime.sendMessage({ type: 'setScreenshotOnError', enabled: screenshotOnError })
-      chrome.runtime.sendMessage({ type: 'setSourceMapEnabled', enabled: sourceMapEnabled })
-      chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled })
-      chrome.runtime.sendMessage({ type: 'setDebugMode', enabled: debugMode })
+    // Notify background of changes so it can update its in-memory state
+    chrome.runtime.sendMessage({ type: SettingName.SERVER_URL, url: serverUrl })
+    chrome.runtime.sendMessage({ type: 'set_screenshot_on_error', enabled: screenshotOnError })
+    chrome.runtime.sendMessage({ type: 'set_source_map_enabled', enabled: sourceMapEnabled })
+    chrome.runtime.sendMessage({ type: SettingName.DEFERRAL, enabled: deferralEnabled })
+    chrome.runtime.sendMessage({ type: 'set_debug_mode', enabled: debugMode })
 
-      // Sync terminal dev root to daemon so MCP and terminal use the same CWD
-      if (terminalDevRoot) {
-        syncDevRootToDaemon(serverUrl, terminalDevRoot)
-      }
-
-      // Hide message after 2 seconds
-      setTimeout(() => {
-        message?.classList.remove('show')
-      }, 2000)
+    // Sync terminal dev root to daemon so MCP and terminal use the same CWD
+    if (terminalDevRoot) {
+      syncDevRootToDaemon(serverUrl, terminalDevRoot)
     }
-  )
+
+    // Hide message after 2 seconds
+    setTimeout(() => {
+      message?.classList.remove('show')
+    }, 2000)
+  })
 }
 
 /**
@@ -313,13 +308,13 @@ export async function testConnection(): Promise<void> {
       resultEl.style.color = '#f85149'
       const errorMsg = err instanceof Error ? err.message : 'Unknown error'
       if (errorMsg.includes('timeout')) {
-        resultEl.textContent = `Failed — server not responding at ${serverUrl}. Is it running? Run: npx gasoline-mcp`
+        resultEl.textContent = `Failed — server not responding at ${serverUrl}. Is it running? Run: npx kaboom-mcp`
       } else if (errorMsg.includes('HTTP 404')) {
-        resultEl.textContent = `Failed — server running but health endpoint not found. Is this Gasoline MCP v5.8.0+?`
+        resultEl.textContent = `Failed — server running but health endpoint not found. Is this KaBOOM! MCP v5.8.0+?`
       } else if (errorMsg.includes('HTTP')) {
         resultEl.textContent = `Failed — server error (${errorMsg}). Check server logs.`
       } else {
-        resultEl.textContent = `Failed — ${errorMsg}. Is the server running? Run: npx gasoline-mcp`
+        resultEl.textContent = `Failed — ${errorMsg}. Is the server running? Run: npx kaboom-mcp`
       }
     }
   } finally {
@@ -342,7 +337,7 @@ export async function handleExportDebugLog(): Promise<ExportResult> {
   }
 
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'getDebugLog' }, (response: { log?: string } | undefined) => {
+    chrome.runtime.sendMessage({ type: 'get_debug_log' }, (response: { log?: string } | undefined) => {
       if (exportBtn) {
         exportBtn.disabled = false
         exportBtn.textContent = 'Export Debug Log'
@@ -353,7 +348,7 @@ export async function handleExportDebugLog(): Promise<ExportResult> {
         const blob = new Blob([response.log], { type: 'application/json' })
         const url = URL.createObjectURL(blob)
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-        const filename = `gasoline-debug-${timestamp}.json`
+        const filename = `kaboom-debug-${timestamp}.json`
 
         // Trigger download
         const a = document.createElement('a')
@@ -377,7 +372,7 @@ export async function handleExportDebugLog(): Promise<ExportResult> {
  */
 export async function handleClearDebugLog(): Promise<ClearLogResponse> {
   return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'clearDebugLog' }, (response: ClearLogResponse | undefined) => {
+    chrome.runtime.sendMessage({ type: 'clear_debug_log' }, (response: ClearLogResponse | undefined) => {
       resolve(response || { success: false })
     })
   })
@@ -385,12 +380,12 @@ export async function handleClearDebugLog(): Promise<ClearLogResponse> {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  loadOptions()
+  void loadOptions()
 
   // After chrome.storage options load, also pull active_codebase from daemon
   // to sync any MCP-side changes back to the extension options UI.
-  chrome.storage.local.get([StorageKey.SERVER_URL], (result: Record<string, unknown>) => {
-    const url = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
+  void getLocal(StorageKey.SERVER_URL).then((value) => {
+    const url = (value as string) || DEFAULT_SERVER_URL
     loadActiveCodebaseFromDaemon(url)
   })
 

@@ -13,7 +13,12 @@ import type { WebSocketCaptureMode } from '../types/index.js';
  */
 export declare function handleWebSocketModeChange(mode: WebSocketCaptureMode): void;
 /**
- * Initialize the WebSocket mode selector
+ * Apply pre-loaded WS mode value to the selector.
+ * Called from the orchestrator after a single batched storage read.
+ */
+export declare function applyWebSocketMode(value: unknown): void;
+/**
+ * Initialize the WebSocket mode selector (self-contained async version for backward compat)
  */
 export declare function initWebSocketModeSelector(): Promise<void>;
 /**

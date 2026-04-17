@@ -73,7 +73,7 @@ RingBufferManager
 │  └─ Test output
 │
 └─ Custom Events (capacity: 10K, TTL: 24h)
-   └─ window.__gasoline.annotate() calls
+   └─ window.__kaboom.annotate() calls
 ```
 
 Total capacity: ~112K events max

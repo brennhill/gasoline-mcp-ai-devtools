@@ -1,10 +1,10 @@
 // extension/lib/timeouts.js
 function readTestScale() {
-  const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
+  const globalScale = typeof globalThis !== "undefined" && typeof globalThis.KABOOM_TEST_TIMEOUT_SCALE === "number" ? globalThis.KABOOM_TEST_TIMEOUT_SCALE : null;
   if (globalScale !== null)
     return globalScale;
   if (typeof process !== "undefined" && process.env) {
-    const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE;
+    const raw = process.env.KABOOM_TEST_TIMEOUT_SCALE || process.env.KABOOM_TEST_TIME_SCALE;
     if (raw) {
       const parsed = Number(raw);
       if (Number.isFinite(parsed))
@@ -89,17 +89,17 @@ var MAX_LONG_TASKS = 50;
 var MAX_SLOWEST_REQUESTS = 3;
 var MAX_URL_LENGTH = 80;
 var SettingName = {
-  NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
-  PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
-  ACTION_REPLAY: "setActionReplayEnabled",
-  WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
-  WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
-  PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
-  DEFERRAL: "setDeferralEnabled",
-  NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
-  ACTION_TOASTS: "setActionToastsEnabled",
-  SUBTITLES: "setSubtitlesEnabled",
-  SERVER_URL: "setServerUrl"
+  NETWORK_WATERFALL: "set_network_waterfall_enabled",
+  PERFORMANCE_MARKS: "set_performance_marks_enabled",
+  ACTION_REPLAY: "set_action_replay_enabled",
+  WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled",
+  WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode",
+  PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled",
+  DEFERRAL: "set_deferral_enabled",
+  NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled",
+  ACTION_TOASTS: "set_action_toasts_enabled",
+  SUBTITLES: "set_subtitles_enabled",
+  SERVER_URL: "set_server_url"
 };
 var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
 var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
@@ -198,6 +198,9 @@ function isSensitiveInput(element) {
   return SENSITIVE_INPUT_TYPES.includes(type) || matchesAny(autocomplete, SENSITIVE_AUTOCOMPLETE_PATTERNS) || matchesAny(name, SENSITIVE_NAME_PATTERNS);
 }
 
+// extension/lib/brand.js
+var KABOOM_LOG_PREFIX = "[KaBOOM!]";
+
 // extension/lib/context.js
 var contextAnnotations = /* @__PURE__ */ new Map();
 function getContextAnnotations() {
@@ -211,21 +214,21 @@ function getContextAnnotations() {
 }
 function setContextAnnotation(key, value) {
   if (typeof key !== "string" || key.length === 0) {
-    console.warn("[Gasoline] annotate() requires a non-empty string key");
+    console.warn(KABOOM_LOG_PREFIX, "annotate() requires a non-empty string key");
     return false;
   }
   if (key.length > 100) {
-    console.warn("[Gasoline] annotate() key must be 100 characters or less");
+    console.warn(KABOOM_LOG_PREFIX, "annotate() key must be 100 characters or less");
     return false;
   }
   if (!contextAnnotations.has(key) && contextAnnotations.size >= MAX_CONTEXT_SIZE) {
-    console.warn(`[Gasoline] Maximum context annotations (${MAX_CONTEXT_SIZE}) reached`);
+    console.warn(`${KABOOM_LOG_PREFIX} Maximum context annotations (${MAX_CONTEXT_SIZE}) reached`);
     return false;
   }
   const serialized = safeSerialize(value);
   const serializedStr = JSON.stringify(serialized);
   if (serializedStr.length > MAX_CONTEXT_VALUE_SIZE) {
-    console.warn(`[Gasoline] Context value for "${key}" exceeds max size, truncating`);
+    console.warn(`${KABOOM_LOG_PREFIX} Context value for "${key}" exceeds max size, truncating`);
     contextAnnotations.set(key, "[Value too large]");
     return false;
   }
@@ -383,7 +386,7 @@ function recordEnhancedAction(type, element, opts = {}) {
     enhancedActionBuffer.shift();
   }
   if (typeof window !== "undefined" && window.postMessage) {
-    window.postMessage({ type: "GASOLINE_ENHANCED_ACTION", payload: action }, window.location.origin);
+    window.postMessage({ type: "kaboom_enhanced_action", payload: action }, window.location.origin);
   }
   return action;
 }
@@ -879,7 +882,7 @@ async function readCapturedBody(url, cloned, contentType) {
 }
 function postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp, truncReq, responseTruncated) {
   const message = {
-    type: "GASOLINE_NETWORK_BODY",
+    type: "kaboom_network_body",
     payload: {
       url,
       method,
@@ -898,19 +901,19 @@ var originalXHRSend = null;
 function wrapXHRWithBodies() {
   if (typeof XMLHttpRequest === "undefined")
     return;
-  const earlyOpen = typeof window !== "undefined" ? window.__GASOLINE_ORIGINAL_XHR_OPEN__ : void 0;
-  const earlySend = typeof window !== "undefined" ? window.__GASOLINE_ORIGINAL_XHR_SEND__ : void 0;
+  const earlyOpen = typeof window !== "undefined" ? window.__KABOOM_ORIGINAL_XHR_OPEN__ : void 0;
+  const earlySend = typeof window !== "undefined" ? window.__KABOOM_ORIGINAL_XHR_SEND__ : void 0;
   originalXHROpen = earlyOpen || XMLHttpRequest.prototype.open;
   originalXHRSend = earlySend || XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
     ;
-    this.__gasolineMethod = method;
-    this.__gasolineUrl = typeof url === "string" ? url : url.toString();
+    this.__kaboomMethod = method;
+    this.__kaboomUrl = typeof url === "string" ? url : url.toString();
     return originalXHROpen.apply(this, [method, url, ...rest]);
   };
   XMLHttpRequest.prototype.send = function(body) {
-    const url = this.__gasolineUrl || "";
-    const method = this.__gasolineMethod || "GET";
+    const url = this.__kaboomUrl || "";
+    const method = this.__kaboomMethod || "GET";
     if (shouldCaptureUrl(url) && networkBodyCaptureEnabled) {
       const startTime = Date.now();
       const requestBody = typeof body === "string" ? body : null;
@@ -958,12 +961,12 @@ function unwrapXHR() {
 function adoptEarlyBodies() {
   if (typeof window === "undefined")
     return;
-  const earlyBodies = window.__GASOLINE_EARLY_BODIES__;
+  const earlyBodies = window.__KABOOM_EARLY_BODIES__;
   if (!earlyBodies || earlyBodies.length === 0) {
-    delete window.__GASOLINE_ORIGINAL_FETCH__;
-    delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
-    delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
-    delete window.__GASOLINE_EARLY_BODIES__;
+    delete window.__KABOOM_ORIGINAL_FETCH__;
+    delete window.__KABOOM_ORIGINAL_XHR_OPEN__;
+    delete window.__KABOOM_ORIGINAL_XHR_SEND__;
+    delete window.__KABOOM_EARLY_BODIES__;
     return;
   }
   let adopted = 0;
@@ -975,7 +978,7 @@ function adoptEarlyBodies() {
     adopted++;
     const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body);
     const message = {
-      type: "GASOLINE_NETWORK_BODY",
+      type: "kaboom_network_body",
       payload: {
         url: entry.url,
         method: entry.method,
@@ -990,12 +993,12 @@ function adoptEarlyBodies() {
     window.postMessage(message, window.location.origin);
   }
   if (adopted > 0) {
-    console.log(`[Gasoline] Adopted ${adopted} early network body(ies)`);
+    console.log(`[KaBOOM!] Adopted ${adopted} early network body(ies)`);
   }
-  delete window.__GASOLINE_ORIGINAL_FETCH__;
-  delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
-  delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
-  delete window.__GASOLINE_EARLY_BODIES__;
+  delete window.__KABOOM_ORIGINAL_FETCH__;
+  delete window.__KABOOM_ORIGINAL_XHR_OPEN__;
+  delete window.__KABOOM_ORIGINAL_XHR_SEND__;
+  delete window.__KABOOM_EARLY_BODIES__;
 }
 function wrapFetchWithBodies(fetchFn) {
   return async function(input, init) {
@@ -1020,7 +1023,7 @@ function wrapFetchWithBodies(fetchFn) {
       } catch {
       }
     }).catch((err) => {
-      console.debug("[Gasoline] Network body capture error:", err);
+      console.debug("[KaBOOM!] Network body capture error:", err);
     });
     return response;
   };
@@ -1230,7 +1233,7 @@ function sendPerformanceSnapshot() {
   const snapshot = capturePerformanceSnapshot();
   if (!snapshot)
     return;
-  window.postMessage({ type: "GASOLINE_PERFORMANCE_SNAPSHOT", payload: snapshot }, window.location.origin);
+  window.postMessage({ type: "kaboom_performance_snapshot", payload: snapshot }, window.location.origin);
 }
 var snapshotResendTimer = null;
 function scheduleSnapshotResend() {
@@ -1311,7 +1314,7 @@ function installPerformanceCapture() {
   if (typeof performance === "undefined" || !performance)
     return;
   if (performanceCaptureActive) {
-    console.warn("[Gasoline] Performance capture already installed, skipping");
+    console.warn("[KaBOOM!] Performance capture already installed, skipping");
     return;
   }
   capturedMarks = [];
@@ -1464,7 +1467,7 @@ function postLog(payload) {
     enrichments.push("userActions");
   const { level, type, args, error, stack, ...otherFields } = payload;
   window.postMessage({
-    type: "GASOLINE_LOG",
+    type: "kaboom_log",
     payload: {
       // Enriched fields (these are the source of truth)
       ts: (/* @__PURE__ */ new Date()).toISOString(),
@@ -1835,11 +1838,11 @@ function enrichAndPost(entry) {
       postLog(entry);
     }
   })().catch((err) => {
-    console.error("[Gasoline] Exception enrichment error:", err);
+    console.error("[KaBOOM!] Exception enrichment error:", err);
     try {
       postLog(entry);
     } catch (postErr) {
-      console.error("[Gasoline] Failed to log entry:", postErr);
+      console.error("[KaBOOM!] Failed to log entry:", postErr);
     }
   });
 }
@@ -2176,7 +2179,7 @@ var originalWebSocket = null;
 var webSocketCaptureEnabled = true;
 function postLifecycleEvent(event, connectionId, urlString, extra) {
   window.postMessage({
-    type: "GASOLINE_WS",
+    type: "kaboom_ws",
     payload: {
       type: "websocket",
       event,
@@ -2193,7 +2196,7 @@ function postMessageEvent(connectionId, urlString, direction, data) {
   const formatted = formatPayload(data);
   const { data: truncatedData, truncated } = truncateWsMessage(formatted);
   window.postMessage({
-    type: "GASOLINE_WS",
+    type: "kaboom_ws",
     payload: {
       type: "websocket",
       event: "message",
@@ -2250,10 +2253,10 @@ function installWebSocketCapture() {
   if (originalWebSocket)
     return;
   webSocketCaptureEnabled = true;
-  const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__;
+  const earlyOriginal = window.__KABOOM_ORIGINAL_WS__;
   originalWebSocket = earlyOriginal || window.WebSocket;
   const OriginalWS = originalWebSocket;
-  function GasolineWebSocket(url, protocols) {
+  function KaboomWebSocket(url, protocols) {
     const ws = new OriginalWS(url, protocols);
     const connectionId = crypto.randomUUID();
     const urlString = url.toString();
@@ -2267,19 +2270,19 @@ function installWebSocketCapture() {
     attachMessageCapture(ws, connectionId, urlString, tracker);
     return ws;
   }
-  GasolineWebSocket.prototype = OriginalWS.prototype;
-  Object.defineProperty(GasolineWebSocket, "CONNECTING", { value: OriginalWS.CONNECTING, writable: false });
-  Object.defineProperty(GasolineWebSocket, "OPEN", { value: OriginalWS.OPEN, writable: false });
-  Object.defineProperty(GasolineWebSocket, "CLOSING", { value: OriginalWS.CLOSING, writable: false });
-  Object.defineProperty(GasolineWebSocket, "CLOSED", { value: OriginalWS.CLOSED, writable: false });
-  window.WebSocket = GasolineWebSocket;
+  KaboomWebSocket.prototype = OriginalWS.prototype;
+  Object.defineProperty(KaboomWebSocket, "CONNECTING", { value: OriginalWS.CONNECTING, writable: false });
+  Object.defineProperty(KaboomWebSocket, "OPEN", { value: OriginalWS.OPEN, writable: false });
+  Object.defineProperty(KaboomWebSocket, "CLOSING", { value: OriginalWS.CLOSING, writable: false });
+  Object.defineProperty(KaboomWebSocket, "CLOSED", { value: OriginalWS.CLOSED, writable: false });
+  window.WebSocket = KaboomWebSocket;
   adoptEarlyConnections();
 }
 function adoptEarlyConnections() {
-  const earlyConnections = window.__GASOLINE_EARLY_WS__;
+  const earlyConnections = window.__KABOOM_EARLY_WS__;
   if (!earlyConnections || earlyConnections.length === 0) {
-    delete window.__GASOLINE_ORIGINAL_WS__;
-    delete window.__GASOLINE_EARLY_WS__;
+    delete window.__KABOOM_ORIGINAL_WS__;
+    delete window.__KABOOM_EARLY_WS__;
     return;
   }
   let adopted = 0;
@@ -2302,10 +2305,10 @@ function adoptEarlyConnections() {
     attachMessageCapture(ws, connectionId, urlString, tracker);
   }
   if (adopted > 0) {
-    console.log(`[Gasoline] Adopted ${adopted} early WebSocket connection(s)`);
+    console.log(`[KaBOOM!] Adopted ${adopted} early WebSocket connection(s)`);
   }
-  delete window.__GASOLINE_ORIGINAL_WS__;
-  delete window.__GASOLINE_EARLY_WS__;
+  delete window.__KABOOM_ORIGINAL_WS__;
+  delete window.__KABOOM_EARLY_WS__;
 }
 function setWebSocketCaptureMode(mode) {
   setWebSocketCaptureModeInternal(mode);
@@ -2330,8 +2333,8 @@ function resetForTesting() {
   resetCaptureModeForTesting();
   originalWebSocket = null;
   if (typeof window !== "undefined") {
-    delete window.__GASOLINE_ORIGINAL_WS__;
-    delete window.__GASOLINE_EARLY_WS__;
+    delete window.__KABOOM_ORIGINAL_WS__;
+    delete window.__KABOOM_EARLY_WS__;
   }
 }
 
@@ -2577,16 +2580,16 @@ function setNativeValue(element, value) {
   }
   return false;
 }
-function installGasolineAPI() {
+function installKaboomAPI() {
   if (typeof window === "undefined")
     return;
-  window.__gasoline = {
+  window.__kaboom = {
     /**
      * Add a context annotation that will be included with errors
      * @param key - Annotation key (e.g., 'checkout-flow', 'user')
      * @param value - Annotation value
      * @example
-     * window.__gasoline.annotate('checkout-flow', { step: 'payment', items: 3 })
+     * window.__kaboom.annotate('checkout-flow', { step: 'payment', items: 3 })
      */
     annotate(key, value) {
       return setContextAnnotation(key, value);
@@ -2742,23 +2745,23 @@ function installGasolineAPI() {
      *
      * @example
      * // Text input
-     * window.__gasoline.setInputValue('input[name="email"]', 'test@example.com')
+     * window.__kaboom.setInputValue('input[name="email"]', 'test@example.com')
      *
      * // Checkbox
-     * window.__gasoline.setInputValue('input[type="checkbox"]', true)
+     * window.__kaboom.setInputValue('input[type="checkbox"]', true)
      *
      * // Select dropdown
-     * window.__gasoline.setInputValue('select[name="country"]', 'US')
+     * window.__kaboom.setInputValue('select[name="country"]', 'US')
      */
     setInputValue(selector, value) {
       const element = document.querySelector(selector);
       if (!element) {
-        console.error("[Gasoline] Element not found:", selector);
+        console.error("[KaBOOM!] Element not found:", selector);
         return false;
       }
       try {
         if (!setNativeValue(element, value)) {
-          console.error("[Gasoline] Element is not a form input:", selector);
+          console.error("[KaBOOM!] Element is not a form input:", selector);
           return false;
         }
         element.dispatchEvent(new Event("input", { bubbles: true }));
@@ -2766,19 +2769,19 @@ function installGasolineAPI() {
         element.dispatchEvent(new Event("blur", { bubbles: true }));
         return true;
       } catch (err) {
-        console.error("[Gasoline] Failed to set input value:", err);
+        console.error("[KaBOOM!] Failed to set input value:", err);
         return false;
       }
     },
     /**
-     * Version of the Gasoline API
+     * Version of the Kaboom API
      */
-    version: "0.8.1"
+    version: "0.8.2"
   };
 }
-function uninstallGasolineAPI() {
-  if (typeof window !== "undefined" && window.__gasoline) {
-    delete window.__gasoline;
+function uninstallKaboomAPI() {
+  if (typeof window !== "undefined" && window.__kaboom) {
+    delete window.__kaboom;
   }
 }
 
@@ -3000,7 +3003,7 @@ function wrapFetch(originalFetchFn) {
   };
 }
 function installFetchCapture() {
-  const earlyOriginal = window.__GASOLINE_ORIGINAL_FETCH__;
+  const earlyOriginal = window.__KABOOM_ORIGINAL_FETCH__;
   originalFetch = earlyOriginal || window.fetch;
   const wrappedWithBodies = wrapFetchWithBodies(originalFetch);
   window.fetch = wrapFetch(wrappedWithBodies);
@@ -3057,7 +3060,7 @@ function checkMemoryPressure(state) {
   return result;
 }
 function installPhase1() {
-  console.log("[Gasoline] Phase 1 installing (lightweight API + perf observers)");
+  console.log("[KaBOOM!] Phase 1 installing (lightweight API + perf observers)");
   injectionTimestamp = performance.now();
   phase2Installed = false;
   phase2Timestamp = 0;
@@ -3085,7 +3088,7 @@ function installPhase2() {
     return;
   if (typeof window === "undefined" || typeof document === "undefined")
     return;
-  console.log("[Gasoline] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)");
+  console.log("[KaBOOM!] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)");
   phase2Timestamp = performance.now();
   phase2Installed = true;
   install();
@@ -3808,7 +3811,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
     }
   };
   executeWithTimeoutProtection().catch((err) => {
-    console.error("[Gasoline] Unexpected error in executeJavaScript:", err);
+    console.error("[KaBOOM!] Unexpected error in executeJavaScript:", err);
     deferred.resolve({
       success: false,
       error: "execution_error",
@@ -3823,7 +3826,7 @@ var VALID_SETTINGS = INJECT_FORWARDED_SETTINGS;
 var VALID_STATE_ACTIONS = /* @__PURE__ */ new Set(["capture", "restore"]);
 function isValidSettingPayload(data) {
   if (!VALID_SETTINGS.has(data.setting)) {
-    console.warn("[Gasoline] Invalid setting:", data.setting);
+    console.warn("[KaBOOM!] Invalid setting:", data.setting);
     return false;
   }
   if (data.setting === SettingName.WEBSOCKET_CAPTURE_MODE)
@@ -3831,7 +3834,7 @@ function isValidSettingPayload(data) {
   if (data.setting === SettingName.SERVER_URL)
     return typeof data.url === "string";
   if (typeof data.enabled !== "boolean") {
-    console.warn("[Gasoline] Invalid enabled value type");
+    console.warn("[KaBOOM!] Invalid enabled value type");
     return false;
   }
   return true;
@@ -3867,18 +3870,18 @@ function handleSetting(data) {
 function handleStateCommand(data, captureStateFn, restoreStateFn) {
   const { messageId, action, state } = data;
   if (!VALID_STATE_ACTIONS.has(action)) {
-    console.warn("[Gasoline] Invalid state action:", action);
+    console.warn("[KaBOOM!] Invalid state action:", action);
     window.postMessage({
-      type: "GASOLINE_STATE_RESPONSE",
+      type: "kaboom_state_response",
       messageId,
       result: { error: `Invalid action: ${action}` }
     }, window.location.origin);
     return;
   }
   if (action === "restore" && (!state || typeof state !== "object")) {
-    console.warn("[Gasoline] Invalid state object for restore");
+    console.warn("[KaBOOM!] Invalid state object for restore");
     window.postMessage({
-      type: "GASOLINE_STATE_RESPONSE",
+      type: "kaboom_state_response",
       messageId,
       result: { error: "Invalid state object" }
     }, window.location.origin);
@@ -3898,7 +3901,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
     result = { error: errorMessage(err) };
   }
   window.postMessage({
-    type: "GASOLINE_STATE_RESPONSE",
+    type: "kaboom_state_response",
     messageId,
     result
   }, window.location.origin);
@@ -3907,9 +3910,9 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
 // extension/inject/message-handlers.js
 var pageNonce = "";
 if (typeof document !== "undefined" && typeof document.querySelector === "function") {
-  const nonceEl = document.querySelector("script[data-gasoline-nonce]");
+  const nonceEl = document.querySelector("script[data-kaboom-nonce]");
   if (nonceEl) {
-    pageNonce = nonceEl.getAttribute("data-gasoline-nonce") || "";
+    pageNonce = nonceEl.getAttribute("data-kaboom-nonce") || "";
   }
 }
 function postResponse(data) {
@@ -3929,10 +3932,10 @@ async function handleLinkHealthQuery(data) {
 }
 function handleLinkHealthMessage(data) {
   handleLinkHealthQuery(data).then((result) => {
-    postResponse({ type: "GASOLINE_LINK_HEALTH_RESPONSE", requestId: data.requestId, result });
+    postResponse({ type: "kaboom_link_health_response", requestId: data.requestId, result });
   }).catch((err) => {
     postResponse({
-      type: "GASOLINE_LINK_HEALTH_RESPONSE",
+      type: "kaboom_link_health_response",
       requestId: data.requestId,
       result: { error: "link_health_error", message: err.message || "Failed to check link health" }
     });
@@ -3942,22 +3945,22 @@ function installMessageListener(captureStateFn, restoreStateFn) {
   if (typeof window === "undefined")
     return;
   const messageHandlers = {
-    GASOLINE_SETTING: (data) => {
+    kaboom_setting: (data) => {
       const settingData = data;
       if (isValidSettingPayload(settingData))
         handleSetting(settingData);
     },
-    GASOLINE_STATE_COMMAND: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
-    GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data),
-    GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data),
-    GASOLINE_DOM_QUERY: (data) => handleDomQuery(data),
-    GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data),
-    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data),
-    GASOLINE_COMPUTED_STYLES_QUERY: (data) => handleComputedStylesMessage(data),
-    GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data),
-    GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data),
-    GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data),
-    GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data)
+    kaboom_state_command: (data) => handleStateCommand(data, captureStateFn, restoreStateFn),
+    kaboom_execute_js: (data) => handleExecuteJs(data),
+    kaboom_a11y_query: (data) => handleA11yQuery(data),
+    kaboom_dom_query: (data) => handleDomQuery(data),
+    kaboom_get_waterfall: (data) => handleGetWaterfall(data),
+    kaboom_link_health_query: (data) => handleLinkHealthMessage(data),
+    kaboom_computed_styles_query: (data) => handleComputedStylesMessage(data),
+    kaboom_form_discovery_query: (data) => handleFormDiscoveryMessage(data),
+    kaboom_form_state_query: (data) => handleFormStateMessage(data),
+    kaboom_data_table_query: (data) => handleDataTableMessage(data),
+    kaboom_inject_bridge_ping: (data) => handleBridgePingMessage(data)
   };
   window.addEventListener("message", (event) => {
     if (event.source !== window || event.origin !== window.location.origin)
@@ -3974,7 +3977,7 @@ function installMessageListener(captureStateFn, restoreStateFn) {
 }
 function handleBridgePingMessage(data) {
   postResponse({
-    type: "GASOLINE_INJECT_BRIDGE_PONG",
+    type: "kaboom_inject_bridge_pong",
     requestId: data.requestId
   });
 }
@@ -3986,13 +3989,13 @@ function handleComputedStylesMessage(data) {
       properties: params.properties
     });
     postResponse({
-      type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
+      type: "kaboom_computed_styles_response",
       requestId: data.requestId,
       result: { elements: result, count: result.length }
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_COMPUTED_STYLES_RESPONSE",
+      type: "kaboom_computed_styles_response",
       requestId: data.requestId,
       result: { error: "computed_styles_error", message: errorMessage(err, "Failed to query computed styles") }
     });
@@ -4006,13 +4009,13 @@ function handleFormDiscoveryMessage(data) {
       mode: params.mode === "validate" ? "validate" : "discover"
     });
     postResponse({
-      type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
+      type: "kaboom_form_discovery_response",
       requestId: data.requestId,
       result: { forms: result, count: result.length }
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_FORM_DISCOVERY_RESPONSE",
+      type: "kaboom_form_discovery_response",
       requestId: data.requestId,
       result: { error: "form_discovery_error", message: errorMessage(err, "Failed to discover forms") }
     });
@@ -4026,13 +4029,13 @@ function handleFormStateMessage(data) {
       mode: "discover"
     });
     postResponse({
-      type: "GASOLINE_FORM_STATE_RESPONSE",
+      type: "kaboom_form_state_response",
       requestId: data.requestId,
       result: { forms, count: forms.length }
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_FORM_STATE_RESPONSE",
+      type: "kaboom_form_state_response",
       requestId: data.requestId,
       result: { error: "form_state_error", message: errorMessage(err, "Failed to extract form state") }
     });
@@ -4047,13 +4050,13 @@ function handleDataTableMessage(data) {
       max_cols: params.max_cols
     });
     postResponse({
-      type: "GASOLINE_DATA_TABLE_RESPONSE",
+      type: "kaboom_data_table_response",
       requestId: data.requestId,
       result
     });
   } catch (err) {
     postResponse({
-      type: "GASOLINE_DATA_TABLE_RESPONSE",
+      type: "kaboom_data_table_response",
       requestId: data.requestId,
       result: { error: "data_table_error", message: errorMessage(err, "Failed to extract table data") }
     });
@@ -4062,28 +4065,28 @@ function handleDataTableMessage(data) {
 function handleExecuteJs(data) {
   const { requestId, script, timeoutMs } = data;
   if (typeof script !== "string") {
-    console.warn("[Gasoline] Script must be a string");
+    console.warn("[KaBOOM!] Script must be a string");
     postResponse({
-      type: "GASOLINE_EXECUTE_JS_RESULT",
+      type: "kaboom_execute_js_result",
       requestId,
       result: { success: false, error: "invalid_script", message: "Script must be a string" }
     });
     return;
   }
   if (typeof requestId !== "number" && typeof requestId !== "string") {
-    console.warn("[Gasoline] Invalid requestId type");
+    console.warn("[KaBOOM!] Invalid requestId type");
     return;
   }
   executeJavaScript(script, timeoutMs).then((result) => {
     postResponse({
-      type: "GASOLINE_EXECUTE_JS_RESULT",
+      type: "kaboom_execute_js_result",
       requestId,
       result
     });
   }).catch((err) => {
-    console.error("[Gasoline] Failed to execute JS:", err);
+    console.error("[KaBOOM!] Failed to execute JS:", err);
     postResponse({
-      type: "GASOLINE_EXECUTE_JS_RESULT",
+      type: "kaboom_execute_js_result",
       requestId,
       result: { success: false, error: "execution_failed", message: err.message }
     });
@@ -4093,7 +4096,7 @@ function handleA11yQuery(data) {
   const { requestId, params } = data;
   if (typeof runAxeAuditWithTimeout !== "function") {
     postResponse({
-      type: "GASOLINE_A11Y_QUERY_RESPONSE",
+      type: "kaboom_a11y_query_response",
       requestId,
       result: {
         error: "runAxeAuditWithTimeout not available - try reloading the extension"
@@ -4104,22 +4107,22 @@ function handleA11yQuery(data) {
   try {
     runAxeAuditWithTimeout(params || {}).then((result) => {
       postResponse({
-        type: "GASOLINE_A11Y_QUERY_RESPONSE",
+        type: "kaboom_a11y_query_response",
         requestId,
         result
       });
     }).catch((err) => {
-      console.error("[Gasoline] Accessibility audit error:", err);
+      console.error("[KaBOOM!] Accessibility audit error:", err);
       postResponse({
-        type: "GASOLINE_A11Y_QUERY_RESPONSE",
+        type: "kaboom_a11y_query_response",
         requestId,
         result: { error: err.message || "Accessibility audit failed" }
       });
     });
   } catch (err) {
-    console.error("[Gasoline] Failed to run accessibility audit:", err);
+    console.error("[KaBOOM!] Failed to run accessibility audit:", err);
     postResponse({
-      type: "GASOLINE_A11Y_QUERY_RESPONSE",
+      type: "kaboom_a11y_query_response",
       requestId,
       result: { error: errorMessage(err, "Failed to run accessibility audit") }
     });
@@ -4129,7 +4132,7 @@ function handleDomQuery(data) {
   const { requestId, params } = data;
   if (typeof executeDOMQuery !== "function") {
     postResponse({
-      type: "GASOLINE_DOM_QUERY_RESPONSE",
+      type: "kaboom_dom_query_response",
       requestId,
       result: {
         error: "executeDOMQuery not available - try reloading the extension"
@@ -4140,22 +4143,22 @@ function handleDomQuery(data) {
   try {
     executeDOMQuery(params || {}).then((result) => {
       postResponse({
-        type: "GASOLINE_DOM_QUERY_RESPONSE",
+        type: "kaboom_dom_query_response",
         requestId,
         result
       });
     }).catch((err) => {
-      console.error("[Gasoline] DOM query error:", err);
+      console.error("[KaBOOM!] DOM query error:", err);
       postResponse({
-        type: "GASOLINE_DOM_QUERY_RESPONSE",
+        type: "kaboom_dom_query_response",
         requestId,
         result: { error: err.message || "DOM query failed" }
       });
     });
   } catch (err) {
-    console.error("[Gasoline] Failed to run DOM query:", err);
+    console.error("[KaBOOM!] Failed to run DOM query:", err);
     postResponse({
-      type: "GASOLINE_DOM_QUERY_RESPONSE",
+      type: "kaboom_dom_query_response",
       requestId,
       result: { error: errorMessage(err, "Failed to run DOM query") }
     });
@@ -4166,15 +4169,15 @@ function handleGetWaterfall(data) {
   try {
     const entries = getNetworkWaterfall({});
     postResponse({
-      type: "GASOLINE_WATERFALL_RESPONSE",
+      type: "kaboom_waterfall_response",
       requestId,
       entries: entries || [],
       page_url: window.location.href
     });
   } catch (err) {
-    console.error("[Gasoline] Failed to get network waterfall:", err);
+    console.error("[KaBOOM!] Failed to get network waterfall:", err);
     postResponse({
-      type: "GASOLINE_WATERFALL_RESPONSE",
+      type: "kaboom_waterfall_response",
       requestId,
       entries: []
     });
@@ -4184,13 +4187,13 @@ function handleGetWaterfall(data) {
 // extension/inject/state.js
 var pageNonce2 = "";
 if (typeof document !== "undefined" && typeof document.querySelector === "function") {
-  const nonceEl = document.querySelector("script[data-gasoline-nonce]");
+  const nonceEl = document.querySelector("script[data-kaboom-nonce]");
   if (nonceEl) {
-    pageNonce2 = nonceEl.getAttribute("data-gasoline-nonce") || "";
+    pageNonce2 = nonceEl.getAttribute("data-kaboom-nonce") || "";
   }
 }
 var SENSITIVE_KEY_PATTERNS = /token|secret|password|api.?key|auth|session.?id|csrf|jwt/i;
-var gasolineHighlighter = null;
+var kaboomHighlighter = null;
 function captureState() {
   const state = {
     url: window.location.href,
@@ -4244,12 +4247,12 @@ function restoreStorageEntries(storage, entries, label) {
   for (const [key, value] of Object.entries(entries)) {
     if (!isValidStorageKey(key)) {
       skipped++;
-      console.warn(`[gasoline] Skipped ${label} key with invalid pattern:`, key);
+      console.warn(`[KaBOOM!] Skipped ${label} key with invalid pattern:`, key);
       continue;
     }
     if (typeof value === "string" && value.length > MAX_STORAGE_VALUE_SIZE) {
       skipped++;
-      console.warn(`[gasoline] Skipped ${label} value exceeding 10MB:`, key);
+      console.warn(`[KaBOOM!] Skipped ${label} value exceeding 10MB:`, key);
       continue;
     }
     storage.setItem(key, value);
@@ -4291,10 +4294,10 @@ function navigateSameOrigin(url) {
     if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.origin === window.location.origin) {
       window.location.href = url;
     } else {
-      console.warn("[gasoline] Skipped navigation: URL must be same origin", url, "current:", window.location.origin);
+      console.warn("[KaBOOM!] Skipped navigation: URL must be same origin", url, "current:", window.location.origin);
     }
   } catch (e) {
-    console.warn("[gasoline] Invalid URL for navigation:", url, e);
+    console.warn("[KaBOOM!] Invalid URL for navigation:", url, e);
   }
 }
 function restoreState(state, includeUrl = true) {
@@ -4315,23 +4318,23 @@ function restoreState(state, includeUrl = true) {
   if (includeUrl && state.url)
     navigateSameOrigin(state.url);
   if (skipped > 0)
-    console.warn(`[gasoline] restoreState completed with ${skipped} skipped item(s)`);
+    console.warn(`[KaBOOM!] restoreState completed with ${skipped} skipped item(s)`);
   return { success: true, restored };
 }
 function highlightElement(selector, durationMs = 5e3) {
-  if (gasolineHighlighter) {
-    gasolineHighlighter.remove();
-    gasolineHighlighter = null;
+  if (kaboomHighlighter) {
+    kaboomHighlighter.remove();
+    kaboomHighlighter = null;
   }
   const element = document.querySelector(selector);
   if (!element) {
     return { success: false, error: "element_not_found", selector };
   }
   const rect = element.getBoundingClientRect();
-  gasolineHighlighter = document.createElement("div");
-  gasolineHighlighter.id = "gasoline-highlighter";
-  gasolineHighlighter.dataset.selector = selector;
-  Object.assign(gasolineHighlighter.style, {
+  kaboomHighlighter = document.createElement("div");
+  kaboomHighlighter.id = "kaboom-highlighter";
+  kaboomHighlighter.dataset.selector = selector;
+  Object.assign(kaboomHighlighter.style, {
     position: "fixed",
     top: `${rect.top}px`,
     left: `${rect.left}px`,
@@ -4347,15 +4350,15 @@ function highlightElement(selector, durationMs = 5e3) {
   });
   const targetElement = document.body || document.documentElement;
   if (targetElement) {
-    targetElement.appendChild(gasolineHighlighter);
+    targetElement.appendChild(kaboomHighlighter);
   } else {
-    console.warn("[Gasoline] No document body available for highlighter injection");
+    console.warn("[KaBOOM!] No document body available for highlighter injection");
     return;
   }
   setTimeout(() => {
-    if (gasolineHighlighter) {
-      gasolineHighlighter.remove();
-      gasolineHighlighter = null;
+    if (kaboomHighlighter) {
+      kaboomHighlighter.remove();
+      kaboomHighlighter = null;
     }
   }, durationMs);
   return {
@@ -4365,21 +4368,21 @@ function highlightElement(selector, durationMs = 5e3) {
   };
 }
 function clearHighlight() {
-  if (gasolineHighlighter) {
-    gasolineHighlighter.remove();
-    gasolineHighlighter = null;
+  if (kaboomHighlighter) {
+    kaboomHighlighter.remove();
+    kaboomHighlighter = null;
   }
 }
 if (typeof window !== "undefined") {
   window.addEventListener("scroll", () => {
-    if (gasolineHighlighter) {
-      const selector = gasolineHighlighter.dataset.selector;
+    if (kaboomHighlighter) {
+      const selector = kaboomHighlighter.dataset.selector;
       if (selector) {
         const el = document.querySelector(selector);
         if (el) {
           const rect = el.getBoundingClientRect();
-          gasolineHighlighter.style.top = `${rect.top}px`;
-          gasolineHighlighter.style.left = `${rect.left}px`;
+          kaboomHighlighter.style.top = `${rect.top}px`;
+          kaboomHighlighter.style.left = `${rect.left}px`;
         }
       }
     }
@@ -4391,12 +4394,12 @@ if (typeof window !== "undefined") {
       return;
     if (pageNonce2 && event.data?._nonce !== pageNonce2)
       return;
-    if (event.data?.type === "GASOLINE_HIGHLIGHT_REQUEST") {
+    if (event.data?.type === "kaboom_highlight_request") {
       const { requestId, params } = event.data;
       const { selector, duration_ms } = params || { selector: "" };
       const result = highlightElement(selector, duration_ms);
       window.postMessage({
-        type: "GASOLINE_HIGHLIGHT_RESPONSE",
+        type: "kaboom_highlight_response",
         requestId,
         result
       }, window.location.origin);
@@ -4408,7 +4411,7 @@ if (typeof window !== "undefined") {
 if (typeof window !== "undefined" && typeof document !== "undefined" && typeof globalThis.process === "undefined") {
   installPhase1();
   installMessageListener(captureState, restoreState);
-  installGasolineAPI();
+  installKaboomAPI();
   window.addEventListener("load", () => {
     setTimeout(() => {
       sendPerformanceSnapshot();
@@ -4480,7 +4483,7 @@ export {
   installConsoleCapture,
   installExceptionCapture,
   installFetchCapture,
-  installGasolineAPI,
+  installKaboomAPI,
   installMessageListener,
   installNavigationCapture,
   installPerfObservers,
@@ -4538,7 +4541,7 @@ export {
   uninstallConsoleCapture,
   uninstallExceptionCapture,
   uninstallFetchCapture,
-  uninstallGasolineAPI,
+  uninstallKaboomAPI,
   uninstallNavigationCapture,
   uninstallPerfObservers,
   uninstallPerformanceCapture,

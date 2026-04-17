@@ -223,7 +223,7 @@ begin_test "12.12" "dom_summary/analyze fields pass through command_result" \
     "Extension enriches click results with DOM changes. If passthrough is broken, AI loses mutation context."
 run_test_12_12() {
     local go_result
-    go_result=$("$TIMEOUT_CMD" 30 go test ./cmd/dev-console/ -run "TestRichAction_DomSummaryPassthrough|TestRichAction_PerfDiffWithFullWebVitals" -count=1 2>&1)
+    go_result=$("$TIMEOUT_CMD" 30 go test ./cmd/browser-agent/ -run "TestRichAction_DomSummaryPassthrough|TestRichAction_PerfDiffWithFullWebVitals" -count=1 2>&1)
 
     if echo "$go_result" | grep -q "^ok" && ! echo "$go_result" | grep -q "FAIL"; then
         pass "dom_summary, timing, analysis pass through. Full Web Vitals perf_diff with ratings verified."

@@ -35,7 +35,7 @@ test('server postinstall validates existing daemon identity/version when port is
 
   assert.match(
     script,
-    /EXPECTED_SERVICE_NAME = 'gasoline-browser-devtools'/,
+    /EXPECTED_SERVICE_NAME = 'kaboom-browser-devtools'/,
     'install.js should enforce expected health service identity'
   )
   assert.match(

@@ -12,7 +12,7 @@ last_verified_date: 2026-03-05
 
 # Runtime Spec: Browser UI + Go Orchestrator
 
-This document defines the detailed runtime architecture for a browser-native agent UI backed by the existing Gasoline Go binary.
+This document defines the detailed runtime architecture for a browser-native agent UI backed by the existing Kaboom Go binary.
 
 The browser is UI only. All orchestration, tool execution, policy enforcement, and model egress are implemented in Go.
 
@@ -28,7 +28,7 @@ The browser is UI only. All orchestration, tool execution, policy enforcement, a
 
 1. Re-implement a full VS Code extension host in the browser.
 2. Make terminal-stream parsing the primary control protocol.
-3. Couple Gasoline behavior to any single model vendor UX.
+3. Couple Kaboom behavior to any single model vendor UX.
 4. Introduce breaking changes to current MCP tools/actions.
 
 ## 3) Architecture (Normative)
@@ -118,7 +118,7 @@ Data model:
 {
   "session_id": "sess_01H...",
   "transport": "stdio|http",
-  "client_name": "gasoline-panel",
+  "client_name": "kaboom-panel",
   "created_at": "2026-02-16T12:00:00Z",
   "last_seen_at": "2026-02-16T12:00:05Z",
   "state": "ready|degraded|closed"
@@ -375,7 +375,7 @@ Exit criteria:
 ## 14) Operational Runbook Notes
 
 1. Health endpoint must include:
-   - `service-name: gasoline`
+   - `service-name: kaboom`
    - `version`
    - `transport_status` (stdio/http)
 2. Include diagnostic command for startup path:

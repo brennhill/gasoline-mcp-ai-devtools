@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
@@ -29,12 +29,12 @@ last_verified_date: 2026-03-05
 | DL-3 | "Capture from page start" toggle state | Stored in `chrome.storage.local`. The toggle value (boolean) is not sensitive, but verify no additional data is stored alongside it. | low |
 | DL-4 | Early console logs lost (privacy benefit) | Console logs during page load are NOT captured when deferral is active. This is actually a privacy benefit -- framework initialization noise with potential PII is not captured. | low (positive) |
 | DL-5 | Early fetch requests via Performance API | `performance.getEntriesByType('resource')` captures URLs of all network requests. Verify only the URL and timing data are reported, not request/response bodies or headers. | medium |
-| DL-6 | Settings message between content.js and inject.js | `GASOLINE_SETTINGS` message passes deferral preference via `window.postMessage`. Verify the message contains only the boolean flag, not other settings or user data. | medium |
+| DL-6 | Settings message between content.js and inject.js | `KABOOM_SETTINGS` message passes deferral preference via `window.postMessage`. Verify the message contains only the boolean flag, not other settings or user data. | medium |
 | DL-7 | Data transmission path | Deferral is entirely extension-side logic. Verify no new data is sent to external servers. Diagnostic data in `get_page_info` flows over localhost only. | critical |
 
 ### Negative Tests (must NOT leak)
 - [ ] WebSocket URLs reported as "pre-existing" do NOT include authentication tokens in the logged URL (or if they do, data stays on localhost only)
-- [ ] `GASOLINE_SETTINGS` message contains ONLY the deferral boolean, no other user data
+- [ ] `KABOOM_SETTINGS` message contains ONLY the deferral boolean, no other user data
 - [ ] "Capture from page start" toggle stores ONLY a boolean in `chrome.storage.local`
 - [ ] No early console logs are captured during deferral (logs before Phase 2 are intentionally lost)
 - [ ] Performance API resource entries used for retroactive discovery do not include request/response bodies
@@ -50,11 +50,11 @@ last_verified_date: 2026-03-05
 |---|--------------|----------------|--------|
 | CL-1 | Deferral active meaning | LLM understands that when deferral is active, early events (console logs, fetch calls before Phase 2) are intentionally not captured. This is NOT a bug or data loss. | [ ] |
 | CL-2 | `missedEvents` semantics | `{ consoleLogs: true, fetchCalls: true, wsConnections: true }` means these event types WERE potentially missed during the deferral window. LLM should not interpret `true` as "captured". | [ ] |
-| CL-3 | Phase 2 timing context | `injectionTimestamp` and `phase2Timestamp` relative to page load -- LLM should understand the gap represents the deferral window during which Gasoline was passive. | [ ] |
-| CL-4 | Pre-existing WebSocket meaning | "pre-existing connection (not intercepted)" means the WebSocket was opened before Gasoline's wrapper installed. LLM should know messages on this connection are NOT being captured. | [ ] |
+| CL-3 | Phase 2 timing context | `injectionTimestamp` and `phase2Timestamp` relative to page load -- LLM should understand the gap represents the deferral window during which Kaboom was passive. | [ ] |
+| CL-4 | Pre-existing WebSocket meaning | "pre-existing connection (not intercepted)" means the WebSocket was opened before Kaboom's wrapper installed. LLM should know messages on this connection are NOT being captured. | [ ] |
 | CL-5 | "Capture from page start" toggle | LLM should understand this toggle exists as an escape hatch for debugging initialization issues. Default OFF means deferral is active. | [ ] |
-| CL-6 | Performance data accuracy | LLM should know that FCP, LCP, TTFB metrics are NOT inflated by Gasoline when deferral is active. These are trustworthy measurements. | [ ] |
-| CL-7 | Retroactive fetch discovery | Fetch calls before Phase 2 are visible via Performance API resource entries, NOT via Gasoline's fetch wrapper. LLM should understand these have URL and timing but no response body capture. | [ ] |
+| CL-6 | Performance data accuracy | LLM should know that FCP, LCP, TTFB metrics are NOT inflated by Kaboom when deferral is active. These are trustworthy measurements. | [ ] |
+| CL-7 | Retroactive fetch discovery | Fetch calls before Phase 2 are visible via Performance API resource entries, NOT via Kaboom's fetch wrapper. LLM should understand these have URL and timing but no response body capture. | [ ] |
 
 ### Common LLM Misinterpretation Risks
 - [ ] LLM interprets missing early console logs as a bug rather than intentional deferral behavior -- verify `get_page_info` deferral section explains the capture window clearly
@@ -73,7 +73,7 @@ last_verified_date: 2026-03-05
 | Workflow | Steps Required | Can Be Simplified? |
 |----------|---------------|-------------------|
 | Use deferral (default) | 0 steps: enabled by default | Already at zero |
-| Check if deferral is active | 1 step: `get_page_info` and read `gasoline.deferral` section | No -- single tool call |
+| Check if deferral is active | 1 step: `get_page_info` and read `kaboom.deferral` section | No -- single tool call |
 | Disable deferral for debugging | 1 step: toggle "Capture from page start" in extension options | No -- single toggle |
 | Understand capture window | 1 step: read Phase 1/Phase 2 timestamps from `get_page_info` | No -- data is in response |
 
@@ -99,11 +99,11 @@ last_verified_date: 2026-03-05
 | UT-4 | Phase 1 does NOT wrap fetch | After Phase 1, before Phase 2 | `window.fetch` is the original native function | must |
 | UT-5 | Phase 1 does NOT wrap WebSocket | After Phase 1, before Phase 2 | `window.WebSocket` is the original constructor | must |
 | UT-6 | Phase 1 sets up PerformanceObservers | After Phase 1 | FCP and CLS observers are active | must |
-| UT-7 | Phase 1 registers `__gasoline` API | After Phase 1 | `window.__gasoline` exists | must |
+| UT-7 | Phase 1 registers `__kaboom` API | After Phase 1 | `window.__kaboom` exists | must |
 | UT-8 | Phase 1 records injection timestamp | After Phase 1 | `injectionTimestamp` is a valid `performance.now()` value | must |
 | UT-9 | Phase 2 wraps console methods | After Phase 2 | `console.log`, `.warn`, `.error` are wrapped | must |
-| UT-10 | Phase 2 wraps fetch | After Phase 2 | `window.fetch` is Gasoline's wrapper | must |
-| UT-11 | Phase 2 wraps WebSocket constructor | After Phase 2 | `window.WebSocket` is Gasoline's wrapper | must |
+| UT-10 | Phase 2 wraps fetch | After Phase 2 | `window.fetch` is Kaboom's wrapper | must |
+| UT-11 | Phase 2 wraps WebSocket constructor | After Phase 2 | `window.WebSocket` is Kaboom's wrapper | must |
 | UT-12 | Phase 2 installs error handlers | After Phase 2 | `window.onerror` and `unhandledrejection` handlers installed | must |
 | UT-13 | Phase 2 installs action capture | After Phase 2 | Click, input, scroll, keydown listeners installed | must |
 | UT-14 | Phase 2 wraps navigation methods | After Phase 2 | `pushState`/`popstate` wrapped | must |
@@ -114,10 +114,10 @@ last_verified_date: 2026-03-05
 | UT-19 | `phase2Installed` flag set correctly | After Phase 2 runs | `phase2Installed === true` | must |
 | UT-20 | `phase2Timestamp` recorded | After Phase 2 runs | Valid `performance.now()` value, greater than `injectionTimestamp` | must |
 | UT-21 | `missedEvents` object populated | Default deferral active | `{ consoleLogs: true, fetchCalls: true, wsConnections: true }` | should |
-| UT-22 | Settings message received from content.js | content.js sends `GASOLINE_SETTINGS` | `deferralEnabled` updated from message | must |
+| UT-22 | Settings message received from content.js | content.js sends `KABOOM_SETTINGS` | `deferralEnabled` updated from message | must |
 | UT-23 | SPA navigation does not re-trigger deferral | SPA route change after Phase 2 | Interceptors stay active, no re-deferral | must |
-| UT-24 | Console logs before Phase 2 not captured | Log before Phase 2 | Log does NOT appear in Gasoline's log buffer | must |
-| UT-25 | Console logs after Phase 2 captured | Log after Phase 2 | Log appears in Gasoline's log buffer | must |
+| UT-24 | Console logs before Phase 2 not captured | Log before Phase 2 | Log does NOT appear in Kaboom's log buffer | must |
+| UT-25 | Console logs after Phase 2 captured | Log after Phase 2 | Log appears in Kaboom's log buffer | must |
 | UT-26 | Background.js stores deferral preference | Toggle "Capture from page start" | Value stored in `chrome.storage.local` | should |
 | UT-27 | Background.js responds to `get_settings` | content.js sends `get_settings` | Response includes `deferral` boolean | should |
 
@@ -129,7 +129,7 @@ last_verified_date: 2026-03-05
 | IT-2 | Settings flow from options to inject | options.js -> background.js -> content.js -> inject.js | Toggle change propagates to inject.js behavior | must |
 | IT-3 | `get_page_info` includes deferral diagnostics | Server -> extension -> inject.js state | Response includes `injectionTimestamp`, `phase2Timestamp`, pre-existing WS count | should |
 | IT-4 | Performance API retroactive fetch capture | Fetch before Phase 2, then query | Resource entry visible via Performance API | should |
-| IT-5 | Full page load with deferral | Load a real web page | FCP/LCP/TTFB unaffected by Gasoline, Phase 2 installs after load | must |
+| IT-5 | Full page load with deferral | Load a real web page | FCP/LCP/TTFB unaffected by Kaboom, Phase 2 installs after load | must |
 | IT-6 | Full page load without deferral | "Capture from page start" ON | Phase 2 installs immediately, may affect FCP/LCP | should |
 | IT-7 | Deferral toggle persistence | Set toggle, restart browser | Toggle value persists in `chrome.storage.local` | should |
 
@@ -171,7 +171,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web page that:
   - Calls `console.log("EARLY LOG")` before `DOMContentLoaded`
@@ -186,19 +186,19 @@ last_verified_date: 2026-03-05
 | # | Step (AI executes) | Human Observes | Expected Result | Pass |
 |---|-------------------|----------------|-----------------|------|
 | **Default deferral behavior** | | | | |
-| UAT-1 | Navigate to test page. `{"tool": "observe", "arguments": {"what": "logs"}}` | Console in browser shows both "EARLY LOG" and "LATE LOG" | Gasoline logs contain "LATE LOG" but NOT "EARLY LOG" (early log was before Phase 2) | [ ] |
-| UAT-2 | `{"tool": "observe", "arguments": {"what": "network"}}` | DevTools Network shows the early fetch request | Gasoline network buffer may not have the early fetch (depends on timing), but Performance API resource entries show it | [ ] |
-| UAT-3 | `{"tool": "observe", "arguments": {"what": "websocket"}}` | DevTools shows WebSocket connection established during load | Gasoline reports the WebSocket as "pre-existing connection (not intercepted)" | [ ] |
-| UAT-4 | Check page performance: `{"tool": "observe", "arguments": {"what": "performance"}}` | DevTools Performance tab shows FCP/LCP | Gasoline's FCP/LCP/TTFB metrics match DevTools values (deferral did not inflate them) | [ ] |
+| UAT-1 | Navigate to test page. `{"tool": "observe", "arguments": {"what": "logs"}}` | Console in browser shows both "EARLY LOG" and "LATE LOG" | Kaboom logs contain "LATE LOG" but NOT "EARLY LOG" (early log was before Phase 2) | [ ] |
+| UAT-2 | `{"tool": "observe", "arguments": {"what": "network"}}` | DevTools Network shows the early fetch request | Kaboom network buffer may not have the early fetch (depends on timing), but Performance API resource entries show it | [ ] |
+| UAT-3 | `{"tool": "observe", "arguments": {"what": "websocket"}}` | DevTools shows WebSocket connection established during load | Kaboom reports the WebSocket as "pre-existing connection (not intercepted)" | [ ] |
+| UAT-4 | Check page performance: `{"tool": "observe", "arguments": {"what": "performance"}}` | DevTools Performance tab shows FCP/LCP | Kaboom's FCP/LCP/TTFB metrics match DevTools values (deferral did not inflate them) | [ ] |
 | UAT-5 | Check deferral diagnostics (if `get_page_info` is available) | N/A | Response includes `injectionTimestamp`, `phase2Timestamp`, deferral active flag | [ ] |
 | **"Capture from page start" toggle** | | | | |
 | UAT-6 | Human enables "Capture from page start" in extension options | Options page toggle | Toggle is ON | [ ] |
-| UAT-7 | Navigate to test page again. `{"tool": "observe", "arguments": {"what": "logs"}}` | Both logs appear in browser console | Gasoline logs contain BOTH "EARLY LOG" AND "LATE LOG" (no deferral, immediate capture) | [ ] |
-| UAT-8 | `{"tool": "observe", "arguments": {"what": "websocket"}}` | WebSocket connection established during load | Gasoline reports the WebSocket as an intercepted connection (NOT "pre-existing") | [ ] |
-| UAT-9 | Check page performance | Compare FCP with deferral OFF | FCP may be slightly higher (expected -- Gasoline wrapping adds ~5ms during critical path) | [ ] |
+| UAT-7 | Navigate to test page again. `{"tool": "observe", "arguments": {"what": "logs"}}` | Both logs appear in browser console | Kaboom logs contain BOTH "EARLY LOG" AND "LATE LOG" (no deferral, immediate capture) | [ ] |
+| UAT-8 | `{"tool": "observe", "arguments": {"what": "websocket"}}` | WebSocket connection established during load | Kaboom reports the WebSocket as an intercepted connection (NOT "pre-existing") | [ ] |
+| UAT-9 | Check page performance | Compare FCP with deferral OFF | FCP may be slightly higher (expected -- Kaboom wrapping adds ~5ms during critical path) | [ ] |
 | UAT-10 | Human disables "Capture from page start" (returns to default) | Options page toggle | Toggle is OFF (deferral re-enabled) | [ ] |
 | **Timeout fallback** | | | | |
-| UAT-11 | Load a page with a stuck resource (e.g., iframe loading forever) | Page never fires `load` event | After ~10 seconds, Gasoline starts capturing (Phase 2 timeout fallback). Late console logs appear in buffer. | [ ] |
+| UAT-11 | Load a page with a stuck resource (e.g., iframe loading forever) | Page never fires `load` event | After ~10 seconds, Kaboom starts capturing (Phase 2 timeout fallback). Late console logs appear in buffer. | [ ] |
 | **SPA navigation** | | | | |
 | UAT-12 | Navigate within an SPA (React Router, etc.) after initial load. `{"tool": "observe", "arguments": {"what": "logs"}}` | Console logs from SPA navigation | Logs captured normally (Phase 2 active, no re-deferral on SPA nav) | [ ] |
 | **Toggle persistence** | | | | |
@@ -208,14 +208,14 @@ last_verified_date: 2026-03-05
 
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
-| DL-UAT-1 | Settings message contains only boolean | Inspect inject.js console for `GASOLINE_SETTINGS` message | Message contains `{ type: 'GASOLINE_SETTINGS', deferral: true/false }` only | [ ] |
+| DL-UAT-1 | Settings message contains only boolean | Inspect inject.js console for `KABOOM_SETTINGS` message | Message contains `{ type: 'KABOOM_SETTINGS', deferral: true/false }` only | [ ] |
 | DL-UAT-2 | No external data transmission | Monitor all network traffic during page load with deferral | No requests to external servers from deferral logic | [ ] |
 | DL-UAT-3 | Pre-existing WebSocket URLs on localhost only | WebSocket URL contains auth token | URL reported in diagnostics but only transmitted to 127.0.0.1:7890 | [ ] |
 | DL-UAT-4 | Chrome.storage.local only stores boolean | Inspect `chrome.storage.local` for deferral key | Single boolean value, no additional data | [ ] |
-| DL-UAT-5 | Early console logs NOT captured (privacy benefit) | Page logs PII during initialization | PII log NOT in Gasoline buffer (lost during deferral window) | [ ] |
+| DL-UAT-5 | Early console logs NOT captured (privacy benefit) | Page logs PII during initialization | PII log NOT in Kaboom buffer (lost during deferral window) | [ ] |
 
 ### Regression Checks
-- [ ] All existing Gasoline features work after Phase 2 installs (console capture, network capture, WebSocket monitoring, error capture)
+- [ ] All existing Kaboom features work after Phase 2 installs (console capture, network capture, WebSocket monitoring, error capture)
 - [ ] PerformanceObservers (FCP, LCP, CLS) still collect data from Phase 1 (not delayed to Phase 2)
 - [ ] Extension popup shows correct connection status during both Phase 1 and Phase 2
 - [ ] Action capture (clicks, inputs, scrolls) works after Phase 2 installs

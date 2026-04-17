@@ -3,7 +3,7 @@
  * Docs: docs/features/feature/interact-explore/index.md
  *
  * SYNC NOTE: The Go side maintains a parallel readOnlyInteractActions map in
- * cmd/dev-console/tools_interact_dispatch.go for jitter gating. When adding or
+ * cmd/browser-agent/tools_interact_dispatch.go for jitter gating. When adding or
  * reclassifying actions here, update the Go map to match.
  */
 
@@ -25,7 +25,7 @@ export interface ActionMeta {
  * The Go daemon in tools_interact_dispatch.go maintains a parallel
  * readOnlyInteractActions map — keep them in sync.
  */
-export const ACTION_METADATA: Record<string, ActionMeta> = {
+const ACTION_METADATA: Record<string, ActionMeta> = {
   // --- Read-only actions (no DOM mutation, no jitter) ---
   list_interactive:          { readonly: true,  mutating: false },
   query:                     { readonly: true,  mutating: false },

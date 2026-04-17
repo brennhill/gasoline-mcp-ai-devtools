@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #49
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/49
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/49
 - Title: [Feature Proposal] Passive Telemetry in every Tool Response
 
 ## Objective

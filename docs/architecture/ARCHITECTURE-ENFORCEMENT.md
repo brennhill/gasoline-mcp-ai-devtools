@@ -50,7 +50,7 @@ On 2026-02-02, we deleted the async queue implementation during refactoring. Thi
 **File**: `.git/hooks/pre-commit`
 
 **What it checks**:
-- ✅ Critical files exist ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools_core.go](cmd/dev-console/tools_core.go))
+- ✅ Critical files exist ([queries.go](internal/capture/queries.go), [handlers.go](internal/capture/handlers.go), [tools_core.go](cmd/browser-agent/tools_core.go))
 - ✅ Required methods exist (CreatePendingQuery, GetCommandResult, etc.)
 - ✅ No stub implementations
 
@@ -144,12 +144,12 @@ go test -v ./internal/capture -run TestAsyncQueueIntegration
 
 **Example output**:
 ```bash
-🏗️  Validating Gasoline architecture...
+🏗️  Validating Kaboom architecture...
 
 1️⃣  Checking critical files...
    ✅ internal/capture/queries.go
    ✅ internal/capture/handlers.go
-   ✅ cmd/dev-console/tools_core.go
+   ✅ cmd/browser-agent/tools_core.go
 
 2️⃣  Checking required methods in queries.go...
    ✅ CreatePendingQuery
@@ -174,7 +174,7 @@ go test -v ./internal/capture -run TestAsyncQueueIntegration
 - Warns if critical files modified
 - **Blocks PR merge** if validation fails
 
-**When it runs**: Every PR/push to main/UNSTABLE/develop
+**When it runs**: Every PR/push to stable/UNSTABLE/develop
 
 **Can be bypassed**: No (required status check)
 
@@ -405,5 +405,5 @@ Since implementing enforcement (2026-02-02):
 
 ---
 
-**Remember**: The async queue is not "just code" - it's the **foundation** of Gasoline.
+**Remember**: The async queue is not "just code" - it's the **foundation** of Kaboom.
 Treat it like infrastructure, not like a feature.

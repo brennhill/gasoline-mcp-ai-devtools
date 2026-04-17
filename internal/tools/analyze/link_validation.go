@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/upload"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upload"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // MaxLinkValidationURLs is the upper bound on URLs accepted per validation request.
@@ -91,7 +91,7 @@ func NewLinkValidationClient(timeout time.Duration) *http.Client {
 // DoLinkRequest tries HEAD first, falling back to GET if HEAD fails or returns 405.
 // The version parameter is used for the User-Agent header.
 func DoLinkRequest(client *http.Client, linkURL string, version string) (*http.Response, error) {
-	ua := fmt.Sprintf("Gasoline/%s (+https://gasoline.dev)", version)
+	ua := fmt.Sprintf("Kaboom/%s (+https://kaboom.dev)", version)
 
 	req, err := http.NewRequest("HEAD", linkURL, nil)
 	if err != nil {

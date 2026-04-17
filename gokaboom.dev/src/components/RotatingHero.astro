@@ -1,0 +1,92 @@
+---
+// RotatingHero.astro — Hero title rotation component
+---
+
+<style>
+  :global(header h1), :global([data-hero-tagline]) {
+    transition: opacity 0.5s ease-in-out;
+  }
+
+  :global(header h1.rotating), :global([data-hero-tagline].rotating) {
+    opacity: 0;
+  }
+</style>
+
+<slot />
+
+<script define:vars={{ variants: JSON.stringify([
+    {
+      title: "Enabling Full-stack Automated AI Debugging",
+      subtitle: "Fueling rapid development with AI."
+    },
+    {
+      title: "Natural Language Product Demo Creation",
+      subtitle: "Let AI generate tests from your actions"
+    },
+    {
+      title: "AI Exploratory User Testing",
+      subtitle: "Your AI runs UAT autonomously"
+    },
+    {
+      title: "AI Full Cycle Product Improvement",
+      subtitle: "Identify issues → Debug → Deploy → Verify with video proof"
+    }
+  ]) }}>
+
+  const heroVariants = JSON.parse(variants);
+  let currentVariant = 0;
+  let isInitialized = false;
+
+  function initializeRotation() {
+    if (isInitialized) return;
+
+    // Look for the actual hero elements rendered by Starlight
+    const h1 = document.querySelector('header h1');
+    const tagline = document.querySelector('header p');
+
+    if (!h1 || !tagline) {
+      console.debug('Waiting for hero elements...');
+      requestAnimationFrame(initializeRotation);
+      return;
+    }
+
+    isInitialized = true;
+    console.debug('Hero rotation initialized');
+
+    function rotateHero() {
+      // Fade out
+      h1.classList.add('rotating');
+      tagline.classList.add('rotating');
+
+      setTimeout(() => {
+        const variant = heroVariants[currentVariant];
+        h1.textContent = variant.title;
+        tagline.textContent = variant.subtitle;
+
+        // Update page title and meta tags for SEO
+        document.title = `KaBOOM MCP: ${variant.title}`;
+        const ogTitle = document.querySelector('meta[property="og:title"]');
+        const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+
+        if (ogTitle) ogTitle.setAttribute('content', `KaBOOM MCP: ${variant.title}`);
+        if (twitterTitle) twitterTitle.setAttribute('content', `KaBOOM MCP: ${variant.title}`);
+
+        // Fade in
+        h1.classList.remove('rotating');
+        tagline.classList.remove('rotating');
+
+        currentVariant = (currentVariant + 1) % heroVariants.length;
+      }, 500);
+    }
+
+    // Start rotation after 6 seconds (let user read initial message)
+    setInterval(rotateHero, 6000);
+  }
+
+  // Wait for DOM to be ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeRotation);
+  } else {
+    requestAnimationFrame(initializeRotation);
+  }
+</script>

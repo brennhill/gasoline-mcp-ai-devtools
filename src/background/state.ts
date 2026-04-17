@@ -90,8 +90,8 @@ export function isDebugMode(): boolean {
   return state.debugMode
 }
 
-export function getConnectionStatus(): MutableConnectionStatus {
-  return state.connectionStatus
+export function getConnectionStatus(): Readonly<MutableConnectionStatus> {
+  return Object.freeze({ ...state.connectionStatus })
 }
 
 export function getCurrentLogLevel(): string {
@@ -102,8 +102,8 @@ export function isScreenshotOnError(): boolean {
   return state.screenshotOnError
 }
 
-export function getCaptureOverrides(): Record<string, string> {
-  return state.captureOverrides
+function getCaptureOverrides(): Readonly<Record<string, string>> {
+  return Object.freeze({ ...state.captureOverrides })
 }
 
 export function isAiControlled(): boolean {
@@ -136,7 +136,7 @@ export function pushExtensionLog(entry: ExtensionLogQueueEntry): void {
 
 function capExtensionLogQueue(maxEntries: number): void {
   if (state.extensionLogQueue.length <= maxEntries) return
-  state.extensionLogQueue.splice(0, state.extensionLogQueue.length - maxEntries)
+  state.extensionLogQueue = state.extensionLogQueue.slice(-maxEntries)
 }
 
 export function capExtensionLogs(maxEntries: number): void {
@@ -237,7 +237,7 @@ export function applyCaptureOverrides(overrides: Record<string, string>): void {
 /**
  * Reset pilot cache for testing
  */
-export function _resetPilotCacheForTesting(value?: boolean): void {
+function _resetPilotCacheForTesting(value?: boolean): void {
   state.aiWebPilotEnabledCache = value !== undefined ? value : false
 }
 

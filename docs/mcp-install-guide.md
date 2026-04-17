@@ -1,32 +1,32 @@
 # MCP Installation Guide
 
-Gasoline MCP supports 9 AI coding tools. Use the one-liner installer or configure manually.
+Kaboom Agentic Browser supports 9 AI coding tools. Use the one-liner installer or configure manually.
 
 ## Automatic Installation
 
-The quickest way to install Gasoline and configure all your AI tools is via the one-liner script:
+The quickest way to install Kaboom and configure all your AI tools is via the one-liner script:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/brennhill/gasoline-agentic-browser-devtools-mcp/STABLE/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/STABLE/scripts/install.sh | bash
 ```
 
 This script:
 1.  **Downloads** the latest stable binary.
-2.  **Installs** the browser extension files to `~/GasolineAgenticDevtoolExtension`.
+2.  **Installs** the browser extension files to `~/KaboomAgenticDevtoolExtension`.
 3.  **Auto-configures** all detected MCP clients listed below to run the binary directly (no `npx`).
 4.  **Displays** a polished, step-by-step install UI with progress and a final checklist card.
 
 Important:
 - The installer **cannot** click browser UI for you.
-- You must manually open `chrome://extensions` (or `brave://extensions`), enable **Developer mode**, then click **Load unpacked** and select `~/GasolineAgenticDevtoolExtension`.
+- You must manually open `chrome://extensions` (or `brave://extensions`), enable **Developer mode**, then click **Load unpacked** and select `~/KaboomAgenticDevtoolExtension`.
 - After loading, pin the extension (recommended) and click **Track This Tab** in the popup.
 - For locked-down environments, enable strict checksum mode before install:
-  - `export GASOLINE_INSTALL_STRICT=1` (macOS/Linux)
-  - `$env:GASOLINE_INSTALL_STRICT="1"` (PowerShell)
+  - `export KABOOM_INSTALL_STRICT=1` (macOS/Linux)
+  - `$env:KABOOM_INSTALL_STRICT="1"` (PowerShell)
 
 ## Per-Tool Reference
 
-If you prefer to configure your tools manually, point them to the `gasoline-agentic-devtools` binary (usually located at `~/.gasoline/bin/gasoline-agentic-devtools`; aliases `gasoline` and `gasoline-agentic-browser` also work).
+If you prefer to configure your tools manually, point them to the `kaboom-agentic-browser` binary (usually located at `~/.kaboom/bin/kaboom-agentic-browser`).
 
 ### Claude Code
 
@@ -36,7 +36,7 @@ If you prefer to configure your tools manually, point them to the `gasoline-agen
 
 Claude Code is configured via its own CLI. Run:
 ```bash
-claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools", "args": []}'
+claude mcp add-json --scope user kaboom-browser-devtools <<< '{"command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser", "args": []}'
 ```
 
 ### Claude Desktop
@@ -49,8 +49,8 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
+    "kaboom-browser-devtools": {
+      "command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser",
       "args": []
     }
   }
@@ -66,8 +66,8 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
+    "kaboom-browser-devtools": {
+      "command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser",
       "args": []
     }
   }
@@ -83,8 +83,8 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
+    "kaboom-browser-devtools": {
+      "command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser",
       "args": []
     }
   }
@@ -102,8 +102,8 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
+    "kaboom-browser-devtools": {
+      "command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser",
       "args": []
     }
   }
@@ -119,8 +119,8 @@ claude mcp add-json --scope user gasoline-browser-devtools <<< '{"command": "/Us
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
+    "kaboom-browser-devtools": {
+      "command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser",
       "args": []
     }
   }
@@ -138,9 +138,9 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
 ```json
 {
   "mcp": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "type": "local",
-      "command": ["/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools"],
+      "command": ["/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser"],
       "enabled": true
     }
   }
@@ -156,8 +156,8 @@ OpenCode uses a different config format (`mcp` key with array-style commands):
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
+    "kaboom-browser-devtools": {
+      "command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser",
       "args": []
     }
   }
@@ -177,9 +177,9 @@ Zed uses the `context_servers` key:
 ```json
 {
   "context_servers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "source": "custom",
-      "command": "/Users/YOUR_USER/.gasoline/bin/gasoline-agentic-devtools",
+      "command": "/Users/YOUR_USER/.kaboom/bin/kaboom-agentic-browser",
       "args": []
     }
   }
@@ -196,5 +196,5 @@ curl http://localhost:7890/health
 ```
 
 Confirm these fields in the JSON response:
-- `service-name` (or `service_name`) is `gasoline-browser-devtools`
+- `service-name` (or `service_name`) is `kaboom-browser-devtools`
 - `version` matches the expected installed release

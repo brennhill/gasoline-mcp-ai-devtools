@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // EmitAlert atomically checks all filters and emits an MCP notification if appropriate.

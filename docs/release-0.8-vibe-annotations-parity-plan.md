@@ -6,7 +6,7 @@ Last updated: 2026-03-05
 
 ## Objective
 
-Meet or exceed Vibe Annotations on annotation UX, data quality, MCP ergonomics, reliability, and testability, while preserving Gasoline's broader platform strengths.
+Meet or exceed Vibe Annotations on annotation UX, data quality, MCP ergonomics, reliability, and testability, while preserving Kaboom's broader platform strengths.
 
 ## Evidence Baseline
 
@@ -20,11 +20,11 @@ This plan is based on:
 - `docs/features/feature/annotated-screenshots/index.md`
 - `docs/architecture/flow-maps/analyze-annotations-waiter-and-flush.md`
 - `extension/content/draw-mode.js`
-- `cmd/dev-console/tools_analyze_annotations_handlers.go`
+- `cmd/browser-agent/tools_analyze_annotations_handlers.go`
 
 ## Target Definition (Parity-Plus)
 
-Gasoline is considered "better than Vibe" when all conditions are true:
+Kaboom is considered "better than Vibe" when all conditions are true:
 
 1. Annotation flow success rate in smoke tests is >= 99% across React, Vue, Svelte, and Next fixtures (3 repeated runs each).
 2. MCP annotation workflows are deterministic and bounded (no stuck waiters, no stale IDs after clear/reset, explicit terminal reasons).
@@ -32,7 +32,7 @@ Gasoline is considered "better than Vibe" when all conditions are true:
 4. Startup/connect behavior under contention converges in <= 2s for at least one daemon, with client retry paths that hide transient startup races from LLMs.
 5. Annotation docs and flow maps are complete and cross-linked under `docs/features` and `docs/architecture/flow-maps`.
 
-## Gap Map (Vibe -> Gasoline Actions)
+## Gap Map (Vibe -> Kaboom Actions)
 
 ### 1) Annotation UX polish and speed
 - Improve quick-start in-page workflow:

@@ -3,12 +3,15 @@
  * Why: Reduces popup churn by exposing common capture actions directly on tracked pages.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
-import { DEFAULT_SERVER_URL, TERMINAL_PORT_OFFSET, RuntimeMessageName, StorageKey } from '../../lib/constants.js';
-import { toggleTerminal, isTerminalVisible, writeToTerminal, restoreTerminalIfNeeded } from './terminal-widget.js';
-const ROOT_ID = 'gasoline-tracked-hover-launcher';
-const PANEL_ID = 'gasoline-tracked-hover-panel';
-const TOGGLE_ID = 'gasoline-tracked-hover-toggle';
-const SETTINGS_MENU_ID = 'gasoline-tracked-hover-settings-menu';
+import { RuntimeMessageName, StorageKey } from '../../lib/constants.js';
+import { KABOOM_DOCS_URL, KABOOM_REPOSITORY_URL } from '../../lib/brand.js';
+import { requestAudit } from '../../lib/request-audit.js';
+import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js';
+import { initTerminalPanelBridge, isTerminalVisible, onTerminalPanelVisibilityChanged, openTerminalPanel, writeToTerminal } from './terminal-panel-bridge.js';
+const ROOT_ID = 'kaboom-tracked-hover-launcher';
+const PANEL_ID = 'kaboom-tracked-hover-panel';
+const TOGGLE_ID = 'kaboom-tracked-hover-toggle';
+const SETTINGS_MENU_ID = 'kaboom-tracked-hover-settings-menu';
 let rootEl = null;
 let panelEl = null;
 let settingsMenuEl = null;
@@ -21,40 +24,10 @@ let trackedEnabled = false;
 let hiddenUntilPopupOpen = false;
 let hideTimer = null;
 let recordingStorageListener = null;
+let recordingStorageUnsubscribe = null;
 let runtimeListenerInstalled = false;
 let annotationListenerInstalled = false;
-/**
- * Check if the terminal server is reachable from this page.
- * CSP on non-localhost pages may block connections to localhost.
- * Returns true if reachable, false if blocked by CSP or unreachable.
- */
-async function checkTerminalReachable() {
-    try {
-        let baseUrl = DEFAULT_SERVER_URL;
-        try {
-            const result = await new Promise((resolve) => {
-                chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
-                    if (chrome.runtime.lastError) {
-                        resolve({});
-                        return;
-                    }
-                    resolve(r);
-                });
-            });
-            baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
-        }
-        catch { /* use default */ }
-        const url = new URL(baseUrl);
-        url.port = String(parseInt(url.port || '7890', 10) + TERMINAL_PORT_OFFSET);
-        const resp = await fetch(`${url.origin}/terminal/config`, {
-            signal: AbortSignal.timeout(2000)
-        });
-        return resp.ok;
-    }
-    catch {
-        return false;
-    }
-}
+let terminalVisibilityUnsubscribe = null;
 function clearHideTimer() {
     if (!hideTimer)
         return;
@@ -95,15 +68,12 @@ function updateStopButtonVisibility(active) {
         return;
     stopButtonEl.style.display = active ? 'flex' : 'none';
 }
-function syncRecordingStateFromStorage() {
+async function syncRecordingStateFromStorage() {
     try {
-        chrome.storage.local.get([StorageKey.RECORDING], (result) => {
-            if (chrome.runtime.lastError)
-                return;
-            const rec = result[StorageKey.RECORDING];
-            const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
-            updateStopButtonVisibility(active);
-        });
+        const value = await getLocal(StorageKey.RECORDING);
+        const rec = value;
+        const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
+        updateStopButtonVisibility(active);
     }
     catch {
         // Extension context invalidated
@@ -122,40 +92,33 @@ function installRecordingStorageSync() {
         const active = rec != null && typeof rec === 'object' && Boolean(rec.active);
         updateStopButtonVisibility(active);
     };
-    chrome.storage.onChanged.addListener(recordingStorageListener);
+    recordingStorageUnsubscribe = onStorageChanged(recordingStorageListener);
 }
 function uninstallRecordingStorageSync() {
     if (!recordingStorageListener)
         return;
-    chrome.storage.onChanged.removeListener(recordingStorageListener);
+    if (recordingStorageUnsubscribe) {
+        recordingStorageUnsubscribe();
+        recordingStorageUnsubscribe = null;
+    }
     recordingStorageListener = null;
 }
-function syncHiddenStateFromStorage(onSynced) {
+async function syncHiddenStateFromStorage() {
     try {
-        chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
-            if (chrome.runtime.lastError) {
-                onSynced(); // Proceed with default state on storage failure
-                return;
-            }
-            hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
-            onSynced();
-        });
+        const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
+        hiddenUntilPopupOpen = Boolean(value);
     }
     catch {
-        onSynced(); // Extension context invalidated — proceed with defaults
+        // Extension context invalidated — proceed with defaults
     }
 }
 function persistHiddenState(hidden) {
     try {
         if (hidden) {
-            chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
-                void chrome.runtime.lastError; // Best-effort persistence — no user-visible impact on failure
-            });
+            void setLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, true);
             return;
         }
-        chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-            void chrome.runtime.lastError;
-        });
+        void removeLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
     }
     catch {
         // Extension context invalidated — hidden state won't persist but functionality is unaffected
@@ -185,8 +148,15 @@ function installRuntimeListener() {
         return false;
     });
 }
+function installTerminalVisibilitySync() {
+    if (terminalVisibilityUnsubscribe)
+        return;
+    terminalVisibilityUnsubscribe = onTerminalPanelVisibilityChanged(() => {
+        applyVisibilityFromState();
+    });
+}
 function applyVisibilityFromState() {
-    if (trackedEnabled && !hiddenUntilPopupOpen) {
+    if (trackedEnabled && !hiddenUntilPopupOpen && !isTerminalVisible()) {
         mountLauncher();
         return;
     }
@@ -228,18 +198,18 @@ function installAnnotationListener() {
     if (annotationListenerInstalled)
         return;
     annotationListenerInstalled = true;
-    window.addEventListener('gasoline-annotations-ready', handleAnnotationsReady);
+    window.addEventListener('kaboom-annotations-ready', handleAnnotationsReady);
 }
 function uninstallAnnotationListener() {
     if (!annotationListenerInstalled)
         return;
     annotationListenerInstalled = false;
-    window.removeEventListener('gasoline-annotations-ready', handleAnnotationsReady);
+    window.removeEventListener('kaboom-annotations-ready', handleAnnotationsReady);
 }
 async function startDrawMode() {
     try {
         if (!chrome?.runtime?.getURL) {
-            console.warn('[Gasoline] Draw mode unavailable: extension context invalidated. Refresh the page to restore.');
+            console.warn('[KaBOOM!] Draw mode unavailable: extension context invalidated. Refresh the page to restore.');
             return;
         }
         const drawModeModule = await import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'));
@@ -248,7 +218,7 @@ async function startDrawMode() {
         }
     }
     catch (err) {
-        console.warn('[Gasoline] Draw mode failed to load: ' + (err instanceof Error ? err.message : String(err)) +
+        console.warn('[KaBOOM!] Draw mode failed to load: ' + (err instanceof Error ? err.message : String(err)) +
             '. The extension may need to be reloaded at chrome://extensions.');
     }
 }
@@ -308,7 +278,7 @@ function runScreenshotCapture() {
         catch { /* no audio */ }
     }
     try {
-        chrome.runtime.sendMessage({ type: 'captureScreenshot' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'capture_screenshot' }, (response) => {
             const err = chrome.runtime.lastError;
             const success = !err && response !== undefined && response.success !== false;
             showScreenshotFlash(success);
@@ -434,22 +404,7 @@ function createSettingsMenuLink(iconSvg, label, href) {
     });
     return link;
 }
-function injectPulseKeyframes() {
-    if (document.getElementById('gasoline-pulse-keyframes'))
-        return;
-    const style = document.createElement('style');
-    style.id = 'gasoline-pulse-keyframes';
-    style.textContent = `
-    @keyframes gasoline-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45); }
-      70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
-    }
-  `;
-    (document.head || document.documentElement).appendChild(style);
-}
 function createLauncherUi() {
-    injectPulseKeyframes();
     const root = document.createElement('div');
     root.id = ROOT_ID;
     Object.assign(root.style, {
@@ -462,7 +417,8 @@ function createLauncherUi() {
         gap: '8px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         opacity: '0.65',
-        transition: 'opacity 200ms ease'
+        transition: 'opacity 200ms ease',
+        pointerEvents: 'none' // Only the toggle circle is interactive when collapsed
     });
     const panel = document.createElement('div');
     panel.id = PANEL_ID;
@@ -496,24 +452,12 @@ function createLauncherUi() {
     });
     screenshotButton.style.fontSize = '26px';
     screenshotButton.style.paddingBottom = '5px';
-    let terminalReachable = true; // Assume reachable until proven otherwise
-    const terminalButton = createActionButton('_\u276F', 'Terminal — open an interactive CLI session', () => {
-        if (!terminalReachable)
-            return;
+    const terminalButton = createActionButton('_\u276F', 'Terminal — open the side panel terminal', () => {
         panelPinned = false;
         setPanelOpen(false);
-        void toggleTerminal();
+        void openTerminalPanel();
     });
     terminalButton.style.fontSize = '21px';
-    // Proactively check if the terminal server is reachable (CSP may block localhost on external pages).
-    void checkTerminalReachable().then((reachable) => {
-        terminalReachable = reachable;
-        if (!reachable) {
-            terminalButton.style.opacity = '0.35';
-            terminalButton.style.cursor = 'not-allowed';
-            terminalButton.title = 'Terminal — unavailable (CSP blocks connections to the daemon, or terminal server not running)';
-        }
-    });
     const settingsButton = createActionButton('\u2699', 'Settings — docs, GitHub, hide launcher', () => {
         panelPinned = true;
         setSettingsMenuOpen(!settingsMenuOpen);
@@ -535,9 +479,21 @@ function createLauncherUi() {
         stopButton.style.color = '#fff';
     });
     stopButtonEl = stopButton;
+    let auditLaunchDebounce = 0;
+    const auditButton = createActionButton('\u2691', 'Audit — run the KaBOOM! audit workflow', () => {
+        const now = Date.now();
+        if (now - auditLaunchDebounce < 500)
+            return;
+        auditLaunchDebounce = now;
+        panelPinned = false;
+        setPanelOpen(false);
+        void requestAudit(location.href);
+    });
+    auditButton.style.fontSize = '20px';
     panel.appendChild(drawButton);
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(auditButton);
     panel.appendChild(terminalButton);
     const dotSep = document.createElement('span');
     dotSep.textContent = '\u22EE';
@@ -573,9 +529,9 @@ function createLauncherUi() {
         pointerEvents: 'none',
         willChange: 'opacity, transform'
     });
-    const docsLink = createSettingsMenuLink(ICON_DOCS, 'Docs', 'https://cookwithgasoline.com/docs');
-    const repoLink = createSettingsMenuLink(ICON_GITHUB, 'GitHub Repository', 'https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp');
-    const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide Gasoline Devtool');
+    const docsLink = createSettingsMenuLink(ICON_DOCS, 'Docs', KABOOM_DOCS_URL);
+    const repoLink = createSettingsMenuLink(ICON_GITHUB, 'GitHub Repository', KABOOM_REPOSITORY_URL);
+    const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide KaBOOM! Devtool');
     hideButton.addEventListener('click', () => {
         hideLauncherUntilPopupReopen();
     });
@@ -585,10 +541,10 @@ function createLauncherUi() {
     const toggle = document.createElement('button');
     toggle.id = TOGGLE_ID;
     toggle.type = 'button';
-    toggle.title = 'Gasoline quick actions';
+    toggle.title = 'KaBOOM! quick actions';
     const toggleIcon = document.createElement('img');
     toggleIcon.src = chrome.runtime.getURL('icons/icon.svg');
-    toggleIcon.alt = 'Gasoline';
+    toggleIcon.alt = 'KaBOOM!';
     Object.assign(toggleIcon.style, {
         width: '36px',
         height: '36px',
@@ -610,15 +566,17 @@ function createLauncherUi() {
         boxShadow: '0 8px 24px rgba(15, 23, 42, 0.25)',
         transition: 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease',
         overflow: 'hidden',
-        animation: 'gasoline-pulse 2.5s ease-in-out infinite'
+        pointerEvents: 'auto' // Always interactive, even when root is pointer-events:none
     });
     toggle.addEventListener('mouseenter', () => {
         toggle.style.transform = 'translateY(-1px)';
         toggle.style.boxShadow = '0 10px 26px rgba(15, 23, 42, 0.28)';
+        toggleIcon.src = chrome.runtime.getURL('icons/logo-animated.svg');
     });
     toggle.addEventListener('mouseleave', () => {
         toggle.style.transform = 'translateY(0)';
         toggle.style.boxShadow = '0 8px 24px rgba(15, 23, 42, 0.25)';
+        toggleIcon.src = chrome.runtime.getURL('icons/icon.svg');
     });
     toggle.addEventListener('click', (event) => {
         event.preventDefault();
@@ -630,14 +588,23 @@ function createLauncherUi() {
             setSettingsMenuOpen(false);
     });
     toggleEl = toggle;
-    root.addEventListener('mouseenter', () => {
+    // Hover trigger on the toggle circle only — not the full root container.
+    // The root spans the panel width even when collapsed, which would intercept
+    // page interactions in the invisible panel region.
+    toggle.addEventListener('mouseenter', () => {
         root.style.opacity = '1';
+        root.style.pointerEvents = 'auto';
         clearHideTimer();
         setPanelOpen(true);
     });
+    // Leave handler stays on root so the panel remains open while mousing across buttons.
     root.addEventListener('mouseleave', () => {
-        if (!panelPinned && !settingsMenuOpen)
+        if (!panelPinned && !settingsMenuOpen) {
             root.style.opacity = '0.65';
+            root.style.pointerEvents = 'none';
+            // Re-enable pointer events on toggle so it remains hoverable
+            toggle.style.pointerEvents = 'auto';
+        }
         if (panelPinned || settingsMenuOpen)
             return;
         clearHideTimer();
@@ -657,6 +624,8 @@ function createLauncherUi() {
 function mountLauncher() {
     if (hiddenUntilPopupOpen)
         return;
+    if (isTerminalVisible())
+        return;
     if (rootEl || document.getElementById(ROOT_ID))
         return;
     rootEl = createLauncherUi();
@@ -666,13 +635,6 @@ function mountLauncher() {
     target.appendChild(rootEl);
     installRecordingStorageSync();
     installAnnotationListener();
-    // Restore terminal after page finishes loading so the iframe doesn't stall the page.
-    if (document.readyState === 'complete') {
-        void restoreTerminalIfNeeded();
-    }
-    else {
-        window.addEventListener('load', () => void restoreTerminalIfNeeded(), { once: true });
-    }
 }
 function unmountLauncher() {
     clearHideTimer();
@@ -689,12 +651,20 @@ function unmountLauncher() {
     }
     uninstallRecordingStorageSync();
     uninstallAnnotationListener();
-    // Terminal lifecycle is independent — do NOT call unmountTerminal() here.
-    // The PTY session survives launcher hide/show so users don't lose work.
 }
-export function setTrackedHoverLauncherEnabled(enabled) {
+function syncTerminalPanelVisibility() {
+    if (isTerminalVisible()) {
+        unmountLauncher();
+        return;
+    }
+    applyVisibilityFromState();
+}
+export async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    syncHiddenStateFromStorage(applyVisibilityFromState);
+    await initTerminalPanelBridge();
+    installTerminalVisibilitySync();
+    await syncHiddenStateFromStorage();
+    applyVisibilityFromState();
 }
 //# sourceMappingURL=tracked-hover-launcher.js.map

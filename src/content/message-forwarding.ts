@@ -9,14 +9,15 @@
  */
 
 import type { BackgroundMessageFromContent } from './types.js'
+import { getReloadedExtensionWarning } from '../lib/brand.js'
 
 // Dispatch table: page postMessage type -> background message type
 export const MESSAGE_MAP: Record<string, string> = {
-  GASOLINE_LOG: 'log',
-  GASOLINE_WS: 'ws_event',
-  GASOLINE_NETWORK_BODY: 'network_body',
-  GASOLINE_ENHANCED_ACTION: 'enhanced_action',
-  GASOLINE_PERFORMANCE_SNAPSHOT: 'performance_snapshot'
+  kaboom_log: 'log',
+  kaboom_ws: 'ws_event',
+  kaboom_network_body: 'network_body',
+  kaboom_enhanced_action: 'enhanced_action',
+  kaboom_performance_snapshot: 'performance_snapshot'
 } as const
 
 // Track whether the extension context is still valid
@@ -33,11 +34,7 @@ export function safeSendMessage(msg: BackgroundMessageFromContent): void {
   } catch (e) {
     if (e instanceof Error && e.message?.includes('Extension context invalidated')) {
       contextValid = false
-      console.warn(
-        '[Gasoline] Please refresh this page. The Gasoline extension was reloaded ' +
-          'and this page still has the old content script. A page refresh will ' +
-          'reconnect capture automatically.'
-      )
+      console.warn(getReloadedExtensionWarning())
     }
   }
 }
@@ -45,6 +42,6 @@ export function safeSendMessage(msg: BackgroundMessageFromContent): void {
 /**
  * Check if the extension context is still valid
  */
-export function isContextValid(): boolean {
+function isContextValid(): boolean {
   return contextValid
 }

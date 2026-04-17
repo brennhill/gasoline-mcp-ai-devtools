@@ -8,10 +8,32 @@ package capture
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
+
+// extractBrowserName returns a generic browser name from a User-Agent string.
+// Only the browser family is returned — no version, OS, or device details.
+func extractBrowserName(ua string) string {
+	ua = strings.ToLower(ua)
+	switch {
+	case strings.Contains(ua, "brave"):
+		return "brave"
+	case strings.Contains(ua, "edg/"):
+		return "edge"
+	case strings.Contains(ua, "chrome"):
+		return "chrome"
+	case strings.Contains(ua, "firefox"):
+		return "firefox"
+	case strings.Contains(ua, "safari"):
+		return "safari"
+	default:
+		return "unknown"
+	}
+}
 
 // =============================================================================
 // Request/Response Types
@@ -47,6 +69,10 @@ type SyncRequest struct {
 	// Active commands currently executing in the extension.
 	// Used to reconcile server/extension state and detect silent command loss.
 	InProgress []SyncInProgress `json:"in_progress,omitempty"`
+
+	// Feature usage flags from the extension (boolean "was this used since last sync").
+	// Only UI-originated actions: screenshot, annotations, video, dom_action.
+	FeaturesUsed map[string]bool `json:"features_used,omitempty"`
 }
 
 // SyncSettings contains extension settings from the sync request.
@@ -107,6 +133,10 @@ type SyncResponse struct {
 	// Server version for compatibility
 	ServerVersion string `json:"server_version,omitempty"`
 
+	// InstallID is the server's persistent anonymous install identifier.
+	// The extension adopts this as the single source of truth for all analytics.
+	InstallID string `json:"install_id,omitempty"`
+
 	// Capture overrides from AI (empty for now, placeholder for future feature)
 	CaptureOverrides map[string]string `json:"capture_overrides"`
 }
@@ -129,6 +159,32 @@ type SyncCommand struct {
 //
 // Invariants:
 // - Connection state is updated before command/result reconciliation.
+// allowedFeatureKeys is the set of known UI-originated feature keys.
+// Only these are forwarded to the usage counter to prevent unbounded cardinality.
+var allowedFeatureKeys = map[string]bool{
+	"screenshot":  true,
+	"annotations": true,
+	"video":       true,
+	"dom_action":  true,
+}
+
+// filterFeaturesUsed returns only the allowed keys from the raw features map.
+func filterFeaturesUsed(raw map[string]bool) map[string]bool {
+	if len(raw) == 0 {
+		return nil
+	}
+	filtered := make(map[string]bool, len(allowedFeatureKeys))
+	for key, val := range raw {
+		if allowedFeatureKeys[key] {
+			filtered[key] = val
+		}
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	return filtered
+}
+
 // - Lifecycle callbacks are emitted out-of-lock via util.SafeGo.
 //
 // Failure semantics:
@@ -148,11 +204,12 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	now := time.Now()
-	clientID := r.Header.Get("X-Gasoline-Client")
+	clientID := r.Header.Get("X-Kaboom-Client")
 
 	state := c.updateSyncConnectionState(req, clientID, now)
 
 	if !state.wasConnected || state.isReconnect {
+		telemetry.BeaconEvent("extension_connect", map[string]string{"browser": extractBrowserName(r.Header.Get("User-Agent"))})
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_connected", map[string]any{
 				"ext_session_id":     state.extSessionID,
@@ -162,12 +219,24 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Forward extension feature usage to the usage counter via callback.
+	// Only known UI-originated keys are forwarded to prevent unbounded counter cardinality.
+	if filtered := filterFeaturesUsed(req.FeaturesUsed); len(filtered) > 0 {
+		c.mu.RLock()
+		cb := c.featuresCallback
+		c.mu.RUnlock()
+		if cb != nil {
+			cb(filtered)
+		}
+	}
+
 	c.processSyncCommandResults(req.CommandResults, clientID)
 	if req.LastCommandAck != "" {
 		c.AcknowledgePendingQuery(req.LastCommandAck)
 	}
 
 	if state.wasDisconnected {
+		telemetry.AppError("extension_disconnect", nil)
 		c.queryDispatcher.ExpireAllPendingQueries("extension_disconnected")
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_disconnected", map[string]any{
@@ -217,6 +286,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 		NextPollMs:       nextPollMs,
 		ServerTime:       now.Format(time.RFC3339),
 		ServerVersion:    c.GetServerVersion(),
+		InstallID:        telemetry.GetInstallID(),
 		CaptureOverrides: c.buildCaptureOverrides(),
 	}
 

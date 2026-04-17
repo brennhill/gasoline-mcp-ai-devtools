@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/util"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
 // applyWhitelistOverrides appends session-scoped manual overrides to default-src.
@@ -46,7 +46,7 @@ func (g *CSPGenerator) applyWhitelistOverrides(response *CSPResponse, overrides 
 	}
 
 	for _, origin := range overrides {
-		LogSecurityEvent(SecurityAuditEvent{
+		logSecurityEvent(SecurityAuditEvent{
 			Action:     "whitelist_override",
 			Origin:     origin,
 			Reason:     "CSP generation with session-only override",

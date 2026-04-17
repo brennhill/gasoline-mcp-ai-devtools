@@ -24,13 +24,13 @@ The MCP server uses a persistent HTTP server architecture where:
 ```mermaid
 sequenceDiagram
     participant User as AI Tool (VSCode/Cursor)
-    participant Wrapper as gasoline-mcp<br/>(Node.js wrapper)
-    participant Binary as gasoline<br/>(Go binary)
+    participant Wrapper as kaboom-mcp<br/>(Node.js wrapper)
+    participant Binary as kaboom<br/>(Go binary)
     participant Server as HTTP Server<br/>(Daemon)
 
-    User->>Wrapper: Spawn gasoline-mcp --port 7890
+    User->>Wrapper: Spawn kaboom-mcp --port 7890
     Note over Wrapper: No longer kills existing server
-    Wrapper->>Binary: exec(gasoline, [--port, 7890])
+    Wrapper->>Binary: exec(kaboom, [--port, 7890])
     Note over Binary: stdin is piped (MCP mode)
 
     Binary->>Binary: handleMCPConnection()
@@ -41,7 +41,7 @@ sequenceDiagram
     Binary->>Binary: net.Listen(":7890")
     Note over Binary: ✅ Port available, we spawn
 
-    Binary->>Server: spawn(gasoline --daemon --port 7890)
+    Binary->>Server: spawn(kaboom --daemon --port 7890)
     Note over Server: Server starts as detached process
     Server->>Server: Bind port 7890
     Server->>Server: Start HTTP handlers
@@ -66,12 +66,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User as AI Tool (VSCode/Cursor)
-    participant Wrapper as gasoline-mcp<br/>(Node.js wrapper)
-    participant Binary as gasoline<br/>(Go binary)
+    participant Wrapper as kaboom-mcp<br/>(Node.js wrapper)
+    participant Binary as kaboom<br/>(Go binary)
     participant Server as HTTP Server<br/>(Already running)
 
-    User->>Wrapper: Spawn gasoline-mcp --port 7890
-    Wrapper->>Binary: exec(gasoline, [--port, 7890])
+    User->>Wrapper: Spawn kaboom-mcp --port 7890
+    Wrapper->>Binary: exec(kaboom, [--port, 7890])
 
     Binary->>Binary: handleMCPConnection()
     Binary->>Server: Check if running (GET /health)
@@ -122,7 +122,7 @@ sequenceDiagram
 
 ## Key Implementation Details
 
-### 1. Wrapper Changes (bin/gasoline-mcp)
+### 1. Wrapper Changes (bin/kaboom-mcp)
 
 #### Before:
 
@@ -141,7 +141,7 @@ execFileSync(binary, args);
 
 **Why:** Killing the server forced respawn on every connection. Now the server persists.
 
-### 2. Go Binary Connection Logic (cmd/dev-console/main.go)
+### 2. Go Binary Connection Logic (cmd/browser-agent/main.go)
 
 ```go
 func handleMCPConnection(server *Server, port int, apiKey string) {
@@ -185,13 +185,13 @@ if *daemonMode {
 
 ### Runtime State Files
 
-Persistent server runtime files are stored in Gasoline's runtime state directory, not home-root files. See [`docs/core/runtime-state-directory.md`](../../core/runtime-state-directory.md) for defaults, overrides, and full layout.
+Persistent server runtime files are stored in Kaboom's runtime state directory, not home-root files. See [`docs/core/runtime-state-directory.md`](../../core/runtime-state-directory.md) for defaults, overrides, and full layout.
 
 ### Server Startup
 
 1. First MCP client spawns server with `--daemon` flag
 2. Server process detached from parent (survives client exit)
-3. Server writes PID to `run/gasoline-7890.pid` under the runtime state directory
+3. Server writes PID to `run/kaboom-7890.pid` under the runtime state directory
 4. Server binds HTTP port 7890
 5. Server runs until explicitly stopped
 
@@ -199,7 +199,7 @@ Persistent server runtime files are stored in Gasoline's runtime state directory
 
 - Server does NOT exit when clients disconnect
 - Server runs until:
-  - User runs `gasoline --stop --port 7890`
+  - User runs `kaboom --stop --port 7890`
   - User kills process manually
   - System reboot
   - Server crashes (rare)
@@ -208,10 +208,10 @@ Persistent server runtime files are stored in Gasoline's runtime state directory
 
 ```bash
 # Stop server
-gasoline --stop --port 7890
+kaboom --stop --port 7890
 
 # Or manually
-kill $(cat <state-dir>/run/gasoline-7890.pid)
+kill $(cat <state-dir>/run/kaboom-7890.pid)
 ```
 
 ## Performance Benefits
@@ -224,20 +224,20 @@ kill $(cat <state-dir>/run/gasoline-7890.pid)
 
 ## Edge Cases & Failure Modes
 
-### 1. Port Already in Use (Non-Gasoline Process)
+### 1. Port Already in Use (Non-Kaboom Process)
 
 **Scenario:** Another process (nginx, another app) is using port 7890.
 
 ```mermaid
 sequenceDiagram
     participant Client as MCP Client
-    participant Binary as gasoline binary
+    participant Binary as kaboom binary
     participant Port as Port 7890 (nginx)
 
     Client->>Binary: Connect
     Binary->>Port: GET /health
     Port-->>Binary: 404 Not Found (wrong app)
-    Binary->>Binary: Not gasoline, try to spawn
+    Binary->>Binary: Not kaboom, try to spawn
     Binary->>Port: net.Listen(":7890")
     Port-->>Binary: ❌ Address already in use
     Binary->>Binary: Log error, exit(1)
@@ -252,7 +252,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as MCP Client
-    participant Binary as gasoline binary
+    participant Binary as kaboom binary
     participant Server as HTTP Server
 
     Client->>Binary: tools/list
@@ -278,7 +278,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as MCP Client
-    participant PIDFile as <state-dir>/run/gasoline-7890.pid
+    participant PIDFile as <state-dir>/run/kaboom-7890.pid
     participant Process as Process 12345
 
     Client->>PIDFile: Read PID (12345)
@@ -349,7 +349,7 @@ sequenceDiagram
     Client->>Client: Exit with error
 ```
 
-**Resolution:** Client writes debug info to `/tmp/gasoline-debug-*.log` and exits. User can check logs.
+**Resolution:** Client writes debug info to `/tmp/kaboom-debug-*.log` and exits. User can check logs.
 
 ### 6. Permission Denied on Port Bind
 
@@ -396,14 +396,14 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User as AI Tool
-    participant Wrapper as gasoline-mcp wrapper
+    participant Wrapper as kaboom-mcp wrapper
     participant NPM as node_modules
 
-    User->>Wrapper: Spawn gasoline-mcp
-    Wrapper->>NPM: Check for @brennhill/gasoline-darwin-arm64
+    User->>Wrapper: Spawn kaboom-mcp
+    Wrapper->>NPM: Check for @brennhill/kaboom-darwin-arm64
     NPM-->>Wrapper: ❌ Not found
     Wrapper->>User: Error message with platform details
-    Note over User: "Could not find gasoline binary<br/>for darwin-arm64.<br/>Try: npx gasoline-mcp@latest"
+    Note over User: "Could not find kaboom binary<br/>for darwin-arm64.<br/>Try: npx kaboom-mcp@latest"
 ```
 
 **Resolution:** Clear error with platform info and fix instructions.
@@ -427,7 +427,7 @@ sequenceDiagram
 
 ### 10. Graceful Shutdown During Active Connection
 
-**Scenario:** User runs `gasoline --stop` while client is connected.
+**Scenario:** User runs `kaboom --stop` while client is connected.
 
 ```mermaid
 sequenceDiagram
@@ -457,7 +457,7 @@ sequenceDiagram
 sequenceDiagram
     participant S1 as Server 1
     participant S2 as Server 2
-    participant PIDFile as <state-dir>/run/gasoline-7890.pid
+    participant PIDFile as <state-dir>/run/kaboom-7890.pid
 
     S1->>PIDFile: Write PID (12345)
     S2->>PIDFile: Write PID (12346)
@@ -476,7 +476,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Server as HTTP Server
-    participant Logs as <state-dir>/logs/gasoline.jsonl
+    participant Logs as <state-dir>/logs/kaboom.jsonl
 
     Server->>Logs: {"event":"startup", "pid":12345}
     Note over Server: Server running...
@@ -540,13 +540,13 @@ Check server status:
 curl http://localhost:7890/health
 
 # Check if process alive
-ps aux | grep gasoline
+ps aux | grep kaboom
 
 # Check PID file
-cat <state-dir>/run/gasoline-7890.pid
+cat <state-dir>/run/kaboom-7890.pid
 ```
 
-Logs stored at `<state-dir>/logs/gasoline.jsonl`:
+Logs stored at `<state-dir>/logs/kaboom.jsonl`:
 
 ```json
 {"type":"lifecycle","event":"startup","version":"5.7.0","pid":12345}

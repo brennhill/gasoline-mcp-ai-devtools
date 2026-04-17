@@ -2,7 +2,7 @@
 // Why: Separates entry-level conversion from HAR document assembly and file I/O.
 package export
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 
 // networkBodyToHAREntry converts a single NetworkBody to a HAR entry.
 func networkBodyToHAREntry(body types.NetworkBody) HAREntry {
@@ -39,7 +39,7 @@ func buildHARRequest(body types.NetworkBody) HARRequest {
 	}
 
 	if body.RequestTruncated {
-		req.Comment = "Body truncated at 8KB by Gasoline Agentic Browser"
+		req.Comment = "Body truncated at 8KB by Kaboom Agentic Browser"
 	}
 
 	return req
@@ -66,7 +66,7 @@ func buildHARResponse(body types.NetworkBody) HARResponse {
 	}
 
 	if body.ResponseTruncated {
-		resp.Comment = "Body truncated at 16KB by Gasoline Agentic Browser"
+		resp.Comment = "Body truncated at 16KB by Kaboom Agentic Browser"
 	}
 
 	return resp

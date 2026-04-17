@@ -43,7 +43,7 @@ export function isDebugMode() {
     return state.debugMode;
 }
 export function getConnectionStatus() {
-    return state.connectionStatus;
+    return Object.freeze({ ...state.connectionStatus });
 }
 export function getCurrentLogLevel() {
     return state.currentLogLevel;
@@ -51,8 +51,8 @@ export function getCurrentLogLevel() {
 export function isScreenshotOnError() {
     return state.screenshotOnError;
 }
-export function getCaptureOverrides() {
-    return state.captureOverrides;
+function getCaptureOverrides() {
+    return Object.freeze({ ...state.captureOverrides });
 }
 export function isAiControlled() {
     return state.aiControlled;
@@ -78,7 +78,7 @@ export function pushExtensionLog(entry) {
 function capExtensionLogQueue(maxEntries) {
     if (state.extensionLogQueue.length <= maxEntries)
         return;
-    state.extensionLogQueue.splice(0, state.extensionLogQueue.length - maxEntries);
+    state.extensionLogQueue = state.extensionLogQueue.slice(-maxEntries);
 }
 export function capExtensionLogs(maxEntries) {
     capExtensionLogQueue(maxEntries);
@@ -161,7 +161,7 @@ export function applyCaptureOverrides(overrides) {
 /**
  * Reset pilot cache for testing
  */
-export function _resetPilotCacheForTesting(value) {
+function _resetPilotCacheForTesting(value) {
     state.aiWebPilotEnabledCache = value !== undefined ? value : false;
 }
 /**

@@ -38,9 +38,9 @@ func ExportSARIF(a11yResultJSON json.RawMessage, opts SARIFExportOptions) (*SARI
 		Runs: []SARIFRun{{
 			Tool: SARIFTool{
 				Driver: SARIFDriver{
-					Name:           "Gasoline Agentic Browser",
+					Name:           "Kaboom Agentic Browser",
 					Version:        version,
-					InformationURI: "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
+					InformationURI: "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP",
 					Rules:          []SARIFRule{},
 				},
 			},

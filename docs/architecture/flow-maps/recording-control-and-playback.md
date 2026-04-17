@@ -2,24 +2,24 @@
 doc_type: flow_map
 flow_id: recording-control-and-playback
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/tools_configure.go (recording_start|recording_stop|playback|log_diff)
-  - cmd/dev-console/tools_observe.go (recordings|recording_actions|playback_results)
+  - cmd/browser-agent/tools_configure.go (recording_start|recording_stop|playback|log_diff)
+  - cmd/browser-agent/tools_observe.go (recordings|recording_actions|playback_results)
 code_paths:
-  - cmd/dev-console/recording_helpers.go
-  - cmd/dev-console/recording_handlers_control.go
-  - cmd/dev-console/recording_handlers_query.go
-  - cmd/dev-console/recording_handlers_playback.go
-  - cmd/dev-console/recording_handlers_logdiff.go
+  - cmd/browser-agent/recording_helpers.go
+  - cmd/browser-agent/recording_handlers_control.go
+  - cmd/browser-agent/recording_handlers_query.go
+  - cmd/browser-agent/recording_handlers_playback.go
+  - cmd/browser-agent/recording_handlers_logdiff.go
   - internal/recording/playback_engine.go
 test_paths:
-  - cmd/dev-console/recording_handlers_test.go
-  - cmd/dev-console/recording_playback_result_test.go
-  - cmd/dev-console/tools_observe_contract_test.go
-  - cmd/dev-console/tools_configure_audit_test.go
+  - cmd/browser-agent/recording_handlers_test.go
+  - cmd/browser-agent/recording_playback_result_test.go
+  - cmd/browser-agent/tools_observe_contract_test.go
+  - cmd/browser-agent/tools_configure_audit_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -54,21 +54,22 @@ Covers configure/observe flows for action recording, playback execution, result 
 - `playbackSessions` is write/read protected by `playbackMu`.
 - `buildPlaybackResult` defines canonical playback completion response fields.
 - `appendServerLog` enforces bounded in-memory server log capacity.
+- Extension popup/background/offscreen recording modules share `KABOOM_RECORDING_LOG_PREFIX` from `src/lib/brand.ts` so diagnostics stay consistent during the Kaboom cutover.
 
 ## Code Paths
 
-- `cmd/dev-console/recording_helpers.go`
-- `cmd/dev-console/recording_handlers_control.go`
-- `cmd/dev-console/recording_handlers_query.go`
-- `cmd/dev-console/recording_handlers_playback.go`
-- `cmd/dev-console/recording_handlers_logdiff.go`
+- `cmd/browser-agent/recording_helpers.go`
+- `cmd/browser-agent/recording_handlers_control.go`
+- `cmd/browser-agent/recording_handlers_query.go`
+- `cmd/browser-agent/recording_handlers_playback.go`
+- `cmd/browser-agent/recording_handlers_logdiff.go`
 
 ## Test Paths
 
-- `cmd/dev-console/recording_handlers_test.go`
-- `cmd/dev-console/recording_playback_result_test.go`
-- `cmd/dev-console/tools_observe_contract_test.go`
-- `cmd/dev-console/tools_configure_audit_test.go`
+- `cmd/browser-agent/recording_handlers_test.go`
+- `cmd/browser-agent/recording_playback_result_test.go`
+- `cmd/browser-agent/tools_observe_contract_test.go`
+- `cmd/browser-agent/tools_configure_audit_test.go`
 
 ## Edit Guardrails
 

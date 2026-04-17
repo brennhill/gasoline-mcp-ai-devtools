@@ -49,7 +49,7 @@ export async function probeCSPStatus(tabId) {
  * or when inject script is not loaded.
  * The func is injected natively by Chrome's extension system.
  */
-export async function executeViaScriptingAPI(tabId, script, timeoutMs, world = 'MAIN') {
+async function executeViaScriptingAPI(tabId, script, timeoutMs, world = 'MAIN') {
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`Script exceeded ${timeoutMs}ms timeout`)), timeoutMs + 2000);
     });
@@ -280,7 +280,7 @@ export async function executeWithWorldRouting(tabId, queryParams, world) {
     // MAIN or AUTO: try content script (MAIN world) first
     try {
         const result = (await chrome.tabs.sendMessage(tabId, {
-            type: 'GASOLINE_EXECUTE_QUERY',
+            type: 'kaboom_execute_query',
             params: queryParams
         }));
         // Auto-fallback: split by error type

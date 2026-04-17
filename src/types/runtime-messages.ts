@@ -29,7 +29,7 @@ import type { RuntimeMessageName } from '../lib/constants.js'
  * Message to get current tab ID
  */
 export interface GetTabIdMessage {
-  readonly type: 'GET_TAB_ID'
+  readonly type: 'get_tab_id'
 }
 
 export interface GetTabIdResponse {
@@ -85,21 +85,21 @@ export interface LogMessage {
  * Get extension status message
  */
 export interface GetStatusMessage {
-  readonly type: 'getStatus'
+  readonly type: 'get_status'
 }
 
 /**
  * Clear logs message
  */
 export interface ClearLogsMessage {
-  readonly type: 'clearLogs'
+  readonly type: 'clear_logs'
 }
 
 /**
  * Set log level message
  */
 export interface SetLogLevelMessage {
-  readonly type: 'setLogLevel'
+  readonly type: 'set_log_level'
   readonly level: LogLevelFilter
 }
 
@@ -108,19 +108,19 @@ export interface SetLogLevelMessage {
  */
 export interface SetBooleanSettingMessage {
   readonly type:
-    | 'setScreenshotOnError'
-    | 'setAiWebPilotEnabled'
-    | 'setSourceMapEnabled'
-    | 'setNetworkWaterfallEnabled'
-    | 'setPerformanceMarksEnabled'
-    | 'setActionReplayEnabled'
-    | 'setWebSocketCaptureEnabled'
-    | 'setPerformanceSnapshotEnabled'
-    | 'setDeferralEnabled'
-    | 'setNetworkBodyCaptureEnabled'
-    | 'setActionToastsEnabled'
-    | 'setSubtitlesEnabled'
-    | 'setDebugMode'
+    | 'set_screenshot_on_error'
+    | 'set_ai_web_pilot_enabled'
+    | 'set_source_map_enabled'
+    | 'set_network_waterfall_enabled'
+    | 'set_performance_marks_enabled'
+    | 'set_action_replay_enabled'
+    | 'set_web_socket_capture_enabled'
+    | 'set_performance_snapshot_enabled'
+    | 'set_deferral_enabled'
+    | 'set_network_body_capture_enabled'
+    | 'set_action_toasts_enabled'
+    | 'set_subtitles_enabled'
+    | 'set_debug_mode'
   readonly enabled: boolean
 }
 
@@ -128,7 +128,7 @@ export interface SetBooleanSettingMessage {
  * Set WebSocket capture mode message
  */
 export interface SetWebSocketCaptureModeMessage {
-  readonly type: 'setWebSocketCaptureMode'
+  readonly type: 'set_web_socket_capture_mode'
   readonly mode: WebSocketCaptureMode
 }
 
@@ -136,7 +136,7 @@ export interface SetWebSocketCaptureModeMessage {
  * Get AI Web Pilot enabled message
  */
 export interface GetAiWebPilotEnabledMessage {
-  readonly type: 'getAiWebPilotEnabled'
+  readonly type: 'get_ai_web_pilot_enabled'
 }
 
 export interface GetAiWebPilotEnabledResponse {
@@ -147,7 +147,7 @@ export interface GetAiWebPilotEnabledResponse {
  * Get tracking state message (for favicon replacer)
  */
 interface GetTrackingStateMessage {
-  readonly type: 'getTrackingState'
+  readonly type: 'get_tracking_state'
 }
 
 interface GetTrackingStateResponse {
@@ -161,7 +161,7 @@ interface GetTrackingStateResponse {
  * Get diagnostic state message
  */
 export interface GetDiagnosticStateMessage {
-  readonly type: 'getDiagnosticState'
+  readonly type: 'get_diagnostic_state'
 }
 
 export interface GetDiagnosticStateResponse {
@@ -174,25 +174,25 @@ export interface GetDiagnosticStateResponse {
  * Capture screenshot message
  */
 export interface CaptureScreenshotMessage {
-  readonly type: 'captureScreenshot'
+  readonly type: 'capture_screenshot'
 }
 
 /**
  * Debug log messages
  */
 export interface GetDebugLogMessage {
-  readonly type: 'getDebugLog'
+  readonly type: 'get_debug_log'
 }
 
 export interface ClearDebugLogMessage {
-  readonly type: 'clearDebugLog'
+  readonly type: 'clear_debug_log'
 }
 
 /**
  * Set server URL message
  */
 export interface SetServerUrlMessage {
-  readonly type: 'setServerUrl'
+  readonly type: 'set_server_url'
   readonly url: string
 }
 
@@ -200,8 +200,18 @@ export interface SetServerUrlMessage {
  * Status update notification (background to popup)
  */
 export interface StatusUpdateMessage {
-  readonly type: 'statusUpdate'
+  readonly type: 'status_update'
   readonly status: ConnectionStatus & { aiControlled: boolean }
+}
+
+/**
+ * Version mismatch notification (background to popup).
+ * Fired when extension and server major versions differ.
+ */
+export interface VersionMismatchMessage {
+  readonly type: 'version_mismatch'
+  readonly extensionVersion: string
+  readonly serverVersion: string
 }
 
 /**
@@ -234,12 +244,14 @@ export type BackgroundMessage =
   | RecordingGestureGrantedMessage
   | RecordingGestureDeniedMessage
   | OpenPopupForRecordingMessage
+  | OpenTerminalPanelMessage
+  | QaScanRequestedMessage
 
 /**
  * Draw mode: content script requests screenshot capture
  */
 interface DrawModeCaptureScreenshotMessage {
-  readonly type: 'GASOLINE_CAPTURE_SCREENSHOT'
+  readonly type: 'kaboom_capture_screenshot'
 }
 
 /**
@@ -247,7 +259,7 @@ interface DrawModeCaptureScreenshotMessage {
  * Fields match the wire format sent by extension/content/draw-mode.js.
  */
 export interface DrawModeCompletedMessage {
-  readonly type: 'DRAW_MODE_COMPLETED'
+  readonly type: 'draw_mode_completed'
   readonly annotations?: readonly unknown[]
   readonly screenshot_data_url?: string
   readonly elementDetails?: Readonly<Record<string, unknown>>
@@ -260,7 +272,7 @@ export interface DrawModeCompletedMessage {
  * Push chat: content script sends a chat message to push to AI.
  */
 interface PushChatMessage {
-  readonly type: 'GASOLINE_PUSH_CHAT'
+  readonly type: 'kaboom_push_chat'
   readonly message: string
   readonly page_url: string
 }
@@ -284,28 +296,67 @@ interface ScreenRecordingStopMessage {
  * Popup approval for MCP-initiated screen recording request.
  */
 interface RecordingGestureGrantedMessage {
-  readonly type: 'RECORDING_GESTURE_GRANTED'
+  readonly type: 'recording_gesture_granted'
 }
 
 /**
  * Popup denial for MCP-initiated screen recording request.
  */
 interface RecordingGestureDeniedMessage {
-  readonly type: 'RECORDING_GESTURE_DENIED'
+  readonly type: 'recording_gesture_denied'
 }
 
 /**
  * Content script requests popup open to activate activeTab for tabCapture.
  */
 interface OpenPopupForRecordingMessage {
-  readonly type: 'GASOLINE_OPEN_POPUP_FOR_RECORDING'
+  readonly type: 'kaboom_open_popup_for_recording'
+}
+
+/**
+ * Content script requests the side panel terminal to open.
+ */
+interface OpenTerminalPanelMessage {
+  readonly type: 'open_terminal_panel'
+}
+
+/**
+ * Runtime message forwarded to the side panel terminal host to write text.
+ */
+export interface TerminalPanelWriteMessage {
+  readonly type: 'terminal_panel_write'
+  readonly text: string
+}
+
+/**
+ * Content script requests the side panel terminal to open.
+ */
+interface OpenTerminalPanelMessage {
+  readonly type: 'open_terminal_panel'
+}
+
+/**
+ * User clicked "Audit" in the tracked-site UI.
+ * Background handler tries PTY injection, falls back to intent store.
+ */
+export interface QaScanRequestedMessage {
+  readonly type: 'qa_scan_requested'
+  readonly page_url?: string
+}
+
+/**
+ * Runtime message forwarded to the side panel terminal host to write text.
+ */
+export interface TerminalPanelWriteMessage {
+  readonly type: 'terminal_panel_write'
+  readonly text: string
 }
 
 /**
  * Toggle chat widget message (background to content).
  */
 interface ToggleChatMessage {
-  readonly type: 'GASOLINE_TOGGLE_CHAT'
+  readonly type: 'kaboom_toggle_chat'
   readonly client_name?: string
 }
 
@@ -317,7 +368,7 @@ interface ToggleChatMessage {
  * Ping message to check if content script is loaded
  */
 export interface ContentPingMessage {
-  readonly type: 'GASOLINE_PING'
+  readonly type: 'kaboom_ping'
 }
 
 export interface ContentPingResponse {
@@ -329,7 +380,7 @@ export interface ContentPingResponse {
  * Highlight element message
  */
 export interface HighlightMessage {
-  readonly type: 'GASOLINE_HIGHLIGHT'
+  readonly type: 'kaboom_highlight'
   readonly params: {
     readonly selector: string
     readonly duration_ms?: number
@@ -352,7 +403,7 @@ export interface HighlightResponse {
  * Execute JavaScript message
  */
 export interface ExecuteJsMessage {
-  readonly type: 'GASOLINE_EXECUTE_JS'
+  readonly type: 'kaboom_execute_js'
   readonly params: {
     readonly script: string
     readonly timeout_ms?: number
@@ -363,7 +414,7 @@ export interface ExecuteJsMessage {
  * Execute query message (polling system)
  */
 export interface ExecuteQueryMessage {
-  readonly type: 'GASOLINE_EXECUTE_QUERY'
+  readonly type: 'kaboom_execute_query'
   readonly queryId: string
   readonly params: string | Record<string, unknown>
 }
@@ -372,7 +423,7 @@ export interface ExecuteQueryMessage {
  * DOM query message
  */
 export interface DomQueryMessage {
-  readonly type: 'DOM_QUERY'
+  readonly type: 'dom_query'
   readonly params:
     | string
     | {
@@ -386,7 +437,7 @@ export interface DomQueryMessage {
  * Accessibility query message
  */
 export interface A11yQueryMessage {
-  readonly type: 'A11Y_QUERY'
+  readonly type: 'a11y_query'
   readonly params:
     | string
     | {
@@ -399,14 +450,14 @@ export interface A11yQueryMessage {
  * Get network waterfall message
  */
 export interface GetNetworkWaterfallMessage {
-  readonly type: 'GET_NETWORK_WATERFALL'
+  readonly type: 'get_network_waterfall'
 }
 
 /**
  * Link health check message
  */
 interface LinkHealthMessage {
-  readonly type: 'LINK_HEALTH_QUERY'
+  readonly type: 'link_health_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -414,7 +465,7 @@ interface LinkHealthMessage {
  * Computed styles query message
  */
 interface ComputedStylesQueryMessage {
-  readonly type: 'COMPUTED_STYLES_QUERY'
+  readonly type: 'computed_styles_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -422,7 +473,7 @@ interface ComputedStylesQueryMessage {
  * Form discovery query message
  */
 interface FormDiscoveryQueryMessage {
-  readonly type: 'FORM_DISCOVERY_QUERY'
+  readonly type: 'form_discovery_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -430,7 +481,7 @@ interface FormDiscoveryQueryMessage {
  * Form state query message
  */
 interface FormStateQueryMessage {
-  readonly type: 'FORM_STATE_QUERY'
+  readonly type: 'form_state_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -438,7 +489,7 @@ interface FormStateQueryMessage {
  * Data table query message
  */
 interface DataTableQueryMessage {
-  readonly type: 'DATA_TABLE_QUERY'
+  readonly type: 'data_table_query'
   readonly params?: string | Record<string, unknown>
 }
 
@@ -446,34 +497,36 @@ interface DataTableQueryMessage {
  * Draw mode control messages (background to content)
  */
 interface DrawModeStartMessage {
-  readonly type: 'GASOLINE_DRAW_MODE_START'
+  readonly type: 'kaboom_draw_mode_start'
   readonly started_by?: string
   readonly annot_session_name?: string
   readonly correlation_id?: string
 }
 
 interface DrawModeStopMessage {
-  readonly type: 'GASOLINE_DRAW_MODE_STOP'
+  readonly type: 'kaboom_draw_mode_stop'
 }
 
 interface GetAnnotationsMessage {
-  readonly type: 'GASOLINE_GET_ANNOTATIONS'
+  readonly type: 'kaboom_get_annotations'
 }
 
 /**
  * Tracking state change notification (background to content)
  */
 export interface TrackingStateChangedMessage {
-  readonly type: 'trackingStateChanged'
-  readonly isTracked: boolean
-  readonly aiPilotEnabled: boolean
+  readonly type: 'tracking_state_changed'
+  readonly state: {
+    readonly isTracked: boolean
+    readonly aiPilotEnabled: boolean
+  }
 }
 
 /**
  * State management message
  */
 export interface ManageStateMessage {
-  readonly type: 'GASOLINE_MANAGE_STATE'
+  readonly type: 'kaboom_manage_state'
   readonly params: {
     readonly action: StateAction
     readonly name?: string
@@ -487,7 +540,7 @@ export interface ManageStateMessage {
  * Supports color-coded states: trying (blue), success (green), warning (amber), error (red), audio (orange with animation).
  */
 interface ActionToastMessage {
-  readonly type: 'GASOLINE_ACTION_TOAST'
+  readonly type: 'kaboom_action_toast'
   readonly text: string
   readonly detail?: string
   readonly state?: 'trying' | 'success' | 'warning' | 'error' | 'audio'
@@ -498,7 +551,7 @@ interface ActionToastMessage {
  * Subtitle overlay message (persistent narration text)
  */
 interface SubtitleMessage {
-  readonly type: 'GASOLINE_SUBTITLE'
+  readonly type: 'kaboom_subtitle'
   readonly text: string
 }
 
@@ -506,7 +559,7 @@ interface SubtitleMessage {
  * Recording watermark overlay message
  */
 interface RecordingWatermarkMessage {
-  readonly type: 'GASOLINE_RECORDING_WATERMARK'
+  readonly type: 'kaboom_recording_watermark'
   readonly visible: boolean
 }
 
@@ -555,37 +608,37 @@ export type ContentMessage =
  * Page to content script messages (postMessage types)
  */
 export type PageMessageType =
-  | 'GASOLINE_LOG'
-  | 'GASOLINE_WS'
-  | 'GASOLINE_NETWORK_BODY'
-  | 'GASOLINE_ENHANCED_ACTION'
-  | 'GASOLINE_PERFORMANCE_SNAPSHOT'
-  | 'GASOLINE_INJECT_BRIDGE_PONG'
-  | 'GASOLINE_HIGHLIGHT_RESPONSE'
-  | 'GASOLINE_EXECUTE_JS_RESULT'
-  | 'GASOLINE_A11Y_QUERY_RESPONSE'
-  | 'GASOLINE_DOM_QUERY_RESPONSE'
-  | 'GASOLINE_STATE_RESPONSE'
-  | 'GASOLINE_WATERFALL_RESPONSE'
-  | 'GASOLINE_LINK_HEALTH_RESPONSE'
-  | 'GASOLINE_FORM_STATE_RESPONSE'
-  | 'GASOLINE_DATA_TABLE_RESPONSE'
+  | 'kaboom_log'
+  | 'kaboom_ws'
+  | 'kaboom_network_body'
+  | 'kaboom_enhanced_action'
+  | 'kaboom_performance_snapshot'
+  | 'kaboom_inject_bridge_pong'
+  | 'kaboom_highlight_response'
+  | 'kaboom_execute_js_result'
+  | 'kaboom_a11y_query_response'
+  | 'kaboom_dom_query_response'
+  | 'kaboom_state_response'
+  | 'kaboom_waterfall_response'
+  | 'kaboom_link_health_response'
+  | 'kaboom_form_state_response'
+  | 'kaboom_data_table_response'
 
 /**
  * Content to page messages (postMessage types)
  */
 export type ContentToPageMessageType =
-  | 'GASOLINE_SETTING'
-  | 'GASOLINE_INJECT_BRIDGE_PING'
-  | 'GASOLINE_HIGHLIGHT_REQUEST'
-  | 'GASOLINE_EXECUTE_JS'
-  | 'GASOLINE_A11Y_QUERY'
-  | 'GASOLINE_DOM_QUERY'
-  | 'GASOLINE_STATE_COMMAND'
-  | 'GASOLINE_GET_WATERFALL'
-  | 'GASOLINE_LINK_HEALTH_QUERY'
-  | 'GASOLINE_FORM_STATE_QUERY'
-  | 'GASOLINE_DATA_TABLE_QUERY'
+  | 'kaboom_setting'
+  | 'kaboom_inject_bridge_ping'
+  | 'kaboom_highlight_request'
+  | 'kaboom_execute_js'
+  | 'kaboom_a11y_query'
+  | 'kaboom_dom_query'
+  | 'kaboom_state_command'
+  | 'kaboom_get_waterfall'
+  | 'kaboom_link_health_query'
+  | 'kaboom_form_state_query'
+  | 'kaboom_data_table_query'
 
 // =============================================================================
 // OFFSCREEN DOCUMENT MESSAGE TYPES (service worker ↔ offscreen)
@@ -596,7 +649,7 @@ export type ContentToPageMessageType =
  */
 export interface OffscreenStartRecordingMessage {
   readonly target: 'offscreen'
-  readonly type: 'OFFSCREEN_START_RECORDING'
+  readonly type: 'offscreen_start_recording'
   readonly streamId: string
   readonly serverUrl: string
   readonly name: string
@@ -611,7 +664,7 @@ export interface OffscreenStartRecordingMessage {
  */
 export interface OffscreenStopRecordingMessage {
   readonly target: 'offscreen'
-  readonly type: 'OFFSCREEN_STOP_RECORDING'
+  readonly type: 'offscreen_stop_recording'
 }
 
 /**
@@ -619,7 +672,7 @@ export interface OffscreenStopRecordingMessage {
  */
 export interface OffscreenRecordingStartedMessage {
   readonly target: 'background'
-  readonly type: 'OFFSCREEN_RECORDING_STARTED'
+  readonly type: 'offscreen_recording_started'
   readonly success: boolean
   readonly error?: string
 }
@@ -629,7 +682,7 @@ export interface OffscreenRecordingStartedMessage {
  */
 export interface OffscreenRecordingStoppedMessage {
   readonly target: 'background'
-  readonly type: 'OFFSCREEN_RECORDING_STOPPED'
+  readonly type: 'offscreen_recording_stopped'
   readonly status: string
   readonly name: string
   readonly duration_seconds?: number

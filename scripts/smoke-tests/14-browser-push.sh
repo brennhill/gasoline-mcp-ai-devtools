@@ -4,7 +4,7 @@ set -eo pipefail
 
 begin_category "14" "Browser Push" "6"
 
-PUSH_TEST_CLIENT_HEADER="gasoline-extension/smoke"
+PUSH_TEST_CLIENT_HEADER="kaboom-extension/smoke"
 PUSH_TEST_SUPPORTS_SAMPLING="false"
 PUSH_TEST_SUPPORTS_NOTIFICATIONS="false"
 
@@ -31,7 +31,7 @@ _push_expected_status() {
 _push_http_get() {
     local path="$1"
     curl -sS --connect-timeout 3 --max-time 8 \
-        -H "X-Gasoline-Client: ${PUSH_TEST_CLIENT_HEADER}" \
+        -H "X-Kaboom-Client: ${PUSH_TEST_CLIENT_HEADER}" \
         "http://127.0.0.1:${PORT}${path}"
 }
 
@@ -39,7 +39,7 @@ _push_http_post_json() {
     local path="$1"
     local payload="$2"
     curl -sS --connect-timeout 3 --max-time 8 \
-        -H "X-Gasoline-Client: ${PUSH_TEST_CLIENT_HEADER}" \
+        -H "X-Kaboom-Client: ${PUSH_TEST_CLIENT_HEADER}" \
         -H "Content-Type: application/json" \
         -X POST "http://127.0.0.1:${PORT}${path}" \
         -d "$payload"

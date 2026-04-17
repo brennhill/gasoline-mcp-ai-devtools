@@ -3,8 +3,6 @@
  * Why: Keep frame matching behavior/error contracts consistent across analyze/interact paths.
  * Docs: docs/features/feature/interact-explore/index.md
  */
-export declare const INVALID_FRAME_ERROR = "invalid_frame: frame parameter must be a CSS selector, 0-based index, or \"all\". Got unsupported type or value";
-export declare const FRAME_NOT_FOUND_ERROR = "frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page";
 export type NormalizedFrameTarget = string | number | 'all' | undefined;
 /**
  * Normalize and validate a frame argument from tool params.

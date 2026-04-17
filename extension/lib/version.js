@@ -9,7 +9,7 @@
  * @param version - Version string like "5.2.5"
  * @returns Object with major, minor, patch components, or null if invalid
  */
-export function parseVersion(version) {
+function parseVersion(version) {
     const match = version.match(/^(\d+)\.(\d+)\.(\d+)/);
     if (!match || !match[1] || !match[2] || !match[3]) {
         return null;
@@ -26,7 +26,7 @@ export function parseVersion(version) {
  * @param versionB - Second version string
  * @returns -1 if A < B, 0 if A == B, 1 if A > B, null if either is invalid
  */
-export function compareVersions(versionA, versionB) {
+function compareVersions(versionA, versionB) {
     const a = parseVersion(versionA);
     const b = parseVersion(versionB);
     if (!a || !b) {

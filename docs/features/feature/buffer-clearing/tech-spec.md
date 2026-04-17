@@ -33,7 +33,7 @@ Add `buffer` parameter to `configure({action: "clear"})` tool. Implement buffer-
 
 ### Phase 1: Schema Updates (15 min)
 
-**File:** `cmd/dev-console/tools_core.go`
+**File:** `cmd/browser-agent/tools_core.go`
 
 Add `buffer` parameter to configure tool schema:
 
@@ -53,7 +53,7 @@ Description: "...\n\nBuffer clearing: configure({action: \"clear\", buffer: \"ne
 
 ### Phase 2: Add Clear Methods to Capture (30 min)
 
-**File:** `cmd/dev-console/types.go` or new `cmd/dev-console/buffer_clear.go`
+**File:** `cmd/browser-agent/types.go` or new `cmd/browser-agent/buffer_clear.go`
 
 #### BufferClearCounts Struct
 
@@ -183,7 +183,7 @@ func (s *Server, c *Capture) ClearAllBuffers() BufferClearCounts {
 
 ### Phase 3: Update configure Handler (15-30 min)
 
-**File:** `cmd/dev-console/tools_core.go`
+**File:** `cmd/browser-agent/tools_core.go`
 
 Update `toolConfigureDismiss` → create new `toolConfigureClear`:
 
@@ -273,7 +273,7 @@ func (h *ToolHandler) toolConfigure(req JSONRPCRequest, args json.RawMessage) JS
 
 ### Unit Tests
 
-**File:** `cmd/dev-console/buffer_clear_test.go` (NEW)
+**File:** `cmd/browser-agent/buffer_clear_test.go` (NEW)
 
 ```go
 func TestClearNetworkBuffers(t *testing.T) {
@@ -412,7 +412,7 @@ func TestClearAllBuffers(t *testing.T) {
 
 ### Integration Tests
 
-**File:** `cmd/dev-console/tools_test.go`
+**File:** `cmd/browser-agent/tools_test.go`
 
 ```go
 func TestToolConfigureClearNetwork(t *testing.T) {
@@ -584,7 +584,7 @@ configure({action: "clear", buffer: "network"})
 
 ### Quality Gates
 
-- [ ] `go vet ./cmd/dev-console/` passes
+- [ ] `go vet ./cmd/browser-agent/` passes
 - [ ] `make test` passes (all unit tests)
 - [ ] Manual UAT checklist completed
 - [ ] Backward compatibility verified
@@ -595,10 +595,10 @@ configure({action: "clear", buffer: "network"})
 
 | File | Lines Changed | Description |
 |------|---------------|-------------|
-| `cmd/dev-console/buffer_clear.go` | +200 | NEW: Clear methods and helpers |
-| `cmd/dev-console/buffer_clear_test.go` | +300 | NEW: Unit tests |
-| `cmd/dev-console/tools_core.go` | +80 | Add buffer param, toolConfigureClear |
-| `cmd/dev-console/tools_test.go` | +100 | Integration tests |
+| `cmd/browser-agent/buffer_clear.go` | +200 | NEW: Clear methods and helpers |
+| `cmd/browser-agent/buffer_clear_test.go` | +300 | NEW: Unit tests |
+| `cmd/browser-agent/tools_core.go` | +80 | Add buffer param, toolConfigureClear |
+| `cmd/browser-agent/tools_test.go` | +100 | Integration tests |
 | **Total** | **~680 lines** | **1-2 hours** |
 
 ---
@@ -609,7 +609,7 @@ configure({action: "clear", buffer: "network"})
 2. **Run full test suite**
 3. **Manual UAT testing**
 4. **Update documentation**
-5. **Merge to `main` for v5.3 release**
+5. **Merge to `stable` for v5.3 release**
 
 ---
 

@@ -52,7 +52,7 @@ func (g *CSPGenerator) GenerateCSP(params CSPParams) CSPResponse {
 			PagesVisited:    len(g.pages),
 		},
 		Warnings:            g.buildWarnings(len(g.pages), result.originsFiltered, result.originDetails),
-		RecommendedNextStep: "Deploy as Content-Security-Policy-Report-Only first. Browse all pages again and check for violations via Gasoline's console error capture. Once no violations occur, switch to enforcing mode.",
+		RecommendedNextStep: "Deploy as Content-Security-Policy-Report-Only first. Browse all pages again and check for violations via Kaboom's console error capture. Once no violations occur, switch to enforcing mode.",
 	}
 
 	if len(params.WhitelistOverride) > 0 {

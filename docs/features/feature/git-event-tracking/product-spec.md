@@ -15,13 +15,13 @@ last_verified_date: 2026-03-05
 # Git Event Tracking
 
 ## Overview
-Git Event Tracking automatically captures Git operations (commits, branch switches, rebases, merges) and emits them as events into Gasoline. When a developer commits code, Gasoline records the commit hash, message, changed files, and author. This provides crucial context: "Did the test failure happen before or after the code change? On which branch? After rebasing onto main?" Git events are correlated with test runs, network requests, and backend logs to answer questions like "When did I introduce this bug?" or "Does the failure only happen on this branch?". The complete development workflow—code changes, test executions, feature flag toggles—is visible in a single timeline.
+Git Event Tracking automatically captures Git operations (commits, branch switches, rebases, merges) and emits them as events into Kaboom. When a developer commits code, Kaboom records the commit hash, message, changed files, and author. This provides crucial context: "Did the test failure happen before or after the code change? On which branch? After rebasing onto stable?" Git events are correlated with test runs, network requests, and backend logs to answer questions like "When did I introduce this bug?" or "Does the failure only happen on this branch?". The complete development workflow—code changes, test executions, feature flag toggles—is visible in a single timeline.
 
 ## Problem
-Developers use Git to manage code and branches, but Gasoline has no visibility into these operations:
+Developers use Git to manage code and branches, but Kaboom has no visibility into these operations:
 - A test fails, but was the code change applied? On which branch?
-- Gasoline shows a backend error starting at timestamp X, but which commit introduced it?
-- A developer switches branches, but Gasoline doesn't know which code is running
+- Kaboom shows a backend error starting at timestamp X, but which commit introduced it?
+- A developer switches branches, but Kaboom doesn't know which code is running
 - Test flakiness analysis can't distinguish "flaky before my change" vs. "flaky after my change"
 - Integration with CI/CD requires manual correlation: "Did the test failure happen before or after this commit?"
 
@@ -119,7 +119,7 @@ $ git add src/utils/payment.js
 $ git commit -m "Fix payment timeout handling"
 ```
 
-#### Gasoline events:
+#### Kaboom events:
 ```
 [10:15:23.100] git:commit
   - hash: a7f8e3d
@@ -141,10 +141,10 @@ $ git commit -m "Fix payment timeout handling"
 ### Example 2: Branch Switch Invalidates Test
 #### Git operation:
 ```bash
-$ git checkout main
+$ git checkout stable
 ```
 
-#### Gasoline event:
+#### Kaboom event:
 ```
 [10:16:00.100] git:checkout
   - from_branch: "feature/payment-timeout"
@@ -158,16 +158,16 @@ $ git checkout main
 [10:16:12.500] test:completed (PASSED)
 ```
 
-**Developer insight:** "Interesting, the same test passes on main but fails on my feature branch. Let me compare commits."
+**Developer insight:** "Interesting, the same test passes on stable but fails on my feature branch. Let me compare commits."
 
 ### Example 3: Rebase Conflicts
 #### Git operation:
 ```bash
-$ git rebase main
+$ git rebase stable
 # Conflicts detected
 ```
 
-## Gasoline event:
+## Kaboom event:
 ```
 [10:20:00.100] git:rebase:start
   - base_branch: "main"
@@ -192,7 +192,7 @@ export GIT_BRANCH="${GITHUB_HEAD_REF}"
 export GIT_COMMIT="${CI_COMMIT_SHA}"
 export GIT_BRANCH="${CI_COMMIT_REF_NAME}"
 
-# Gasoline captures these and associates with test runs
+# Kaboom captures these and associates with test runs
 ```
 
 ## MCP Changes
@@ -209,11 +209,11 @@ observe({
 ```
 
 ## Hook Installation
-Gasoline provides a setup command:
+Kaboom provides a setup command:
 ```bash
-gasoline install-hooks <path-to-repo>
+kaboom install-hooks <path-to-repo>
 # → Creates .git/hooks/post-commit, post-checkout, etc.
-# → Emits events to Gasoline MCP server
+# → Emits events to Kaboom MCP server
 ```
 
 ## Frontend Extension Integration

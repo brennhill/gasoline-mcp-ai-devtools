@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses and MCP notifications.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. Pay particular attention to sensitive data flowing through MCP tool responses and MCP notifications.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
@@ -71,7 +71,7 @@ last_verified_date: 2026-03-05
 - [ ] AI might interpret compound alert as single issue -- verify description separates co-occurring items
 - [ ] AI might assume streaming is enabled by default -- verify it requires explicit opt-in
 - [ ] AI might not realize rate-limited notifications are batched -- verify batch format is documented
-- [ ] AI might think the CI webhook URL is a Gasoline endpoint to visit -- verify it is an external link
+- [ ] AI might think the CI webhook URL is a Kaboom endpoint to visit -- verify it is an external link
 
 ---
 
@@ -188,7 +188,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web app capable of generating errors and performance regressions
 - [ ] curl or httpie available for CI webhook testing

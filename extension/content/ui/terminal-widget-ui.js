@@ -192,7 +192,7 @@ export function createWidget(token) {
     });
     // Connection status dot
     const statusDot = document.createElement('span');
-    statusDot.className = 'gasoline-terminal-status-dot';
+    statusDot.className = 'kaboom-terminal-status-dot';
     Object.assign(statusDot.style, {
         width: '8px',
         height: '8px',
@@ -202,7 +202,7 @@ export function createWidget(token) {
         transition: 'background 200ms ease'
     });
     const titleSpan = document.createElement('span');
-    titleSpan.textContent = 'Gasoline Terminal';
+    titleSpan.textContent = 'KaBOOM! Terminal';
     Object.assign(titleSpan.style, {
         color: '#787c99',
         fontSize: '12px',
@@ -385,8 +385,8 @@ export function createWidget(token) {
 // ---------------------------------------------------------------------------
 // Status dot
 // ---------------------------------------------------------------------------
-export function updateStatusDot(dotState) {
-    const dot = state.widgetEl?.querySelector('.gasoline-terminal-status-dot');
+function updateStatusDot(dotState) {
+    const dot = state.widgetEl?.querySelector('.kaboom-terminal-status-dot');
     if (!dot)
         return;
     switch (dotState) {
@@ -405,7 +405,7 @@ export function updateStatusDot(dotState) {
 // Iframe message handler
 // ---------------------------------------------------------------------------
 export function handleIframeMessage(event) {
-    if (!event.data || event.data.source !== 'gasoline-terminal')
+    if (!event.data || event.data.source !== 'kaboom-terminal')
         return;
     // Only accept messages from the terminal server's origin (localhost:port+1)
     try {
@@ -496,7 +496,7 @@ function setupResize(handle, widget) {
 // ---------------------------------------------------------------------------
 // Redraw / Minimize / Notify
 // ---------------------------------------------------------------------------
-export function redrawTerminal(widget, header, minimizeButton) {
+function redrawTerminal(widget, header, minimizeButton) {
     if (state.minimized) {
         toggleMinimize(widget, minimizeButton, header);
     }
@@ -573,7 +573,7 @@ export function notifyIframe(command, data) {
     }
     catch { /* fall back to wildcard */ }
     state.iframeEl.contentWindow.postMessage({
-        target: 'gasoline-terminal',
+        target: 'kaboom-terminal',
         command,
         ...data
     }, origin);

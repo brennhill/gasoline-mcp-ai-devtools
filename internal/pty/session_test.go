@@ -3,6 +3,7 @@
 package pty
 
 import (
+	"fmt"
 	"runtime"
 	"strings"
 	"sync"
@@ -403,5 +404,318 @@ func TestSession_ConcurrentReadWriteClose(t *testing.T) {
 		// All goroutines exited.
 	case <-time.After(5 * time.Second):
 		t.Fatal("timeout: concurrent Read/Write goroutines did not exit after Close")
+	}
+}
+
+// --- Alt-screen detection (improvement 4) ---
+
+func TestSession_AltScreenDetection(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	if sess.AltScreenActive() {
+		t.Fatal("expected alt-screen inactive initially")
+	}
+
+	sess.AppendScrollback([]byte("some output\x1b[?1049h"))
+	if !sess.AltScreenActive() {
+		t.Fatal("expected alt-screen active after enter sequence")
+	}
+
+	sess.AppendScrollback([]byte("\x1b[?1049l"))
+	if sess.AltScreenActive() {
+		t.Fatal("expected alt-screen inactive after exit sequence")
+	}
+}
+
+func TestSession_AltScreen_LastSequenceWins(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	// Both sequences in one chunk — exit is last.
+	sess.AppendScrollback([]byte("\x1b[?1049h some data \x1b[?1049l"))
+	if sess.AltScreenActive() {
+		t.Fatal("expected alt-screen inactive when exit is last")
+	}
+
+	// Enter is last.
+	sess.AppendScrollback([]byte("\x1b[?1049l some data \x1b[?1049h"))
+	if !sess.AltScreenActive() {
+		t.Fatal("expected alt-screen active when enter is last")
+	}
+}
+
+// --- Idle detection (improvement 5) ---
+
+func TestSession_IdleDetection(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	idleCh := make(chan string, 1)
+	sess.SetIdleConfig(IdleConfig{
+		Timeout:  50 * time.Millisecond,
+		Callback: func(id string) { idleCh <- id },
+	})
+
+	// Produce output to start the idle timer.
+	sess.AppendScrollback([]byte("output"))
+
+	select {
+	case id := <-idleCh:
+		if id != sess.ID {
+			t.Fatalf("expected session ID %q, got %q", sess.ID, id)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for idle callback")
+	}
+}
+
+func TestSession_IdleDetection_ResetOnOutput(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	callCount := 0
+	var countMu sync.Mutex
+	sess.SetIdleConfig(IdleConfig{
+		Timeout: 100 * time.Millisecond,
+		Callback: func(id string) {
+			countMu.Lock()
+			callCount++
+			countMu.Unlock()
+		},
+	})
+
+	// Keep producing output faster than the timeout.
+	for i := 0; i < 5; i++ {
+		sess.AppendScrollback([]byte("data"))
+		time.Sleep(30 * time.Millisecond)
+	}
+
+	countMu.Lock()
+	c := callCount
+	countMu.Unlock()
+	if c != 0 {
+		t.Fatalf("expected 0 idle callbacks during active output, got %d", c)
+	}
+}
+
+func TestSession_IdleDetection_DisabledByZeroTimeout(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	called := false
+	sess.SetIdleConfig(IdleConfig{
+		Timeout:  50 * time.Millisecond,
+		Callback: func(id string) { called = true },
+	})
+	// Disable by setting zero timeout.
+	sess.SetIdleConfig(IdleConfig{})
+
+	sess.AppendScrollback([]byte("data"))
+	time.Sleep(100 * time.Millisecond)
+
+	if called {
+		t.Fatal("idle callback should not fire after disabling")
+	}
+}
+
+// --- Scrollback replay sentinel (improvement 3) ---
+
+func TestSession_ScrollbackWithSentinel(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	sess.AppendScrollback([]byte("previous output"))
+	result := sess.ScrollbackWithSentinel()
+	expected := "previous output" + ScrollbackSentinel
+	if string(result) != expected {
+		t.Fatalf("expected %q, got %q", expected, string(result))
+	}
+}
+
+func TestSession_ScrollbackWithSentinel_Empty(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	result := sess.ScrollbackWithSentinel()
+	if string(result) != ScrollbackSentinel {
+		t.Fatalf("expected sentinel only, got %q", string(result))
+	}
+}
+
+// --- Input deduplication (improvement 6) ---
+
+func TestSession_WriteWithID_Dedup(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	n, err := sess.WriteWithID([]byte("hello\n"), "msg-1")
+	if err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+	if n == 0 {
+		t.Fatal("expected non-zero bytes written")
+	}
+
+	// Duplicate should be silently dropped.
+	n, err = sess.WriteWithID([]byte("hello\n"), "msg-1")
+	if err != nil {
+		t.Fatalf("dup write: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("expected 0 bytes for duplicate, got %d", n)
+	}
+
+	// Different ID should succeed.
+	n, err = sess.WriteWithID([]byte("world\n"), "msg-2")
+	if err != nil {
+		t.Fatalf("second write: %v", err)
+	}
+	if n == 0 {
+		t.Fatal("expected non-zero bytes for new ID")
+	}
+}
+
+func TestSession_WriteWithID_EmptyID(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	n, err := sess.WriteWithID([]byte("x"), "")
+	if err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("expected 1 byte, got %d", n)
+	}
+}
+
+func TestSession_WriteWithID_BoundedDeque(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	for i := 0; i < defaultInputIDMax+10; i++ {
+		_, err := sess.WriteWithID([]byte("x"), fmt.Sprintf("id-%d", i))
+		if err != nil {
+			t.Fatalf("write %d: %v", i, err)
+		}
+	}
+
+	// Oldest IDs should have been evicted and can be reused.
+	n, err := sess.WriteWithID([]byte("x"), "id-0")
+	if err != nil {
+		t.Fatalf("reuse write: %v", err)
+	}
+	if n == 0 {
+		t.Fatal("expected evicted ID to be accepted again")
+	}
+}
+
+// --- Timestamp tracking ---
+
+func TestSession_LastOutputAt(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	if !sess.LastOutputAt().IsZero() {
+		t.Fatal("expected zero LastOutputAt initially")
+	}
+
+	before := time.Now()
+	sess.AppendScrollback([]byte("data"))
+	after := time.Now()
+
+	ts := sess.LastOutputAt()
+	if ts.Before(before) || ts.After(after) {
+		t.Fatalf("LastOutputAt %v not between %v and %v", ts, before, after)
+	}
+}
+
+func TestSession_LastInputAt(t *testing.T) {
+	sess, err := Spawn(SpawnConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("spawn: %v", err)
+	}
+	defer sess.Close()
+
+	if !sess.LastInputAt().IsZero() {
+		t.Fatal("expected zero LastInputAt initially")
+	}
+
+	before := time.Now()
+	sess.Write([]byte("x"))
+	after := time.Now()
+
+	ts := sess.LastInputAt()
+	if ts.Before(before) || ts.After(after) {
+		t.Fatalf("LastInputAt %v not between %v and %v", ts, before, after)
 	}
 }

@@ -86,7 +86,7 @@ describe('WebSocket Interception', () => {
     ws._emit('open', {})
 
     const calls = globalThis.window.postMessage.mock.calls
-    const openMsg = calls.find((c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'open')
+    const openMsg = calls.find((c) => c.arguments[0].type === 'kaboom_ws' && c.arguments[0].payload.event === 'open')
     assert.ok(openMsg, 'Expected ws:open event')
     const payload = openMsg.arguments[0].payload
 
@@ -110,7 +110,7 @@ describe('WebSocket Interception', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const closeMsg = calls.find(
-      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'close'
+      (c) => c.arguments[0].type === 'kaboom_ws' && c.arguments[0].payload.event === 'close'
     )
     assert.ok(closeMsg, 'Expected ws:close event')
     const payload = closeMsg.arguments[0].payload
@@ -139,7 +139,7 @@ describe('WebSocket Interception', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvent = calls.find(
-      (c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'message'
+      (c) => c.arguments[0].type === 'kaboom_ws' && c.arguments[0].payload.event === 'message'
     )
     assert.ok(msgEvent, 'Expected ws:message event')
     const payload = msgEvent.arguments[0].payload
@@ -168,7 +168,7 @@ describe('WebSocket Interception', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openMessage = calls.find((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
 
     assert.ok(openMessage, 'Expected ws:open event to be posted')
@@ -190,7 +190,7 @@ describe('WebSocket Interception', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const closeMessage = calls.find((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'close'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'close'
     })
 
     assert.ok(closeMessage, 'Expected ws:close event to be posted')
@@ -212,7 +212,7 @@ describe('WebSocket Interception', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const errorMessage = calls.find((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'error'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'error'
     })
 
     assert.ok(errorMessage, 'Expected ws:error event to be posted')
@@ -234,7 +234,7 @@ describe('WebSocket Interception', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvent = calls.find((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message' && msg.payload.direction === 'incoming'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message' && msg.payload.direction === 'incoming'
     })
 
     assert.ok(msgEvent, 'Expected incoming message event')
@@ -258,7 +258,7 @@ describe('WebSocket Interception', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvent = calls.find((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message' && msg.payload.direction === 'outgoing'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message' && msg.payload.direction === 'outgoing'
     })
 
     assert.ok(msgEvent, 'Expected outgoing message event')
@@ -293,7 +293,7 @@ describe('WebSocket Interception', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls
-      .filter((c) => c.arguments[0].type === 'GASOLINE_WS' && c.arguments[0].payload.event === 'open')
+      .filter((c) => c.arguments[0].type === 'kaboom_ws' && c.arguments[0].payload.event === 'open')
       .map((c) => c.arguments[0].payload.id)
 
     assert.strictEqual(openEvents.length, 2)
@@ -318,7 +318,7 @@ describe('WebSocket Interception', () => {
     // All modes now capture messages (with sampling). At low message rate, low mode should still capture.
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
     assert.strictEqual(openEvents.length, 1, 'Expected open event to be captured')
 
@@ -341,7 +341,7 @@ describe('WebSocket Interception', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvent = calls.find((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.ok(msgEvent.arguments[0].payload.data.length <= 4096, 'Expected data truncated to 4KB')

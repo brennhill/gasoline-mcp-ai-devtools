@@ -10,10 +10,10 @@ import (
 	"strings"
 )
 
-// GetJSONFieldNames uses reflection to extract the set of known JSON field names
+// getJSONFieldNames uses reflection to extract the set of known JSON field names
 // from a struct's json tags. Fields without a json tag use their Go field name.
 // Fields tagged with json:"-" are excluded.
-func GetJSONFieldNames(v any) map[string]bool {
+func getJSONFieldNames(v any) map[string]bool {
 	known := make(map[string]bool)
 	t := reflect.TypeOf(v)
 	if t.Kind() == reflect.Ptr {
@@ -52,7 +52,7 @@ func UnmarshalWithWarnings(data json.RawMessage, v any) ([]string, error) {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, nil // Can't check, skip warnings
 	}
-	known := GetJSONFieldNames(v)
+	known := getJSONFieldNames(v)
 	var warnings []string
 	for k := range raw {
 		if !known[k] {

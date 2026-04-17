@@ -36,9 +36,9 @@ export { executeJavaScript, safeSerializeForExecute } from './execute-js.js'
 /** Read the page nonce set by the content script on the inject script element */
 let pageNonce = ''
 if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
-  const nonceEl = document.querySelector('script[data-gasoline-nonce]')
+  const nonceEl = document.querySelector('script[data-kaboom-nonce]')
   if (nonceEl) {
-    pageNonce = nonceEl.getAttribute('data-gasoline-nonce') || ''
+    pageNonce = nonceEl.getAttribute('data-kaboom-nonce') || ''
   }
 }
 
@@ -51,7 +51,7 @@ function postResponse(data: Record<string, unknown>): void {
  * Execute JS request message from content script
  */
 interface ExecuteJsRequestMessageData {
-  type: 'GASOLINE_EXECUTE_JS'
+  type: 'kaboom_execute_js'
   requestId: number | string
   script: string
   timeoutMs?: number
@@ -61,7 +61,7 @@ interface ExecuteJsRequestMessageData {
  * A11y query request message from content script
  */
 interface A11yQueryRequestMessageData {
-  type: 'GASOLINE_A11Y_QUERY'
+  type: 'kaboom_a11y_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -70,7 +70,7 @@ interface A11yQueryRequestMessageData {
  * DOM query request message from content script
  */
 interface DomQueryRequestMessageData {
-  type: 'GASOLINE_DOM_QUERY'
+  type: 'kaboom_dom_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -79,7 +79,7 @@ interface DomQueryRequestMessageData {
  * Highlight request message from content script
  */
 interface HighlightRequestMessageData {
-  type: 'GASOLINE_HIGHLIGHT_REQUEST'
+  type: 'kaboom_highlight_request'
   requestId: number | string
   params?: {
     selector: string
@@ -91,7 +91,7 @@ interface HighlightRequestMessageData {
  * Get waterfall request message from content script
  */
 interface GetWaterfallRequestMessageData {
-  type: 'GASOLINE_GET_WATERFALL'
+  type: 'kaboom_get_waterfall'
   requestId: number | string
 }
 
@@ -99,7 +99,7 @@ interface GetWaterfallRequestMessageData {
  * Link health query request message from content script
  */
 interface LinkHealthQueryRequestMessageData {
-  type: 'GASOLINE_LINK_HEALTH_QUERY'
+  type: 'kaboom_link_health_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -108,7 +108,7 @@ interface LinkHealthQueryRequestMessageData {
  * Computed styles query request message from content script
  */
 interface ComputedStylesQueryRequestMessageData {
-  type: 'GASOLINE_COMPUTED_STYLES_QUERY'
+  type: 'kaboom_computed_styles_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -117,7 +117,7 @@ interface ComputedStylesQueryRequestMessageData {
  * Form discovery query request message from content script
  */
 interface FormDiscoveryQueryRequestMessageData {
-  type: 'GASOLINE_FORM_DISCOVERY_QUERY'
+  type: 'kaboom_form_discovery_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -126,7 +126,7 @@ interface FormDiscoveryQueryRequestMessageData {
  * Form state query request message from content script
  */
 interface FormStateQueryRequestMessageData {
-  type: 'GASOLINE_FORM_STATE_QUERY'
+  type: 'kaboom_form_state_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -135,7 +135,7 @@ interface FormStateQueryRequestMessageData {
  * Data table query request message from content script
  */
 interface DataTableQueryRequestMessageData {
-  type: 'GASOLINE_DATA_TABLE_QUERY'
+  type: 'kaboom_data_table_query'
   requestId: number | string
   params?: Record<string, unknown>
 }
@@ -144,7 +144,7 @@ interface DataTableQueryRequestMessageData {
  * Bridge readiness ping from content script to inject context
  */
 interface BridgePingMessageData {
-  type: 'GASOLINE_INJECT_BRIDGE_PING'
+  type: 'kaboom_inject_bridge_ping'
   requestId: number | string
 }
 
@@ -169,7 +169,7 @@ type PageMessageData =
 /**
  * Handle link health check request from content script
  */
-export async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown> {
+async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageData): Promise<unknown> {
   try {
     const params = data.params || {}
     const result = await checkLinkHealth(params)
@@ -188,11 +188,11 @@ export async function handleLinkHealthQuery(data: LinkHealthQueryRequestMessageD
 function handleLinkHealthMessage(data: LinkHealthQueryRequestMessageData): void {
   handleLinkHealthQuery(data)
     .then((result) => {
-      postResponse({ type: 'GASOLINE_LINK_HEALTH_RESPONSE', requestId: data.requestId, result })
+      postResponse({ type: 'kaboom_link_health_response', requestId: data.requestId, result })
     })
     .catch((err: Error) => {
       postResponse({
-        type: 'GASOLINE_LINK_HEALTH_RESPONSE',
+        type: 'kaboom_link_health_response',
         requestId: data.requestId,
         result: { error: 'link_health_error', message: err.message || 'Failed to check link health' }
       })
@@ -206,23 +206,23 @@ export function installMessageListener(
   if (typeof window === 'undefined') return
 
   const messageHandlers: Record<string, (data: PageMessageData) => void> = {
-    GASOLINE_SETTING: (data) => {
+    kaboom_setting: (data) => {
       const settingData = data as SettingMessageData
       if (isValidSettingPayload(settingData)) handleSetting(settingData)
     },
-    GASOLINE_STATE_COMMAND: (data) =>
+    kaboom_state_command: (data) =>
       handleStateCommand(data as StateCommandMessageData, captureStateFn, restoreStateFn),
-    GASOLINE_EXECUTE_JS: (data) => handleExecuteJs(data as ExecuteJsRequestMessageData),
-    GASOLINE_A11Y_QUERY: (data) => handleA11yQuery(data as A11yQueryRequestMessageData),
-    GASOLINE_DOM_QUERY: (data) => handleDomQuery(data as DomQueryRequestMessageData),
-    GASOLINE_GET_WATERFALL: (data) => handleGetWaterfall(data as GetWaterfallRequestMessageData),
-    GASOLINE_LINK_HEALTH_QUERY: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData),
-    GASOLINE_COMPUTED_STYLES_QUERY: (data) =>
+    kaboom_execute_js: (data) => handleExecuteJs(data as ExecuteJsRequestMessageData),
+    kaboom_a11y_query: (data) => handleA11yQuery(data as A11yQueryRequestMessageData),
+    kaboom_dom_query: (data) => handleDomQuery(data as DomQueryRequestMessageData),
+    kaboom_get_waterfall: (data) => handleGetWaterfall(data as GetWaterfallRequestMessageData),
+    kaboom_link_health_query: (data) => handleLinkHealthMessage(data as LinkHealthQueryRequestMessageData),
+    kaboom_computed_styles_query: (data) =>
       handleComputedStylesMessage(data as ComputedStylesQueryRequestMessageData),
-    GASOLINE_FORM_DISCOVERY_QUERY: (data) => handleFormDiscoveryMessage(data as FormDiscoveryQueryRequestMessageData),
-    GASOLINE_FORM_STATE_QUERY: (data) => handleFormStateMessage(data as FormStateQueryRequestMessageData),
-    GASOLINE_DATA_TABLE_QUERY: (data) => handleDataTableMessage(data as DataTableQueryRequestMessageData),
-    GASOLINE_INJECT_BRIDGE_PING: (data) => handleBridgePingMessage(data as BridgePingMessageData)
+    kaboom_form_discovery_query: (data) => handleFormDiscoveryMessage(data as FormDiscoveryQueryRequestMessageData),
+    kaboom_form_state_query: (data) => handleFormStateMessage(data as FormStateQueryRequestMessageData),
+    kaboom_data_table_query: (data) => handleDataTableMessage(data as DataTableQueryRequestMessageData),
+    kaboom_inject_bridge_ping: (data) => handleBridgePingMessage(data as BridgePingMessageData)
   }
 
   window.addEventListener('message', (event: MessageEvent<PageMessageData>) => {
@@ -239,7 +239,7 @@ export function installMessageListener(
 
 function handleBridgePingMessage(data: BridgePingMessageData): void {
   postResponse({
-    type: 'GASOLINE_INJECT_BRIDGE_PONG',
+    type: 'kaboom_inject_bridge_pong',
     requestId: data.requestId
   })
 }
@@ -252,13 +252,13 @@ function handleComputedStylesMessage(data: ComputedStylesQueryRequestMessageData
       properties: params.properties
     })
     postResponse({
-      type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+      type: 'kaboom_computed_styles_response',
       requestId: data.requestId,
       result: { elements: result, count: result.length }
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_COMPUTED_STYLES_RESPONSE',
+      type: 'kaboom_computed_styles_response',
       requestId: data.requestId,
       result: { error: 'computed_styles_error', message: errorMessage(err, 'Failed to query computed styles') }
     })
@@ -273,13 +273,13 @@ function handleFormDiscoveryMessage(data: FormDiscoveryQueryRequestMessageData):
       mode: params.mode === 'validate' ? 'validate' : 'discover'
     })
     postResponse({
-      type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+      type: 'kaboom_form_discovery_response',
       requestId: data.requestId,
       result: { forms: result, count: result.length }
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_FORM_DISCOVERY_RESPONSE',
+      type: 'kaboom_form_discovery_response',
       requestId: data.requestId,
       result: { error: 'form_discovery_error', message: errorMessage(err, 'Failed to discover forms') }
     })
@@ -294,13 +294,13 @@ function handleFormStateMessage(data: FormStateQueryRequestMessageData): void {
       mode: 'discover'
     })
     postResponse({
-      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      type: 'kaboom_form_state_response',
       requestId: data.requestId,
       result: { forms, count: forms.length }
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_FORM_STATE_RESPONSE',
+      type: 'kaboom_form_state_response',
       requestId: data.requestId,
       result: { error: 'form_state_error', message: errorMessage(err, 'Failed to extract form state') }
     })
@@ -316,13 +316,13 @@ function handleDataTableMessage(data: DataTableQueryRequestMessageData): void {
       max_cols: params.max_cols
     })
     postResponse({
-      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      type: 'kaboom_data_table_response',
       requestId: data.requestId,
       result
     })
   } catch (err) {
     postResponse({
-      type: 'GASOLINE_DATA_TABLE_RESPONSE',
+      type: 'kaboom_data_table_response',
       requestId: data.requestId,
       result: { error: 'data_table_error', message: errorMessage(err, 'Failed to extract table data') }
     })
@@ -334,9 +334,9 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
 
   // Validate parameters
   if (typeof script !== 'string') {
-    console.warn('[Gasoline] Script must be a string')
+    console.warn('[KaBOOM!] Script must be a string')
     postResponse({
-      type: 'GASOLINE_EXECUTE_JS_RESULT',
+      type: 'kaboom_execute_js_result',
       requestId,
       result: { success: false, error: 'invalid_script', message: 'Script must be a string' }
     })
@@ -344,22 +344,22 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
   }
 
   if (typeof requestId !== 'number' && typeof requestId !== 'string') {
-    console.warn('[Gasoline] Invalid requestId type')
+    console.warn('[KaBOOM!] Invalid requestId type')
     return
   }
 
   executeJavaScript(script, timeoutMs)
     .then((result) => {
       postResponse({
-        type: 'GASOLINE_EXECUTE_JS_RESULT',
+        type: 'kaboom_execute_js_result',
         requestId,
         result
       })
     })
     .catch((err: Error) => {
-      console.error('[Gasoline] Failed to execute JS:', err)
+      console.error('[KaBOOM!] Failed to execute JS:', err)
       postResponse({
-        type: 'GASOLINE_EXECUTE_JS_RESULT',
+        type: 'kaboom_execute_js_result',
         requestId,
         result: { success: false, error: 'execution_failed', message: err.message }
       })
@@ -371,7 +371,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
 
   if (typeof runAxeAuditWithTimeout !== 'function') {
     postResponse({
-      type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+      type: 'kaboom_a11y_query_response',
       requestId,
       result: {
         error: 'runAxeAuditWithTimeout not available - try reloading the extension'
@@ -384,23 +384,23 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
     runAxeAuditWithTimeout(params || {})
       .then((result) => {
         postResponse({
-          type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+          type: 'kaboom_a11y_query_response',
           requestId,
           result
         })
       })
       .catch((err: Error) => {
-        console.error('[Gasoline] Accessibility audit error:', err)
+        console.error('[KaBOOM!] Accessibility audit error:', err)
         postResponse({
-          type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+          type: 'kaboom_a11y_query_response',
           requestId,
           result: { error: err.message || 'Accessibility audit failed' }
         })
       })
   } catch (err) {
-    console.error('[Gasoline] Failed to run accessibility audit:', err)
+    console.error('[KaBOOM!] Failed to run accessibility audit:', err)
     postResponse({
-      type: 'GASOLINE_A11Y_QUERY_RESPONSE',
+      type: 'kaboom_a11y_query_response',
       requestId,
       result: { error: errorMessage(err, 'Failed to run accessibility audit') }
     })
@@ -412,7 +412,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
 
   if (typeof executeDOMQuery !== 'function') {
     postResponse({
-      type: 'GASOLINE_DOM_QUERY_RESPONSE',
+      type: 'kaboom_dom_query_response',
       requestId,
       result: {
         error: 'executeDOMQuery not available - try reloading the extension'
@@ -425,23 +425,23 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
     executeDOMQuery((params || {}) as unknown as DOMQueryParams)
       .then((result) => {
         postResponse({
-          type: 'GASOLINE_DOM_QUERY_RESPONSE',
+          type: 'kaboom_dom_query_response',
           requestId,
           result
         })
       })
       .catch((err: Error) => {
-        console.error('[Gasoline] DOM query error:', err)
+        console.error('[KaBOOM!] DOM query error:', err)
         postResponse({
-          type: 'GASOLINE_DOM_QUERY_RESPONSE',
+          type: 'kaboom_dom_query_response',
           requestId,
           result: { error: err.message || 'DOM query failed' }
         })
       })
   } catch (err) {
-    console.error('[Gasoline] Failed to run DOM query:', err)
+    console.error('[KaBOOM!] Failed to run DOM query:', err)
     postResponse({
-      type: 'GASOLINE_DOM_QUERY_RESPONSE',
+      type: 'kaboom_dom_query_response',
       requestId,
       result: { error: errorMessage(err, 'Failed to run DOM query') }
     })
@@ -455,15 +455,15 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
     const entries = getNetworkWaterfall({})
 
     postResponse({
-      type: 'GASOLINE_WATERFALL_RESPONSE',
+      type: 'kaboom_waterfall_response',
       requestId,
       entries: entries || [],
       page_url: window.location.href
     })
   } catch (err) {
-    console.error('[Gasoline] Failed to get network waterfall:', err)
+    console.error('[KaBOOM!] Failed to get network waterfall:', err)
     postResponse({
-      type: 'GASOLINE_WATERFALL_RESPONSE',
+      type: 'kaboom_waterfall_response',
       requestId,
       entries: []
     })

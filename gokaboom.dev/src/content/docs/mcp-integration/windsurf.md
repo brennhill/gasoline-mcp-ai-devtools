@@ -1,0 +1,40 @@
+---
+title: KaBOOM + Windsurf
+description: "Configure KaBOOM as an MCP server for Windsurf (Codeium). Give Windsurf's AI access to browser console logs, network errors, and page state."
+last_verified_version: 0.8.0
+last_verified_date: 2026-03-06
+normalized_tags: ['mcp', 'integration', 'windsurf']
+---
+
+KaBOOM is an open-source MCP server that gives Windsurf's AI access to browser console logs, network errors, exceptions, WebSocket events, and live DOM state. Zero dependencies.
+
+## Configuration
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "kaboom": {
+      "command": "npx",
+      "args": ["-y", "kaboom-agentic-browser"]
+    }
+  }
+}
+```
+
+## Usage
+
+After restarting Windsurf, the AI can access all browser state:
+
+- Console errors and warnings
+- Failed network requests with response bodies
+- WebSocket events and connection states
+- Live DOM queries
+- Accessibility audit results
+
+## Troubleshooting
+
+1. **Restart Windsurf** after adding config
+2. **Check the KaBOOM extension popup** — it should show "Connected"
+3. **Verify config path** — must be `~/.codeium/windsurf/mcp_config.json`

@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: AI Web Pilot Toggle Infrastructure
 
 **Branch:** `feature/pilot-toggle`
-**Worktree:** `../gasoline-pilot-toggle`
+**Worktree:** `../kaboom-pilot-toggle`
 **Priority:** P4 Phase 1 (blocking — must complete before Phase 2 agents)
 
 ---
@@ -55,14 +55,14 @@ async function isAiWebPilotEnabled() {
 }
 ```
 
-When receiving `GASOLINE_HIGHLIGHT`, `GASOLINE_MANAGE_STATE`, or `GASOLINE_EXECUTE_JS`:
+When receiving `KABOOM_HIGHLIGHT`, `KABOOM_MANAGE_STATE`, or `KABOOM_EXECUTE_JS`:
 - Check `isAiWebPilotEnabled()`
 - If false, respond with `{ error: 'ai_web_pilot_disabled' }`
 - If true, forward to content script / inject.js
 
 ### 3. Server-Side Check
 
-**File:** `cmd/dev-console/pilot.go` (new)
+**File:** `cmd/browser-agent/pilot.go` (new)
 
 ```go
 // pilot.go — AI Web Pilot feature handlers.
@@ -82,7 +82,7 @@ func (v *Capture) handlePilotCommand(cmd string, params map[string]any) (any, er
 
 ### 4. MCP Tool Stubs
 
-**File:** `cmd/dev-console/tools_core.go`
+**File:** `cmd/browser-agent/tools_core.go`
 
 Add tool schemas (implementation in Phase 2):
 - `highlight_element` — selector (required), duration_ms (default 5000)
@@ -102,7 +102,7 @@ All return "not enabled" error until Phase 2 agents implement handlers.
 3. Pilot commands rejected when toggle off
 4. Pilot commands accepted when toggle on
 
-**File:** `cmd/dev-console/pilot_test.go` (new)
+**File:** `cmd/browser-agent/pilot_test.go` (new)
 
 1. Tool schema validation
 2. Error response format when disabled
@@ -116,7 +116,7 @@ All return "not enabled" error until Phase 2 agents implement handlers.
 node --test extension-tests/pilot-toggle.test.js
 
 # Go tests
-go test -v ./cmd/dev-console/ -run Pilot
+go test -v ./cmd/browser-agent/ -run Pilot
 
 # Manual: Open popup, verify toggle exists, verify default off
 ```
@@ -130,7 +130,7 @@ go test -v ./cmd/dev-console/ -run Pilot
 | `extension/popup.html` | Add toggle UI |
 | `extension/popup.js` | Toggle state management |
 | `extension/background.js` | Gate function + command routing |
-| `cmd/dev-console/pilot.go` | New file — feature stubs |
-| `cmd/dev-console/tools_core.go` | Add tool schemas |
+| `cmd/browser-agent/pilot.go` | New file — feature stubs |
+| `cmd/browser-agent/tools_core.go` | Add tool schemas |
 | `extension-tests/pilot-toggle.test.js` | New file |
-| `cmd/dev-console/pilot_test.go` | New file |
+| `cmd/browser-agent/pilot_test.go` | New file |

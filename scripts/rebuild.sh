@@ -1,20 +1,20 @@
 #!/bin/bash
 # rebuild.sh — Kill all daemons, remove stale binaries, rebuild from source, install.
 # Usage: ./scripts/rebuild.sh [--no-install]
-#   --no-install  Skip copying to /usr/local/bin (local ./gasoline-mcp only)
+#   --no-install  Skip copying to /usr/local/bin (local ./kaboom-agentic-browser only)
 set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR/.."
 cd "$PROJECT_ROOT"
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 VERSION_RAW="$(tr -d '[:space:]' < "$PROJECT_ROOT/VERSION" 2>/dev/null || true)"
 VERSION_TAG="$(echo "$VERSION_RAW" | tr -cd '0-9')"
 if [ -z "$VERSION_TAG" ]; then
     VERSION_TAG="dev"
 fi
-VERSIONED_BIN_NAME="gasoline-mcp-$VERSION_TAG"
+VERSIONED_BIN_NAME="kaboom-agentic-browser-$VERSION_TAG"
 VERSIONED_LOCAL_PATH="$PROJECT_ROOT/$VERSIONED_BIN_NAME"
 VERSIONED_INSTALL_PATH="/usr/local/bin/$VERSIONED_BIN_NAME"
 
@@ -34,20 +34,21 @@ INSTALL=true
 [ "${1:-}" = "--no-install" ] && INSTALL=false
 
 # ── Step 1: Kill all running daemons ─────────────────────
-step "Killing all gasoline-mcp processes..."
+step "Killing all Kaboom and legacy daemon processes..."
 killed=0
 
 # Kill by process name
-if pgrep -f "gasoline-mcp" >/dev/null 2>&1; then
-    pids=$(pgrep -f "gasoline-mcp" | tr '\n' ' ')
-    kill $pids 2>/dev/null || true
-    sleep 0.3
-    # Force-kill stragglers
-    if pgrep -f "gasoline-mcp" >/dev/null 2>&1; then
-        kill -9 $(pgrep -f "gasoline-mcp") 2>/dev/null || true
+for process_pattern in "kaboom-agentic-browser" "gasoline-mcp" "kaboom" "gasoline" "strum"; do
+    if pgrep -f "$process_pattern" >/dev/null 2>&1; then
+        pids=$(pgrep -f "$process_pattern" | tr '\n' ' ')
+        kill $pids 2>/dev/null || true
+        sleep 0.3
+        if pgrep -f "$process_pattern" >/dev/null 2>&1; then
+            kill -9 $(pgrep -f "$process_pattern") 2>/dev/null || true
+        fi
+        killed=1
     fi
-    killed=1
-fi
+done
 
 # Kill anything on port 7890
 if lsof -ti :7890 >/dev/null 2>&1; then
@@ -56,7 +57,7 @@ if lsof -ti :7890 >/dev/null 2>&1; then
 fi
 
 if [ "$killed" = "1" ]; then
-    ok "All gasoline-mcp processes killed"
+    ok "All Kaboom and legacy daemon processes killed"
 else
     ok "No running processes found"
 fi
@@ -64,11 +65,13 @@ fi
 # ── Step 2: Remove stale binaries ────────────────────────
 step "Removing stale binaries..."
 
-# Local project binary
-if [ -f "./gasoline-mcp" ]; then
-    rm -f "./gasoline-mcp"
-    ok "Removed ./gasoline-mcp"
-fi
+# Local project binaries
+for local_bin in "./kaboom-agentic-browser" "./gasoline-agentic-browser"; do
+    if [ -f "$local_bin" ]; then
+        rm -f "$local_bin"
+        ok "Removed $local_bin"
+    fi
+done
 
 # Local versioned binary
 if [ -f "$VERSIONED_LOCAL_PATH" ]; then
@@ -76,17 +79,19 @@ if [ -f "$VERSIONED_LOCAL_PATH" ]; then
     ok "Removed $VERSIONED_LOCAL_PATH"
 fi
 
-# System binary
-if [ -f "/usr/local/bin/gasoline-mcp" ]; then
-    rm -f "/usr/local/bin/gasoline-mcp"
-    ok "Removed /usr/local/bin/gasoline-mcp"
-fi
+# System binaries
+for system_bin in "/usr/local/bin/kaboom-agentic-browser" "/usr/local/bin/gasoline-agentic-browser"; do
+    if [ -f "$system_bin" ]; then
+        rm -f "$system_bin"
+        ok "Removed $system_bin"
+    fi
+done
 
 # Remove stale system versioned binaries
-for stale_bin in /usr/local/bin/gasoline-mcp-[0-9]* /usr/local/bin/gasoline-mcp-dev; do
-    if [ -e "$stale_bin" ]; then
-        rm -f "$stale_bin"
-        ok "Removed $stale_bin"
+for stale_glob in /usr/local/bin/kaboom-agentic-browser-[0-9]* /usr/local/bin/kaboom-agentic-browser-dev /usr/local/bin/gasoline-agentic-browser-[0-9]* /usr/local/bin/gasoline-agentic-browser-dev; do
+    if [ -e "$stale_glob" ]; then
+        rm -f "$stale_glob"
+        ok "Removed $stale_glob"
     fi
 done
 
@@ -107,34 +112,34 @@ fi
 
 # ── Step 4: Rebuild from source ──────────────────────────
 step "Building from source..."
-if ! go build -o gasoline-mcp "$CMD_PKG"; then
+if ! go build -o kaboom-agentic-browser "$CMD_PKG"; then
     err "Build failed!"
     exit 1
 fi
 
-cp ./gasoline-mcp "$VERSIONED_LOCAL_PATH"
+cp ./kaboom-agentic-browser "$VERSIONED_LOCAL_PATH"
 ok "Created ./$VERSIONED_BIN_NAME"
 
 # Verify the binary runs
-build_version=$(./gasoline-mcp --version 2>&1 || true)
-ok "Built ./gasoline-mcp — ${build_version}"
+build_version=$(./kaboom-agentic-browser --version 2>&1 || true)
+ok "Built ./kaboom-agentic-browser — ${build_version}"
 
 # ── Step 5: Install to PATH ─────────────────────────────
 if [ "$INSTALL" = "true" ]; then
     step "Installing to /usr/local/bin..."
     # Symlink directly to the project binary — no copy needed on rebuild.
     ABSOLUTE_BIN="$(cd "$PROJECT_ROOT" && pwd)/$VERSIONED_BIN_NAME"
-    ln -sfn "$ABSOLUTE_BIN" /usr/local/bin/gasoline-mcp
-    ok "Symlinked /usr/local/bin/gasoline-mcp -> $ABSOLUTE_BIN"
+    ln -sfn "$ABSOLUTE_BIN" /usr/local/bin/kaboom-agentic-browser
+    ok "Symlinked /usr/local/bin/kaboom-agentic-browser -> $ABSOLUTE_BIN"
 fi
 
 # ── Step 6: Verify ──────────────────────────────────────
 step "Verifying..."
-ok "Binary: $(which gasoline-mcp 2>/dev/null || echo './gasoline-mcp')"
-ok "Points to: $(readlink /usr/local/bin/gasoline-mcp 2>/dev/null || echo 'direct binary')"
+ok "Binary: $(which kaboom-agentic-browser 2>/dev/null || echo './kaboom-agentic-browser')"
+ok "Points to: $(readlink /usr/local/bin/kaboom-agentic-browser 2>/dev/null || echo 'direct binary')"
 
 # Source vs binary timestamp check
-src_newest=$(find "$CMD_DIR" -name '*.go' -newer ./gasoline-mcp 2>/dev/null | head -1)
+src_newest=$(find "$CMD_DIR" -name '*.go' -newer ./kaboom-agentic-browser 2>/dev/null | head -1)
 if [ -n "$src_newest" ]; then
     warn "Source file newer than binary: $src_newest (this should not happen after fresh build)"
 else
@@ -143,12 +148,12 @@ fi
 
 # ── Step 7: Restart daemon ──────────────────────────────
 step "Restarting daemon..."
-gasoline-mcp --stop 2>/dev/null || true
+kaboom-agentic-browser --stop 2>/dev/null || true
 sleep 0.5
-gasoline-mcp --daemon &
+kaboom-agentic-browser --daemon &
 sleep 1
-if pgrep -f "gasoline-mcp" >/dev/null 2>&1; then
-    ok "Daemon running (PID $(pgrep -f 'gasoline-mcp' | head -1))"
+if pgrep -f "kaboom-agentic-browser" >/dev/null 2>&1; then
+    ok "Daemon running (PID $(pgrep -f 'kaboom-agentic-browser' | head -1))"
 else
     warn "Daemon may not have started — check logs"
 fi

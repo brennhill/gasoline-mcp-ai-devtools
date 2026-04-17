@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-Gasoline's data flow with tabs:
+Kaboom's data flow with tabs:
 1. Content script runs in each tab, captures telemetry
 2. Content script attaches `tabId` when posting events to server
 3. Server stores events in ring buffers (logs, network, WebSocket, etc.)
@@ -137,7 +137,7 @@ Within a single browser session, tab IDs are unique. Across restarts, IDs may re
 ## Risks & Mitigations
 
 ### Risk 1: Breaking Existing Clients
-**Mitigation:** Adding tabId to responses is backward-compatible (clients can ignore unknown fields). Ensure field is consistently named "tabId" (camelCase or snake_case per Gasoline convention).
+**Mitigation:** Adding tabId to responses is backward-compatible (clients can ignore unknown fields). Ensure field is consistently named "tabId" (camelCase or snake_case per Kaboom convention).
 
 ### Risk 2: Filter Performance Degradation
 **Mitigation:** Filtering by tabId is O(N) scan of ring buffer. For typical buffer sizes (1000 entries), this is < 1ms. Acceptable overhead. Don't add complex indexing (premature optimization).
@@ -168,7 +168,7 @@ Within a single browser session, tab IDs are unique. Across restarts, IDs may re
 ## Security Considerations
 
 - **tabId is not sensitive:** Chrome's tab ID is not secret. Safe to expose via MCP.
-- **No cross-tab data leak:** tabId filter allows querying any tab, but Gasoline already captures all tabs (no new exposure).
+- **No cross-tab data leak:** tabId filter allows querying any tab, but Kaboom already captures all tabs (no new exposure).
 - **No privilege escalation:** Knowing a tabId doesn't grant access to the tab itself (that's Chrome's job).
 - **Localhost-only:** As always, MCP is localhost-only. tabId never leaves the machine.
 

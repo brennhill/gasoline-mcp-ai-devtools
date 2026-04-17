@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-The Gasoline server holds captured data in memory ring buffers. Without enforcement, a long-running session on a busy app can grow memory until the process is killed by the OS. The existing `isMemoryExceeded()` function detects the condition but does nothing about it — it only prevents new ingest, which means memory stays high forever until a restart.
+The Kaboom server holds captured data in memory ring buffers. Without enforcement, a long-running session on a busy app can grow memory until the process is killed by the OS. The existing `isMemoryExceeded()` function detects the condition but does nothing about it — it only prevents new ingest, which means memory stays high forever until a restart.
 
 Memory enforcement adds active eviction: when memory pressure rises, the server progressively sheds data to stay within safe limits. This keeps the server running indefinitely without manual intervention, even under sustained load.
 
@@ -206,7 +206,7 @@ This lets the AI agent understand memory pressure and adjust its behavior (e.g.,
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/memory.go` with tests in `cmd/dev-console/memory_test.go`.
+Server implementation: `cmd/browser-agent/memory.go` with tests in `cmd/browser-agent/memory_test.go`.
 
 Extension implementation: memory check in `extension/background.js` with tests in `extension-tests/memory.test.js`.
 

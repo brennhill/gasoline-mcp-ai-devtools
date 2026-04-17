@@ -1,6 +1,6 @@
 ---
-title: "Gasoline + Claude Desktop"
-description: "Configure Gasoline as an MCP server for Claude Desktop. Give Claude real-time access to your browser's console logs, network errors, and DOM state."
+title: "Kaboom + Claude Desktop"
+description: "Configure Kaboom as an MCP server for Claude Desktop. Give Claude real-time access to your browser's console logs, network errors, and DOM state."
 keywords: "Claude Desktop MCP server, Claude Desktop browser errors, Claude Desktop MCP config, Claude Desktop debugging"
 permalink: /mcp-integration/claude-desktop/
 header:
@@ -10,7 +10,7 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-28
 ---
 
 ## <i class="fas fa-file-code"></i> Configuration
@@ -23,9 +23,9 @@ Edit the Claude Desktop config file:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": "npx",
-      "args": ["gasoline-mcp"]
+      "args": ["kaboom-agentic-browser"]
     }
   }
 }

@@ -150,5 +150,9 @@ func configureRuntimeProperties() map[string]any {
 			"type":        "string",
 			"description": "Human-readable description for saved sequence",
 		},
+		"target_dir": map[string]any{
+			"type":        "string",
+			"description": "Directory to write .kaboom.json (setup_quality_gates). Must be within the project directory. Defaults to active codebase root.",
+		},
 	}
 }

@@ -27,7 +27,7 @@ last_verified_date: 2026-03-05
 | DL-1 | AI escalates `ws_mode` to `messages` — captures WebSocket auth tokens | When AI sets `ws_mode: "messages"`, verify that captured WS payloads containing auth tokens are subject to the same header/body stripping rules | critical |
 | DL-2 | AI enables `network_bodies: true` — response bodies contain PII | When AI enables body capture, verify bodies are stored in memory only (ring buffer), not written to the JSONL file on disk | critical |
 | DL-3 | AI sets `log_level: "all"` — verbose logs expose secrets | When log_level is "all", console.log() calls that print secrets (e.g., `console.log("token:", token)`) are captured; verify they stay in ring buffer, not disk | high |
-| DL-4 | Audit log leaks setting values | Audit log at `~/.gasoline/audit.jsonl` records setting changes; verify it logs "from"/"to" values (e.g., `ws_mode: lifecycle -> messages`) but NOT captured data content | high |
+| DL-4 | Audit log leaks setting values | Audit log at `~/.kaboom/audit.jsonl` records setting changes; verify it logs "from"/"to" values (e.g., `ws_mode: lifecycle -> messages`) but NOT captured data content | high |
 | DL-5 | `/settings` endpoint exposes override map externally | Verify `/settings` is localhost-only; the override map should not contain captured data, only setting names and values | medium |
 | DL-6 | `observe({what: "page"})` override display leaks timing info | Override metadata in page response includes `changed_at` timestamps; verify no additional metadata (client IP, agent identity) leaks | medium |
 | DL-7 | Audit log rotation leaves orphaned files with sensitive data | When audit log rotates, verify old files (`.1`, `.2`, `.3`) are properly managed and files beyond the 3-file limit are deleted | medium |
@@ -104,7 +104,7 @@ last_verified_date: 2026-03-05
 | UT-8 | Override survives extension reconnect | Set override, simulate extension disconnect/reconnect | Override still present in `/settings` response | should |
 | UT-9 | Server restart clears overrides | Set override, restart server process | Override map is empty; `/settings` has no overrides | must |
 | UT-10 | Alert emitted on change | Change `ws_mode` from lifecycle to messages | Alert buffer contains info-level alert with correct from/to values | must |
-| UT-11 | Audit log entry written | Change any setting | `~/.gasoline/audit.jsonl` has new line with correct JSON structure | must |
+| UT-11 | Audit log entry written | Change any setting | `~/.kaboom/audit.jsonl` has new line with correct JSON structure | must |
 | UT-12 | Audit log includes agent identity | Change setting from known MCP client | Audit entry `agent` field matches clientInfo.name | should |
 | UT-13 | Audit log rotation at 10MB | Write entries until file exceeds 10MB | File rotates to `.1`; new file created; max 3 rotated files | should |
 | UT-14 | Audit log failure is non-blocking | Set audit log path to read-only directory | Setting change still succeeds; warning logged | must |
@@ -140,7 +140,7 @@ last_verified_date: 2026-03-05
 | EC-1 | Setting same value as current | Set `log_level: "error"` when default is already `error` | Accepted (no-op); alert shows same from/to; audit logged | should |
 | EC-2 | Empty settings object | `configure(action: "capture", settings: {})` | Error: no settings specified, or no-op with empty confirmation | should |
 | EC-3 | Rate limit with multiple settings | Call with 3 settings, then another with 1 setting within 1 second | First call succeeds (all 3 stored); second call rate-limited | must |
-| EC-4 | Audit log directory does not exist | `GASOLINE_AUDIT_LOG=/nonexistent/path/audit.jsonl` | Directory created via `os.MkdirAll`; log file created | should |
+| EC-4 | Audit log directory does not exist | `KABOOM_AUDIT_LOG=/nonexistent/path/audit.jsonl` | Directory created via `os.MkdirAll`; log file created | should |
 | EC-5 | Audit log disk full | Disk is full when audit write attempted | Write fails silently; capture control still works | must |
 | EC-6 | Override then reset then override | Set log_level: "all", reset, set ws_mode: "messages" | After reset, only ws_mode override is active | must |
 | EC-7 | Extension disconnected when override set | Set override with no extension connected | Override stored server-side; extension picks it up on reconnection | should |
@@ -155,7 +155,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web page open with console activity and network requests (e.g., a dev server)
 - [ ] DevTools console open to manually trigger log messages
@@ -174,15 +174,15 @@ last_verified_date: 2026-03-05
 | UAT-8 | Call configure twice within 1 second: first `{"settings": {"network_bodies": false}}` then `{"settings": {"action_replay": false}}` | No visual change | First call succeeds; second call returns rate limit error | [ ] |
 | UAT-9 | Wait 2 seconds, then: `{"tool": "configure", "arguments": {"action": "capture", "settings": "reset"}}` | Extension popup "AI-controlled" indicator disappears | AI receives confirmation that all overrides cleared | [ ] |
 | UAT-10 | `{"tool": "observe", "arguments": {"what": "page"}}` | No visual change | Response shows no `capture_overrides` (or empty overrides) | [ ] |
-| UAT-11 | Human checks audit log file: `cat ~/.gasoline/audit.jsonl` | File contains JSONL entries | Each setting change from above steps has a corresponding audit entry with ts, event, setting, from, to, source, agent fields | [ ] |
+| UAT-11 | Human checks audit log file: `cat ~/.kaboom/audit.jsonl` | File contains JSONL entries | Each setting change from above steps has a corresponding audit entry with ts, event, setting, from, to, source, agent fields | [ ] |
 
 ### Data Leak UAT Verification
 
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
-| DL-UAT-1 | Audit log contains no captured data | `cat ~/.gasoline/audit.jsonl \| jq .` | Each line has only metadata (ts, event, setting, from, to, source, agent) — no log content, network bodies, or WS payloads | [ ] |
+| DL-UAT-1 | Audit log contains no captured data | `cat ~/.kaboom/audit.jsonl \| jq .` | Each line has only metadata (ts, event, setting, from, to, source, agent) — no log content, network bodies, or WS payloads | [ ] |
 | DL-UAT-2 | `/settings` endpoint is localhost-only | `curl http://<external-ip>:7890/settings` from another machine | Connection refused (server binds to 127.0.0.1) | [ ] |
-| DL-UAT-3 | Overrides cleared after server restart | Stop and restart the Gasoline server | `observe({what: "page"})` shows no `capture_overrides` | [ ] |
+| DL-UAT-3 | Overrides cleared after server restart | Stop and restart the Kaboom server | `observe({what: "page"})` shows no `capture_overrides` | [ ] |
 
 ### Regression Checks
 - [ ] Extension capture behavior unchanged when no overrides are active

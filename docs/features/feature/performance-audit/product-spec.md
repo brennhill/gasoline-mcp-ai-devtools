@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-AI coding agents working on web applications need to identify and fix performance problems, but Gasoline's existing performance tools only provide raw metrics, not diagnostic analysis:
+AI coding agents working on web applications need to identify and fix performance problems, but Kaboom's existing performance tools only provide raw metrics, not diagnostic analysis:
 
 1. **`observe({what: "performance"})`** returns a performance snapshot: navigation timing (TTFB, FCP, LCP, load), network summary (request count, transfer size), long tasks, and CLS. It tells the AI *what* the numbers are, but not *why* they are bad or *what to do about it*.
 
@@ -30,11 +30,11 @@ AI coding agents working on web applications need to identify and fix performanc
 
 None of these tools answer the fundamental question an AI coding agent needs answered: **"What specific performance problems does this page have, and what code changes would fix them?"**
 
-The gap is the analysis layer between raw metrics and actionable code fixes. A developer running Lighthouse gets a categorized audit with specific recommendations ("Eliminate render-blocking resources", "Properly size images", "Reduce unused JavaScript"). An AI agent using Gasoline gets numbers and must independently reason about what they mean. This is wasteful -- the browser already has the data to produce these recommendations, and Gasoline should surface them in a structured format the AI can act on.
+The gap is the analysis layer between raw metrics and actionable code fixes. A developer running Lighthouse gets a categorized audit with specific recommendations ("Eliminate render-blocking resources", "Properly size images", "Reduce unused JavaScript"). An AI agent using Kaboom gets numbers and must independently reason about what they mean. This is wasteful -- the browser already has the data to produce these recommendations, and Kaboom should surface them in a structured format the AI can act on.
 
 ## Solution
 
-Performance Audit is a new mode under the `generate` tool that produces a comprehensive, structured performance analysis. It collects data from multiple sources already available to Gasoline (performance snapshots, network waterfall, resource timing, DOM queries) and synthesizes them into a categorized audit report with scored sections, identified bottlenecks, and specific fix recommendations.
+Performance Audit is a new mode under the `generate` tool that produces a comprehensive, structured performance analysis. It collects data from multiple sources already available to Kaboom (performance snapshots, network waterfall, resource timing, DOM queries) and synthesizes them into a categorized audit report with scored sections, identified bottlenecks, and specific fix recommendations.
 
 The audit is generated on-demand (not continuously), combining:
 
@@ -54,7 +54,7 @@ This differs from existing tools in three ways:
 - As an AI coding agent, I want each performance finding to include a specific fix recommendation so that I can generate code changes without additional research.
 - As an AI coding agent, I want the audit results scored by category so that I can prioritize which performance issues to fix first.
 - As an AI coding agent, I want to scope the audit to specific categories so that I can focus on the areas relevant to the current task (e.g., only image optimization after adding new images).
-- As a developer using Gasoline, I want the AI to detect render-blocking resources, oversized bundles, and unoptimized images so that I get actionable performance improvements without running a separate Lighthouse audit.
+- As a developer using Kaboom, I want the AI to detect render-blocking resources, oversized bundles, and unoptimized images so that I get actionable performance improvements without running a separate Lighthouse audit.
 
 ## MCP Interface
 
@@ -490,5 +490,5 @@ The server-side analysis is pure computation over data already in memory (ring b
 | OI-1 | Should the unused JavaScript estimation use Coverage API data if available, or is heuristic estimation sufficient? | open | Coverage API requires DevTools Protocol integration, which is a significant scope expansion. Heuristic estimation (based on bundle size vs. executed function count) may be inaccurate but is implementable within the current architecture. |
 | OI-2 | Should the audit include a "font optimization" category (font-display, preloading, subsetting)? | open | Font optimization is a common performance recommendation but adds complexity. Could be added as a future category without changing the audit structure. |
 | OI-3 | Should the DOM query for images check for lazy-loading attributes (`loading="lazy"`) on below-the-fold images? | open | Requires determining the viewport boundary, which adds complexity to the DOM query. Could be a valuable finding for LCP optimization. |
-| OI-4 | How should the `estimated_impact_ms` be calibrated -- should it assume mobile or desktop conditions? | open | Lighthouse uses simulated mobile throttling. Gasoline observes real conditions. Estimates could be annotated with the assumed environment or provide both mobile/desktop estimates. |
+| OI-4 | How should the `estimated_impact_ms` be calibrated -- should it assume mobile or desktop conditions? | open | Lighthouse uses simulated mobile throttling. Kaboom observes real conditions. Estimates could be annotated with the assumed environment or provide both mobile/desktop estimates. |
 | OI-5 | Should the audit response include a `diff` field comparing the current audit against a previous audit to show improvement over time? | open | Useful for iterative optimization workflows. Would require storing previous audit results, which conflicts with the stateless design. The AI could store results via `configure({action: "store"})` and diff manually. |

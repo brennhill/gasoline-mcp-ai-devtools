@@ -35,7 +35,7 @@ describe('W3 Bridge: message and source enrichment', () => {
     postLog({ level: 'error', args: ['test'] })
 
     const [posted] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(posted.type, 'GASOLINE_LOG')
+    assert.strictEqual(posted.type, 'kaboom_log')
     assert.ok('message' in posted.payload, 'payload should have message field')
     assert.ok('source' in posted.payload, 'payload should have source field')
   })
@@ -185,7 +185,7 @@ describe('W3 Exceptions: source field', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const message = calls[calls.length - 1].arguments[0]
-    assert.strictEqual(message.type, 'GASOLINE_LOG')
+    assert.strictEqual(message.type, 'kaboom_log')
     assert.strictEqual(message.payload.source, 'http://localhost:3000/app.js:42')
   })
 

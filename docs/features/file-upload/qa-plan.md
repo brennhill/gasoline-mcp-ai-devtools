@@ -36,7 +36,7 @@ last_verified_date: 2026-03-05
 ### Negative Tests (must NOT leak)
 - [x] Stage 4 OS automation disabled by default — returns 403 without `--enable-os-upload-automation`
 - [x] Relative paths rejected at all 4 stages
-- [x] All upload routes behind `extensionOnly()` middleware — no `X-Gasoline-Client` header → 403
+- [x] All upload routes behind `extensionOnly()` middleware — no `X-Kaboom-Client` header → 403
 - [ ] Base64 file data not written to server log file (manual verification needed)
 - [ ] Cookies sent only to `form_action` host, not logged
 
@@ -111,13 +111,13 @@ last_verified_date: 2026-03-05
 ## 5. Code-Level Test Coverage
 
 ### Test files:
-- `cmd/dev-console/tools_interact_upload_test.go` — MCP handler tests (security gating, parameter validation, stage handlers, progress tiers, MIME detection, edge cases)
-- `cmd/dev-console/upload_handlers_test.go` — HTTP endpoint tests (status codes, disabled/enabled gating, injection prevention, base64 roundtrip, form submit with httptest)
-- `cmd/dev-console/upload_integration_test.go` — Integration tests (concurrency, middleware, pending query payload, Content-Disposition, writeErr propagation, MaxBytesReader, correlation ID uniqueness)
+- `cmd/browser-agent/tools_interact_upload_test.go` — MCP handler tests (security gating, parameter validation, stage handlers, progress tiers, MIME detection, edge cases)
+- `cmd/browser-agent/upload_handlers_test.go` — HTTP endpoint tests (status codes, disabled/enabled gating, injection prevention, base64 roundtrip, form submit with httptest)
+- `cmd/browser-agent/upload_integration_test.go` — Integration tests (concurrency, middleware, pending query payload, Content-Disposition, writeErr propagation, MaxBytesReader, correlation ID uniqueness)
 
 ### Run all upload tests:
 ```bash
-go test ./cmd/dev-console/ -run "TestUpload" -v -count=1 -race
+go test ./cmd/browser-agent/ -run "TestUpload" -v -count=1 -race
 ```
 
 | Category | Test Count | Status |

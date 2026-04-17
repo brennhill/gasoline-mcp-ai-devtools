@@ -5,7 +5,7 @@ last-updated: 2026-01-31
 last_reviewed: 2026-02-16
 ---
 
-# Target Architecture: Gasoline v6-v7
+# Target Architecture: Kaboom v6-v7
 
 **Scope:** End-state system architecture for Layer 1 (Monolith) and Layer 2 (Distributed) debugging.
 
@@ -16,10 +16,10 @@ last_reviewed: 2026-02-16
 ### Browser Extension (MV3)
 - Captures FE logs, network requests, user actions, DOM changes
 - Runs in user's browser
-- Sends events via HTTPS to local Gasoline daemon
+- Sends events via HTTPS to local Kaboom daemon
 - Location: User's machine
 
-### Local Gasoline Daemon
+### Local Kaboom Daemon
 - Single Go binary (zero deps)
 - Runs on developer's machine (localhost:7890)
 - Ingests events from: Extension, backend logs, SDK/log adapters
@@ -29,7 +29,7 @@ last_reviewed: 2026-02-16
 - Location: Developer's machine
 
 ### Backend Components
-**Option A: Gasoline SDKs** (per-language)
+**Option A: Kaboom SDKs** (per-language)
 - Node.js, Python, Go, etc.
 - Installed in each service
 - Auto-captures logs, network calls, trace headers
@@ -72,11 +72,11 @@ Event Source → Normalize → Correlate (v7) → Ring Buffer → Query API → 
 Developer's Machine (single)
 ├─ Browser (localhost:3000 app)
 ├─ Dev server (Node/Python/Go)
-├─ Gasoline daemon (localhost:7890)
+├─ Kaboom daemon (localhost:7890)
 └─ All communication: localhost only
 ```
 
-**Deployment:** Dev installs extension + runs `go run ./cmd/dev-console`
+**Deployment:** Dev installs extension + runs `go run ./cmd/browser-agent`
 
 ---
 
@@ -84,7 +84,7 @@ Developer's Machine (single)
 ```
 Developer's Machine
 ├─ Browser (production.com)
-├─ Gasoline daemon (localhost:7890)
+├─ Kaboom daemon (localhost:7890)
 └─ Ingest: Backend logs from production
 
 Production
@@ -103,7 +103,7 @@ Production
 ```
 Developer's Machine
 ├─ Browser (production.com)
-├─ Gasoline daemon (localhost:7890)
+├─ Kaboom daemon (localhost:7890)
 └─ Ingest from:
    - Option A: SDKs in each service
    - Option B: Log adapters (BigQuery, Datadog, etc.)
@@ -116,7 +116,7 @@ Production
 └─ Service D (Database)
 
 Each service either:
-- Runs Gasoline SDK (streams events directly)
+- Runs Kaboom SDK (streams events directly)
 - Logs to centralized platform (daemon polls)
 ```
 
@@ -145,7 +145,7 @@ Each service either:
 │  │                                              │
 │  ▼                                              │
 │  ┌──────────────────────────────────────────┐  │
-│  │  Gasoline Daemon (localhost:7890)       │  │
+│  │  Kaboom Daemon (localhost:7890)       │  │
 │  │  ┌────────────────────────────────────┐ │  │
 │  │  │ Ring Buffers (200MB in memory)    │ │  │
 │  │  │ - Browser logs                    │ │  │
@@ -185,7 +185,7 @@ Each service either:
 │  │                                              │
 │  ▼                                              │
 │  ┌──────────────────────────────────────────┐  │
-│  │  Gasoline Daemon (localhost:7890)       │  │
+│  │  Kaboom Daemon (localhost:7890)       │  │
 │  │  ┌────────────────────────────────────┐ │  │
 │  │  │ Ring Buffers (200MB)              │ │  │
 │  │  │ - FE events (extension)           │ │  │
@@ -236,7 +236,7 @@ Each service either:
 │  │                                              │
 │  ▼                                              │
 │  ┌──────────────────────────────────────────┐  │
-│  │  Gasoline Daemon (localhost:7890)       │  │
+│  │  Kaboom Daemon (localhost:7890)       │  │
 │  │  ┌────────────────────────────────────┐ │  │
 │  │  │ Ring Buffers (200MB)              │ │  │
 │  │  │ - FE events                       │ │  │

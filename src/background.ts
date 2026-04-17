@@ -191,6 +191,6 @@ export {
 if (typeof (globalThis as Record<string, unknown>).process === 'undefined') {
   const _moduleLoadTime = performance.now()
   console.log(`[DIAGNOSTIC] Module load start at ${_moduleLoadTime.toFixed(2)}ms (${new Date().toISOString()})`)
-  console.log(`[Gasoline] Background service worker loaded - session ${EXTENSION_SESSION_ID}`)
+  console.log(`[KaBOOM!] Background service worker loaded - session ${EXTENSION_SESSION_ID}`)
   initializeExtension()
 }

@@ -110,7 +110,7 @@ export function readableFallbackScript(): Record<string, unknown> {
   }
 }
 
-export function markdownFallbackScript(): Record<string, unknown> {
+function markdownFallbackScript(): Record<string, unknown> {
   const MAX_OUTPUT = 200000
   const mainEl = pickMainElement(MARKDOWN_MAIN_SELECTORS, 100)
   let markdown = extractCleanMainText(mainEl, COMMON_REMOVE_SELECTORS)
@@ -127,7 +127,7 @@ export function markdownFallbackScript(): Record<string, unknown> {
   }
 }
 
-export function pageSummaryFallbackScript(): Record<string, unknown> {
+function pageSummaryFallbackScript(): Record<string, unknown> {
   const headings: string[] = []
   for (const heading of Array.from(document.querySelectorAll('h1, h2, h3'))) {
     if (headings.length >= 30) break
@@ -235,7 +235,7 @@ export function pageSummaryFallbackScript(): Record<string, unknown> {
 export type FallbackScript = () => Record<string, unknown>
 
 export const FALLBACK_SCRIPTS: Record<string, FallbackScript> = {
-  GASOLINE_GET_READABLE: readableFallbackScript,
-  GASOLINE_GET_MARKDOWN: markdownFallbackScript,
-  GASOLINE_PAGE_SUMMARY: pageSummaryFallbackScript
+  KABOOM_GET_READABLE: readableFallbackScript,
+  KABOOM_GET_MARKDOWN: markdownFallbackScript,
+  KABOOM_PAGE_SUMMARY: pageSummaryFallbackScript
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
-# smoke-test.sh — Human smoke test for Gasoline MCP.
+# smoke-test.sh — Human smoke test for Kaboom MCP.
 # Sources modular test modules sequentially. Shared mutable state
 # (EXTENSION_CONNECTED, PILOT_ENABLED, SMOKE_MARKER) flows across modules.
 #
@@ -153,6 +153,7 @@ MODULES=(
     "28-proof-first.sh"
     "29-framework-selector-resilience.sh"
     "31-annotation-parity.sh"
+    "32-metrics-collection.sh"
     "30-stability-shutdown.sh" # 30 must be last: it kills the daemon
 )
 
@@ -169,7 +170,7 @@ if lsof -ti :"$PORT" >/dev/null 2>&1; then
             DAEMON_PID=$(lsof -ti :"$PORT" 2>/dev/null | head -1)
         fi
     else
-        echo "  Port $PORT occupied by non-Gasoline process. Killing..." >&2
+        echo "  Port $PORT occupied by non-Kaboom process. Killing..." >&2
         lsof -ti :"$PORT" 2>/dev/null | xargs kill -9 2>/dev/null || true
         sleep 0.5
     fi
@@ -179,7 +180,7 @@ BINARY_VERSION=$("$WRAPPER" --version 2>/dev/null || echo "unknown")
 BINARY_VERSION_NORM="$(normalize_semver "$BINARY_VERSION")"
 echo ""
 echo "============================================================"
-echo "  GASOLINE SMOKE TEST SUITE"
+echo "  Kaboom SMOKE TEST SUITE"
 echo "  Port: $PORT | $(date)"
 echo "  Binary: $BINARY_VERSION"
 echo "  Expected: $EXPECTED_VERSION"

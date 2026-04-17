@@ -27,27 +27,8 @@
     dispatch.call(target, event)
   }
 
-  function readDismissStamp(element: Element | null | undefined): string | null {
-    if (!element) return null
-    const getAttr = (element as { getAttribute?: unknown }).getAttribute
-    if (typeof getAttr !== 'function') return null
-    const value = getAttr.call(element, 'data-gasoline-dismiss-ts')
-    return typeof value === 'string' && value.length > 0 ? value : null
-  }
-
-  function writeDismissStamp(element: Element | null | undefined): void {
-    if (!element) return
-    const setAttr = (element as { setAttribute?: unknown }).setAttribute
-    if (typeof setAttr !== 'function') return
-    setAttr.call(element, 'data-gasoline-dismiss-ts', String(Date.now()))
-  }
-
-  function clearDismissStamp(element: Element | null | undefined): void {
-    if (!element) return
-    const removeAttr = (element as { removeAttribute?: unknown }).removeAttribute
-    if (typeof removeAttr !== 'function') return
-    removeAttr.call(element, 'data-gasoline-dismiss-ts')
-  }
+  // #502: readDismissStamp, writeDismissStamp, clearDismissStamp removed —
+  // now in dom-primitives-overlay.ts (self-contained).
 
   // #368: Check if an overlay might be obscuring the target element
   function detectOverlayWarning(targetEl: Element): { overlay_warning?: string; overlay_selector?: string } {

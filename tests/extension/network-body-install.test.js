@@ -92,7 +92,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     globalThis.window = {
       ...createMockWindow({ withFetch: true }),
       postMessage: (data) => {
-        if (data && data.type === 'GASOLINE_NETWORK_BODY') {
+        if (data && data.type === 'kaboom_network_body') {
           capturedBodyEvents.push(data.payload)
         }
       },
@@ -409,7 +409,7 @@ describe('Bug #4 Fix: installFetchCapture uses wrapFetchWithBodies', () => {
     assert.strictEqual(
       capturedBodyEvents.length,
       0,
-      'Gasoline server requests should not be captured to prevent infinite loops'
+      'Kaboom server requests should not be captured to prevent infinite loops'
     )
 
     uninstallFetchCapture()

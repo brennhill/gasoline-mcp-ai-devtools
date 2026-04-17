@@ -2,7 +2,7 @@
 # Automated Test Generation Validation Script (stdio version)
 # Prerequisites:
 #   - Demo site running on http://localhost:3000
-#   - Chrome with Gasoline extension open and connected
+#   - Chrome with Kaboom extension open and connected
 #   - Run this script, it will start the MCP server and send commands
 
 set -euo pipefail
@@ -11,19 +11,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESULTS_DIR="$SCRIPT_DIR/../validation-results"
 mkdir -p "$RESULTS_DIR"
 
-MCP_BIN="$SCRIPT_DIR/../dist/gasoline"
+MCP_BIN="$SCRIPT_DIR/../dist/kaboom-agentic-browser"
 
 if [ ! -f "$MCP_BIN" ]; then
-    echo "Error: Gasoline binary not found at $MCP_BIN"
+    echo "Error: Kaboom binary not found at $MCP_BIN"
     echo "Run 'make dev' first"
     exit 1
 fi
 
-echo "=== Gasoline Test Generation Validation ==="
+echo "=== Kaboom Test Generation Validation ==="
 echo ""
 echo "Prerequisites:"
 echo "  ✓ Demo site running on http://localhost:3000"
-echo "  ✓ Chrome with Gasoline extension connected"
+echo "  ✓ Chrome with Kaboom extension connected"
 echo ""
 echo "This script will:"
 echo "  1. Use interact to navigate and trigger bugs"
@@ -49,7 +49,7 @@ cat > "$COMMANDS_FILE" << 'EOF'
 EOF
 
 echo ""
-echo "Sending commands to Gasoline MCP server..."
+echo "Sending commands to Kaboom MCP server..."
 echo ""
 
 # Function to send a single command and save output
@@ -141,7 +141,7 @@ echo ""
 echo "Next steps:"
 echo "  1. Review responses: cat $RESULTS_DIR/*.json"
 echo "  2. Review tests: cat $RESULTS_DIR/*.spec.ts"
-echo "  3. Run tests: cd ~/dev/gasoline-demos && npx playwright test"
+echo "  3. Run tests: cd ~/dev/kaboom-demos && npx playwright test"
 echo ""
 echo "To view the generated test from error:"
 echo "  cat $RESULTS_DIR/generated-error-test.spec.ts"

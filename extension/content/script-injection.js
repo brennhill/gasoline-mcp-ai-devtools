@@ -3,6 +3,7 @@
  * Docs: docs/features/feature/csp-safe-execution/index.md
  */
 import { SettingName } from '../lib/constants.js';
+import { getLocals } from '../lib/storage-utils.js';
 /** Whether inject.bundled.js has been injected into the page (MAIN world) */
 let injected = false;
 /** Whether inject.js has responded to a bridge ping for this page load */
@@ -13,7 +14,7 @@ let injectionPromise = null;
 let bridgeProbePromise = null;
 /** Monotonic ID for bridge probe request IDs */
 let bridgeProbeCounter = 0;
-const NONCE_ATTR = 'data-gasoline-nonce';
+const NONCE_ATTR = 'data-kaboom-nonce';
 /** Per-page-load nonce for authenticating postMessages to inject.js */
 const pageNonce = crypto
     .getRandomValues(new Uint8Array(16))
@@ -27,7 +28,7 @@ export function isInjectScriptLoaded() {
     return injected;
 }
 /** Check if inject bridge has acknowledged a readiness ping */
-export function isInjectBridgeReady() {
+function isInjectBridgeReady() {
     return bridgeReady;
 }
 /** Settings that need to be synced to inject script on page load */
@@ -43,36 +44,35 @@ const SYNC_SETTINGS = [
  * Sync stored settings to the inject script after it loads.
  * This ensures new pages receive the current settings state.
  */
-function syncStoredSettings() {
+async function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
-    chrome.storage.local.get(storageKeys, (result) => {
-        for (const setting of SYNC_SETTINGS) {
-            const value = result[setting.storageKey];
-            if (value === undefined)
-                continue; // Use default if not set
-            if (setting.isMode) {
-                window.postMessage({
-                    type: 'GASOLINE_SETTING',
-                    setting: setting.messageType,
-                    mode: value,
-                    _nonce: pageNonce
-                }, window.location.origin);
-            }
-            else {
-                window.postMessage({ type: 'GASOLINE_SETTING', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
-            }
+    const result = await getLocals(storageKeys);
+    for (const setting of SYNC_SETTINGS) {
+        const value = result[setting.storageKey];
+        if (value === undefined)
+            continue; // Use default if not set
+        if (setting.isMode) {
+            window.postMessage({
+                type: 'kaboom_setting',
+                setting: setting.messageType,
+                mode: value,
+                _nonce: pageNonce
+            }, window.location.origin);
         }
-    });
+        else {
+            window.postMessage({ type: 'kaboom_setting', setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
+        }
+    }
 }
 /**
  * Inject axe-core library into the page
  * Must be called from content script context (has chrome.runtime API access)
  */
-export function injectAxeCore() {
-    if (document.getElementById('gasoline-axe-loader'))
+function injectAxeCore() {
+    if (document.getElementById('kaboom-axe-loader'))
         return;
     const script = document.createElement('script');
-    script.id = 'gasoline-axe-loader';
+    script.id = 'kaboom-axe-loader';
     script.src = chrome.runtime.getURL('lib/axe.min.js');
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
@@ -80,7 +80,7 @@ export function injectAxeCore() {
 /**
  * Inject the capture script into the page
  */
-export function injectScript() {
+function injectScript() {
     // Remove stale nonce-bearing script nodes so inject resolves the current nonce.
     document.querySelectorAll(`script[${NONCE_ATTR}]`).forEach((el) => {
         if (typeof el.remove === 'function')
@@ -90,7 +90,7 @@ export function injectScript() {
     const script = document.createElement('script');
     script.src = chrome.runtime.getURL('inject.bundled.js');
     script.type = 'module';
-    script.dataset.gasolineNonce = pageNonce;
+    script.dataset.kaboomNonce = pageNonce;
     return new Promise((resolve) => {
         script.onload = () => {
             script.remove();
@@ -189,7 +189,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350) {
         const onMessage = (event) => {
             if (event.source !== window || event.origin !== window.location.origin)
                 return;
-            if (event.data?.type !== 'GASOLINE_INJECT_BRIDGE_PONG')
+            if (event.data?.type !== 'kaboom_inject_bridge_pong')
                 return;
             if (event.data?.requestId !== requestId)
                 return;
@@ -201,7 +201,7 @@ export async function ensureInjectBridgeReady(timeoutMs = 350) {
         timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
         try {
             window.postMessage({
-                type: 'GASOLINE_INJECT_BRIDGE_PING',
+                type: 'kaboom_inject_bridge_ping',
                 requestId,
                 _nonce: pageNonce
             }, window.location.origin);

@@ -2,6 +2,10 @@
  * Purpose: Unified sync client that replaces multiple polling loops with a single /sync endpoint, handling settings, commands, and extension logs.
  * Docs: docs/features/feature/backend-log-streaming/index.md
  */
+/** Returns the server's install ID, or undefined if not yet received. */
+export declare function getServerInstallId(): string | undefined;
+/** Load persisted install ID from storage (call once on startup). */
+export declare function loadServerInstallId(): Promise<void>;
 /** Settings to send to server */
 export interface SyncSettings {
     pilot_enabled: boolean;
@@ -40,10 +44,10 @@ export interface SyncInProgress {
     id: string;
     correlation_id?: string;
     type?: string;
-    status: 'running' | 'pending';
+    status?: 'running' | 'pending';
     progress_pct?: number;
-    started_at: string;
-    updated_at: string;
+    started_at?: string;
+    updated_at?: string;
 }
 /** Command from server */
 export interface SyncCommand {
@@ -52,6 +56,7 @@ export interface SyncCommand {
     params: unknown;
     tab_id?: number;
     correlation_id?: string;
+    trace_id?: string;
 }
 /** Sync state */
 export interface SyncState {

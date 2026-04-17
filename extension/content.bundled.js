@@ -2,11 +2,11 @@
 (() => {
   // extension/lib/timeouts.js
   function readTestScale() {
-    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
+    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.KABOOM_TEST_TIMEOUT_SCALE === "number" ? globalThis.KABOOM_TEST_TIMEOUT_SCALE : null;
     if (globalScale !== null)
       return globalScale;
     if (typeof process !== "undefined" && process.env) {
-      const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE;
+      const raw = process.env.KABOOM_TEST_TIMEOUT_SCALE || process.env.KABOOM_TEST_TIME_SCALE;
       if (raw) {
         const parsed = Number(raw);
         if (Number.isFinite(parsed))
@@ -24,26 +24,24 @@
   }
 
   // extension/lib/constants.js
-  var DEFAULT_SERVER_URL = "http://localhost:7890";
-  var TERMINAL_PORT_OFFSET = 1;
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
-    NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
-    PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
-    ACTION_REPLAY: "setActionReplayEnabled",
-    WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
-    WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
-    PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
-    DEFERRAL: "setDeferralEnabled",
-    NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
-    ACTION_TOASTS: "setActionToastsEnabled",
-    SUBTITLES: "setSubtitlesEnabled",
-    SERVER_URL: "setServerUrl"
+    NETWORK_WATERFALL: "set_network_waterfall_enabled",
+    PERFORMANCE_MARKS: "set_performance_marks_enabled",
+    ACTION_REPLAY: "set_action_replay_enabled",
+    WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled",
+    WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode",
+    PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled",
+    DEFERRAL: "set_deferral_enabled",
+    NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled",
+    ACTION_TOASTS: "set_action_toasts_enabled",
+    SUBTITLES: "set_subtitles_enabled",
+    SERVER_URL: "set_server_url"
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
   var RuntimeMessageName = {
-    SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER"
+    SHOW_TRACKED_HOVER_LAUNCHER: "kaboom_show_tracked_hover_launcher"
   };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
@@ -76,29 +74,165 @@
     NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled",
     ACTION_TOASTS_ENABLED: "actionToastsEnabled",
     SUBTITLES_ENABLED: "subtitlesEnabled",
-    RECORDING: "gasoline_recording",
-    TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden",
-    PENDING_RECORDING: "gasoline_pending_recording",
-    PENDING_MIC_RECORDING: "gasoline_pending_mic_recording",
-    MIC_GRANTED: "gasoline_mic_granted",
-    RECORD_AUDIO_PREF: "gasoline_record_audio_pref",
-    TERMINAL_CONFIG: "gasoline_terminal_config",
-    TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command",
-    TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root",
-    POPUP_LAST_STATUS: "gasoline_popup_last_status",
-    TERMINAL_SESSION: "gasoline_terminal_session",
-    TERMINAL_UI_STATE: "gasoline_terminal_ui_state"
+    ACTION_RECORDING: "kaboom_action_recording",
+    RECORDING: "kaboom_recording",
+    TRACKED_HOVER_LAUNCHER_HIDDEN: "kaboom_tracked_hover_launcher_hidden",
+    PENDING_RECORDING: "kaboom_pending_recording",
+    PENDING_MIC_RECORDING: "kaboom_pending_mic_recording",
+    MIC_GRANTED: "kaboom_mic_granted",
+    RECORD_AUDIO_PREF: "kaboom_record_audio_pref",
+    TERMINAL_CONFIG: "kaboom_terminal_config",
+    TERMINAL_AI_COMMAND: "kaboom_terminal_ai_command",
+    TERMINAL_DEV_ROOT: "kaboom_terminal_dev_root",
+    POPUP_LAST_STATUS: "kaboom_popup_last_status",
+    TERMINAL_SESSION: "kaboom_terminal_session",
+    TERMINAL_UI_STATE: "kaboom_terminal_ui_state",
+    TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id",
+    TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id",
+    CLOAKED_DOMAINS: "kaboom_cloaked_domains",
+    ERROR_GROUPS: "kaboom_error_groups"
   };
+
+  // extension/lib/storage-utils.js
+  function getStorageWithSession() {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return null;
+    return chrome.storage;
+  }
+  function isPromiseLike(value) {
+    return typeof value === "object" && value !== null && typeof value.then === "function";
+  }
+  function readStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (result = {}) => {
+        if (settled)
+          return;
+        settled = true;
+        resolve(result);
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then((result) => finish(result ?? {})).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function writeStorage(method, items) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(items, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function removeFromStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  async function getLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return void 0;
+    const result = await readStorage(chrome.storage.local.get.bind(chrome.storage.local), key);
+    return result[key];
+  }
+  async function getLocals(keys) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return {};
+    return await readStorage(chrome.storage.local.get.bind(chrome.storage.local), keys);
+  }
+  async function setLocal(key, value) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), { [key]: value });
+  }
+  async function removeLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), [key]);
+  }
+  async function getSession(key) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return void 0;
+    const result = await readStorage(storage.session.get.bind(storage.session), key);
+    return result[key];
+  }
+  function onStorageChanged(listener) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return () => {
+      };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }
+
+  // extension/lib/cloaked-domains.js
+  var BUILTIN_CLOAKED = [
+    "cloudflare.com",
+    "dash.cloudflare.com"
+  ];
+  function matchesDomain(hostname, domain) {
+    return hostname === domain || hostname.endsWith("." + domain);
+  }
+  async function isDomainCloaked(hostname) {
+    const host = hostname || (typeof location !== "undefined" ? location.hostname : "");
+    if (!host)
+      return false;
+    for (const domain of BUILTIN_CLOAKED) {
+      if (matchesDomain(host, domain))
+        return true;
+    }
+    try {
+      const userDomains = await getLocal(StorageKey.CLOAKED_DOMAINS);
+      if (userDomains && Array.isArray(userDomains)) {
+        for (const domain of userDomains) {
+          if (matchesDomain(host, domain))
+            return true;
+        }
+      }
+    } catch {
+    }
+    return false;
+  }
 
   // extension/content/tab-tracking.js
   var isTrackedTab = false;
   var currentTabId = null;
   async function updateTrackingStatus() {
     try {
-      const storage = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
-      const response = await chrome.runtime.sendMessage({ type: "GET_TAB_ID" });
+      const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+      const response = await chrome.runtime.sendMessage({ type: "get_tab_id" });
       currentTabId = response?.tabId ?? null;
-      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === storage.trackedTabId;
+      isTrackedTab = currentTabId !== null && currentTabId !== void 0 && currentTabId === trackedTabId;
     } catch {
       isTrackedTab = false;
     }
@@ -113,7 +247,7 @@
     const ready = updateTrackingStatus().then(() => {
       onChange?.(isTrackedTab);
     });
-    chrome.storage.onChanged.addListener(async (changes) => {
+    onStorageChanged(async (changes) => {
       if (changes[StorageKey.TRACKED_TAB_ID]) {
         await updateTrackingStatus();
         onChange?.(isTrackedTab);
@@ -128,7 +262,7 @@
   var injectionPromise = null;
   var bridgeProbePromise = null;
   var bridgeProbeCounter = 0;
-  var NONCE_ATTR = "data-gasoline-nonce";
+  var NONCE_ATTR = "data-kaboom-nonce";
   var pageNonce = crypto.getRandomValues(new Uint8Array(16)).reduce((s, b) => s + b.toString(16).padStart(2, "0"), "");
   function getPageNonce() {
     return pageNonce;
@@ -144,31 +278,30 @@
     { storageKey: "actionReplayEnabled", messageType: SettingName.ACTION_REPLAY },
     { storageKey: "networkBodyCaptureEnabled", messageType: SettingName.NETWORK_BODY_CAPTURE }
   ];
-  function syncStoredSettings() {
+  async function syncStoredSettings() {
     const storageKeys = SYNC_SETTINGS.map((s) => s.storageKey);
-    chrome.storage.local.get(storageKeys, (result) => {
-      for (const setting of SYNC_SETTINGS) {
-        const value = result[setting.storageKey];
-        if (value === void 0)
-          continue;
-        if (setting.isMode) {
-          window.postMessage({
-            type: "GASOLINE_SETTING",
-            setting: setting.messageType,
-            mode: value,
-            _nonce: pageNonce
-          }, window.location.origin);
-        } else {
-          window.postMessage({ type: "GASOLINE_SETTING", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
-        }
+    const result = await getLocals(storageKeys);
+    for (const setting of SYNC_SETTINGS) {
+      const value = result[setting.storageKey];
+      if (value === void 0)
+        continue;
+      if (setting.isMode) {
+        window.postMessage({
+          type: "kaboom_setting",
+          setting: setting.messageType,
+          mode: value,
+          _nonce: pageNonce
+        }, window.location.origin);
+      } else {
+        window.postMessage({ type: "kaboom_setting", setting: setting.messageType, enabled: value, _nonce: pageNonce }, window.location.origin);
       }
-    });
+    }
   }
   function injectAxeCore() {
-    if (document.getElementById("gasoline-axe-loader"))
+    if (document.getElementById("kaboom-axe-loader"))
       return;
     const script = document.createElement("script");
-    script.id = "gasoline-axe-loader";
+    script.id = "kaboom-axe-loader";
     script.src = chrome.runtime.getURL("lib/axe.min.js");
     script.onload = () => script.remove();
     (document.head || document.documentElement).appendChild(script);
@@ -182,7 +315,7 @@
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("inject.bundled.js");
     script.type = "module";
-    script.dataset.gasolineNonce = pageNonce;
+    script.dataset.kaboomNonce = pageNonce;
     return new Promise((resolve) => {
       script.onload = () => {
         script.remove();
@@ -269,7 +402,7 @@
       const onMessage = (event) => {
         if (event.source !== window || event.origin !== window.location.origin)
           return;
-        if (event.data?.type !== "GASOLINE_INJECT_BRIDGE_PONG")
+        if (event.data?.type !== "kaboom_inject_bridge_pong")
           return;
         if (event.data?.requestId !== requestId)
           return;
@@ -281,7 +414,7 @@
       timer = setTimeout(() => finish(false), Math.max(25, timeoutMs));
       try {
         window.postMessage({
-          type: "GASOLINE_INJECT_BRIDGE_PING",
+          type: "kaboom_inject_bridge_ping",
           requestId,
           _nonce: pageNonce
         }, window.location.origin);
@@ -427,13 +560,21 @@
     cleanupTimer = setInterval(performPeriodicCleanup, CLEANUP_INTERVAL_MS);
   }
 
+  // extension/lib/brand.js
+  var KABOOM_DOCS_URL = "https://gokaboom.dev/docs";
+  var KABOOM_REPOSITORY_URL = "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP";
+  var KABOOM_LOG_PREFIX = "[KaBOOM!]";
+  function getReloadedExtensionWarning() {
+    return "[KaBOOM!] Please refresh this page. The KaBOOM! extension was reloaded and this page still has the old content script. A page refresh will reconnect capture automatically.";
+  }
+
   // extension/content/message-forwarding.js
   var MESSAGE_MAP = {
-    GASOLINE_LOG: "log",
-    GASOLINE_WS: "ws_event",
-    GASOLINE_NETWORK_BODY: "network_body",
-    GASOLINE_ENHANCED_ACTION: "enhanced_action",
-    GASOLINE_PERFORMANCE_SNAPSHOT: "performance_snapshot"
+    kaboom_log: "log",
+    kaboom_ws: "ws_event",
+    kaboom_network_body: "network_body",
+    kaboom_enhanced_action: "enhanced_action",
+    kaboom_performance_snapshot: "performance_snapshot"
   };
   var contextValid = true;
   function safeSendMessage(msg) {
@@ -444,17 +585,17 @@
     } catch (e) {
       if (e instanceof Error && e.message?.includes("Extension context invalidated")) {
         contextValid = false;
-        console.warn("[Gasoline] Please refresh this page. The Gasoline extension was reloaded and this page still has the old content script. A page refresh will reconnect capture automatically.");
+        console.warn(getReloadedExtensionWarning());
       }
     }
   }
 
   // extension/content/window-message-listener.js
   var RESPONSE_HANDLERS = {
-    GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id, result),
-    GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id, result),
-    GASOLINE_A11Y_QUERY_RESPONSE: (id, result) => resolveA11yRequest(id, result),
-    GASOLINE_DOM_QUERY_RESPONSE: (id, result) => resolveDomRequest(id, result)
+    kaboom_highlight_response: (id, result) => resolveHighlightRequest(id, result),
+    kaboom_execute_js_result: (id, result) => resolveExecuteRequest(id, result),
+    kaboom_a11y_query_response: (id, result) => resolveA11yRequest(id, result),
+    kaboom_dom_query_response: (id, result) => resolveDomRequest(id, result)
   };
   function initWindowMessageListener() {
     window.addEventListener("message", (event) => {
@@ -503,15 +644,18 @@
       this.name = "TimeoutError";
     }
   };
-  async function promiseRaceWithCleanup(promise, timeoutMs, timeoutFallback, cleanup) {
+  async function withTimeoutAndCleanup(promise, timeoutMs, options) {
+    const fallback = options?.fallback;
+    const cleanup = options?.cleanup;
+    let timeoutId;
     try {
       return await Promise.race([
         promise,
         new Promise((_, reject) => {
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             cleanup?.();
-            if (timeoutFallback !== void 0) {
-              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, timeoutFallback));
+            if (fallback !== void 0) {
+              reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`, fallback));
             } else {
               reject(new TimeoutError(`Operation timed out after ${timeoutMs}ms`));
             }
@@ -523,6 +667,9 @@
         return err.fallback;
       }
       throw err;
+    } finally {
+      if (timeoutId)
+        clearTimeout(timeoutId);
     }
   }
 
@@ -935,39 +1082,45 @@
       const requestId = registerHighlightRequest((result) => deferred.resolve(result));
       const deferred = createDeferredPromise();
       postToInject({
-        type: "GASOLINE_HIGHLIGHT_REQUEST",
+        type: "kaboom_highlight_request",
         requestId,
         params: message.params
       });
-      return promiseRaceWithCleanup(deferred.promise, 3e4, { success: false, error: "timeout" }, () => {
-        if (hasHighlightRequest(requestId)) {
-          deleteHighlightRequest(requestId);
+      return withTimeoutAndCleanup(deferred.promise, 3e4, {
+        fallback: { success: false, error: "timeout" },
+        cleanup: () => {
+          if (hasHighlightRequest(requestId)) {
+            deleteHighlightRequest(requestId);
+          }
         }
       });
     });
   }
   async function handleStateCommand(params) {
-    const { action, name, state: state2, include_url } = params || {};
+    const { action, name, state, include_url } = params || {};
     const messageId = `state_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const deferred = createDeferredPromise();
     const responseHandler = (event) => {
       if (event.source !== window)
         return;
-      if (event.data?.type === "GASOLINE_STATE_RESPONSE" && event.data?.messageId === messageId) {
+      if (event.data?.type === "kaboom_state_response" && event.data?.messageId === messageId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve(event.data.result || { error: "No result from state command" });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "GASOLINE_STATE_COMMAND",
+      type: "kaboom_state_command",
       messageId,
       action,
       name,
-      state: state2,
+      state,
       include_url
     });
-    return promiseRaceWithCleanup(deferred.promise, 5e3, { error: "State command timeout" }, () => window.removeEventListener("message", responseHandler));
+    return withTimeoutAndCleanup(deferred.promise, 5e3, {
+      fallback: { error: "State command timeout" },
+      cleanup: () => window.removeEventListener("message", responseHandler)
+    });
   }
   function handlePing(sendResponse) {
     sendResponse({ status: "alive", timestamp: Date.now() });
@@ -976,7 +1129,7 @@
   function handleToggleMessage(message) {
     if (!TOGGLE_MESSAGES.has(message.type))
       return;
-    const payload = { type: "GASOLINE_SETTING", setting: message.type };
+    const payload = { type: "kaboom_setting", setting: message.type };
     if (message.type === SettingName.WEBSOCKET_CAPTURE_MODE) {
       payload.mode = message.mode;
     } else if (message.type === SettingName.SERVER_URL) {
@@ -1001,7 +1154,7 @@
       }
     }, safetyTimeoutMs);
     postToInject({
-      type: "GASOLINE_EXECUTE_JS",
+      type: "kaboom_execute_js",
       requestId,
       script: params.script || "",
       timeoutMs
@@ -1046,7 +1199,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "GASOLINE_A11Y_QUERY",
+      type: "kaboom_a11y_query",
       requestId,
       params: parsedParams
     });
@@ -1062,7 +1215,7 @@
       }
     }, ASYNC_COMMAND_TIMEOUT_MS);
     postToInject({
-      type: "GASOLINE_DOM_QUERY",
+      type: "kaboom_dom_query",
       requestId,
       params: parsedParams
     });
@@ -1077,18 +1230,19 @@
       const nonce = event.data?._nonce;
       if (nonce && nonce !== getPageNonce())
         return;
-      if (event.data?.type === "GASOLINE_WATERFALL_RESPONSE" && event.data?.requestId === requestId) {
+      if (event.data?.type === "kaboom_waterfall_response" && event.data?.requestId === requestId) {
         window.removeEventListener("message", responseHandler);
         deferred.resolve({ entries: event.data.entries || [] });
       }
     };
     window.addEventListener("message", responseHandler);
     postToInject({
-      type: "GASOLINE_GET_WATERFALL",
+      type: "kaboom_get_waterfall",
       requestId
     });
-    promiseRaceWithCleanup(deferred.promise, 5e3, { entries: [] }, () => {
-      window.removeEventListener("message", responseHandler);
+    withTimeoutAndCleanup(deferred.promise, 5e3, {
+      fallback: { entries: [] },
+      cleanup: () => window.removeEventListener("message", responseHandler)
     }).then((result) => {
       sendResponse(result);
     }, () => {
@@ -1113,25 +1267,26 @@
     };
     window.addEventListener("message", responseHandler);
     postToInject({ type: queryType, requestId, params: parsedParams });
-    promiseRaceWithCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, { error: `${label} timeout` }, () => {
-      window.removeEventListener("message", responseHandler);
+    withTimeoutAndCleanup(deferred.promise, ASYNC_COMMAND_TIMEOUT_MS, {
+      fallback: { error: `${label} timeout` },
+      cleanup: () => window.removeEventListener("message", responseHandler)
     }).then((result) => sendResponse(result), () => sendResponse({ error: `${label} failed` }));
     return true;
   }
   function handleComputedStylesQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_COMPUTED_STYLES_QUERY", "GASOLINE_COMPUTED_STYLES_RESPONSE", "Computed styles query", params, sendResponse);
+    return forwardInjectQuery("kaboom_computed_styles_query", "kaboom_computed_styles_response", "Computed styles query", params, sendResponse);
   }
   function handleFormDiscoveryQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_FORM_DISCOVERY_QUERY", "GASOLINE_FORM_DISCOVERY_RESPONSE", "Form discovery", params, sendResponse);
+    return forwardInjectQuery("kaboom_form_discovery_query", "kaboom_form_discovery_response", "Form discovery", params, sendResponse);
   }
   function handleFormStateQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_FORM_STATE_QUERY", "GASOLINE_FORM_STATE_RESPONSE", "Form state", params, sendResponse);
+    return forwardInjectQuery("kaboom_form_state_query", "kaboom_form_state_response", "Form state", params, sendResponse);
   }
   function handleDataTableQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_DATA_TABLE_QUERY", "GASOLINE_DATA_TABLE_RESPONSE", "Data table extraction", params, sendResponse);
+    return forwardInjectQuery("kaboom_data_table_query", "kaboom_data_table_response", "Data table extraction", params, sendResponse);
   }
   function handleLinkHealthQuery(params, sendResponse) {
-    return forwardInjectQuery("GASOLINE_LINK_HEALTH_QUERY", "GASOLINE_LINK_HEALTH_RESPONSE", "Link health check", params, sendResponse);
+    return forwardInjectQuery("kaboom_link_health_query", "kaboom_link_health_response", "Link health check", params, sendResponse);
   }
   function handleGetReadable(sendResponse) {
     try {
@@ -1167,25 +1322,25 @@
     audio: { bg: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)", shadow: "rgba(249, 115, 22, 0.5)" }
   };
   var TOAST_ANIMATION_CSS = [
-    "@keyframes gasolineArrowBounceUp {",
+    "@keyframes kaboomArrowBounceUp {",
     "  0%, 100% { transform: translateY(0); opacity: 1; }",
     "  50% { transform: translateY(-6px); opacity: 0.7; }",
     "}",
-    "@keyframes gasolineToastPulse {",
+    "@keyframes kaboomToastPulse {",
     "  0%, 100% { box-shadow: 0 4px 20px var(--toast-shadow); }",
     "  50% { box-shadow: 0 8px 32px var(--toast-shadow-intense); }",
     "}",
-    ".gasoline-toast-arrow {",
+    ".kaboom-toast-arrow {",
     "  display: inline-block; margin-left: 8px;",
-    "  animation: gasolineArrowBounceUp 1.5s ease-in-out infinite;",
+    "  animation: kaboomArrowBounceUp 1.5s ease-in-out infinite;",
     "}",
-    ".gasoline-toast-pulse { animation: gasolineToastPulse 2s ease-in-out infinite; }"
+    ".kaboom-toast-pulse { animation: kaboomToastPulse 2s ease-in-out infinite; }"
   ].join("\n");
   function injectToastAnimationStyles() {
-    if (document.getElementById("gasoline-toast-animations"))
+    if (document.getElementById("kaboom-toast-animations"))
       return;
     const style = document.createElement("style");
-    style.id = "gasoline-toast-animations";
+    style.id = "kaboom-toast-animations";
     style.textContent = TOAST_ANIMATION_CSS;
     document.head.appendChild(style);
   }
@@ -1194,18 +1349,18 @@
       return text;
     return text.slice(0, maxLen - 1) + "\u2026";
   }
-  function showActionToast(text, detail, state2 = "trying", durationMs = 3e3) {
-    const existing = document.getElementById("gasoline-action-toast");
+  function showActionToast(text, detail, state = "trying", durationMs = 3e3) {
+    const existing = document.getElementById("kaboom-action-toast");
     if (existing)
       existing.remove();
     injectToastAnimationStyles();
-    const theme = TOAST_THEMES[state2] ?? TOAST_THEMES.trying;
-    const isAudioPrompt = state2 === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
+    const theme = TOAST_THEMES[state] ?? TOAST_THEMES.trying;
+    const isAudioPrompt = state === "audio" || detail && detail.toLowerCase().includes("audio") && detail.toLowerCase().includes("click");
     const arrowChar = "\u2191";
     const toast = document.createElement("div");
-    toast.id = "gasoline-action-toast";
+    toast.id = "kaboom-action-toast";
     if (isAudioPrompt) {
-      toast.className = "gasoline-toast-pulse";
+      toast.className = "kaboom-toast-pulse";
     }
     if (isAudioPrompt) {
       const icon = document.createElement("img");
@@ -1234,7 +1389,7 @@
     }
     if (isAudioPrompt) {
       const arrow = document.createElement("span");
-      arrow.className = "gasoline-toast-arrow";
+      arrow.className = "kaboom-toast-arrow";
       arrow.textContent = arrowChar;
       Object.assign(arrow.style, {
         fontSize: "16px",
@@ -1309,12 +1464,12 @@
   }
   function clearSubtitle() {
     clearAutoTimer();
-    fadeOutAndRemove("gasoline-subtitle", 200);
+    fadeOutAndRemove("kaboom-subtitle", 200);
     detachEscapeListener();
   }
   function showSubtitle(text) {
-    const ELEMENT_ID = "gasoline-subtitle";
-    const CLOSE_BTN_ID = "gasoline-subtitle-close";
+    const ELEMENT_ID = "kaboom-subtitle";
+    const CLOSE_BTN_ID = "kaboom-subtitle-close";
     if (!text) {
       clearSubtitle();
       return;
@@ -1414,7 +1569,7 @@
     }, SUBTITLE_AUTO_TIMEOUT_MS);
   }
   function toggleRecordingWatermark(visible) {
-    const ELEMENT_ID = "gasoline-recording-watermark";
+    const ELEMENT_ID = "kaboom-recording-watermark";
     if (!visible) {
       const existing = document.getElementById(ELEMENT_ID);
       if (existing) {
@@ -1451,10 +1606,10 @@
   }
 
   // extension/content/ui/chat-widget.js
-  var WIDGET_ID = "gasoline-chat-widget";
-  var INPUT_ID = "gasoline-chat-input";
-  var PIN_ID = "gasoline-chat-pin";
-  var STATUS_ID = "gasoline-chat-status";
+  var WIDGET_ID = "kaboom-chat-widget";
+  var INPUT_ID = "kaboom-chat-input";
+  var PIN_ID = "kaboom-chat-pin";
+  var STATUS_ID = "kaboom-chat-status";
   var isPinned = false;
   var currentClientName = "AI";
   var chatEscapeHandler = null;
@@ -1699,7 +1854,7 @@
       statusEl.style.color = "#60a5fa";
     }
     chrome.runtime.sendMessage({
-      type: "GASOLINE_PUSH_CHAT",
+      type: "kaboom_push_chat",
       message,
       page_url: window.location.href
     }, (response) => {
@@ -1734,17 +1889,31 @@
   // extension/content/runtime-message-listener.js
   var actionToastsEnabled = true;
   var subtitlesEnabled = true;
+  function applyOverlayToggleState(result) {
+    if (result.actionToastsEnabled !== void 0)
+      actionToastsEnabled = result.actionToastsEnabled;
+    if (result.subtitlesEnabled !== void 0)
+      subtitlesEnabled = result.subtitlesEnabled;
+  }
+  function hydrateOverlayToggleState() {
+    if (typeof chrome === "undefined" || !chrome.storage?.local)
+      return;
+    try {
+      const maybePromise = chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], applyOverlayToggleState);
+      if (maybePromise && typeof maybePromise.then === "function") {
+        void maybePromise.then((result) => applyOverlayToggleState(result));
+      }
+    } catch {
+    }
+  }
   function initRuntimeMessageListener() {
-    chrome.storage.local.get(["actionToastsEnabled", "subtitlesEnabled"], (result) => {
-      if (result.actionToastsEnabled !== void 0)
-        actionToastsEnabled = result.actionToastsEnabled;
-      if (result.subtitlesEnabled !== void 0)
-        subtitlesEnabled = result.subtitlesEnabled;
-    });
+    actionToastsEnabled = true;
+    subtitlesEnabled = true;
+    hydrateOverlayToggleState();
     const syncHandlers = {
-      GASOLINE_PING: () => {
+      kaboom_ping: () => {
       },
-      GASOLINE_ACTION_TOAST: (msg) => {
+      kaboom_action_toast: (msg) => {
         if (!actionToastsEnabled)
           return false;
         const m = msg;
@@ -1752,15 +1921,15 @@
           showActionToast(m.text, m.detail, m.state || "trying", m.duration_ms);
         return false;
       },
-      GASOLINE_TOGGLE_CHAT: (msg) => {
+      kaboom_toggle_chat: (msg) => {
         toggleChatWidget(msg.client_name);
         return false;
       },
-      GASOLINE_RECORDING_WATERMARK: (msg) => {
+      kaboom_recording_watermark: (msg) => {
         toggleRecordingWatermark(msg.visible ?? false);
         return false;
       },
-      GASOLINE_SUBTITLE: (msg) => {
+      kaboom_subtitle: (msg) => {
         if (!subtitlesEnabled)
           return false;
         showSubtitle(msg.text ?? "");
@@ -1776,7 +1945,7 @@
       }
     };
     const delegatedHandlers = {
-      GASOLINE_DRAW_MODE_START: (msg, sr) => {
+      kaboom_draw_mode_start: (msg, sr) => {
         const m = msg;
         import(
           /* webpackIgnore: true */
@@ -1787,7 +1956,7 @@
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      GASOLINE_DRAW_MODE_STOP: (_msg, sr) => {
+      kaboom_draw_mode_stop: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
@@ -1797,7 +1966,7 @@
         }).catch((e) => sr({ error: "draw_mode_load_failed", message: e.message }));
         return true;
       },
-      GASOLINE_GET_ANNOTATIONS: (_msg, sr) => {
+      kaboom_get_annotations: (_msg, sr) => {
         import(
           /* webpackIgnore: true */
           chrome.runtime.getURL("content/draw-mode.js")
@@ -1806,34 +1975,34 @@
         }).catch(() => sr({ draw_mode_active: false }));
         return true;
       },
-      GASOLINE_HIGHLIGHT: (msg, sr) => {
+      kaboom_highlight: (msg, sr) => {
         forwardHighlightMessage({ params: msg.params }).then((r) => sr(r)).catch((e) => sr({ success: false, error: e.message }));
         return true;
       },
-      GASOLINE_MANAGE_STATE: (msg, sr) => {
+      kaboom_manage_state: (msg, sr) => {
         handleStateCommand(msg.params).then((r) => sr(r)).catch((e) => sr({ error: e.message }));
         return true;
       },
-      GASOLINE_EXECUTE_JS: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
-      GASOLINE_EXECUTE_QUERY: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
-      A11Y_QUERY: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
-      DOM_QUERY: (msg, sr) => handleDomQuery(msg.params || {}, sr),
-      GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
-      LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
-      COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
-      FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
-      FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
-      DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
-      GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
-      GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
-      GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
+      kaboom_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+      kaboom_execute_query: (msg, sr) => handleExecuteQuery(msg.params || {}, sr),
+      a11y_query: (msg, sr) => handleA11yQuery(msg.params || {}, sr),
+      dom_query: (msg, sr) => handleDomQuery(msg.params || {}, sr),
+      get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
+      link_health_query: (msg, sr) => handleLinkHealthQuery(msg.params ?? {}, sr),
+      computed_styles_query: (msg, sr) => handleComputedStylesQuery(msg.params ?? {}, sr),
+      form_discovery_query: (msg, sr) => handleFormDiscoveryQuery(msg.params ?? {}, sr),
+      form_state_query: (msg, sr) => handleFormStateQuery(msg.params ?? {}, sr),
+      data_table_query: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
+      kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
+      kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
+      kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
-        console.warn("[Gasoline] Rejected message from untrusted sender:", sender.id);
+        console.warn(KABOOM_LOG_PREFIX, "Rejected message from untrusted sender:", sender.id);
         return false;
       }
-      if (message.type === "GASOLINE_PING")
+      if (message.type === "kaboom_ping")
         return handlePing(sendResponse);
       const syncHandler = syncHandlers[message.type];
       if (syncHandler) {
@@ -1855,23 +2024,23 @@
     chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
       if (sender.id !== chrome.runtime.id)
         return false;
-      if (message.type === "trackingStateChanged") {
+      if (message.type === "tracking_state_changed") {
         const newState = message.state;
         updateFavicon(newState);
       }
       return false;
     });
-    chrome.runtime.sendMessage({ type: "getTrackingState" }, (response) => {
+    chrome.runtime.sendMessage({ type: "get_tracking_state" }, (response) => {
       if (response && response.state) {
         updateFavicon(response.state);
       }
     });
   }
-  function updateFavicon(state2) {
-    if (!state2.isTracked) {
+  function updateFavicon(state) {
+    if (!state.isTracked) {
       restoreOriginalFavicon();
       stopFlicker();
-    } else if (state2.aiPilotEnabled) {
+    } else if (state.aiPilotEnabled) {
       replaceFaviconWithFlame(true);
       startFlicker();
     } else {
@@ -1889,15 +2058,15 @@
     const link = document.createElement("link");
     link.rel = "icon";
     link.type = "image/svg+xml";
-    link.id = "gasoline-favicon";
+    link.id = "kaboom-favicon";
     const iconPath = withGlow ? "icons/icon-glow.svg" : "icons/icon.svg";
     link.href = chrome.runtime.getURL(iconPath);
     document.head.appendChild(link);
   }
   function restoreOriginalFavicon() {
-    const gasolineIcon = document.getElementById("gasoline-favicon");
-    if (gasolineIcon) {
-      gasolineIcon.remove();
+    const kaboomIcon = document.getElementById("kaboom-favicon");
+    if (kaboomIcon) {
+      kaboomIcon.remove();
     }
     if (originalFaviconHref) {
       const link = document.createElement("link");
@@ -1931,10 +2100,10 @@
     let currentFrameIndex = 0;
     flickerInterval = window.setInterval(() => {
       currentFrameIndex = (currentFrameIndex + 1) % flameFrames.length;
-      const gasolineIcon = document.getElementById("gasoline-favicon");
-      if (gasolineIcon) {
+      const kaboomIcon = document.getElementById("kaboom-favicon");
+      if (kaboomIcon) {
         const iconPath = `icons/${flameFrames[currentFrameIndex]}`;
-        gasolineIcon.href = chrome.runtime.getURL(iconPath);
+        kaboomIcon.href = chrome.runtime.getURL(iconPath);
       }
     }, 150);
   }
@@ -1945,982 +2114,91 @@
     }
   }
 
-  // extension/content/ui/terminal-widget-types.js
-  var WIDGET_ID2 = "gasoline-terminal-widget";
-  var IFRAME_ID = "gasoline-terminal-iframe";
-  var HEADER_ID = "gasoline-terminal-header";
-  var DISCONNECT_TERMINAL_BUTTON_ID = "gasoline-terminal-disconnect-button";
-  var REDRAW_TERMINAL_BUTTON_ID = "gasoline-terminal-redraw-button";
-  var MINIMIZE_TERMINAL_BUTTON_ID = "gasoline-terminal-minimize-button";
-  var CLOSE_TERMINAL_BUTTON_ID = "gasoline-terminal-close-button";
-  var DEFAULT_WIDGET_WIDTH = "50vw";
-  var DEFAULT_WIDGET_HEIGHT = "40vh";
-  var MIN_WIDGET_WIDTH = "400px";
-  var MIN_WIDGET_HEIGHT = "250px";
-  var MAX_WIDGET_WIDTH = "100vw";
-  var MAX_WIDGET_HEIGHT = "80vh";
-  var MINIMIZED_WIDGET_HEIGHT = "32px";
-  var TERMINAL_WRITE_SUBMIT_DELAY_MS = 600;
-  var TERMINAL_TYPING_IDLE_MS = 1500;
-  var TERMINAL_GUARD_POLL_MS = 200;
-  var TERMINAL_GUARD_TOAST_INTERVAL_MS = 3e3;
-  var state = {
-    widgetEl: null,
-    iframeEl: null,
-    resizeHandleEl: null,
-    sessionState: null,
-    visible: false,
-    minimized: false,
-    savedHeight: "",
-    serverUrl: DEFAULT_SERVER_URL,
-    terminalFocused: false,
-    lastTypingAt: 0,
-    queuedWrites: [],
-    queuedWriteFlushTimer: null,
-    queuedSubmitTimer: null,
-    queuedWriteInFlight: false,
-    lastGuardToastAt: 0,
-    terminalConnected: false
-  };
-  function getTerminalServerUrl(baseUrl) {
-    const url = new URL(baseUrl);
-    url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
-    return url.origin;
+  // extension/lib/request-audit.js
+  async function requestAudit(pageUrl) {
+    try {
+      await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+    } catch {
+    }
+    await chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: pageUrl });
   }
 
-  // extension/content/ui/terminal-widget-ui.js
-  var _hideTerminalCb = null;
-  var _exitTerminalSessionCb = null;
-  var _resetWriteGuardStateCb = null;
-  var _scheduleQueuedWriteFlushCb = null;
-  function registerUICallbacks(cbs) {
-    _hideTerminalCb = cbs.hideTerminal;
-    _exitTerminalSessionCb = cbs.exitTerminalSession;
-    _resetWriteGuardStateCb = cbs.resetWriteGuardState;
-    _scheduleQueuedWriteFlushCb = cbs.scheduleQueuedWriteFlush;
+  // extension/content/ui/terminal-panel-bridge.js
+  var panelVisible = false;
+  var bridgeInitialized = false;
+  var storageListenerInstalled = false;
+  var visibilityListeners = /* @__PURE__ */ new Set();
+  function notifyVisibilityListeners(visible) {
+    for (const listener of visibilityListeners) {
+      listener(visible);
+    }
   }
-  function showSandboxError(message, instruction, command) {
-    const existing = document.getElementById(WIDGET_ID2);
-    if (existing)
-      existing.remove();
-    const overlay = document.createElement("div");
-    overlay.id = WIDGET_ID2;
-    Object.assign(overlay.style, {
-      position: "fixed",
-      bottom: "16px",
-      right: "16px",
-      width: "420px",
-      maxWidth: "calc(100vw - 32px)",
-      zIndex: "2147483644",
-      background: "#1a1b26",
-      border: "1px solid #f7768e",
-      borderRadius: "12px",
-      padding: "20px",
-      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.4)",
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      color: "#a9b1d6"
-    });
-    const title = document.createElement("div");
-    title.textContent = "Terminal Unavailable";
-    Object.assign(title.style, {
-      fontSize: "14px",
-      fontWeight: "600",
-      color: "#f7768e",
-      marginBottom: "8px"
-    });
-    const msg = document.createElement("div");
-    msg.textContent = message;
-    Object.assign(msg.style, {
-      fontSize: "12px",
-      color: "#787c99",
-      marginBottom: "12px",
-      lineHeight: "1.4"
-    });
-    const inst = document.createElement("div");
-    inst.textContent = instruction;
-    Object.assign(inst.style, {
-      fontSize: "12px",
-      color: "#a9b1d6",
-      marginBottom: "8px"
-    });
-    const cmdBox = document.createElement("div");
-    Object.assign(cmdBox.style, {
-      background: "#16161e",
-      border: "1px solid #292e42",
-      borderRadius: "6px",
-      padding: "10px 12px",
-      fontFamily: '"SF Mono", "Fira Code", Menlo, Monaco, monospace',
-      fontSize: "12px",
-      color: "#9ece6a",
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      marginBottom: "12px"
-    });
-    const cmdText = document.createElement("span");
-    cmdText.textContent = command;
-    cmdText.style.flex = "1";
-    const copyIcon = document.createElement("span");
-    copyIcon.textContent = "Copy";
-    Object.assign(copyIcon.style, {
-      fontSize: "11px",
-      color: "#565f89",
-      flexShrink: "0"
-    });
-    cmdBox.appendChild(cmdText);
-    cmdBox.appendChild(copyIcon);
-    cmdBox.addEventListener("click", () => {
-      void navigator.clipboard.writeText(command).then(() => {
-        copyIcon.textContent = "Copied!";
-        copyIcon.style.color = "#9ece6a";
-        setTimeout(() => {
-          copyIcon.textContent = "Copy";
-          copyIcon.style.color = "#565f89";
-        }, 2e3);
-      }).catch(() => {
-        copyIcon.textContent = "Select & copy manually";
-        copyIcon.style.color = "#f7768e";
-      });
-    });
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "Dismiss";
-    closeBtn.type = "button";
-    Object.assign(closeBtn.style, {
-      background: "#292e42",
-      border: "none",
-      borderRadius: "6px",
-      padding: "6px 16px",
-      color: "#a9b1d6",
-      fontSize: "12px",
-      cursor: "pointer",
-      width: "100%"
-    });
-    closeBtn.addEventListener("click", () => {
-      overlay.remove();
-      state.widgetEl = null;
-      state.visible = false;
-    });
-    overlay.appendChild(title);
-    overlay.appendChild(msg);
-    overlay.appendChild(inst);
-    overlay.appendChild(cmdBox);
-    overlay.appendChild(closeBtn);
-    state.widgetEl = overlay;
-    state.visible = true;
-    const target = document.body || document.documentElement;
-    if (target)
-      target.appendChild(overlay);
+  function setPanelVisible(nextVisible) {
+    if (panelVisible === nextVisible)
+      return;
+    panelVisible = nextVisible;
+    notifyVisibilityListeners(panelVisible);
   }
-  function createWidget(token) {
-    state.terminalConnected = false;
-    const widget = document.createElement("div");
-    widget.id = WIDGET_ID2;
-    Object.assign(widget.style, {
-      position: "fixed",
-      bottom: "0",
-      right: "0",
-      width: DEFAULT_WIDGET_WIDTH,
-      height: DEFAULT_WIDGET_HEIGHT,
-      minWidth: MIN_WIDGET_WIDTH,
-      minHeight: MIN_WIDGET_HEIGHT,
-      maxWidth: MAX_WIDGET_WIDTH,
-      maxHeight: MAX_WIDGET_HEIGHT,
-      zIndex: "2147483644",
-      display: "flex",
-      flexDirection: "column",
-      borderRadius: "12px 0 0 0",
-      overflow: "hidden",
-      boxShadow: "0 -4px 24px rgba(0, 0, 0, 0.3)",
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      transition: "opacity 200ms ease, transform 200ms ease",
-      transformOrigin: "bottom right"
-    });
-    const resizeHandle = document.createElement("div");
-    Object.assign(resizeHandle.style, {
-      position: "absolute",
-      top: "0",
-      left: "0",
-      width: "12px",
-      height: "12px",
-      cursor: "nw-resize",
-      zIndex: "10"
-    });
-    setupResize(resizeHandle, widget);
-    state.resizeHandleEl = resizeHandle;
-    widget.appendChild(resizeHandle);
-    const header = document.createElement("div");
-    header.id = HEADER_ID;
-    Object.assign(header.style, {
-      height: "32px",
-      background: "#16161e",
-      display: "flex",
-      alignItems: "center",
-      padding: "0 8px 0 12px",
-      gap: "8px",
-      borderBottom: "1px solid #292e42",
-      cursor: "default",
-      flexShrink: "0"
-    });
-    const statusDot = document.createElement("span");
-    statusDot.className = "gasoline-terminal-status-dot";
-    Object.assign(statusDot.style, {
-      width: "8px",
-      height: "8px",
-      borderRadius: "50%",
-      background: "#565f89",
-      flexShrink: "0",
-      transition: "background 200ms ease"
-    });
-    const titleSpan = document.createElement("span");
-    titleSpan.textContent = "Gasoline Terminal";
-    Object.assign(titleSpan.style, {
-      color: "#787c99",
-      fontSize: "12px",
-      fontWeight: "600",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-      whiteSpace: "nowrap",
-      userSelect: "none"
-    });
-    const minimizeTerminalButton = document.createElement("button");
-    minimizeTerminalButton.id = MINIMIZE_TERMINAL_BUTTON_ID;
-    minimizeTerminalButton.textContent = "\u2581";
-    minimizeTerminalButton.title = "Minimize terminal";
-    minimizeTerminalButton.type = "button";
-    Object.assign(minimizeTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#565f89",
-      fontSize: "14px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0"
-    });
-    minimizeTerminalButton.addEventListener("mouseenter", () => {
-      minimizeTerminalButton.style.background = "#292e42";
-      minimizeTerminalButton.style.color = "#a9b1d6";
-    });
-    minimizeTerminalButton.addEventListener("mouseleave", () => {
-      minimizeTerminalButton.style.background = "transparent";
-      minimizeTerminalButton.style.color = "#565f89";
-    });
-    minimizeTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleMinimize(widget, minimizeTerminalButton, header);
-    });
-    const disconnectTerminalButton = document.createElement("button");
-    disconnectTerminalButton.id = DISCONNECT_TERMINAL_BUTTON_ID;
-    disconnectTerminalButton.textContent = "\u23FB";
-    disconnectTerminalButton.title = "disconnect terminal & and end session";
-    disconnectTerminalButton.type = "button";
-    Object.assign(disconnectTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#f7768e",
-      fontSize: "12px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0",
-      opacity: "0.7",
-      transition: "opacity 150ms ease, background 150ms ease, box-shadow 150ms ease"
-    });
-    disconnectTerminalButton.addEventListener("mouseenter", () => {
-      disconnectTerminalButton.style.background = "#3b1219";
-      disconnectTerminalButton.style.opacity = "1";
-      disconnectTerminalButton.style.boxShadow = "0 0 8px rgba(247, 118, 142, 0.4)";
-    });
-    disconnectTerminalButton.addEventListener("mouseleave", () => {
-      disconnectTerminalButton.style.background = "transparent";
-      disconnectTerminalButton.style.opacity = "0.7";
-      disconnectTerminalButton.style.boxShadow = "none";
-    });
-    disconnectTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (_exitTerminalSessionCb)
-        void _exitTerminalSessionCb();
-    });
-    const spacer = document.createElement("div");
-    spacer.style.flex = "1";
-    const redrawTerminalButton = document.createElement("button");
-    redrawTerminalButton.id = REDRAW_TERMINAL_BUTTON_ID;
-    redrawTerminalButton.textContent = "\u21BB";
-    redrawTerminalButton.title = "Redraw terminal graphics";
-    redrawTerminalButton.type = "button";
-    Object.assign(redrawTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#565f89",
-      fontSize: "14px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0"
-    });
-    redrawTerminalButton.addEventListener("mouseenter", () => {
-      redrawTerminalButton.style.background = "#292e42";
-      redrawTerminalButton.style.color = "#a9b1d6";
-    });
-    redrawTerminalButton.addEventListener("mouseleave", () => {
-      redrawTerminalButton.style.background = "transparent";
-      redrawTerminalButton.style.color = "#565f89";
-    });
-    redrawTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      redrawTerminal(widget, header, minimizeTerminalButton);
-    });
-    const closeTerminalButton = document.createElement("button");
-    closeTerminalButton.id = CLOSE_TERMINAL_BUTTON_ID;
-    closeTerminalButton.textContent = "\u2715";
-    closeTerminalButton.title = "Close terminal";
-    closeTerminalButton.type = "button";
-    Object.assign(closeTerminalButton.style, {
-      width: "24px",
-      height: "24px",
-      border: "none",
-      background: "transparent",
-      color: "#565f89",
-      fontSize: "14px",
-      cursor: "pointer",
-      borderRadius: "4px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: "0"
-    });
-    closeTerminalButton.addEventListener("mouseenter", () => {
-      closeTerminalButton.style.background = "#292e42";
-      closeTerminalButton.style.color = "#a9b1d6";
-    });
-    closeTerminalButton.addEventListener("mouseleave", () => {
-      closeTerminalButton.style.background = "transparent";
-      closeTerminalButton.style.color = "#565f89";
-    });
-    closeTerminalButton.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (_hideTerminalCb)
-        _hideTerminalCb();
-    });
-    header.addEventListener("click", () => {
-      if (!state.minimized)
+  async function syncPanelVisibilityFromStorage() {
+    try {
+      const value = await getSession(StorageKey.TERMINAL_UI_STATE);
+      const uiState = value;
+      setPanelVisible(uiState === "open");
+    } catch {
+    }
+  }
+  function installStorageListener() {
+    if (storageListenerInstalled)
+      return;
+    storageListenerInstalled = true;
+    onStorageChanged((changes, areaName) => {
+      if (areaName !== "session")
         return;
-      toggleMinimize(widget, minimizeTerminalButton, header);
-    });
-    header.appendChild(statusDot);
-    header.appendChild(titleSpan);
-    header.appendChild(disconnectTerminalButton);
-    header.appendChild(spacer);
-    header.appendChild(redrawTerminalButton);
-    header.appendChild(minimizeTerminalButton);
-    header.appendChild(closeTerminalButton);
-    const iframe = document.createElement("iframe");
-    iframe.id = IFRAME_ID;
-    iframe.src = `${getTerminalServerUrl(state.serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
-    Object.assign(iframe.style, {
-      flex: "1",
-      width: "100%",
-      border: "none",
-      background: "#1a1b26"
-    });
-    iframe.setAttribute("allow", "clipboard-write");
-    widget.appendChild(header);
-    widget.appendChild(iframe);
-    state.iframeEl = iframe;
-    window.addEventListener("message", handleIframeMessage);
-    return widget;
-  }
-  function updateStatusDot(dotState) {
-    const dot = state.widgetEl?.querySelector(".gasoline-terminal-status-dot");
-    if (!dot)
-      return;
-    switch (dotState) {
-      case "connected":
-        dot.style.background = "#9ece6a";
-        break;
-      case "disconnected":
-        dot.style.background = "#e0af68";
-        break;
-      case "exited":
-        dot.style.background = "#f7768e";
-        break;
-    }
-  }
-  function handleIframeMessage(event) {
-    if (!event.data || event.data.source !== "gasoline-terminal")
-      return;
-    try {
-      const termOrigin = getTerminalServerUrl(state.serverUrl);
-      if (event.origin !== termOrigin)
+      const change = changes[StorageKey.TERMINAL_UI_STATE];
+      if (!change)
         return;
-    } catch {
-      return;
-    }
-    switch (event.data.event) {
-      case "connected":
-        updateStatusDot("connected");
-        state.terminalConnected = true;
-        if (state.queuedWrites.length > 0 && !state.queuedWriteInFlight) {
-          if (_scheduleQueuedWriteFlushCb)
-            _scheduleQueuedWriteFlushCb(0);
-        }
-        break;
-      case "disconnected":
-        updateStatusDot("disconnected");
-        state.terminalConnected = false;
-        state.terminalFocused = false;
-        break;
-      case "exited":
-        updateStatusDot("exited");
-        state.terminalConnected = false;
-        state.terminalFocused = false;
-        if (_resetWriteGuardStateCb)
-          _resetWriteGuardStateCb();
-        break;
-      case "focus":
-        state.terminalFocused = Boolean(event.data.data?.focused);
-        if (state.terminalFocused) {
-          state.lastTypingAt = Date.now();
-        } else if (state.queuedWrites.length > 0 && !state.queuedWriteInFlight) {
-          if (_scheduleQueuedWriteFlushCb)
-            _scheduleQueuedWriteFlushCb(0);
-        }
-        break;
-      case "typing": {
-        const rawAt = event.data.data?.at;
-        const parsedAt = typeof rawAt === "number" && Number.isFinite(rawAt) ? rawAt : Date.now();
-        state.terminalFocused = true;
-        state.lastTypingAt = parsedAt;
-        break;
-      }
-    }
-  }
-  function setupResize(handle, widget) {
-    let startX = 0;
-    let startY = 0;
-    let startWidth = 0;
-    let startHeight = 0;
-    function onMouseDown(e) {
-      e.preventDefault();
-      startX = e.clientX;
-      startY = e.clientY;
-      startWidth = widget.offsetWidth;
-      startHeight = widget.offsetHeight;
-      document.addEventListener("mousemove", onMouseMove);
-      document.addEventListener("mouseup", onMouseUp);
-      if (state.iframeEl)
-        state.iframeEl.style.pointerEvents = "none";
-    }
-    function onMouseMove(e) {
-      const newWidth = startWidth - (e.clientX - startX);
-      const newHeight = startHeight - (e.clientY - startY);
-      widget.style.width = Math.max(400, Math.min(window.innerWidth, newWidth)) + "px";
-      widget.style.height = Math.max(250, Math.min(window.innerHeight * 0.8, newHeight)) + "px";
-    }
-    function onMouseUp() {
-      document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mouseup", onMouseUp);
-      if (state.iframeEl)
-        state.iframeEl.style.pointerEvents = "auto";
-      notifyIframe("resize");
-    }
-    handle.addEventListener("mousedown", onMouseDown);
-  }
-  function redrawTerminal(widget, header, minimizeButton) {
-    if (state.minimized) {
-      toggleMinimize(widget, minimizeButton, header);
-    }
-    state.savedHeight = DEFAULT_WIDGET_HEIGHT;
-    widget.style.bottom = "0";
-    widget.style.right = "0";
-    widget.style.width = DEFAULT_WIDGET_WIDTH;
-    widget.style.height = DEFAULT_WIDGET_HEIGHT;
-    widget.style.minWidth = MIN_WIDGET_WIDTH;
-    widget.style.minHeight = MIN_WIDGET_HEIGHT;
-    widget.style.maxWidth = MAX_WIDGET_WIDTH;
-    widget.style.maxHeight = MAX_WIDGET_HEIGHT;
-    widget.style.opacity = "1";
-    widget.style.transform = "translateY(0) scale(1)";
-    widget.style.pointerEvents = "auto";
-    if (state.iframeEl) {
-      state.iframeEl.style.display = "block";
-      updateStatusDot("disconnected");
-      state.iframeEl.src = state.iframeEl.src;
-    }
-    if (state.resizeHandleEl)
-      state.resizeHandleEl.style.display = "block";
-    minimizeButton.textContent = "\u2581";
-    minimizeButton.title = "Minimize terminal";
-    header.style.cursor = "default";
-    header.style.borderBottom = "1px solid #292e42";
-    state.visible = true;
-    requestAnimationFrame(() => {
-      notifyIframe("resize");
-      notifyIframe("focus");
-    });
-    persistUIState("open");
-  }
-  function toggleMinimize(widget, btn, header) {
-    if (state.minimized) {
-      state.minimized = false;
-      widget.style.height = state.savedHeight || DEFAULT_WIDGET_HEIGHT;
-      widget.style.minHeight = MIN_WIDGET_HEIGHT;
-      if (state.iframeEl)
-        state.iframeEl.style.display = "block";
-      if (state.resizeHandleEl)
-        state.resizeHandleEl.style.display = "block";
-      btn.textContent = "\u2581";
-      btn.title = "Minimize terminal";
-      header.style.cursor = "default";
-      header.style.borderBottom = "1px solid #292e42";
-      notifyIframe("resize");
-      persistUIState("open");
-    } else {
-      state.minimized = true;
-      state.savedHeight = widget.style.height || DEFAULT_WIDGET_HEIGHT;
-      widget.style.height = MINIMIZED_WIDGET_HEIGHT;
-      widget.style.minHeight = MINIMIZED_WIDGET_HEIGHT;
-      if (state.iframeEl)
-        state.iframeEl.style.display = "none";
-      if (state.resizeHandleEl)
-        state.resizeHandleEl.style.display = "none";
-      btn.textContent = "\u25A1";
-      btn.title = "Restore terminal";
-      header.style.cursor = "pointer";
-      header.style.borderBottom = "none";
-      persistUIState("minimized");
-    }
-  }
-  function notifyIframe(command, data) {
-    if (!state.iframeEl?.contentWindow)
-      return;
-    let origin = "*";
-    try {
-      origin = getTerminalServerUrl(state.serverUrl);
-    } catch {
-    }
-    state.iframeEl.contentWindow.postMessage({
-      target: "gasoline-terminal",
-      command,
-      ...data
-    }, origin);
-  }
-
-  // extension/content/ui/terminal-widget-session.js
-  function getServerUrl() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.SERVER_URL], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve(DEFAULT_SERVER_URL);
-            return;
-          }
-          const url = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
-          state.serverUrl = url;
-          resolve(url);
-        });
-      } catch {
-        resolve(DEFAULT_SERVER_URL);
-      }
+      const nextValue = change.newValue;
+      setPanelVisible(nextValue === "open");
     });
   }
-  function getTerminalConfig() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({});
-            return;
-          }
-          const config = result[StorageKey.TERMINAL_CONFIG] || {};
-          resolve(config);
-        });
-      } catch {
-        resolve({});
-      }
-    });
-  }
-  function getTerminalAICommand() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("claude");
-            return;
-          }
-          const cmd = result[StorageKey.TERMINAL_AI_COMMAND] || "claude";
-          resolve(cmd);
-        });
-      } catch {
-        resolve("claude");
-      }
-    });
-  }
-  function getTerminalDevRoot() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve("");
-            return;
-          }
-          resolve(result[StorageKey.TERMINAL_DEV_ROOT] || "");
-        });
-      } catch {
-        resolve("");
-      }
-    });
-  }
-  function persistSession(ss) {
-    try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
-  }
-  function clearPersistedSession() {
-    try {
-      chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
-  }
-  function persistUIState(uiState) {
-    try {
-      chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
-  }
-  function loadPersistedSession() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.session.get([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], (result) => {
-          if (chrome.runtime.lastError) {
-            resolve({ session: null, uiState: "closed" });
-            return;
-          }
-          const session = result[StorageKey.TERMINAL_SESSION];
-          const uiState = result[StorageKey.TERMINAL_UI_STATE] || "closed";
-          resolve({ session: session || null, uiState });
-        });
-      } catch {
-        resolve({ session: null, uiState: "closed" });
-      }
-    });
-  }
-  async function validateSession(token) {
-    try {
-      const base = await getServerUrl();
-      const termUrl = getTerminalServerUrl(base);
-      const resp = await fetch(`${termUrl}/terminal/validate?token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(2e3) });
-      if (!resp.ok)
-        return false;
-      const data = await resp.json();
-      return data.valid === true;
-    } catch {
-      return false;
-    }
-  }
-  async function startSession(config) {
-    const base = await getServerUrl();
-    const termUrl = getTerminalServerUrl(base);
-    const aiCommand = await getTerminalAICommand();
-    const devRoot = await getTerminalDevRoot();
-    try {
-      const initCommand = aiCommand ? `unset CLAUDECODE 2>/dev/null; ${aiCommand}` : "";
-      const resp = await fetch(`${termUrl}/terminal/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cmd: config.cmd || "",
-          args: config.args || [],
-          dir: config.dir || devRoot || "",
-          init_command: initCommand
-        })
-      });
-      if (!resp.ok) {
-        const body = await resp.json();
-        if (resp.status === 503 && body.error === "sandbox_restricted") {
-          showSandboxError(body.message ?? "", body.instruction ?? "", body.command ?? "");
-          return null;
-        }
-        if (resp.status === 409 && body.token) {
-          const ss2 = { sessionId: body.session_id ?? "default", token: body.token };
-          persistSession(ss2);
-          return ss2;
-        }
-        console.warn("[Gasoline] Terminal session rejected (HTTP " + resp.status + "): " + (body.error ?? "unknown") + ". Check the daemon logs for details.");
-        return null;
-      }
-      const data = await resp.json();
-      const ss = { sessionId: data.session_id, token: data.token };
-      persistSession(ss);
-      return ss;
-    } catch (err) {
-      console.warn("[Gasoline] Terminal session start failed: " + (err instanceof Error ? err.message : String(err)) + ". Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser");
-      return null;
-    }
-  }
-
-  // extension/content/ui/terminal-widget.js
-  function resetWriteGuardState() {
-    state.queuedWrites = [];
-    state.terminalFocused = false;
-    state.lastTypingAt = 0;
-    state.queuedWriteInFlight = false;
-    state.lastGuardToastAt = 0;
-    if (state.queuedWriteFlushTimer !== null) {
-      clearTimeout(state.queuedWriteFlushTimer);
-      state.queuedWriteFlushTimer = null;
-    }
-    if (state.queuedSubmitTimer !== null) {
-      clearTimeout(state.queuedSubmitTimer);
-      state.queuedSubmitTimer = null;
-    }
-  }
-  function shouldDeferQueuedWrite(nowMs = Date.now()) {
-    if (!state.terminalFocused)
-      return false;
-    return nowMs - state.lastTypingAt < TERMINAL_TYPING_IDLE_MS;
-  }
-  function maybeShowQueuedWriteToast(nowMs = Date.now()) {
-    if (nowMs - state.lastGuardToastAt < TERMINAL_GUARD_TOAST_INTERVAL_MS)
+  async function initTerminalPanelBridge() {
+    if (bridgeInitialized)
       return;
-    state.lastGuardToastAt = nowMs;
-    showActionToast("waiting for user to stop typing", "Queued terminal action", "warning", 1800);
-  }
-  function scheduleQueuedWriteFlush(delayMs = 0) {
-    if (state.queuedWriteFlushTimer !== null)
-      clearTimeout(state.queuedWriteFlushTimer);
-    state.queuedWriteFlushTimer = setTimeout(() => {
-      state.queuedWriteFlushTimer = null;
-      flushQueuedWrites();
-    }, delayMs);
-  }
-  function scheduleQueuedSubmit(delayMs) {
-    if (state.queuedSubmitTimer !== null)
-      clearTimeout(state.queuedSubmitTimer);
-    state.queuedSubmitTimer = setTimeout(() => {
-      state.queuedSubmitTimer = null;
-      if (!state.visible || !state.iframeEl) {
-        resetWriteGuardState();
-        return;
-      }
-      if (!state.terminalConnected) {
-        scheduleQueuedSubmit(TERMINAL_GUARD_POLL_MS);
-        return;
-      }
-      if (shouldDeferQueuedWrite()) {
-        maybeShowQueuedWriteToast();
-        scheduleQueuedSubmit(TERMINAL_GUARD_POLL_MS);
-        return;
-      }
-      notifyIframe("write", { text: "\r" });
-      notifyIframe("focus");
-      state.queuedWriteInFlight = false;
-      if (state.queuedWrites.length > 0) {
-        scheduleQueuedWriteFlush(0);
-      }
-    }, delayMs);
-  }
-  function flushQueuedWrites() {
-    if (!state.visible || !state.iframeEl) {
-      resetWriteGuardState();
-      return;
-    }
-    if (!state.terminalConnected) {
-      scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
-      return;
-    }
-    if (state.queuedWriteInFlight)
-      return;
-    if (state.queuedWrites.length === 0) {
-      state.lastGuardToastAt = 0;
-      return;
-    }
-    if (shouldDeferQueuedWrite()) {
-      maybeShowQueuedWriteToast();
-      scheduleQueuedWriteFlush(TERMINAL_GUARD_POLL_MS);
-      return;
-    }
-    const nextWrite = state.queuedWrites.shift();
-    if (!nextWrite)
-      return;
-    state.lastGuardToastAt = 0;
-    state.queuedWriteInFlight = true;
-    notifyIframe("redraw");
-    notifyIframe("write", { text: nextWrite });
-    scheduleQueuedSubmit(TERMINAL_WRITE_SUBMIT_DELAY_MS);
-  }
-  function hideTerminal() {
-    if (!state.widgetEl)
-      return;
-    state.visible = false;
-    state.widgetEl.style.opacity = "0";
-    state.widgetEl.style.transform = "translateY(20px) scale(0.98)";
-    state.widgetEl.style.pointerEvents = "none";
-    resetWriteGuardState();
-    persistUIState("closed");
-  }
-  async function exitTerminalSession() {
-    if (state.sessionState) {
-      try {
-        const termUrl = getTerminalServerUrl(state.serverUrl);
-        await fetch(`${termUrl}/terminal/stop`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: state.sessionState.sessionId }),
-          signal: AbortSignal.timeout(3e3)
-        });
-      } catch {
-      }
-    }
-    clearPersistedSession();
-    unmountTerminal();
-  }
-  function showTerminal() {
-    if (!state.widgetEl)
-      return;
-    state.visible = true;
-    state.widgetEl.style.opacity = "1";
-    state.widgetEl.style.transform = "translateY(0) scale(1)";
-    state.widgetEl.style.pointerEvents = "auto";
-    notifyIframe("focus");
-    persistUIState(state.minimized ? "minimized" : "open");
+    bridgeInitialized = true;
+    installStorageListener();
+    await syncPanelVisibilityFromStorage();
   }
   function isTerminalVisible() {
-    return state.visible;
+    return panelVisible;
   }
-  async function toggleTerminal() {
-    if (state.visible && state.widgetEl) {
-      hideTerminal();
-      return;
-    }
-    if (state.widgetEl && state.sessionState) {
-      showTerminal();
-      return;
-    }
-    await getServerUrl();
-    const persisted = await loadPersistedSession();
-    if (persisted.session) {
-      const alive = await validateSession(persisted.session.token);
-      if (alive) {
-        state.sessionState = persisted.session;
-        mountWidget(persisted.session.token, persisted.uiState === "minimized");
-        return;
-      }
-      clearPersistedSession();
-    }
-    const config = await getTerminalConfig();
-    const ss = await startSession(config);
-    if (!ss)
-      return;
-    state.sessionState = ss;
-    mountWidget(ss.token, false);
+  function onTerminalPanelVisibilityChanged(listener) {
+    visibilityListeners.add(listener);
+    return () => {
+      visibilityListeners.delete(listener);
+    };
   }
-  async function restoreTerminalIfNeeded() {
-    const persisted = await loadPersistedSession();
-    if (!persisted.session || persisted.uiState === "closed")
-      return;
-    await getServerUrl();
-    const alive = await validateSession(persisted.session.token);
-    if (!alive) {
-      clearPersistedSession();
-      const config = await getTerminalConfig();
-      const ss = await startSession(config);
-      if (!ss)
-        return;
-      state.sessionState = ss;
-      mountWidget(ss.token, persisted.uiState === "minimized");
-      return;
+  async function openTerminalPanel() {
+    try {
+      const result = await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+      return result?.success === true;
+    } catch {
+      return false;
     }
-    state.sessionState = persisted.session;
-    mountWidget(persisted.session.token, persisted.uiState === "minimized");
   }
-  var MAX_QUEUED_WRITES = 200;
   function writeToTerminal(text) {
-    if (!state.visible || !state.iframeEl)
+    if (!panelVisible)
       return;
-    const trimmed = text.replace(/[\r\n\s]+$/, "");
-    if (!trimmed)
-      return;
-    state.queuedWrites.push(trimmed);
-    if (state.queuedWrites.length > MAX_QUEUED_WRITES) {
-      state.queuedWrites = state.queuedWrites.slice(-MAX_QUEUED_WRITES);
+    try {
+      chrome.runtime.sendMessage({ type: "terminal_panel_write", text });
+    } catch {
     }
-    scheduleQueuedWriteFlush(0);
   }
-  function mountWidget(token, startMinimized) {
-    if (state.widgetEl) {
-      state.widgetEl.remove();
-      state.widgetEl = null;
-    }
-    state.widgetEl = createWidget(token);
-    const target = document.body || document.documentElement;
-    if (!target)
-      return;
-    target.appendChild(state.widgetEl);
-    state.widgetEl.style.opacity = "0";
-    state.widgetEl.style.transform = "translateY(20px) scale(0.98)";
-    requestAnimationFrame(() => {
-      showTerminal();
-      if (startMinimized) {
-        const header = state.widgetEl?.querySelector("#" + HEADER_ID);
-        const minimizeTerminalButton = header?.querySelector("#" + MINIMIZE_TERMINAL_BUTTON_ID);
-        if (state.widgetEl && header && minimizeTerminalButton) {
-          toggleMinimize(state.widgetEl, minimizeTerminalButton, header);
-        }
-      }
-    });
-  }
-  function unmountTerminal() {
-    window.removeEventListener("message", handleIframeMessage);
-    resetWriteGuardState();
-    state.terminalConnected = false;
-    if (state.widgetEl) {
-      state.widgetEl.remove();
-      state.widgetEl = null;
-    }
-    state.iframeEl = null;
-    state.resizeHandleEl = null;
-    state.sessionState = null;
-    state.visible = false;
-    state.minimized = false;
-    state.savedHeight = "";
-  }
-  registerUICallbacks({
-    hideTerminal,
-    exitTerminalSession,
-    resetWriteGuardState,
-    scheduleQueuedWriteFlush
-  });
 
   // extension/content/ui/tracked-hover-launcher.js
-  var ROOT_ID = "gasoline-tracked-hover-launcher";
-  var PANEL_ID = "gasoline-tracked-hover-panel";
-  var TOGGLE_ID = "gasoline-tracked-hover-toggle";
-  var SETTINGS_MENU_ID = "gasoline-tracked-hover-settings-menu";
+  var ROOT_ID = "kaboom-tracked-hover-launcher";
+  var PANEL_ID = "kaboom-tracked-hover-panel";
+  var TOGGLE_ID = "kaboom-tracked-hover-toggle";
+  var SETTINGS_MENU_ID = "kaboom-tracked-hover-settings-menu";
   var rootEl = null;
   var panelEl = null;
   var settingsMenuEl = null;
@@ -2933,34 +2211,10 @@
   var hiddenUntilPopupOpen = false;
   var hideTimer = null;
   var recordingStorageListener = null;
+  var recordingStorageUnsubscribe = null;
   var runtimeListenerInstalled = false;
   var annotationListenerInstalled = false;
-  async function checkTerminalReachable() {
-    try {
-      let baseUrl = DEFAULT_SERVER_URL;
-      try {
-        const result = await new Promise((resolve) => {
-          chrome.storage.local.get([StorageKey.SERVER_URL], (r) => {
-            if (chrome.runtime.lastError) {
-              resolve({});
-              return;
-            }
-            resolve(r);
-          });
-        });
-        baseUrl = result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL;
-      } catch {
-      }
-      const url = new URL(baseUrl);
-      url.port = String(parseInt(url.port || "7890", 10) + TERMINAL_PORT_OFFSET);
-      const resp = await fetch(`${url.origin}/terminal/config`, {
-        signal: AbortSignal.timeout(2e3)
-      });
-      return resp.ok;
-    } catch {
-      return false;
-    }
-  }
+  var terminalVisibilityUnsubscribe = null;
   function clearHideTimer() {
     if (!hideTimer)
       return;
@@ -2999,15 +2253,12 @@
       return;
     stopButtonEl.style.display = active ? "flex" : "none";
   }
-  function syncRecordingStateFromStorage() {
+  async function syncRecordingStateFromStorage() {
     try {
-      chrome.storage.local.get([StorageKey.RECORDING], (result) => {
-        if (chrome.runtime.lastError)
-          return;
-        const rec = result[StorageKey.RECORDING];
-        const active = rec != null && typeof rec === "object" && Boolean(rec.active);
-        updateStopButtonVisibility(active);
-      });
+      const value = await getLocal(StorageKey.RECORDING);
+      const rec = value;
+      const active = rec != null && typeof rec === "object" && Boolean(rec.active);
+      updateStopButtonVisibility(active);
     } catch {
     }
   }
@@ -3024,39 +2275,31 @@
       const active = rec != null && typeof rec === "object" && Boolean(rec.active);
       updateStopButtonVisibility(active);
     };
-    chrome.storage.onChanged.addListener(recordingStorageListener);
+    recordingStorageUnsubscribe = onStorageChanged(recordingStorageListener);
   }
   function uninstallRecordingStorageSync() {
     if (!recordingStorageListener)
       return;
-    chrome.storage.onChanged.removeListener(recordingStorageListener);
+    if (recordingStorageUnsubscribe) {
+      recordingStorageUnsubscribe();
+      recordingStorageUnsubscribe = null;
+    }
     recordingStorageListener = null;
   }
-  function syncHiddenStateFromStorage(onSynced) {
+  async function syncHiddenStateFromStorage() {
     try {
-      chrome.storage.local.get([StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN], (result) => {
-        if (chrome.runtime.lastError) {
-          onSynced();
-          return;
-        }
-        hiddenUntilPopupOpen = Boolean(result[StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]);
-        onSynced();
-      });
+      const value = await getLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
+      hiddenUntilPopupOpen = Boolean(value);
     } catch {
-      onSynced();
     }
   }
   function persistHiddenState(hidden) {
     try {
       if (hidden) {
-        chrome.storage.local.set({ [StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN]: true }, () => {
-          void chrome.runtime.lastError;
-        });
+        void setLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, true);
         return;
       }
-      chrome.storage.local.remove(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN, () => {
-        void chrome.runtime.lastError;
-      });
+      void removeLocal(StorageKey.TRACKED_HOVER_LAUNCHER_HIDDEN);
     } catch {
     }
   }
@@ -3084,8 +2327,15 @@
       return false;
     });
   }
+  function installTerminalVisibilitySync() {
+    if (terminalVisibilityUnsubscribe)
+      return;
+    terminalVisibilityUnsubscribe = onTerminalPanelVisibilityChanged(() => {
+      applyVisibilityFromState();
+    });
+  }
   function applyVisibilityFromState() {
-    if (trackedEnabled && !hiddenUntilPopupOpen) {
+    if (trackedEnabled && !hiddenUntilPopupOpen && !isTerminalVisible()) {
       mountLauncher();
       return;
     }
@@ -3127,18 +2377,18 @@
     if (annotationListenerInstalled)
       return;
     annotationListenerInstalled = true;
-    window.addEventListener("gasoline-annotations-ready", handleAnnotationsReady);
+    window.addEventListener("kaboom-annotations-ready", handleAnnotationsReady);
   }
   function uninstallAnnotationListener() {
     if (!annotationListenerInstalled)
       return;
     annotationListenerInstalled = false;
-    window.removeEventListener("gasoline-annotations-ready", handleAnnotationsReady);
+    window.removeEventListener("kaboom-annotations-ready", handleAnnotationsReady);
   }
   async function startDrawMode() {
     try {
       if (!chrome?.runtime?.getURL) {
-        console.warn("[Gasoline] Draw mode unavailable: extension context invalidated. Refresh the page to restore.");
+        console.warn("[KaBOOM!] Draw mode unavailable: extension context invalidated. Refresh the page to restore.");
         return;
       }
       const drawModeModule = await import(
@@ -3149,7 +2399,7 @@
         drawModeModule.activateDrawMode("user");
       }
     } catch (err) {
-      console.warn("[Gasoline] Draw mode failed to load: " + (err instanceof Error ? err.message : String(err)) + ". The extension may need to be reloaded at chrome://extensions.");
+      console.warn("[KaBOOM!] Draw mode failed to load: " + (err instanceof Error ? err.message : String(err)) + ". The extension may need to be reloaded at chrome://extensions.");
     }
   }
   var shutterAudioCtx = null;
@@ -3201,7 +2451,7 @@
       }
     }
     try {
-      chrome.runtime.sendMessage({ type: "captureScreenshot" }, (response) => {
+      chrome.runtime.sendMessage({ type: "capture_screenshot" }, (response) => {
         const err = chrome.runtime.lastError;
         const success = !err && response !== void 0 && response.success !== false;
         showScreenshotFlash(success);
@@ -3326,22 +2576,7 @@
     });
     return link;
   }
-  function injectPulseKeyframes() {
-    if (document.getElementById("gasoline-pulse-keyframes"))
-      return;
-    const style = document.createElement("style");
-    style.id = "gasoline-pulse-keyframes";
-    style.textContent = `
-    @keyframes gasoline-pulse {
-      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.45); }
-      70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
-    }
-  `;
-    (document.head || document.documentElement).appendChild(style);
-  }
   function createLauncherUi() {
-    injectPulseKeyframes();
     const root = document.createElement("div");
     root.id = ROOT_ID;
     Object.assign(root.style, {
@@ -3354,7 +2589,9 @@
       gap: "8px",
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       opacity: "0.65",
-      transition: "opacity 200ms ease"
+      transition: "opacity 200ms ease",
+      pointerEvents: "none"
+      // Only the toggle circle is interactive when collapsed
     });
     const panel = document.createElement("div");
     panel.id = PANEL_ID;
@@ -3388,23 +2625,12 @@
     });
     screenshotButton.style.fontSize = "26px";
     screenshotButton.style.paddingBottom = "5px";
-    let terminalReachable = true;
-    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open an interactive CLI session", () => {
-      if (!terminalReachable)
-        return;
+    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open the side panel terminal", () => {
       panelPinned = false;
       setPanelOpen(false);
-      void toggleTerminal();
+      void openTerminalPanel();
     });
     terminalButton.style.fontSize = "21px";
-    void checkTerminalReachable().then((reachable) => {
-      terminalReachable = reachable;
-      if (!reachable) {
-        terminalButton.style.opacity = "0.35";
-        terminalButton.style.cursor = "not-allowed";
-        terminalButton.title = "Terminal \u2014 unavailable (CSP blocks connections to the daemon, or terminal server not running)";
-      }
-    });
     const settingsButton = createActionButton("\u2699", "Settings \u2014 docs, GitHub, hide launcher", () => {
       panelPinned = true;
       setSettingsMenuOpen(!settingsMenuOpen);
@@ -3426,9 +2652,21 @@
       stopButton.style.color = "#fff";
     });
     stopButtonEl = stopButton;
+    let auditLaunchDebounce = 0;
+    const auditButton = createActionButton("\u2691", "Audit \u2014 run the KaBOOM! audit workflow", () => {
+      const now = Date.now();
+      if (now - auditLaunchDebounce < 500)
+        return;
+      auditLaunchDebounce = now;
+      panelPinned = false;
+      setPanelOpen(false);
+      void requestAudit(location.href);
+    });
+    auditButton.style.fontSize = "20px";
     panel.appendChild(drawButton);
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
+    panel.appendChild(auditButton);
     panel.appendChild(terminalButton);
     const dotSep = document.createElement("span");
     dotSep.textContent = "\u22EE";
@@ -3464,9 +2702,9 @@
       pointerEvents: "none",
       willChange: "opacity, transform"
     });
-    const docsLink = createSettingsMenuLink(ICON_DOCS, "Docs", "https://cookwithgasoline.com/docs");
-    const repoLink = createSettingsMenuLink(ICON_GITHUB, "GitHub Repository", "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp");
-    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide Gasoline Devtool");
+    const docsLink = createSettingsMenuLink(ICON_DOCS, "Docs", KABOOM_DOCS_URL);
+    const repoLink = createSettingsMenuLink(ICON_GITHUB, "GitHub Repository", KABOOM_REPOSITORY_URL);
+    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide KaBOOM! Devtool");
     hideButton.addEventListener("click", () => {
       hideLauncherUntilPopupReopen();
     });
@@ -3476,10 +2714,10 @@
     const toggle = document.createElement("button");
     toggle.id = TOGGLE_ID;
     toggle.type = "button";
-    toggle.title = "Gasoline quick actions";
+    toggle.title = "KaBOOM! quick actions";
     const toggleIcon = document.createElement("img");
     toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
-    toggleIcon.alt = "Gasoline";
+    toggleIcon.alt = "KaBOOM!";
     Object.assign(toggleIcon.style, {
       width: "36px",
       height: "36px",
@@ -3501,15 +2739,18 @@
       boxShadow: "0 8px 24px rgba(15, 23, 42, 0.25)",
       transition: "transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease",
       overflow: "hidden",
-      animation: "gasoline-pulse 2.5s ease-in-out infinite"
+      pointerEvents: "auto"
+      // Always interactive, even when root is pointer-events:none
     });
     toggle.addEventListener("mouseenter", () => {
       toggle.style.transform = "translateY(-1px)";
       toggle.style.boxShadow = "0 10px 26px rgba(15, 23, 42, 0.28)";
+      toggleIcon.src = chrome.runtime.getURL("icons/logo-animated.svg");
     });
     toggle.addEventListener("mouseleave", () => {
       toggle.style.transform = "translateY(0)";
       toggle.style.boxShadow = "0 8px 24px rgba(15, 23, 42, 0.25)";
+      toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
     });
     toggle.addEventListener("click", (event) => {
       event.preventDefault();
@@ -3521,14 +2762,18 @@
         setSettingsMenuOpen(false);
     });
     toggleEl = toggle;
-    root.addEventListener("mouseenter", () => {
+    toggle.addEventListener("mouseenter", () => {
       root.style.opacity = "1";
+      root.style.pointerEvents = "auto";
       clearHideTimer();
       setPanelOpen(true);
     });
     root.addEventListener("mouseleave", () => {
-      if (!panelPinned && !settingsMenuOpen)
+      if (!panelPinned && !settingsMenuOpen) {
         root.style.opacity = "0.65";
+        root.style.pointerEvents = "none";
+        toggle.style.pointerEvents = "auto";
+      }
       if (panelPinned || settingsMenuOpen)
         return;
       clearHideTimer();
@@ -3548,6 +2793,8 @@
   function mountLauncher() {
     if (hiddenUntilPopupOpen)
       return;
+    if (isTerminalVisible())
+      return;
     if (rootEl || document.getElementById(ROOT_ID))
       return;
     rootEl = createLauncherUi();
@@ -3557,11 +2804,6 @@
     target.appendChild(rootEl);
     installRecordingStorageSync();
     installAnnotationListener();
-    if (document.readyState === "complete") {
-      void restoreTerminalIfNeeded();
-    } else {
-      window.addEventListener("load", () => void restoreTerminalIfNeeded(), { once: true });
-    }
   }
   function unmountLauncher() {
     clearHideTimer();
@@ -3579,24 +2821,31 @@
     uninstallRecordingStorageSync();
     uninstallAnnotationListener();
   }
-  function setTrackedHoverLauncherEnabled(enabled) {
+  async function setTrackedHoverLauncherEnabled(enabled) {
     trackedEnabled = enabled;
     installRuntimeListener();
-    syncHiddenStateFromStorage(applyVisibilityFromState);
+    await initTerminalPanelBridge();
+    installTerminalVisibilitySync();
+    await syncHiddenStateFromStorage();
+    applyVisibilityFromState();
   }
 
   // extension/content.js
-  var scriptsInjected = false;
-  initTabTracking((tracked) => {
-    if (tracked && !scriptsInjected) {
-      initScriptInjection();
-      scriptsInjected = true;
-    }
-    setTrackedHoverLauncherEnabled(tracked);
+  isDomainCloaked().then((cloaked) => {
+    if (cloaked)
+      return;
+    let scriptsInjected = false;
+    initTabTracking((tracked) => {
+      if (tracked && !scriptsInjected) {
+        initScriptInjection();
+        scriptsInjected = true;
+      }
+      setTrackedHoverLauncherEnabled(tracked);
+    });
+    initRequestTracking();
+    initWindowMessageListener();
+    initRuntimeMessageListener();
+    initFaviconReplacer();
   });
-  initRequestTracking();
-  initWindowMessageListener();
-  initRuntimeMessageListener();
-  initFaviconReplacer();
 })();
 //# sourceMappingURL=content.bundled.js.map

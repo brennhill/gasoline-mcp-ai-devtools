@@ -18,7 +18,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Simple Event Emission & Query
 #### Setup:
-- Gasoline MCP server running
+- Kaboom MCP server running
 - Simple backend service ready to emit events
 
 #### Steps:
@@ -140,7 +140,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 6: Memory Eviction (LRU)
 #### Setup:
-- Gasoline configured with 200MB max memory
+- Kaboom configured with 200MB max memory
 - 1-hour TTL for events
 - Backend emitting continuously at 2K/sec for 2 hours
 

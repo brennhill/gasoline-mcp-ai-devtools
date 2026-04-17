@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // Params are the parsed arguments for generate({format: "reproduction"}).
@@ -48,14 +48,14 @@ func ParseParams(args json.RawMessage) Params {
 		_ = json.Unmarshal(args, &params)
 	}
 	if params.OutputFormat == "" {
-		params.OutputFormat = "gasoline-agentic-browser"
+		params.OutputFormat = "kaboom-agentic-browser"
 	}
 	return params
 }
 
 // ValidateOutputFormat returns an error message if format is invalid, empty string if OK.
 func ValidateOutputFormat(format string) string {
-	if format != "gasoline-agentic-browser" && format != "playwright" {
+	if format != "kaboom-agentic-browser" && format != "playwright" {
 		return "Invalid output_format: " + format
 	}
 	return ""
@@ -75,7 +75,7 @@ func GenerateScript(actions []capture.EnhancedAction, params Params) string {
 	case "playwright":
 		return GeneratePlaywrightScript(actions, params)
 	default:
-		return GenerateGasolineScript(actions, params)
+		return GenerateKaboomScript(actions, params)
 	}
 }
 

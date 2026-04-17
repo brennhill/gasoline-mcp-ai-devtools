@@ -115,7 +115,7 @@ package packagename
 | Error Clustering | Flowchart | internal/analysis/clustering.go |
 | Session/Registry Management | Sequence + State | internal/session/*, client_registry.go |
 | Buffer Architecture | State Machine | internal/buffers/ring_buffer.go, ttl.go |
-| Test Generation | Flowchart | cmd/dev-console/testgen*.go |
+| Test Generation | Flowchart | cmd/browser-agent/testgen*.go |
 
 #### Features (84 SPECS WITH ZERO DIAGRAMS)
 - Query System (DOM queries, a11y)
@@ -147,7 +147,7 @@ All files have excellent documentation. No updates required.
 4. Recording Lifecycle (needed for recording QA)
 5. C4 L2 Containers (system understanding for new contributors)
 
-**Rationale:** These 5 diagrams would unblock 80% of questions about how Gasoline works. They're referenced by all other features.
+**Rationale:** These 5 diagrams would unblock 80% of questions about how Kaboom works. They're referenced by all other features.
 
 **Template:** See [mcp-persistent-server/architecture.md](../features/mcp-persistent-server/architecture.md) and [tab-recording/tech-spec.md](../features/feature/tab-recording/tech-spec.md) for reference implementations.
 
@@ -166,7 +166,7 @@ All files have excellent documentation. No updates required.
 - `internal/types/` - Comprehensive package docs + clear file headers
 - `internal/capture/` - Detailed doc.go explaining architecture + TTL
 - `internal/pagination/` - RFC-compliant design documented
-- `cmd/dev-console/` - All 35 files have clear purpose headers
+- `cmd/browser-agent/` - All 35 files have clear purpose headers
 
 ### All Locations Reference Core/Feature Docs
 - Core files link to `docs/core/*.md`

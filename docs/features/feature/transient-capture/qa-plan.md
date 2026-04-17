@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 # Transient Capture QA Plan
 
 ## Automated Coverage
-- `cmd/dev-console/tools_async_transient_test.go`
+- `cmd/browser-agent/tools_async_transient_test.go`
 - `internal/tools/observe/handlers_transients_test.go`
 
 ## Required Scenarios

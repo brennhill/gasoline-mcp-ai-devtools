@@ -9,7 +9,7 @@ import assert from 'node:assert'
 import { createMockWindow, createMockConsole } from './helpers.js'
 
 // Define esbuild constant not available in Node test env
-globalThis.__GASOLINE_VERSION__ = 'test'
+globalThis.__KABOOM_VERSION__ = 'test'
 
 // Store original
 let originalWindow
@@ -42,7 +42,7 @@ describe('Console Capture', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
 
     const [message] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(message.type, 'GASOLINE_LOG')
+    assert.strictEqual(message.type, 'kaboom_log')
     assert.strictEqual(message.payload.level, 'log')
     assert.deepStrictEqual(message.payload.args, ['test message', { data: 123 }])
 
@@ -163,7 +163,7 @@ describe('Network Capture', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
 
     const [message] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(message.type, 'GASOLINE_LOG')
+    assert.strictEqual(message.type, 'kaboom_log')
     assert.strictEqual(message.payload.type, 'network')
     assert.strictEqual(message.payload.level, 'error')
     assert.strictEqual(message.payload.status, 401)
@@ -303,7 +303,7 @@ describe('Exception Capture', () => {
 
     const calls = globalThis.window.postMessage.mock.calls
     const message = calls[calls.length - 1].arguments[0]
-    assert.strictEqual(message.type, 'GASOLINE_LOG')
+    assert.strictEqual(message.type, 'kaboom_log')
     assert.strictEqual(message.payload.type, 'exception')
     assert.strictEqual(message.payload.level, 'error')
     assert.strictEqual(message.payload.message, "Cannot read property 'x' of undefined")

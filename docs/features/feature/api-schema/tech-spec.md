@@ -22,7 +22,7 @@ last_verified_date: 2026-03-05
 
 When an AI agent is working on a project, it often needs to know what API endpoints exist, what they accept, and what they return. In traditional projects, this information lives in OpenAPI specs or documentation. In vibe-coded projects, it lives nowhere — the API is whatever the code happens to do.
 
-Gasoline solves this by inferring the API schema from observed network traffic. Every request/response that flows through the browser is analyzed, and over time the server builds a complete picture of the API surface: endpoints, path parameters, query parameters, request/response shapes, timing characteristics, and authentication patterns.
+Kaboom solves this by inferring the API schema from observed network traffic. Every request/response that flows through the browser is analyzed, and over time the server builds a complete picture of the API surface: endpoints, path parameters, query parameters, request/response shapes, timing characteristics, and authentication patterns.
 
 The agent can then call `get_api_schema` to get a structured description of the API without ever reading a single line of backend code.
 
@@ -83,7 +83,7 @@ When multiple observations have conflicting types for the same field, majority w
 ### Auth Pattern
 
 If the server detects auth-related endpoints (/auth, /login, /token paths) or 401 responses, it reports:
-- Detected auth type (bearer by default, since Gasoline strips actual headers)
+- Detected auth type (bearer by default, since Kaboom strips actual headers)
 - The header name (Authorization)
 - What percentage of requests are authenticated
 - Which paths don't require auth (login, health, etc.)
@@ -107,7 +107,7 @@ Numbers are classified as "integer" if they have no fractional part, "number" ot
 **Parameters** (all optional):
 - `url_filter`: Only include endpoints whose path contains this string
 - `min_observations`: Minimum times an endpoint must be observed to be included (default: 1)
-- `format`: "gasoline" (default, structured JSON) or "openapi_stub" (minimal OpenAPI 3.0 YAML)
+- `format`: "kaboom" (default, structured JSON) or "openapi_stub" (minimal OpenAPI 3.0 YAML)
 
 **Returns**: The full API schema object with endpoints, WebSocket schemas, auth pattern, and coverage statistics.
 
@@ -210,4 +210,4 @@ The observation function is called from the existing `AddNetworkBodies` method. 
 
 ## File Location
 
-Implementation goes in `cmd/dev-console/ai_schema.go` with tests in `cmd/dev-console/ai_schema_test.go`.
+Implementation goes in `cmd/browser-agent/ai_schema.go` with tests in `cmd/browser-agent/ai_schema_test.go`.

@@ -118,7 +118,7 @@ async function verifyFileOnInputOnce(tabId, selector) {
  * If the file disappears at any check, returns has_file: false immediately.
  * If it survives all checks (~4.6s window), Stage 1 is confirmed.
  */
-export async function verifyFileOnInput(tabId, selector) {
+async function verifyFileOnInput(tabId, selector) {
     for (const delayMs of VERIFY_BACKOFF_MS) {
         await delay(delayMs);
         const result = await verifyFileOnInputOnce(tabId, selector);
@@ -132,7 +132,7 @@ export async function verifyFileOnInput(tabId, selector) {
 /**
  * Click a file input element to open the native file dialog.
  */
-export async function clickFileInput(tabId, selector) {
+async function clickFileInput(tabId, selector) {
     const results = await chrome.scripting.executeScript({
         target: { tabId, allFrames: true },
         world: 'MAIN',
@@ -167,7 +167,7 @@ async function dismissFileDialog(serverUrl) {
 /**
  * Escalate to Stage 4 OS automation: click file input, call daemon, verify result.
  */
-export async function escalateToStage4(tabId, selector, filePath, serverUrl) {
+async function escalateToStage4(tabId, selector, filePath, serverUrl) {
     // Prevent concurrent escalations
     if (escalationInProgress) {
         return {
@@ -214,7 +214,7 @@ async function escalateToStage4Internal(tabId, selector, filePath, serverUrl) {
                 return {
                     success: false,
                     stage: 4,
-                    error: `Escalation failed: OS automation disabled on daemon. Restart with: gasoline-mcp --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads. Detail: ${errorMsg}`
+                    error: `Escalation failed: OS automation disabled on daemon. Restart with: kaboom-agentic-browser --daemon --enable-os-upload-automation --upload-dir=/path/to/uploads. Detail: ${errorMsg}`
                 };
             }
             await dismissFileDialog(serverUrl);

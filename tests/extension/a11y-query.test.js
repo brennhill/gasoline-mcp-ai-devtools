@@ -6,8 +6,8 @@
  *
  * Message chain:
  *   background.js sends A11Y_QUERY via chrome.tabs.sendMessage
- *   content.js forwards as GASOLINE_A11Y_QUERY via window.postMessage
- *   inject.js calls runAxeAuditWithTimeout() and returns GASOLINE_A11Y_QUERY_RESPONSE
+ *   content.js forwards as kaboom_a11y_query via window.postMessage
+ *   inject.js calls runAxeAuditWithTimeout() and returns kaboom_a11y_query_response
  *   content.js receives response and calls sendResponse back to background.js
  *   background.js queues result via SyncClient for delivery through /sync
  */
@@ -103,7 +103,7 @@ describe('Content Script: A11Y_QUERY message handling', () => {
     // Verify postMessage was called to forward to inject.js
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
     const [postedMessage, origin] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(postedMessage.type, 'GASOLINE_A11Y_QUERY')
+    assert.strictEqual(postedMessage.type, 'kaboom_a11y_query')
     assert.deepStrictEqual(postedMessage.params, params)
     assert.strictEqual(origin, 'http://localhost:3000')
   })
@@ -129,10 +129,10 @@ describe('Content Script: A11Y_QUERY message handling', () => {
     assert.deepStrictEqual(postedMessage.params, {})
   })
 
-  test('should set up response listener for GASOLINE_A11Y_QUERY_RESPONSE', () => {
+  test('should set up response listener for kaboom_a11y_query_response', () => {
     // handleA11yQuery registers a pending request via registerA11yRequest
     // which means when the window message listener receives a
-    // GASOLINE_A11Y_QUERY_RESPONSE, it will resolve the pending request.
+    // kaboom_a11y_query_response, it will resolve the pending request.
     // We verify the request was registered by checking the requestId is in the posted message.
     const sendResponse = mock.fn()
 
@@ -214,10 +214,10 @@ describe('Content Script: A11Y_QUERY message handling', () => {
 })
 
 // =============================================================================
-// Inject Script: GASOLINE_A11Y_QUERY handling
+// Inject Script: kaboom_a11y_query handling
 // =============================================================================
 
-describe('Inject Script: GASOLINE_A11Y_QUERY message handling', () => {
+describe('Inject Script: kaboom_a11y_query message handling', () => {
   let originalDocument, originalWindow
   let runAxeAuditWithTimeout, formatAxeResults
 

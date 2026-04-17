@@ -93,7 +93,7 @@ function createTestWindow() {
   capturedEvents = []
   return {
     postMessage: (data) => {
-      if (data && data.type === 'GASOLINE_NETWORK_BODY') {
+      if (data && data.type === 'kaboom_network_body') {
         capturedEvents.push(data.payload)
       }
     }

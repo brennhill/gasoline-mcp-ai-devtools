@@ -3,7 +3,7 @@
 set -euo pipefail
 
 VERSION=$(tr -d '[:space:]' < VERSION)
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -41,9 +41,9 @@ check_version "npm/linux-arm64/package.json" '"version":'
 check_version "npm/linux-x64/package.json" '"version":'
 check_version "npm/win32-x64/package.json" '"version":'
 check_version "README.md" 'version-.*-green'
-check_version "npm/gasoline-agentic-browser/package.json" '"version":'
-check_version "packages/gasoline-ci/package.json" '"version":'
-check_version "packages/gasoline-playwright/package.json" '"version":'
+check_version "npm/kaboom-agentic-browser/package.json" '"version":'
+check_version "packages/kaboom-ci/package.json" '"version":'
+check_version "packages/kaboom-playwright/package.json" '"version":'
 
 # Makefile version source sanity check.
 if grep -q '^VERSION :=' Makefile; then
@@ -71,17 +71,24 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-if grep -q 'var version = "dev"' internal/export/export_sarif.go; then
-    echo "✅ internal/export/export_sarif.go uses build-time injected version fallback"
+if grep -q 'var version = "dev"' internal/export/export_sarif_types.go; then
+    echo "✅ internal/export/export_sarif_types.go uses build-time injected version fallback"
 else
-    echo "❌ internal/export/export_sarif.go missing build-time version fallback (var version = \"dev\")"
+    echo "❌ internal/export/export_sarif_types.go missing build-time version fallback (var version = \"dev\")"
     ERRORS=$((ERRORS + 1))
 fi
 
-# Special check: optionalDependencies in gasoline-agentic-browser
+if grep -q "\"@anthropic/kaboom-ci\": \"$VERSION\"" packages/kaboom-playwright/package.json; then
+    echo "✅ packages/kaboom-playwright/package.json pins @anthropic/kaboom-ci to $VERSION"
+else
+    echo "❌ packages/kaboom-playwright/package.json does not pin @anthropic/kaboom-ci to $VERSION"
+    ERRORS=$((ERRORS + 1))
+fi
+
+# Special check: optionalDependencies in kaboom-agentic-browser
 echo ""
-echo "Checking optionalDependencies in npm/gasoline-agentic-browser/package.json..."
-DEPS=$(grep -A 5 '"optionalDependencies"' npm/gasoline-agentic-browser/package.json | grep '@brennhill' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+echo "Checking optionalDependencies in npm/kaboom-agentic-browser/package.json..."
+DEPS=$(grep -A 5 '"optionalDependencies"' npm/kaboom-agentic-browser/package.json | grep '@brennhill' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
 DEP_COUNT=$(echo "$DEPS" | wc -l | tr -d ' ')
 
 if [ "$DEP_COUNT" != "1" ]; then

@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# CSP & Execute JS Strategies - Gasoline MCP
+# CSP & Execute JS Strategies - Kaboom MCP
 
 **Version:** v5.8+
 **Last Updated:** 2026-02-07
@@ -13,7 +13,7 @@ last_reviewed: 2026-02-16
 
 ## Overview
 
-Content Security Policy (CSP) blocks many browser APIs used for code execution and DOM manipulation. Gasoline implements multiple execution strategies to work around CSP restrictions while maintaining security and functionality.
+Content Security Policy (CSP) blocks many browser APIs used for code execution and DOM manipulation. Kaboom implements multiple execution strategies to work around CSP restrictions while maintaining security and functionality.
 
 This document explains the mechanics of CSP enforcement, why certain patterns fail, and which strategies work on CSP-heavy sites like Gmail.
 
@@ -74,7 +74,7 @@ const script = `
 
 **CSP Enforcement:** Extension CSP applies (very permissive)
 - Allows `new Function()` unless extension CSP blocks it
-- Gasoline has `"script-src": "self"` (most permissive)
+- Kaboom has `"script-src": "self"` (most permissive)
 - Can execute arbitrary code safely
 
 **Example:**
@@ -151,9 +151,9 @@ This blocks:
 
 ---
 
-## Gasoline's Multi-Strategy Approach
+## Kaboom's Multi-Strategy Approach
 
-Gasoline implements a tiered strategy to handle different CSP levels:
+Kaboom implements a tiered strategy to handle different CSP levels:
 
 ### Strategy 1: MAIN World Execution (Default)
 
@@ -273,7 +273,7 @@ export function executeDOMQuery(script: string): Result {
 **When:** Site has Trusted Types CSP (Gmail) AND no other option works
 
 ```go
-// In cmd/dev-console/tools_interact.go
+// In cmd/browser-agent/tools_interact.go
 // Only used as last resort on high-CSP sites
 func executeWithDebugger(tabID int, script string) error {
   // Attaches debugger to tab (shows yellow banner)
@@ -309,7 +309,7 @@ const script = `
 
 ## The `world: "auto"` Fallback Behavior
 
-Gasoline's default is `world: "auto"`, which implements intelligent fallback:
+Kaboom's default is `world: "auto"`, which implements intelligent fallback:
 
 ```typescript
 // User specifies world: "auto" (default)
@@ -555,7 +555,7 @@ func attachDebugger(tabID int) error {
 
 ---
 
-## CSP Headers Gasoline Encounters
+## CSP Headers Kaboom Encounters
 
 ### Permissive CSP (Most Sites)
 
@@ -593,7 +593,7 @@ Content-Security-Policy:
 
 ## Implementation: World Parameter Handling
 
-### Server Side (cmd/dev-console/tools_interact.ts)
+### Server Side (cmd/browser-agent/tools_interact.ts)
 
 ```go
 func (h *MCPHandler) ExecuteJS(req ExecuteJSRequest) {
@@ -713,7 +713,7 @@ export function executeJavaScript(script: string, timeoutMs = 5000) {
 > new Function('return 2+2')()
 // 4 (works)
 
-# In Gasoline MCP
+# In Kaboom MCP
 execute_js({ script: "2+2", world: "MAIN" })
 // { success: true, result: 4 }
 ```
@@ -726,7 +726,7 @@ execute_js({ script: "2+2", world: "MAIN" })
 // VM:1 Uncaught SyntaxError: Unexpected token ')'
 # (This is the CSP block message)
 
-# In Gasoline MCP
+# In Kaboom MCP
 execute_js({ script: "2+2", world: "auto" })
 // MAIN fails → falls back to ISOLATED
 // { success: true, result: 4 }

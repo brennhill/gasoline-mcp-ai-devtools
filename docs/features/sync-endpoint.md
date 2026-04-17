@@ -38,7 +38,7 @@ The `/sync` endpoint consolidates multiple polling loops into a single bidirecti
 ```typescript
 POST /sync
 Content-Type: application/json
-X-Gasoline-Extension-Version: 5.6.0
+X-Kaboom-Extension-Version: 5.6.0
 
 {
   // Session identification
@@ -262,7 +262,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 | File | Changes |
 |------|---------|
 | `internal/capture/sync.go` | NEW - HandleSync implementation |
-| `cmd/dev-console/main.go` | Register /sync route |
+| `cmd/browser-agent/main.go` | Register /sync route |
 | `src/background/sync.ts` | NEW - Sync client implementation |
 | `src/background/polling.ts` | Remove consolidated polling loops |
 | `src/background/index.ts` | Switch to sync client |

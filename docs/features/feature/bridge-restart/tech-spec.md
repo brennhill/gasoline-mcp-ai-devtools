@@ -13,7 +13,7 @@ Related startup flow map: [Bridge Startup Contention and Convergence](../../../a
 
 ## Architecture
 
-Gasoline uses a **two-process model**:
+Kaboom uses a **two-process model**:
 - **Bridge** (foreground): stateless stdio-to-HTTP proxy, reads JSON-RPC from stdin, forwards `tools/call` to daemon via HTTP
 - **Daemon** (background): persistent HTTP server on `127.0.0.1:<port>`, holds all state
 
@@ -88,10 +88,10 @@ Bridge startup now uses a single-host, lock-file startup leader election to conv
 
 Reference implementation:
 
-- `cmd/dev-console/bridge_startup_orchestration.go`
-- `cmd/dev-console/bridge_startup_lock.go`
-- `cmd/dev-console/bridge_startup_state.go`
-- `cmd/dev-console/bridge.go`
+- `cmd/browser-agent/bridge_startup_orchestration.go`
+- `cmd/browser-agent/bridge_startup_lock.go`
+- `cmd/browser-agent/bridge_startup_state.go`
+- `cmd/browser-agent/bridge.go`
 
 ## Response Format
 

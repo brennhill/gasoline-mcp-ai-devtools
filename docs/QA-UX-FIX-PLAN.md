@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# QA/UX Fix Plan — Gasoline MCP Tools
+# QA/UX Fix Plan — Kaboom MCP Tools
 
 > **Status: COMPLETED** — All P0–P4 fixes implemented. Documentation updated.
 
@@ -20,22 +20,22 @@ QA/UX audit of the 5 MCP tools found schema mismatches, missing filters, stubs c
 
 Schema declares `url` param but handler reads `url_filter`. Filtering silently does nothing.
 
-- **File:** `cmd/dev-console/tools_observe_analysis.go:19`
+- **File:** `cmd/browser-agent/tools_observe_analysis.go:19`
 - **Fix:** Change struct tag `json:"url_filter"` → `json:"url"`
 
 ### P0-2: Add `link_validation` to analyze schema
 
-- **File:** `cmd/dev-console/tools_schema.go:97`
+- **File:** `cmd/browser-agent/tools_schema.go:97`
 - **Fix:** Add `"link_validation"` to analyze `what` enum
 
 ### P0-3: Add `test_from_context`, `test_heal`, `test_classify` to generate schema
 
-- **File:** `cmd/dev-console/tools_schema.go:205`
+- **File:** `cmd/browser-agent/tools_schema.go:205`
 - **Fix:** Add all three to generate `format` enum
 
 ### P0-4: Add `upload` to interact schema
 
-- **File:** `cmd/dev-console/tools_schema.go:447`
+- **File:** `cmd/browser-agent/tools_schema.go:447`
 - **Fix:** Add `"upload"` to interact `action` enum
 
 ---
@@ -46,37 +46,37 @@ Schema advertises filters that handlers silently ignore. Fix all.
 
 ### P1-1: `network_bodies` — add `url`, `method`, `status_min`, `status_max`, `limit`
 
-- **File:** `cmd/dev-console/tools_observe.go` (toolGetNetworkBodies)
+- **File:** `cmd/browser-agent/tools_observe.go` (toolGetNetworkBodies)
 - **Current:** Dumps entire buffer, no filtering
 - **Fix:** Parse params, iterate backwards, apply URL substring + method match + status range, cap at limit (default 100)
 
 ### P1-2: `websocket_events` — use existing filter infrastructure
 
-- **File:** `cmd/dev-console/tools_observe.go` (toolGetWSEvents)
+- **File:** `cmd/browser-agent/tools_observe.go` (toolGetWSEvents)
 - **Current:** Calls `GetAllWebSocketEvents()` ignoring all filter params
 - **Fix:** Parse `limit`, `url`, `connection_id`, `direction`. Build `WebSocketEventFilter`, call `GetWebSocketEvents(filter)` — capture layer already implements this
 
 ### P1-3: `actions` — add `url`, `limit`
 
-- **File:** `cmd/dev-console/tools_observe.go` (toolGetEnhancedActions)
+- **File:** `cmd/browser-agent/tools_observe.go` (toolGetEnhancedActions)
 - **Current:** Dumps entire buffer
 - **Fix:** Parse params, iterate backwards, URL substring match, cap at limit (default 100)
 
 ### P1-4: `errors` — add `url` filter
 
-- **File:** `cmd/dev-console/tools_observe.go` (toolGetBrowserErrors)
+- **File:** `cmd/browser-agent/tools_observe.go` (toolGetBrowserErrors)
 - **Current:** Has `limit` only
 - **Fix:** Add `URL string` to params, filter by `containsIgnoreCase(entry["url"], params.URL)`
 
 ### P1-5: `logs` — add `url` filter
 
-- **File:** `cmd/dev-console/tools_observe.go` (toolGetBrowserLogs)
+- **File:** `cmd/browser-agent/tools_observe.go` (toolGetBrowserLogs)
 - **Current:** Has limit/level/min_level/source but no url
 - **Fix:** Same as errors
 
 ### P1-6: `error_bundles` — add `url` filter
 
-- **File:** `cmd/dev-console/tools_observe_bundling.go`
+- **File:** `cmd/browser-agent/tools_observe_bundling.go`
 - **Current:** Has limit/window_seconds but no url
 - **Fix:** Filter error entries by URL substring before bundling
 
@@ -90,7 +90,7 @@ Async pattern is correct. "Completion" semantics are ambiguous for DOM actions. 
 
 ### P2-2: Add network waterfall data to `error_bundles`
 
-- **File:** `cmd/dev-console/tools_observe_bundling.go`
+- **File:** `cmd/browser-agent/tools_observe_bundling.go`
 - **Current:** Only includes `network_bodies` (fetch-only). XHR/image/script failures invisible.
 - **Fix:** Also fetch `GetNetworkWaterfallEntries()`, match within time window, add `"waterfall"` array to each bundle
 
@@ -126,8 +126,8 @@ Stubs waste LLM tokens. Remove from schema enum arrays. Keep handler code for fu
 
 ### P4-2: Fix hardcoded User-Agent version
 
-- **File:** `cmd/dev-console/tools_analyze.go:287`
-- **Fix:** Replace `"Gasoline/0.7.12"` with `fmt.Sprintf("Gasoline/%s", version)`
+- **File:** `cmd/browser-agent/tools_analyze.go:287`
+- **Fix:** Replace `"Kaboom/0.7.12"` with `fmt.Sprintf("Kaboom/%s", version)`
 
 ### P4-3: Enrich `observe({what: "page"})` response
 
@@ -155,8 +155,8 @@ Stubs waste LLM tokens. Remove from schema enum arrays. Keep handler code for fu
 
 After each priority level:
 ```bash
-go build ./cmd/dev-console/
-go test ./cmd/dev-console/...
+go build ./cmd/browser-agent/
+go test ./cmd/browser-agent/...
 ```
 
 Final:

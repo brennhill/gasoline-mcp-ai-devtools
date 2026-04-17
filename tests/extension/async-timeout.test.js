@@ -164,7 +164,7 @@ describe('Bug #5: Async Execute Command Await', () => {
 
     let resolveExecute
     globalThis.chrome.tabs.sendMessage = mock.fn((_tabId, message) => {
-      if (message?.type === 'GASOLINE_EXECUTE_QUERY') {
+      if (message?.type === 'kaboom_execute_query') {
         return new Promise((resolve) => {
           resolveExecute = resolve
         })
@@ -201,7 +201,7 @@ describe('Bug #5: Async Execute Command Await', () => {
     }
 
     globalThis.chrome.tabs.sendMessage = mock.fn((_tabId, message) => {
-      if (message?.type === 'GASOLINE_EXECUTE_QUERY') {
+      if (message?.type === 'kaboom_execute_query') {
         return Promise.resolve({
           success: false,
           error: 'execution_failed',

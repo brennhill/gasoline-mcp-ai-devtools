@@ -5,6 +5,8 @@
  */
 
 import { DEFAULT_SERVER_URL, StorageKey } from '../../lib/constants.js'
+import { getDaemonStartHint } from '../../lib/brand.js'
+import { getLocal, setSession, getSession, removeSessions, setLocal } from '../../lib/storage-utils.js'
 import {
   state,
   getTerminalServerUrl,
@@ -12,137 +14,93 @@ import {
   type TerminalSessionState,
   type TerminalUIState
 } from './terminal-widget-types.js'
-import { showSandboxError } from './terminal-widget-ui.js'
+
+export type TerminalSandboxErrorHandler = (message: string, instruction: string, command: string) => void
 
 // =============================================================================
 // CONFIG HELPERS — read/write chrome.storage.local
 // =============================================================================
 
-export function getServerUrl(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.SERVER_URL], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve(DEFAULT_SERVER_URL) // Storage read failed — fall back to default
-          return
-        }
-        const url = (result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL
-        state.serverUrl = url
-        resolve(url)
-      })
-    } catch {
-      resolve(DEFAULT_SERVER_URL) // Extension context invalidated
-    }
-  })
+export async function getServerUrl(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.SERVER_URL)
+    const url = (value as string) || DEFAULT_SERVER_URL
+    state.serverUrl = url
+    return url
+  } catch {
+    return DEFAULT_SERVER_URL // Extension context invalidated
+  }
 }
 
-export function getTerminalConfig(): Promise<TerminalConfig> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.TERMINAL_CONFIG], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve({}) // Storage read failed — use defaults
-          return
-        }
-        const config = (result[StorageKey.TERMINAL_CONFIG] as TerminalConfig) || {}
-        resolve(config)
-      })
-    } catch {
-      resolve({}) // Extension context invalidated
-    }
-  })
+export async function getTerminalConfig(): Promise<TerminalConfig> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_CONFIG)
+    const config = (value as TerminalConfig) || {}
+    return config
+  } catch {
+    return {} // Extension context invalidated
+  }
 }
 
 export function saveTerminalConfig(config: TerminalConfig): void {
   try {
-    chrome.storage.local.set({ [StorageKey.TERMINAL_CONFIG]: config }, () => {
-      void chrome.runtime.lastError // Best-effort persistence
-    })
+    void setLocal(StorageKey.TERMINAL_CONFIG, config)
   } catch {
     // Extension context invalidated — config won't persist but session still works
   }
 }
 
-function getTerminalAICommand(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.TERMINAL_AI_COMMAND], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve('claude')
-          return
-        }
-        const cmd = (result[StorageKey.TERMINAL_AI_COMMAND] as string) || 'claude'
-        resolve(cmd)
-      })
-    } catch {
-      resolve('claude')
-    }
-  })
+async function getTerminalAICommand(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_AI_COMMAND)
+    const cmd = (value as string) || 'claude'
+    return cmd
+  } catch {
+    return 'claude'
+  }
 }
 
-function getTerminalDevRoot(): Promise<string> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get([StorageKey.TERMINAL_DEV_ROOT], (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          resolve('')
-          return
-        }
-        resolve((result[StorageKey.TERMINAL_DEV_ROOT] as string) || '')
-      })
-    } catch {
-      resolve('')
-    }
-  })
+async function getTerminalDevRoot(): Promise<string> {
+  try {
+    const value = await getLocal(StorageKey.TERMINAL_DEV_ROOT)
+    return (value as string) || ''
+  } catch {
+    return ''
+  }
 }
 
 // =============================================================================
 // SESSION PERSISTENCE — survives page refresh via chrome.storage.session
 // =============================================================================
 
-export function persistSession(ss: TerminalSessionState): void {
+function persistSession(ss: TerminalSessionState): void {
   try {
-    chrome.storage.session.set({ [StorageKey.TERMINAL_SESSION]: ss }, () => {
-      void chrome.runtime.lastError
-    })
+    void setSession(StorageKey.TERMINAL_SESSION, ss)
   } catch { /* extension context invalidated */ }
 }
 
 export function clearPersistedSession(): void {
   try {
-    chrome.storage.session.remove([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE], () => {
-      void chrome.runtime.lastError
-    })
+    void removeSessions([StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE])
   } catch { /* extension context invalidated */ }
 }
 
 export function persistUIState(uiState: TerminalUIState): void {
   try {
-    chrome.storage.session.set({ [StorageKey.TERMINAL_UI_STATE]: uiState }, () => {
-      void chrome.runtime.lastError
-    })
+    void setSession(StorageKey.TERMINAL_UI_STATE, uiState)
   } catch { /* extension context invalidated */ }
 }
 
-export function loadPersistedSession(): Promise<{ session: TerminalSessionState | null; uiState: TerminalUIState }> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.session.get(
-        [StorageKey.TERMINAL_SESSION, StorageKey.TERMINAL_UI_STATE],
-        (result: Record<string, unknown>) => {
-          if (chrome.runtime.lastError) {
-            resolve({ session: null, uiState: 'closed' })
-            return
-          }
-          const session = result[StorageKey.TERMINAL_SESSION] as TerminalSessionState | undefined
-          const uiState = (result[StorageKey.TERMINAL_UI_STATE] as TerminalUIState) || 'closed'
-          resolve({ session: session || null, uiState })
-        }
-      )
-    } catch {
-      resolve({ session: null, uiState: 'closed' })
-    }
-  })
+export async function loadPersistedSession(): Promise<{ session: TerminalSessionState | null; uiState: TerminalUIState }> {
+  try {
+    const sessionValue = await getSession(StorageKey.TERMINAL_SESSION)
+    const uiValue = await getSession(StorageKey.TERMINAL_UI_STATE)
+    const session = sessionValue as TerminalSessionState | undefined
+    const uiState = (uiValue as TerminalUIState) || 'closed'
+    return { session: session || null, uiState }
+  } catch {
+    return { session: null, uiState: 'closed' }
+  }
 }
 
 // =============================================================================
@@ -166,7 +124,10 @@ export async function validateSession(token: string): Promise<boolean> {
   }
 }
 
-export async function startSession(config: TerminalConfig): Promise<TerminalSessionState | null> {
+export async function startSession(
+  config: TerminalConfig,
+  onSandboxError?: TerminalSandboxErrorHandler
+): Promise<TerminalSessionState | null> {
   const base = await getServerUrl()
   const termUrl = getTerminalServerUrl(base)
   const aiCommand = await getTerminalAICommand()
@@ -191,7 +152,16 @@ export async function startSession(config: TerminalConfig): Promise<TerminalSess
       }
       // Sandbox restriction — show actionable instructions to the user.
       if (resp.status === 503 && body.error === 'sandbox_restricted') {
-        showSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '')
+        if (onSandboxError) {
+          onSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '')
+        } else {
+          console.warn(
+            '[KaBOOM!] Terminal sandbox restriction: ' +
+              (body.message ?? 'no message') +
+              '. ' +
+              (body.instruction ?? 'No instruction provided.')
+          )
+        }
         return null
       }
       // Session already exists — reconnect using the returned token.
@@ -200,7 +170,7 @@ export async function startSession(config: TerminalConfig): Promise<TerminalSess
         persistSession(ss)
         return ss
       }
-      console.warn('[Gasoline] Terminal session rejected (HTTP ' + resp.status + '): ' +
+      console.warn('[KaBOOM!] Terminal session rejected (HTTP ' + resp.status + '): ' +
         (body.error ?? 'unknown') + '. Check the daemon logs for details.')
       return null
     }
@@ -209,9 +179,9 @@ export async function startSession(config: TerminalConfig): Promise<TerminalSess
     persistSession(ss)
     return ss
   } catch (err) {
-    console.warn('[Gasoline] Terminal session start failed: ' +
+    console.warn('[KaBOOM!] Terminal session start failed: ' +
       (err instanceof Error ? err.message : String(err)) +
-      '. Is the Gasoline daemon running? Start it with: npx gasoline-agentic-browser')
+      `. ${getDaemonStartHint()}`)
     return null
   }
 }

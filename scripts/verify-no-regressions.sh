@@ -1,12 +1,12 @@
 #!/bin/bash
-# verify-no-regressions.sh — Comprehensive regression testing for Gasoline
+# verify-no-regressions.sh — Comprehensive regression testing for Kaboom
 # Tests: Go binary + Browser extension + MCP bridge + End-to-end flow
 set -euo pipefail
 
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 CMD_DIR="${CMD_PKG#./}"
 
-echo "🔬 Gasoline Regression Testing Suite"
+echo "🔬 Kaboom Regression Testing Suite"
 echo "======================================"
 echo ""
 
@@ -19,9 +19,9 @@ WARNINGS=0
 
 echo "1️⃣  Testing Go binary compilation..."
 
-if go build -o /tmp/gasoline-test "$CMD_PKG"; then
+if go build -o /tmp/kaboom-test "$CMD_PKG"; then
     echo "   ✅ Binary compiles successfully"
-    BINARY_PATH="/tmp/gasoline-test"
+    BINARY_PATH="/tmp/kaboom-test"
 else
     echo "   ❌ Binary compilation FAILED"
     ERRORS=$((ERRORS + 1))
@@ -45,14 +45,14 @@ echo ""
 echo "2️⃣  Testing binary startup (smoke test)..."
 
 # Start binary in background with timeout
-timeout 5s "$BINARY_PATH" --port 17890 > /tmp/gasoline-startup.log 2>&1 &
-GASOLINE_PID=$!
+timeout 5s "$BINARY_PATH" --port 17890 > /tmp/kaboom-startup.log 2>&1 &
+KABOOM_PID=$!
 
 sleep 2
 
 # Check if process is still running
-if kill -0 "$GASOLINE_PID" 2>/dev/null; then
-    echo "   ✅ Binary started successfully (PID: $GASOLINE_PID)"
+if kill -0 "$KABOOM_PID" 2>/dev/null; then
+    echo "   ✅ Binary started successfully (PID: $KABOOM_PID)"
 
     # Try to hit health endpoint
     if curl -s http://localhost:17890/health > /dev/null 2>&1; then
@@ -63,12 +63,12 @@ if kill -0 "$GASOLINE_PID" 2>/dev/null; then
     fi
 
     # Kill test process
-    kill "$GASOLINE_PID" 2>/dev/null || true
-    wait "$GASOLINE_PID" 2>/dev/null || true
+    kill "$KABOOM_PID" 2>/dev/null || true
+    wait "$KABOOM_PID" 2>/dev/null || true
 else
     echo "   ❌ Binary crashed on startup"
     echo "   Startup log:"
-    cat /tmp/gasoline-startup.log
+    cat /tmp/kaboom-startup.log
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -79,14 +79,14 @@ fi
 echo ""
 echo "3️⃣  Running Go unit tests..."
 
-if go test ./internal/capture -v -short > /tmp/gasoline-unit-tests.log 2>&1; then
-    TEST_COUNT=$(grep -c "^=== RUN" /tmp/gasoline-unit-tests.log || echo "0")
-    PASS_COUNT=$(grep -c "^--- PASS" /tmp/gasoline-unit-tests.log || echo "0")
+if go test ./internal/capture -v -short > /tmp/kaboom-unit-tests.log 2>&1; then
+    TEST_COUNT=$(grep -c "^=== RUN" /tmp/kaboom-unit-tests.log || echo "0")
+    PASS_COUNT=$(grep -c "^--- PASS" /tmp/kaboom-unit-tests.log || echo "0")
     echo "   ✅ Unit tests passed ($PASS_COUNT/$TEST_COUNT tests)"
 else
     echo "   ❌ Unit tests FAILED"
     echo "   Last 20 lines:"
-    tail -20 /tmp/gasoline-unit-tests.log
+    tail -20 /tmp/kaboom-unit-tests.log
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -97,11 +97,11 @@ fi
 echo ""
 echo "4️⃣  Running integration tests (async queue)..."
 
-if go test -v ./internal/capture -run TestAsyncQueueIntegration > /tmp/gasoline-integration.log 2>&1; then
+if go test -v ./internal/capture -run TestAsyncQueueIntegration > /tmp/kaboom-integration.log 2>&1; then
     echo "   ✅ Async queue integration test passed"
 else
     echo "   ❌ Integration test FAILED"
-    cat /tmp/gasoline-integration.log
+    cat /tmp/kaboom-integration.log
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -112,11 +112,11 @@ fi
 echo ""
 echo "5️⃣  Validating architecture integrity..."
 
-if ./scripts/validate-architecture.sh > /tmp/gasoline-arch-validation.log 2>&1; then
+if ./scripts/validate-architecture.sh > /tmp/kaboom-arch-validation.log 2>&1; then
     echo "   ✅ Architecture validation passed"
 else
     echo "   ❌ Architecture validation FAILED"
-    tail -30 /tmp/gasoline-arch-validation.log
+    tail -30 /tmp/kaboom-arch-validation.log
     ERRORS=$((ERRORS + 1))
 fi
 
@@ -128,7 +128,7 @@ echo ""
 echo "6️⃣  Testing critical endpoints (mock server)..."
 
 # Start server on test port
-"$BINARY_PATH" --port 17891 > /tmp/gasoline-endpoints.log 2>&1 &
+"$BINARY_PATH" --port 17891 > /tmp/kaboom-endpoints.log 2>&1 &
 SERVER_PID=$!
 sleep 2
 
@@ -187,11 +187,11 @@ echo ""
 echo "8️⃣  Checking extension compatibility..."
 
 # Check if extension directory exists
-if [ -d "extension" ] || [ -d "../gasoline-extension" ]; then
+if [ -d "extension" ] || [ -d "../kaboom-extension" ]; then
     echo "   ✅ Extension directory found"
 
     # Check for manifest.json
-    if [ -f "extension/manifest.json" ] || [ -f "../gasoline-extension/manifest.json" ]; then
+    if [ -f "extension/manifest.json" ] || [ -f "../kaboom-extension/manifest.json" ]; then
         echo "   ✅ Extension manifest exists"
     else
         echo "   ⚠️  WARNING: Extension manifest not found"
@@ -211,11 +211,11 @@ echo "9️⃣  Testing TypeScript compilation (if present)..."
 
 if [ -f "tsconfig.json" ] || [ -f "extension/tsconfig.json" ]; then
     if command -v npm &> /dev/null; then
-        if npm run typecheck > /tmp/gasoline-ts.log 2>&1; then
+        if npm run typecheck > /tmp/kaboom-ts.log 2>&1; then
             echo "   ✅ TypeScript compiles successfully"
         else
             echo "   ❌ TypeScript compilation FAILED"
-            tail -20 /tmp/gasoline-ts.log
+            tail -20 /tmp/kaboom-ts.log
             ERRORS=$((ERRORS + 1))
         fi
     else
@@ -234,7 +234,7 @@ echo ""
 echo "🔟 Testing API contracts..."
 
 # Start server
-"$BINARY_PATH" --port 17893 > /tmp/gasoline-api-test.log 2>&1 &
+"$BINARY_PATH" --port 17893 > /tmp/kaboom-api-test.log 2>&1 &
 API_SERVER_PID=$!
 sleep 2
 
@@ -337,6 +337,6 @@ else
     echo ""
     echo "DO NOT DEPLOY until errors are fixed."
     echo ""
-    echo "Check logs in /tmp/gasoline-*.log for details."
+    echo "Check logs in /tmp/kaboom-*.log for details."
     exit 1
 fi

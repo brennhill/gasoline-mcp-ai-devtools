@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # Test that responses are properly captured by parent process
-# Simulates exactly what happens when IDE spawns gasoline-mcp
+# Simulates exactly what happens when IDE spawns kaboom-agentic-browser
 
 PORT="$((8000 + RANDOM % 1000))"
-WRAPPER="gasoline-mcp"
+WRAPPER="kaboom-agentic-browser"
 TEMP_DIR="$(mktemp -d)"
 
 echo "========================================"

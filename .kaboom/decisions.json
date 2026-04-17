@@ -1,0 +1,31 @@
+[
+  {
+    "id": "DECISION-001",
+    "rule": "No production dependencies in Go — zero deps policy",
+    "pattern": "require (",
+    "reason": "Gasoline Go code has zero production dependencies. All functionality is stdlib-only.",
+    "enforced": "2025-01-01"
+  },
+  {
+    "id": "DECISION-002",
+    "rule": "Use structured error format: {OPERATION}: {ROOT_CAUSE}. {RECOVERY_ACTION}",
+    "regex": "errors\\.New\\(\"[a-z]",
+    "reason": "Error messages must start with the operation name (capitalized) for grep-ability and consistency.",
+    "enforced": "2025-06-01"
+  },
+  {
+    "id": "DECISION-003",
+    "rule": "Hook output goes through WriteOutput() — no direct stdout in hooks",
+    "regex": "fmt\\.Print|os\\.Stdout\\.Write",
+    "reason": "WriteOutput handles agent detection and format adaptation. Direct stdout breaks multi-agent protocol.",
+    "enforced": "2026-03-07"
+  },
+  {
+    "id": "DECISION-EVAL-EXPIRED",
+    "rule": "Expired sentinel — should never fire in hooks",
+    "pattern": "EXPIRED_DECISION_SENTINEL_VALUE",
+    "reason": "Eval fixture: tests that expired decisions are correctly skipped.",
+    "enforced": "2025-01-01",
+    "expires": "2025-06-01"
+  }
+]

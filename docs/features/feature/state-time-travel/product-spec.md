@@ -110,7 +110,7 @@ Result: AI agents can rewind and understand what happened, not guess at what mig
 ### For AI Agents
 
 1. Agent observes page: `observe({what: 'history'})`
-2. Gasoline returns event timeline (last 60 seconds):
+2. Kaboom returns event timeline (last 60 seconds):
    ```
    {
      "events": [
@@ -124,7 +124,7 @@ Result: AI agents can rewind and understand what happened, not guess at what mig
          "type": "user_action",
          "action": "click",
          "element": "button.btn-save",
-         "gasoline_id": "btn-save",
+         "kaboom_id": "btn-save",
          "result_summary": "1 error (401), 1 network request (POST /api/save)"
        },
        {
@@ -157,7 +157,7 @@ Result: AI agents can rewind and understand what happened, not guess at what mig
 ### For Engineers
 
 1. Developer runs test that fails mysteriously
-2. Opens Gasoline DevTools → "History" tab
+2. Opens Kaboom DevTools → "History" tab
 3. See a complete timeline of what happened:
    ```
    [0:00] Form load

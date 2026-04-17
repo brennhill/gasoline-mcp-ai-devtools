@@ -6,33 +6,31 @@
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 import { RuntimeMessageName, StorageKey } from './lib/constants.js';
+import { getLocal, getLocals, setSession, getSession, onStorageChanged } from './lib/storage-utils.js';
 import { updateConnectionStatus } from './popup/status-display.js';
 import { setupRecordingUI } from './popup/recording.js';
 import { setupDrawModeButton } from './popup/draw-mode.js';
 import { setupActionRecordingUI } from './popup/action-recording.js';
-import { initFeatureToggles } from './popup/feature-toggles.js';
+import { FEATURE_TOGGLES as TOGGLE_DEFS, applyFeatureToggles } from './popup/feature-toggles.js';
 import { initTrackPageButton } from './popup/tab-tracking.js';
-import { initAiWebPilotToggle } from './popup/ai-web-pilot.js';
-import { initWebSocketModeSelector, handleWebSocketModeChange, handleClearLogs, resetClearConfirm } from './popup/settings.js';
+import { applyAiWebPilotToggle } from './popup/ai-web-pilot.js';
+import { initPopupLogoMotion } from './popup/logo-motion.js';
+import { applyWebSocketMode, handleWebSocketModeChange, handleClearLogs, resetClearConfirm } from './popup/settings.js';
 // Re-export for testing
 export { resetClearConfirm, handleClearLogs };
 export { updateConnectionStatus };
-export { FEATURE_TOGGLES, initFeatureToggles } from './popup/feature-toggles.js';
+export { FEATURE_TOGGLES, initFeatureToggles, applyFeatureToggles } from './popup/feature-toggles.js';
 export { handleFeatureToggle } from './popup/feature-toggles.js';
-export { initAiWebPilotToggle, handleAiWebPilotToggle } from './popup/ai-web-pilot.js';
+export { initAiWebPilotToggle, handleAiWebPilotToggle, applyAiWebPilotToggle } from './popup/ai-web-pilot.js';
 export { initTrackPageButton, handleTrackPageClick } from './popup/tab-tracking.js';
 export { handleWebSocketModeChange } from './popup/settings.js';
-export { initWebSocketModeSelector } from './popup/settings.js';
+export { initWebSocketModeSelector, applyWebSocketMode } from './popup/settings.js';
 export { isInternalUrl } from './popup/ui-utils.js';
 // Apply theme early to prevent flash of unstyled content (moved from inline script for CSP compliance).
-try {
-    chrome.storage.local.get('theme', (r) => {
-        void chrome.runtime.lastError;
-        if (r?.['theme'] === 'light')
-            document.body.classList.add('light-theme');
-    });
-}
-catch { /* storage unavailable — default dark theme */ }
+void getLocal('theme').then((value) => {
+    if (value === 'light')
+        document.body.classList.add('light-theme');
+});
 const DEFAULT_MAX_ENTRIES = 1000;
 const RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE = {
     type: RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
@@ -96,32 +94,54 @@ function requestTrackedHoverLauncherReshow() {
 }
 /** Cache status to session storage so the popup renders instantly on next open. */
 function cacheStatus(status) {
-    try {
-        chrome.storage.session.set({ [StorageKey.POPUP_LAST_STATUS]: status }, () => {
-            void chrome.runtime.lastError;
-        });
-    }
-    catch { /* best-effort */ }
+    void setSession(StorageKey.POPUP_LAST_STATUS, status);
 }
 /**
- * Initialize the popup
+ * Initialize the popup.
+ *
+ * Optimized for instant first paint:
+ * 1. HTML renders with default states (idle buttons, checked toggles from markup).
+ * 2. One batched storage read fetches ALL keys in parallel.
+ * 3. Results are applied synchronously in a single pass (no await chains).
+ * 4. Non-critical init (logo, draw mode) deferred via requestAnimationFrame.
  */
 export function initPopup() {
-    // Re-show tracked-tab quick launcher if user hid it from the page UI.
-    requestTrackedHoverLauncherReshow();
-    // 1) Hydrate immediately from cached status (local, no network, no IPC wait).
+    // ── Immediate: wire up event listeners & sync UI (no async) ──────────
+    // Recording rows are visible from HTML with idle defaults — no visibility:hidden.
+    setupRecordingUI();
+    setupActionRecordingUI();
+    initTrackPageButton();
+    setupWebSocketUI();
+    setupToggleWarnings();
+    const clearBtn = document.getElementById('clear-btn');
+    if (clearBtn)
+        clearBtn.addEventListener('click', handleClearLogs);
+    // Listen for status updates
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message.type === 'status_update' && message.status) {
+            updateConnectionStatus(message.status);
+            cacheStatus(message.status);
+        }
+    });
+    // Listen for storage changes (e.g., tracked tab URL updates)
+    onStorageChanged((changes, areaName) => {
+        if (areaName === 'local' && changes[StorageKey.TRACKED_TAB_URL]) {
+            const urlEl = document.getElementById('tracking-bar-url');
+            if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
+                urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
+                console.log('[KaBOOM!] Tracked tab URL updated in popup:', changes[StorageKey.TRACKED_TAB_URL].newValue);
+            }
+        }
+    });
+    // ── Cached status: hydrate from sessionStorage (sync read) ───────────
+    void getSession(StorageKey.POPUP_LAST_STATUS).then((value) => {
+        const cached = value;
+        if (cached)
+            updateConnectionStatus(cached);
+    });
+    // ── Fresh status: request from background (async IPC) ────────────────
     try {
-        chrome.storage.session.get([StorageKey.POPUP_LAST_STATUS], (result) => {
-            void chrome.runtime.lastError;
-            const cached = result?.[StorageKey.POPUP_LAST_STATUS];
-            if (cached)
-                updateConnectionStatus(cached);
-        });
-    }
-    catch { /* session storage unavailable — will show defaults until fresh data arrives */ }
-    // 2) Request fresh status from background worker (async — updates UI when ready).
-    try {
-        chrome.runtime.sendMessage({ type: 'getStatus' }, (status) => {
+        chrome.runtime.sendMessage({ type: 'get_status' }, (status) => {
             if (chrome.runtime.lastError) {
                 updateConnectionStatus({
                     connected: false,
@@ -149,46 +169,34 @@ export function initPopup() {
             error: 'Extension error — try reloading the extension'
         });
     }
-    // Initialize all UI synchronously — no awaits, no blocking.
-    // Each init reads chrome.storage via callback and updates DOM when ready.
-    // None depend on each other, so they all fire in parallel.
-    setupRecordingUI();
-    setupActionRecordingUI();
-    initFeatureToggles();
-    initWebSocketModeSelector();
-    initAiWebPilotToggle();
-    initTrackPageButton();
-    setupWebSocketUI();
-    setupToggleWarnings();
-    setupDrawModeButton();
-    const clearBtn = document.getElementById('clear-btn');
-    if (clearBtn)
-        clearBtn.addEventListener('click', handleClearLogs);
-    // Listen for status updates
-    chrome.runtime.onMessage.addListener((message) => {
-        if (message.type === 'statusUpdate' && message.status) {
-            updateConnectionStatus(message.status);
-            cacheStatus(message.status);
-        }
-        else if (message.type === 'pilotStatusChanged') {
-            // Update toggle to reflect confirmed state from background
-            const toggle = document.getElementById('aiWebPilotEnabled');
-            if (toggle) {
-                toggle.checked = message.enabled === true;
-                console.log('[Gasoline] Pilot status confirmed:', message.enabled);
-            }
-        }
+    // ── Batched storage read: one call for ALL toggle/setting keys ────────
+    const toggleKeys = TOGGLE_DEFS.map((t) => t.storageKey);
+    const allKeys = [
+        ...toggleKeys,
+        StorageKey.WEBSOCKET_CAPTURE_MODE,
+        StorageKey.AI_WEB_PILOT_ENABLED
+    ];
+    void getLocals(allKeys).then((result) => {
+        // Apply feature toggles (9 checkboxes)
+        applyFeatureToggles(result);
+        // Apply WS mode selector
+        applyWebSocketMode(result[StorageKey.WEBSOCKET_CAPTURE_MODE]);
+        // Apply AI Web Pilot toggle
+        applyAiWebPilotToggle(result[StorageKey.AI_WEB_PILOT_ENABLED]);
     });
-    // Listen for storage changes (e.g., tracked tab URL updates)
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === 'local' && changes[StorageKey.TRACKED_TAB_URL]) {
-            const urlEl = document.getElementById('tracking-bar-url');
-            if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
-                urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
-                console.log('[Gasoline] Tracked tab URL updated in popup:', changes[StorageKey.TRACKED_TAB_URL].newValue);
-            }
-        }
-    });
+    // ── Deferred: non-critical cosmetic init after first paint ───────────
+    const deferredInit = () => {
+        initPopupLogoMotion();
+        setupDrawModeButton();
+        requestTrackedHoverLauncherReshow();
+    };
+    if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(deferredInit);
+    }
+    else {
+        // Node.js test environment — run synchronously
+        deferredInit();
+    }
 }
 // Initialize when DOM is ready
 if (typeof document !== 'undefined' && typeof globalThis.process === 'undefined') {

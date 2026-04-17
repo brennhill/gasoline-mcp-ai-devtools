@@ -49,6 +49,11 @@ export interface TrackedTabInfo {
     tabStatus: 'loading' | 'complete' | null;
     trackedTabActive: boolean | null;
 }
+export interface TerminalWorkspaceTarget {
+    hostTabId: number;
+    mainTabId: number;
+    tabGroupId: number;
+}
 /**
  * Get tracked tab information, including Chrome tab status.
  */
@@ -61,17 +66,29 @@ export declare function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 
  * Clear tracked tab state
  */
 export declare function clearTrackedTab(): void;
-/**
- * Get all extension config settings.
- */
-export declare function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>>;
+export declare function resolveTerminalWorkspaceTarget(requestTabId?: number): Promise<TerminalWorkspaceTarget | null>;
 /**
  * Query for the currently active tab in the current window.
  * Returns null if no active tab or no tab id.
  */
 export declare function getActiveTab(): Promise<chrome.tabs.Tab | null>;
 /**
- * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Capture a screenshot of a tab without permanently stealing focus.
+ * chrome.tabs.captureVisibleTab() requires the tab to be active. If the target
+ * tab isn't currently active, we briefly activate it, capture, then restore
+ * the previously active tab so the user's workflow isn't interrupted.
+ */
+export declare function captureVisibleTabSafe(tabId: number, windowId: number, options: {
+    format: 'jpeg' | 'png';
+    quality?: number;
+}): Promise<string>;
+/**
+ * Toggles visibility of all Kaboom UI overlays (hover launcher, draw mode)
+ * in the target tab. Uses executeScript for speed — no message round-trip needed.
+ */
+export declare function setKaboomOverlayVisibility(tabId: number, visible: boolean): Promise<void>;
+/**
+ * Send a kaboom_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export declare function sendTabToast(tabId: number, text: string, detail?: string, state?: 'trying' | 'success' | 'warning' | 'error' | 'audio', duration_ms?: number): void;

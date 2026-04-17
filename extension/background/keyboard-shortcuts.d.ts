@@ -35,7 +35,7 @@ export interface ScreenRecordingHandlers {
 export declare function toggleScreenRecording(handlers: ScreenRecordingHandlers, tab: chrome.tabs.Tab, logFn?: (message: string) => void): Promise<void>;
 /**
  * Install keyboard shortcut listener for draw mode toggle (Ctrl+Shift+D / Cmd+Shift+D).
- * Sends GASOLINE_DRAW_MODE_START or GASOLINE_DRAW_MODE_STOP to the active tab's content script.
+ * Sends KABOOM_DRAW_MODE_START or KABOOM_DRAW_MODE_STOP to the active tab's content script.
  */
 export declare function installDrawModeCommandListener(logFn?: (message: string) => void): void;
 /**

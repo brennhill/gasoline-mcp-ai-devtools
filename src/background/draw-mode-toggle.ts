@@ -11,11 +11,11 @@
 export async function toggleDrawModeForTab(tabId: number): Promise<void> {
   try {
     const result = (await chrome.tabs.sendMessage(tabId, {
-      type: 'GASOLINE_GET_ANNOTATIONS'
+      type: 'kaboom_get_annotations'
     })) as { draw_mode_active?: boolean }
 
     if (result?.draw_mode_active) {
-      await chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_DRAW_MODE_STOP' })
+      await chrome.tabs.sendMessage(tabId, { type: 'kaboom_draw_mode_stop' })
       return
     }
   } catch {
@@ -23,7 +23,7 @@ export async function toggleDrawModeForTab(tabId: number): Promise<void> {
   }
 
   await chrome.tabs.sendMessage(tabId, {
-    type: 'GASOLINE_DRAW_MODE_START',
+    type: 'kaboom_draw_mode_start',
     started_by: 'user'
   })
 }

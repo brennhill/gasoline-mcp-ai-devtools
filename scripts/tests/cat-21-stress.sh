@@ -112,11 +112,11 @@ run_test_21_3
 
 begin_test "21.4" "Concurrent noise rule adds don't corrupt persistence file" \
     "10 parallel configure(noise_rule/add) calls, verify all rules persist" \
-    "Concurrent writes to .gasoline/noise/rules.json must be atomic"
+    "Concurrent writes to .kaboom/noise/rules.json must be atomic"
 
 run_test_21_4() {
     # Clean up
-    rm -rf ".gasoline/noise" 2>/dev/null || true
+    rm -rf ".kaboom/noise" 2>/dev/null || true
 
     # 10 parallel rule adds
     local pids=()

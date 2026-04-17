@@ -16,6 +16,7 @@ import { CDP_VERSION } from '../../lib/constants.js'
 import { errorMessage } from '../../lib/error-utils.js'
 import { delay } from '../../lib/timeout-utils.js'
 import { postDaemonJSON } from '../../lib/daemon-http.js'
+import { captureVisibleTabSafe } from '../tab-state.js'
 
 // =============================================================================
 // SCREENSHOT
@@ -30,7 +31,7 @@ const DEFAULT_CAPTURE_HEIGHT = 720
  * Temporarily expands scrollable containers so CDP captures full content.
  * Stores original styles in data attributes for restoration.
  */
-export function screenshotExpandContainers(): { expanded: number; content_height_hint: number } {
+function screenshotExpandContainers(): { expanded: number; content_height_hint: number } {
   let count = 0
   let contentHeightHint = Math.max(document.documentElement?.scrollHeight || 0, document.body?.scrollHeight || 0)
   function tryExpand(el: HTMLElement): void {
@@ -49,7 +50,7 @@ export function screenshotExpandContainers(): { expanded: number; content_height
     if (isScrollable && el.scrollHeight > el.clientHeight + 1) {
       const targetHeight = Math.max(el.scrollHeight, el.clientHeight)
       el.setAttribute(
-        'data-gasoline-fpx',
+        'data-kaboom-fpx',
         JSON.stringify({
           o: el.style.overflow,
           oy: el.style.overflowY,
@@ -84,9 +85,9 @@ export function screenshotExpandContainers(): { expanded: number; content_height
 }
 
 /** Self-contained: restore containers after full-page capture. */
-export function screenshotRestoreContainers(): void {
+function screenshotRestoreContainers(): void {
   function tryRestore(el: HTMLElement): void {
-    const raw = el.getAttribute('data-gasoline-fpx')
+    const raw = el.getAttribute('data-kaboom-fpx')
     if (!raw) return
     try {
       const s = JSON.parse(raw) as {
@@ -110,17 +111,17 @@ export function screenshotRestoreContainers(): void {
     } catch {
       /* ignore parse errors */
     }
-    el.removeAttribute('data-gasoline-fpx')
+    el.removeAttribute('data-kaboom-fpx')
   }
   tryRestore(document.documentElement)
-  const all = document.querySelectorAll('[data-gasoline-fpx]')
+  const all = document.querySelectorAll('[data-kaboom-fpx]')
   for (let i = 0; i < all.length; i++) {
     tryRestore(all[i] as HTMLElement)
   }
 }
 
 /** Derive bounded screenshot dimensions with fallback defaults and optional expanded-content hint. */
-export function computeFullPageCaptureDimensions(
+function computeFullPageCaptureDimensions(
   contentWidth: number,
   contentHeight: number,
   hintedHeight: number
@@ -156,14 +157,13 @@ registerCommand('screenshot', async (ctx) => {
 
   try {
     const tab = await chrome.tabs.get(ctx.tabId)
-    await chrome.tabs.update(ctx.tabId, { active: true })
 
     if (fullPage) {
       await captureFullPage(ctx, tab, format, quality)
       return
     }
 
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+    const dataUrl = await captureVisibleTabSafe(ctx.tabId, tab.windowId, {
       format: format as 'jpeg' | 'png',
       quality
     })
@@ -282,7 +282,7 @@ async function captureFullPage(
     debugLog(DebugCategory.CAPTURE, 'Full-page CDP failed, falling back to viewport capture', {
       error: errorMessage(err)
     })
-    const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+    const dataUrl = await captureVisibleTabSafe(ctx.tabId, tab.windowId, {
       format: format as 'jpeg' | 'png',
       quality
     })
@@ -315,7 +315,7 @@ registerCommand('waterfall', async (ctx) => {
     const tab = await chrome.tabs.get(ctx.tabId)
     debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId: ctx.tabId, url: tab.url })
     const result = (await chrome.tabs.sendMessage(ctx.tabId, {
-      type: 'GET_NETWORK_WATERFALL'
+      type: 'get_network_waterfall'
     })) as { entries?: unknown[] }
     debugLog(DebugCategory.CAPTURE, 'Waterfall result from content script', {
       entries: result?.entries?.length || 0

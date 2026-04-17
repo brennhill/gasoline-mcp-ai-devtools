@@ -1,0 +1,40 @@
+<svg width="800" height="500" viewBox="0 0 800 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="500" fill="#0f172a"/>
+  <defs>
+    <linearGradient id="ld-flame" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="50%" style="stop-color:#fb923c"/>
+      <stop offset="100%" style="stop-color:#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="ld-inner" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#fef3c7"/>
+    </linearGradient>
+  </defs>
+  <!-- Flame logo centered -->
+  <g transform="translate(312, 60) scale(1.4)">
+    <circle cx="64" cy="64" r="64" fill="#1e293b"/>
+    <path d="M64 16 C40 40, 28 60, 28 80 C28 100, 44 116, 64 116 C84 116, 100 100, 100 80 C100 60, 88 40, 64 16 Z" fill="url(#ld-flame)"/>
+    <path d="M64 48 C52 60, 44 72, 44 84 C44 96, 52 104, 64 104 C76 104, 84 96, 84 84 C84 72, 76 60, 64 48 Z" fill="url(#ld-inner)"/>
+  </g>
+  <!-- Title -->
+  <text x="400" y="290" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="64" font-weight="700" fill="#ffffff" text-anchor="middle">KaBOOM!</text>
+  <!-- Tagline -->
+  <text x="400" y="330" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="22" font-weight="400" fill="#f97316" text-anchor="middle">QA-first AI browser devtools</text>
+  <!-- Description -->
+  <text x="400" y="370" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="18" font-weight="300" fill="#94a3b8" text-anchor="middle">Browser DevTools for AI coding assistants via MCP</text>
+  <!-- Flow pills -->
+  <g transform="translate(170, 410)">
+    <rect x="0" y="0" width="100" height="34" rx="17" fill="none" stroke="#334155" stroke-width="1"/>
+    <text x="50" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#94a3b8" text-anchor="middle">Browser</text>
+    <path d="M114 17 L126 17 M121 12 L127 17 L121 22" stroke="#475569" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="144" y="0" width="110" height="34" rx="17" fill="none" stroke="#334155" stroke-width="1"/>
+    <text x="199" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#94a3b8" text-anchor="middle">Extension</text>
+    <path d="M268 17 L280 17 M275 12 L281 17 L275 22" stroke="#475569" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="298" y="0" width="120" height="34" rx="17" fill="none" stroke="#334155" stroke-width="1"/>
+    <text x="358" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#94a3b8" text-anchor="middle">Local Server</text>
+    <path d="M432 17 L444 17 M439 12 L445 17 L439 22" stroke="#475569" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="462" y="0" width="80" height="34" rx="17" fill="#f97316" fill-opacity="0.15" stroke="#f97316" stroke-width="1"/>
+    <text x="502" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="13" fill="#fb923c" text-anchor="middle">AI</text>
+  </g>
+</svg>

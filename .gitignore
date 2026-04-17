@@ -1,6 +1,6 @@
 # Build artifacts
 dist/
-/dev-console
+/browser-agent
 /gasoline-mcp*
 /verify-bin
 *.test
@@ -61,10 +61,11 @@ docs/benchmarks/*.txt
 # Runtime state
 .gasoline/
 .claude/
+.worktrees/
 server/bin/gasoline-*
 pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline
 pypi/gasoline-agentic-browser-*/gasoline_agentic_browser_*/gasoline.exe
-cookwithgasoline.com/public/downloads/*.crx
+gokaboom.dev/public/downloads/*.crx
 
 
 #Ignore vscode AI rules
@@ -75,13 +76,13 @@ docs/marketing
 docs/marketing-plan.md
 .gitnexus
 
-# Astro site (cookwithgasoline.com)
-cookwithgasoline.com/node_modules/
-cookwithgasoline.com/dist/
-cookwithgasoline.com/.astro/
+# Astro site (gokaboom.dev)
+gokaboom.dev/node_modules/
+gokaboom.dev/dist/
+gokaboom.dev/.astro/
 
 # Generated framework smoke fixtures
-cmd/dev-console/testpages/frameworks/
-cmd/dev-console/testpages/_next/
+cmd/browser-agent/testpages/frameworks/
+cmd/browser-agent/testpages/_next/
 scripts/smoke-tests/framework-fixtures/next-app/.next/
 scripts/smoke-tests/framework-fixtures/next-app/out/

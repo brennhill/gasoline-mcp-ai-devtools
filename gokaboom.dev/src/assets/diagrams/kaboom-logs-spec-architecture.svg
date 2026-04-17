@@ -1,0 +1,87 @@
+<svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .section-dark { fill: #0F172A; stroke: #F97316; stroke-width: 2; }
+      .section-light { fill: #1E293B; stroke: #F97316; stroke-width: 1; }
+      .section-subsection { fill: #0F172A; stroke: #334155; stroke-width: 1; }
+      .text-light { fill: #FFFFFF; font-family: system-ui; font-size: 11px; }
+      .text-bold { font-weight: bold; font-size: 12px; }
+      .text-sm { font-size: 10px; }
+      .arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .label { fill: #FFFFFF; font-family: system-ui; font-size: 10px; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">KaBOOM Logs: Server-Browser Log Correlation</text>
+
+  <!-- Main server box -->
+  <rect class="section-dark" x="20" y="60" width="960" height="380" rx="6"/>
+  <text class="text-light" x="40" y="80" style="font-size: 13px; font-weight: bold;">⚙️  KaBOOM Server (Go) — Log Capture & Correlation</text>
+
+  <!-- Capture Engines section -->
+  <rect class="section-light" x="40" y="100" width="920" height="90" rx="4"/>
+  <text class="text-light text-bold" x="60" y="120">Capture Engines:</text>
+
+  <!-- Server Log Engine -->
+  <rect class="section-subsection" x="60" y="135" width="180" height="50" rx="3"/>
+  <text class="text-light text-sm" x="75" y="150">Server Log Capture</text>
+  <text class="text-light text-sm" x="75" y="163">▪ Parse format</text>
+
+  <!-- Browser Log Engine -->
+  <rect class="section-subsection" x="280" y="135" width="180" height="50" rx="3"/>
+  <text class="text-light text-sm" x="295" y="150">Browser Log Capture</text>
+  <text class="text-light text-sm" x="295" y="163">▪ Console logs</text>
+
+  <!-- Correlation Engine -->
+  <rect class="section-subsection" x="500" y="135" width="180" height="50" rx="3"/>
+  <text class="text-light text-sm" x="515" y="150">Correlation Engine</text>
+  <text class="text-light text-sm" x="515" y="163">▪ Request ID</text>
+
+  <!-- Smart Matching -->
+  <rect class="section-subsection" x="720" y="135" width="180" height="50" rx="3"/>
+  <text class="text-light text-sm" x="735" y="150">Smart Matching</text>
+  <text class="text-light text-sm" x="735" y="163">▪ Timestamp</text>
+
+  <!-- Ring Buffer -->
+  <rect class="section-light" x="40" y="220" width="920" height="70" rx="4"/>
+  <text class="text-light text-bold" x="60" y="240">Ring Buffer (Unified Search):</text>
+  <text class="text-light text-sm" x="60" y="258">Server logs: 10K entries | Browser logs: 1K entries | JSONL persistent storage</text>
+  <text class="text-light text-sm" x="60" y="271">Correlation index enables fast lookup by request-id, timestamp, URL path</text>
+
+  <!-- MCP Interface -->
+  <rect class="section-light" x="40" y="320" width="920" height="100" rx="4"/>
+  <text class="text-light text-bold" x="60" y="340">MCP Interface & HTTP API:</text>
+
+  <!-- MCP calls -->
+  <rect class="section-subsection" x="60" y="355" width="200" height="55" rx="3"/>
+  <text class="text-light text-sm" x="75" y="370">▪ observe(what: server)</text>
+  <text class="text-light text-sm" x="75" y="383">▪ observe(what: errors)</text>
+  <text class="text-light text-sm" x="75" y="396">▪ analyze(correlation)</text>
+
+  <!-- HTTP endpoints -->
+  <rect class="section-subsection" x="300" y="355" width="200" height="55" rx="3"/>
+  <text class="text-light text-sm" x="315" y="370">▪ GET /logs</text>
+  <text class="text-light text-sm" x="315" y="383">▪ GET /server-logs</text>
+  <text class="text-light text-sm" x="315" y="396">▪ GET /correlate</text>
+
+  <!-- Data features -->
+  <rect class="section-subsection" x="540" y="355" width="200" height="55" rx="3"/>
+  <text class="text-light text-sm" x="555" y="370">▪ Browser ↔️ Server matching</text>
+  <text class="text-light text-sm" x="555" y="383">▪ Stack trace parsing</text>
+  <text class="text-light text-sm" x="555" y="396">▪ Timestamp sync</text>
+
+  <!-- Output format -->
+  <rect class="section-subsection" x="780" y="355" width="160" height="55" rx="3"/>
+  <text class="text-light text-sm" x="795" y="370">▪ Structured JSON</text>
+  <text class="text-light text-sm" x="795" y="383">▪ Correlated timeline</text>
+  <text class="text-light text-sm" x="795" y="396">▪ Causality info</text>
+
+  <!-- Bottom summary -->
+  <rect x="20" y="440" width="960" height="50" fill="none" stroke="#334155" stroke-width="1" rx="4"/>
+  <text style="fill: #F97316; font-weight: bold; font-size: 12px;" x="40" y="458">Real-time correlation:</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="475">Browser POST /api/checkout 500 (234ms) → Server logs show TypeError at checkout.js:42 → Entire causal chain visible to AI</text>
+</svg>

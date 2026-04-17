@@ -21,13 +21,13 @@ Configuration profiles are YAML files mapping setting names to values. At server
 - **Profile loader**: Parse YAML profile file at startup
 - **Config merger**: Merge profile settings with CLI flags (CLI wins)
 - **Profile validator**: Validate profile has no invalid keys or values
-- **Built-in profiles**: Ship with Gasoline in profiles/ directory
+- **Built-in profiles**: Ship with Kaboom in profiles/ directory
 - **Config exposure**: Include active profile name in configure({action:"health"})
 
 ## Data Flows
 
 ```
-Server startup: gasoline --profile=restricted
+Server startup: kaboom --profile=restricted
   → Load profiles/restricted.yaml
   → Parse YAML into map[string]interface{}
   → Set config defaults from profile:
@@ -49,7 +49,7 @@ Server startup: gasoline --profile=restricted
 - Values are typed (bool, string, int)
 
 ### Profile loading:
-1. Check --profile flag or GASOLINE_PROFILE env var
+1. Check --profile flag or KABOOM_PROFILE env var
 2. If set, load file from profiles/{name}.yaml or absolute path
 3. Parse YAML into map
 4. Iterate map, set corresponding config fields

@@ -111,7 +111,7 @@ export declare function isNetworkBodyCaptureEnabled(): boolean;
  */
 export declare function setServerUrl(url: string): void;
 /**
- * Check if a URL should be captured (not gasoline server or extension)
+ * Check if a URL should be captured (not kaboom server or extension)
  * @param url - The URL to check
  * @returns True if the URL should be captured
  */
@@ -148,12 +148,6 @@ export declare function readResponseBody(response: Response): Promise<string>;
  */
 export declare function readResponseBodyWithTimeout(response: Response, timeoutMs?: number): Promise<string>;
 /**
- * Reset all module state for testing purposes
- * Clears pending requests, resets counters, and restores default settings.
- * Call this in beforeEach/afterEach test hooks to prevent test pollution.
- */
-export declare function resetForTesting(): void;
-/**
  * Type alias for fetch-like functions (avoids overload complexity)
  */
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -170,7 +164,7 @@ export declare function unwrapXHR(): void;
 /**
  * Adopt network bodies buffered by the early-patch script (fetch + XHR).
  * Mirrors adoptEarlyConnections() in websocket.ts: reads from
- * window.__GASOLINE_EARLY_BODIES__, posts each as GASOLINE_NETWORK_BODY
+ * window.__KABOOM_EARLY_BODIES__, posts each as KABOOM_NETWORK_BODY
  * to the content script, then cleans up globals.
  * Called once during Phase 2 installation.
  */

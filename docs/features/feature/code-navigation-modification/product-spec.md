@@ -15,10 +15,10 @@ last_verified_date: 2026-03-05
 # Code Navigation & Modification
 
 ## Overview
-Code Navigation & Modification enables Gasoline to inspect, navigate, and directly modify application code in response to discovered bugs or performance issues. When an AI agent identifies a bug through observation and testing, it can now locate the responsible code, understand context, and propose or apply fixes directly. This feature bridges the gap between "problem identified" and "fix committed," enabling autonomous or semi-autonomous repair workflows.
+Code Navigation & Modification enables Kaboom to inspect, navigate, and directly modify application code in response to discovered bugs or performance issues. When an AI agent identifies a bug through observation and testing, it can now locate the responsible code, understand context, and propose or apply fixes directly. This feature bridges the gap between "problem identified" and "fix committed," enabling autonomous or semi-autonomous repair workflows.
 
 ## Problem
-Current Gasoline workflow:
+Current Kaboom workflow:
 1. AI observes failure (network error, wrong DOM, timeout)
 2. AI reports the issue to developer
 3. Developer manually navigates codebase, finds root cause
@@ -49,12 +49,12 @@ All operations are:
 - As a developer, I want to see the correlation between an observed bug and the code fix applied so that I can learn from AI repairs
 
 ## Acceptance Criteria
-- [ ] Gasoline can locate files by regex pattern, component name, error stack trace
-- [ ] Gasoline can read and display file contents with line numbers
-- [ ] Gasoline can apply targeted edits: insert, replace, delete specific lines/blocks
+- [ ] Kaboom can locate files by regex pattern, component name, error stack trace
+- [ ] Kaboom can read and display file contents with line numbers
+- [ ] Kaboom can apply targeted edits: insert, replace, delete specific lines/blocks
 - [ ] All code changes are git-staged (not committed) without explicit permission
 - [ ] Code modifications include comment linking to correlation_id that triggered the fix
-- [ ] After modification, Gasoline can run relevant test files
+- [ ] After modification, Kaboom can run relevant test files
 - [ ] Performance: file search <100ms, file read <50ms, modification <100ms
 - [ ] Support for JavaScript/TypeScript, Python, Go, and plain text config files
 - [ ] Rollback to previous version in <500ms
@@ -65,7 +65,7 @@ All operations are:
 - Multi-file refactoring (single file edits only)
 - Code formatting enforcement (preserve existing style)
 - Language-specific complexity (AST parsing, type checking)
-- IDE integration (this tool is Gasoline's own code interface)
+- IDE integration (this tool is Kaboom's own code interface)
 
 ## Data Structures
 

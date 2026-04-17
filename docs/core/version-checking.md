@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # Version Checking & Update Notifications
 
-Gasoline includes automatic version checking to notify users when newer versions are available on GitHub. This document describes how the system works and how to use it.
+Kaboom includes automatic version checking to notify users when newer versions are available on GitHub. This document describes how the system works and how to use it.
 
 ## Overview
 
@@ -27,7 +27,7 @@ The server handles all GitHub API polling. The extension simply reads the cached
 3. **Extension polls `/health`** regularly as part of normal connectivity checks
 4. **If available > current version**:
    - A **blue "⬆" badge** appears on the extension icon
-   - Extension tooltip shows: `"Gasoline: New version available (v5.2.6)"`
+   - Extension tooltip shows: `"Kaboom: New version available (v5.2.6)"`
 5. **User can click extension icon** to see update info and download link
 6. **Popup displays**:
    - Current version (e.g., "5.2.5")
@@ -58,7 +58,7 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                      GitHub API                          │
-│  /repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/...  │
+│  /repos/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/...         │
 └────────────────────────┬─────────────────────────────────┘
                          │ (daily check, 6h cache)
                          ↓
@@ -87,7 +87,7 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 
 1. **Server starts**: `startVersionCheckLoop()` is called during initialization
 2. **Immediate check**: `checkGitHubVersion()` fetches the latest release from GitHub (if no cached value)
-3. **GitHub API call**: Fetches `https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest`
+3. **GitHub API call**: Fetches `https://api.github.com/repos/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/latest`
 4. **Extract version**: Parses `tag_name` field (e.g., "v5.2.6" → "5.2.6")
 5. **Cache result**: Stores in memory with 6-hour TTL
 6. **Periodic polling**: Checks again every 24 hours (or if cache expired)
@@ -98,7 +98,7 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 - **GitHub API limit**: 60 requests/hour (unauthenticated)
 - **Server strategy**: Daily checks (1 request/day) with 6-hour cache
 - **Fallback**: If GitHub unreachable, keeps previous cached value (or server version if no previous check)
-- **Location**: [cmd/dev-console/main.go](../../cmd/dev-console/main.go#L1542)
+- **Location**: [cmd/browser-agent/main.go](../../cmd/browser-agent/main.go#L1542)
 
 #### `/health` Response Example
 
@@ -110,7 +110,7 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
   "logs": {
     "entries": 42,
     "maxEntries": 1000,
-    "logFile": "/home/user/gasoline-logs.jsonl",
+    "logFile": "/home/user/kaboom-logs.jsonl",
     "logFileSize": 102400
   },
   "buffers": { ... },
@@ -131,14 +131,14 @@ Versions follow semantic versioning: `X.Y.Z` (e.g., `5.2.5`)
 4. **Compares versions**: Uses semver comparison (e.g., "5.2.6" > "5.2.5")
 5. **Updates state**: Sets `newVersionAvailable` flag based on comparison
 6. **Updates badge**: Calls `updateVersionBadge()` to show/hide the "⬆" icon
-7. **Updates tooltip**: Shows "Gasoline: New version available (v5.2.6)" or just "Gasoline"
+7. **Updates tooltip**: Shows "Kaboom: New version available (v5.2.6)" or just "Kaboom"
 
 #### Version Header
 
 Every request to the server includes:
 
 ```
-X-Gasoline-Extension-Version: 5.2.5
+X-Kaboom-Extension-Version: 5.2.5
 ```
 
 This header is automatically added to all API requests for diagnostics:
@@ -162,22 +162,22 @@ The server logs version mismatches (e.g., when extension and server versions dif
 // When availableVersion > extensionVersion:
 - Badge text: "⬆"
 - Badge color: Blue (#0969da)
-- Tooltip: "Gasoline: New version available (v5.2.6)"
+- Tooltip: "Kaboom: New version available (v5.2.6)"
 
 // When equal or no update available:
 - Badge cleared (no "⬆")
-- Tooltip: "Gasoline"
+- Tooltip: "Kaboom"
 ```
 
 ## Configuration
 
 ### Server GitHub Check Interval
 
-Edit [cmd/dev-console/main.go:42-52](../../cmd/dev-console/main.go#L42-L52):
+Edit [cmd/browser-agent/main.go:42-52](../../cmd/browser-agent/main.go#L42-L52):
 
 ```go
 const (
-	githubAPIURL         = "https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest"
+	githubAPIURL         = "https://api.github.com/repos/brennhill/Kaboom-Browser-AI-Devtools-MCP/releases/latest"
 	versionCheckCacheTTL = 6 * time.Hour    // Cache validity period
 	versionCheckInterval = 24 * time.Hour   // Polling frequency
 	httpClientTimeout    = 10 * time.Second // GitHub API timeout
@@ -191,7 +191,7 @@ const (
 
 ### Custom GitHub Repository
 
-To use a different GitHub repository (fork), edit [cmd/dev-console/main.go:47](../../cmd/dev-console/main.go#L47):
+To use a different GitHub repository (fork), edit [cmd/browser-agent/main.go:47](../../cmd/browser-agent/main.go#L47):
 
 ```go
 const githubAPIURL = "https://api.github.com/repos/YOUR-ORG/YOUR-REPO/releases/latest"
@@ -206,10 +206,10 @@ const githubAPIURL = "https://api.github.com/repos/YOUR-ORG/YOUR-REPO/releases/l
 
 ```bash
 # Build with custom version
-go build -ldflags "-X main.version=5.2.6" ./cmd/dev-console
+go build -ldflags "-X main.version=5.2.6" ./cmd/browser-agent
 ```
 
-If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30](../../cmd/dev-console/main.go#L30)).
+If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/browser-agent/main.go:30](../../cmd/browser-agent/main.go#L30)).
 
 ## Troubleshooting
 
@@ -220,11 +220,11 @@ If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30]
 **Solutions**:
 1. Check GitHub has the newer version:
    ```bash
-   curl -s https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest | jq .tag_name
+   curl -s https://api.github.com/repos/brennhill/kaboom-agentic-browser-devtools-mcp/releases/latest | jq .tag_name
    ```
 
 2. Server hasn't checked GitHub yet
-   - Server checks on startup, so restart the server: `killall gasoline && gasoline`
+   - Server checks on startup, so restart the server: `killall kaboom && kaboom`
    - Or wait for next daily check
 
 3. Check server version was fetched by extension
@@ -236,14 +236,14 @@ If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30]
    - DevTools → Network → click `/health` request → Response tab
 
 5. Verify GitHub API is accessible from your network
-   - Try: `curl https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp/releases/latest`
+   - Try: `curl https://api.github.com/repos/brennhill/kaboom-agentic-browser-devtools-mcp/releases/latest`
 
 ### GitHub API Unreachable
 
 **Symptom**: Server logs show "GitHub version check failed"
 
 ```
-[gasoline] GitHub version check failed: connection refused
+[kaboom] GitHub version check failed: connection refused
 ```
 
 **Causes**:
@@ -262,7 +262,7 @@ If no `-ldflags` provided, defaults to `5.2.5` (see [cmd/dev-console/main.go:30]
 **Symptom**: Server stderr shows version mismatch
 
 ```
-[gasoline] Version mismatch: server=5.2.5 extension=5.2.6
+[kaboom] Version mismatch: server=5.2.5 extension=5.2.6
 ```
 
 **Why**: Extension and server have different versions (may be intentional)
@@ -287,7 +287,7 @@ Fetches the latest version from GitHub. Called automatically on startup and ever
 - Updates `availableVersion` global variable
 - Non-blocking; silently fails if GitHub unreachable
 
-**Implementation**: [cmd/dev-console/main.go#L1542](../../cmd/dev-console/main.go#L1542)
+**Implementation**: [cmd/browser-agent/main.go#L1542](../../cmd/browser-agent/main.go#L1542)
 
 #### `startVersionCheckLoop()`
 
@@ -298,7 +298,7 @@ Starts the periodic version checking loop. Called once during server initializat
 - Schedules periodic checks every 24 hours
 - Runs in background goroutine
 
-**Implementation**: [cmd/dev-console/main.go#L1588](../../cmd/dev-console/main.go#L1588)
+**Implementation**: [cmd/browser-agent/main.go#L1588](../../cmd/browser-agent/main.go#L1588)
 
 #### `GET /health` Response
 
@@ -337,7 +337,7 @@ Updates version information from server health response. Called when `/health` i
 
 **Example**:
 ```typescript
-import { updateVersionFromHealth, debugLog } from 'gasoline';
+import { updateVersionFromHealth, debugLog } from 'kaboom';
 
 updateVersionFromHealth({
   version: "5.2.5",
@@ -381,7 +381,7 @@ Get update information for display in UI.
 
 **Example**:
 ```typescript
-import { getUpdateInfo } from 'gasoline';
+import { getUpdateInfo } from 'kaboom';
 
 const info = getUpdateInfo();
 if (info.available) {
@@ -396,7 +396,7 @@ Manually update the extension badge based on current version state.
 
 **Example**:
 ```typescript
-import { updateVersionBadge } from 'gasoline';
+import { updateVersionBadge } from 'kaboom';
 
 updateVersionBadge();
 ```
@@ -407,7 +407,7 @@ Returns the extension version from `manifest.json`.
 
 **Example**:
 ```typescript
-import { getExtensionVersion } from 'gasoline';
+import { getExtensionVersion } from 'kaboom';
 
 console.log(getExtensionVersion()); // "5.2.5"
 ```
@@ -418,7 +418,7 @@ Reset version checking state to initial values. **For testing only.**
 
 **Example**:
 ```typescript
-import { resetVersionCheck } from 'gasoline';
+import { resetVersionCheck } from 'kaboom';
 
 resetVersionCheck();
 ```
@@ -426,7 +426,7 @@ resetVersionCheck();
 ## Files Involved
 
 ### Server (Go)
-- [cmd/dev-console/main.go](../../cmd/dev-console/main.go) - GitHub checking, `/health` endpoint
+- [cmd/browser-agent/main.go](../../cmd/browser-agent/main.go) - GitHub checking, `/health` endpoint
 
 ### Extension (TypeScript)
 - [src/lib/version.ts](../src/lib/version.ts) - Semver parsing & comparison

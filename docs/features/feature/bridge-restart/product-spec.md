@@ -13,7 +13,7 @@ Related startup flow map: [Bridge Startup Contention and Convergence](../../../a
 
 ## Problem
 
-When the gasoline daemon hangs (deadlock, stuck goroutine, resource exhaustion), the LLM cannot call any tools because `tools/call` requests forward to the unresponsive HTTP daemon. The bridge (stdio process) is still alive — it just can't reach the daemon. There is no way to recover without manually killing the process.
+When the kaboom daemon hangs (deadlock, stuck goroutine, resource exhaustion), the LLM cannot call any tools because `tools/call` requests forward to the unresponsive HTTP daemon. The bridge (stdio process) is still alive — it just can't reach the daemon. There is no way to recover without manually killing the process.
 
 ## Solution
 

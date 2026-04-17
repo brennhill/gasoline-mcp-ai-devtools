@@ -2,6 +2,8 @@
  * Purpose: Deduplicates and groups identical errors within configurable time windows to reduce server traffic.
  * Docs: docs/features/feature/error-clustering/index.md
  */
+import { StorageKey } from '../lib/constants.js';
+import { getSession, setSession } from '../lib/storage-utils.js';
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -12,12 +14,71 @@ const ERROR_GROUP_FLUSH_MS = 10000;
 /** Maximum tracked error groups */
 const MAX_TRACKED_ERRORS = 100;
 /** Error group max age - cleanup after 1 hour */
-export const ERROR_GROUP_MAX_AGE_MS = 3600000;
+const ERROR_GROUP_MAX_AGE_MS = 3600000;
 // =============================================================================
 // STATE
 // =============================================================================
 /** Error grouping state */
 const errorGroups = new Map();
+// =============================================================================
+// SESSION STORAGE PERSISTENCE
+// =============================================================================
+/** Debounce timer for session storage writes */
+let persistTimer = null;
+/** Debounce interval for writing error groups to session storage (ms) */
+const PERSIST_DEBOUNCE_MS = 2000;
+/**
+ * Debounced write of error group state to chrome.storage.session.
+ * Only persists signatures and counts — full LogEntry details are not stored
+ * since they rebuild naturally on next occurrence.
+ */
+function schedulePersist() {
+    if (persistTimer !== null)
+        clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => {
+        persistTimer = null;
+        const snapshot = [];
+        for (const [signature, group] of errorGroups) {
+            snapshot.push({
+                signature,
+                count: group.count,
+                firstSeen: group.firstSeen,
+                lastSeen: group.lastSeen
+            });
+        }
+        void setSession(StorageKey.ERROR_GROUPS, snapshot);
+    }, PERSIST_DEBOUNCE_MS);
+}
+/**
+ * Restore error groups from session storage after service worker restart.
+ * Only restores dedup windows (signature + timing) — the original LogEntry
+ * is not persisted, so the first new occurrence will populate it.
+ */
+async function restoreFromSession() {
+    try {
+        const raw = await getSession(StorageKey.ERROR_GROUPS);
+        if (!Array.isArray(raw))
+            return;
+        const now = Date.now();
+        for (const item of raw) {
+            // Skip groups that have aged out
+            if (now - item.lastSeen > ERROR_GROUP_MAX_AGE_MS)
+                continue;
+            // Restore with a placeholder entry — next real error will overwrite it
+            errorGroups.set(item.signature, {
+                entry: { level: 'error' },
+                count: item.count,
+                firstSeen: item.firstSeen,
+                lastSeen: item.lastSeen
+            });
+        }
+    }
+    catch {
+        // Session storage may not be available — degrade silently
+    }
+}
+// Restore on module load (top-level await is fine in MV3 service worker modules)
+void restoreFromSession();
 const SIGNATURE_EXTRACTORS = {
     exception: (entry) => {
         const exEntry = entry;
@@ -65,12 +126,16 @@ function handleExistingGroup(group, entry, now) {
     if (now - group.lastSeen < ERROR_DEDUP_WINDOW_MS) {
         group.count++;
         group.lastSeen = now;
+        group.entry = entry; // Keep entry fresh for flush
+        schedulePersist();
         return { shouldSend: false };
     }
     const countToReport = group.count;
     group.count = 1;
     group.lastSeen = now;
     group.firstSeen = now;
+    group.entry = entry;
+    schedulePersist();
     if (countToReport > 1) {
         return {
             shouldSend: true,
@@ -104,12 +169,13 @@ export function processErrorGroup(entry) {
         return handleExistingGroup(existing, entry, now);
     evictOldestGroup();
     errorGroups.set(signature, { entry, count: 1, firstSeen: now, lastSeen: now });
+    schedulePersist();
     return { shouldSend: true, entry };
 }
 /**
  * Get current state of error groups (for testing)
  */
-export function getErrorGroupsState() {
+function getErrorGroupsState() {
     return errorGroups;
 }
 /**
@@ -117,9 +183,11 @@ export function getErrorGroupsState() {
  */
 export function cleanupStaleErrorGroups(debugLogFn) {
     const now = Date.now();
+    let cleaned = false;
     for (const [signature, group] of errorGroups) {
         if (now - group.lastSeen > ERROR_GROUP_MAX_AGE_MS) {
             errorGroups.delete(signature);
+            cleaned = true;
             if (debugLogFn) {
                 debugLogFn('error', 'Cleaned up stale error group', {
                     signature: signature.slice(0, 50) + '...',
@@ -128,6 +196,8 @@ export function cleanupStaleErrorGroups(debugLogFn) {
             }
         }
     }
+    if (cleaned)
+        schedulePersist();
 }
 /**
  * Flush error groups - send any accumulated counts
@@ -152,6 +222,8 @@ export function flushErrorGroups() {
             errorGroups.delete(signature);
         }
     }
+    if (entriesToSend.length > 0)
+        schedulePersist();
     return entriesToSend;
 }
 //# sourceMappingURL=error-groups.js.map

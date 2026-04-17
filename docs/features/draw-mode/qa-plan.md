@@ -25,7 +25,7 @@ last_verified_date: 2026-03-05
 ### Test Locations
 
 - **Extension:** `tests/extension/draw-mode.test.js`, `tests/extension/draw-mode-export.test.js`
-- **Go Server:** `cmd/dev-console/draw_mode_test.go`, `cmd/dev-console/annotation_store_test.go`
+- **Go Server:** `cmd/browser-agent/draw_mode_test.go`, `cmd/browser-agent/annotation_store_test.go`
 - **Integration:** `tests/integration/draw_mode_test.go`
 
 ---
@@ -103,7 +103,7 @@ last_verified_date: 2026-03-05
 | DM-EXT-050 | Annotations saved to chrome.storage.session on add | chrome.storage.session.set called with annotations |
 | DM-EXT-051 | Annotations saved on text confirm | Storage updated after Enter/blur |
 | DM-EXT-052 | Annotations saved on annotation removal | Storage updated after empty-text deletion |
-| DM-EXT-053 | Storage key is "gasoline_draw_annotations" | Correct key used for session storage |
+| DM-EXT-053 | Storage key is "kaboom_draw_annotations" | Correct key used for session storage |
 | DM-EXT-054 | Storage includes metadata (active, tab_id, page_url) | All metadata fields present |
 | DM-EXT-055 | New session overwrites previous session data | Only latest session's annotations in storage |
 
@@ -148,7 +148,7 @@ last_verified_date: 2026-03-05
 
 ## Unit Tests: Go Server
 
-**Location:** `cmd/dev-console/draw_mode_test.go`
+**Location:** `cmd/browser-agent/draw_mode_test.go`
 
 ### 1. Interact Handler (draw_mode_start)
 
@@ -171,7 +171,7 @@ last_verified_date: 2026-03-05
 | DM-GO-013 | Blocking analyze times out after 5 minutes | Returns timeout error after 300s |
 | DM-GO-014 | Blocking analyze resolves when results posted | Response includes annotations and screenshot_path |
 | DM-GO-015 | Screenshot saved to temp directory | File exists at returned path |
-| DM-GO-016 | Screenshot path uses correct format | `/tmp/gasoline-draw-mode-{timestamp}.png` |
+| DM-GO-016 | Screenshot path uses correct format | `/tmp/kaboom-draw-mode-{timestamp}.png` |
 
 ### 3. Analyze Handler (annotation_detail)
 
@@ -198,7 +198,7 @@ last_verified_date: 2026-03-05
 
 ## Unit Tests: Go Server -- Annotation Store
 
-**Location:** `cmd/dev-console/annotation_store_test.go`
+**Location:** `cmd/browser-agent/annotation_store_test.go`
 
 ### 1. Storage and Retrieval
 
@@ -316,7 +316,7 @@ last_verified_date: 2026-03-05
 
 #### Steps:
 1. Open any web page
-2. Click the Gasoline extension icon to open popup
+2. Click the Kaboom extension icon to open popup
 3. Click the "Draw Mode" toggle
 4. Verify: red dashed crosshair cursor appears, overlay covers page
 5. Draw a rectangle by clicking and dragging
@@ -344,7 +344,7 @@ last_verified_date: 2026-03-05
 ### Test 3: MCP Round-Trip
 
 #### Steps:
-1. Start Gasoline MCP server
+1. Start Kaboom MCP server
 2. Connect an MCP client (e.g., Claude Code)
 3. Call `interact({action: "draw_mode_start"})`
 4. Verify: extension activates draw mode on active tab
@@ -411,8 +411,8 @@ After any changes to draw mode:
 ```bash
 node --test tests/extension/draw-mode.test.js
 node --test tests/extension/draw-mode-export.test.js
-go test -short ./cmd/dev-console/... -run DrawMode
-go test -short ./cmd/dev-console/... -run AnnotationStore
+go test -short ./cmd/browser-agent/... -run DrawMode
+go test -short ./cmd/browser-agent/... -run AnnotationStore
 ```
 
 ### 2. Full Test Suite (8 min)
@@ -424,7 +424,7 @@ node --test tests/extension/*.test.js
 
 ### 3. Integration Verification (5 min)
 
-- Start server: `./dist/gasoline --port 7890`
+- Start server: `./dist/kaboom --port 7890`
 - Open test page
 - Call `interact({action: "draw_mode_start"})` via MCP client
 - Draw 2 annotations, press ESC

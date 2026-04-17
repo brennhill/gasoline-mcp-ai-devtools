@@ -24,7 +24,7 @@ Hook Scripts (shell/Go)
     ↓ Execute git commands, extract metadata
 Custom Event API
     ↓ git:commit, git:checkout, git:merge events
-Gasoline Event Store
+Kaboom Event Store
     ↓ indexed by branch, commit hash
 Test Session Correlator
     ↓ tag test runs with current branch + commit
@@ -33,7 +33,7 @@ Timeline View
 ```
 
 ### Components
-1. **Git Hook Scripts** (`cmd/gasoline-install-hooks/`)
+1. **Git Hook Scripts** (`cmd/kaboom-install-hooks/`)
    - Post-commit hook: Extract commit info, emit event
    - Post-checkout hook: Detect branch switch, emit event
    - Post-merge hook: Emit merge completion event
@@ -61,7 +61,7 @@ Timeline View
 
 ### Phase 1: Hook Installation & Events (Week 1)
 1. Create hook installation command
-   - `gasoline install-hooks <repo-path>`
+   - `kaboom install-hooks <repo-path>`
    - Creates `.git/hooks/post-commit`, post-checkout, post-merge
 2. Implement Git metadata extractor
    - Parse `git log -1` for commit info
@@ -167,10 +167,10 @@ func handleGitEvents(req *GitEventsRequest) (*GitEventsResponse, error) {
 ```
 
 ## Code References
-- **Git hook installer:** `/Users/brenn/dev/gasoline/cmd/gasoline-install-hooks/main.go` (new)
-- **Git metadata extractor:** `/Users/brenn/dev/gasoline/server/git/extractor.go` (new)
-- **Hook shell scripts:** `/Users/brenn/dev/gasoline/scripts/hooks/` (new)
-- **Test session enricher:** `/Users/brenn/dev/gasoline/server/test-session.go` (modified)
+- **Git hook installer:** `/Users/brenn/dev/kaboom/cmd/kaboom-install-hooks/main.go` (new)
+- **Git metadata extractor:** `/Users/brenn/dev/kaboom/server/git/extractor.go` (new)
+- **Hook shell scripts:** `/Users/brenn/dev/kaboom/scripts/hooks/` (new)
+- **Test session enricher:** `/Users/brenn/dev/kaboom/server/test-session.go` (modified)
 - **Custom event API:** Used as-is (git events are regular events)
 
 ## Performance Requirements
@@ -242,7 +242,7 @@ curl -s -X POST http://localhost:9090/events \
 
 ### Uninstall & Cleanup
 ```bash
-gasoline uninstall-hooks <repo-path>
+kaboom uninstall-hooks <repo-path>
 # → Removes hook scripts safely
 # → Restores backed-up hooks if present
 ```

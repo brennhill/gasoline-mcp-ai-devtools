@@ -16,7 +16,7 @@ last_verified_date: 2026-03-05
 
 AI agents can measure performance (vitals, network waterfall, performance snapshots) and they can make code changes. But running a before/after performance experiment requires ~7 manual tool calls and the AI has to interpret raw numbers itself. There's no first-class primitive for "measure, change, re-measure, compare."
 
-Playwright can measure performance in scripted tests, but requires you to write the test first, runs against a synthetic browser, and can't act on the results. Gasoline already has the closed loop — it just needs better ergonomics for the experiment workflow.
+Playwright can measure performance in scripted tests, but requires you to write the test first, runs against a synthetic browser, and can't act on the results. Kaboom already has the closed loop — it just needs better ergonomics for the experiment workflow.
 
 ## User Story
 

@@ -40,7 +40,7 @@ Both operate asynchronously without blocking main functionality.
 - Calls version check function immediately on start, then every 30 minutes
 
 **`src/background/server.ts`** - HTTP Request Headers
-- `getRequestHeaders()`: Injects `X-Gasoline-Extension-Version` header
+- `getRequestHeaders()`: Injects `X-Kaboom-Extension-Version` header
 - Applied to all API requests (logs, WS events, actions, etc.)
 - 10+ endpoints updated
 
@@ -51,8 +51,8 @@ Both operate asynchronously without blocking main functionality.
 
 ### Server Side
 
-**`cmd/dev-console/main.go`** - Version Header Processing
-- Extracts `X-Gasoline-Extension-Version` from request headers
+**`cmd/browser-agent/main.go`** - Version Header Processing
+- Extracts `X-Kaboom-Extension-Version` from request headers
 - Compares with server version
 - Logs mismatch to stderr for diagnostics
 - Already exposes version in `/health` endpoint
@@ -85,7 +85,7 @@ Extension makes any API request (POST /logs, POST /settings, etc.)
     ↓
 getRequestHeaders() called
     ↓
-Inject X-Gasoline-Extension-Version header
+Inject X-Kaboom-Extension-Version header
     ↓
 Send request with header
     ↓
@@ -117,7 +117,7 @@ isVersionNewer(server, extension) → true
 updateVersionBadge():
   - Set badge text: "⬆"
   - Set badge color: blue (#0969da)
-  - Set tooltip: "Gasoline: New version available (v5.2.6)"
+  - Set tooltip: "Kaboom: New version available (v5.2.6)"
 ```
 
 ## Implementation Strategy
@@ -182,7 +182,7 @@ Version format is strictly X.Y.Z (enforced by regex)
 **Mitigation**: Badge only shows "⬆" when update available, error badge shown otherwise (mutually exclusive)
 
 ### Risk 3: Header Stripping by Proxy
-**Description**: Custom proxy strips or modifies `X-Gasoline-*` headers
+**Description**: Custom proxy strips or modifies `X-Kaboom-*` headers
 **Mitigation**: Header is informational only (not required for functionality), graceful degradation
 
 ### Risk 4: Performance Impact on Startup

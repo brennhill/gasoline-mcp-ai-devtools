@@ -5,7 +5,7 @@
 package capture
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/performance"
 )
 
 // A11yCache manages accessibility audit result cache with LRU eviction

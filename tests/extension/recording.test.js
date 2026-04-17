@@ -138,7 +138,7 @@ function createRecordingChromeMock(overrides = {}) {
 function simulateOffscreenStarted(success, error) {
   const message = {
     target: 'background',
-    type: 'OFFSCREEN_RECORDING_STARTED',
+    type: 'offscreen_recording_started',
     success,
     error: error || undefined
   }
@@ -153,7 +153,7 @@ function simulateOffscreenStarted(success, error) {
 function simulateOffscreenStopped(overrides = {}) {
   const message = {
     target: 'background',
-    type: 'OFFSCREEN_RECORDING_STOPPED',
+    type: 'offscreen_recording_stopped',
     status: overrides.status ?? 'saved',
     name: overrides.name ?? 'test-recording',
     duration_seconds: overrides.duration_seconds ?? 10,
@@ -170,7 +170,7 @@ function simulateOffscreenStopped(overrides = {}) {
 
 // Simulate popup gesture grant that unblocks MCP-initiated recording start.
 function simulateRecordingGestureGranted() {
-  const message = { type: 'RECORDING_GESTURE_GRANTED' }
+  const message = { type: 'recording_gesture_granted' }
   const sender = { id: globalThis.chrome.runtime.id }
   for (const listener of [...onMessageListeners]) {
     listener(message, sender)
@@ -179,7 +179,7 @@ function simulateRecordingGestureGranted() {
 
 // Simulate popup denial for MCP-initiated recording start.
 function simulateRecordingGestureDenied() {
-  const message = { type: 'RECORDING_GESTURE_DENIED' }
+  const message = { type: 'recording_gesture_denied' }
   const sender = { id: globalThis.chrome.runtime.id }
   for (const listener of [...onMessageListeners]) {
     listener(message, sender)
@@ -190,7 +190,7 @@ async function waitForPendingRecordingIntent(timeoutMs = 2500) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
     const hasPendingIntent = globalThis.chrome.storage.local.set.mock.calls.some(
-      (call) => call.arguments[0]?.gasoline_pending_recording
+      (call) => call.arguments[0]?.kaboom_pending_recording
     )
     if (hasPendingIntent) return
     await new Promise((r) => setTimeout(r, 20))
@@ -239,15 +239,15 @@ describe('Recording Initial State', () => {
     })
   })
 
-  test('module load should clear stale gasoline_recording from storage', () => {
+  test('module load should clear stale recording state from storage', () => {
     // The module clears stale recording state at import time.
     // We verify the storage.local.remove was called during module load.
     const removeCalls = globalThis.chrome.storage.local.remove.mock.calls
     const clearedRecording = removeCalls.some((call) => {
       const arg = call.arguments[0]
-      return arg === 'gasoline_recording' || (Array.isArray(arg) && arg.includes('gasoline_recording'))
+      return arg === 'kaboom_recording' || (Array.isArray(arg) && arg.includes('kaboom_recording'))
     })
-    assert.ok(clearedRecording, 'Module should clear stale gasoline_recording from storage on load')
+    assert.ok(clearedRecording, 'Module should clear stale recording state from storage on load')
   })
 })
 
@@ -270,7 +270,7 @@ describe('stopRecording when not active', () => {
     const removeCalls = globalThis.chrome.storage.local.remove.mock.calls
     const cleaned = removeCalls.some((call) => {
       const arg = call.arguments[0]
-      return arg === 'gasoline_recording' || (Array.isArray(arg) && arg.includes('gasoline_recording'))
+      return arg === 'kaboom_recording' || (Array.isArray(arg) && arg.includes('kaboom_recording'))
     })
     assert.ok(cleaned, 'Should clean up zombie storage')
   })
@@ -387,8 +387,8 @@ describe('MCP-initiated recording flow', () => {
     const permissionToastOnTarget = toastCalls.some(
       (c) =>
         c.arguments[0] === 77 &&
-        c.arguments[1]?.type === 'GASOLINE_ACTION_TOAST' &&
-        String(c.arguments[1]?.text || '').includes('Open Gasoline Popup')
+        c.arguments[1]?.type === 'kaboom_action_toast' &&
+        String(c.arguments[1]?.text || '').includes('Open Kaboom')
     )
     assert.ok(permissionToastOnTarget, 'Should show popup-approval permission toast on target tab')
 
@@ -420,6 +420,7 @@ describe('MCP-initiated recording flow', () => {
     const result = await startPromise
     assert.strictEqual(result.status, 'error')
     assert.ok(String(result.error || '').toLowerCase().includes('denied'))
+    assert.ok(String(result.error || '').includes('Kaboom popup'))
     assert.strictEqual(isRecording(), false)
   })
 })
@@ -444,7 +445,7 @@ describe('FPS Clamping', () => {
       // Verify the sendMessage call to offscreen included clamped fps
       const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
       const startCmd = sendCalls.find(
-        (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+        (c) => c.arguments[0]?.type === 'offscreen_start_recording'
       )
       if (startCmd) {
         assert.strictEqual(startCmd.arguments[0].fps, 5)
@@ -467,7 +468,7 @@ describe('FPS Clamping', () => {
     if (result.status === 'recording') {
       const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
       const startCmd = sendCalls.find(
-        (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+        (c) => c.arguments[0]?.type === 'offscreen_start_recording'
       )
       if (startCmd) {
         assert.strictEqual(startCmd.arguments[0].fps, 60)
@@ -489,7 +490,7 @@ describe('FPS Clamping', () => {
     if (result.status === 'recording') {
       const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
       const startCmd = sendCalls.find(
-        (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+        (c) => c.arguments[0]?.type === 'offscreen_start_recording'
       )
       if (startCmd) {
         assert.strictEqual(startCmd.arguments[0].fps, 30)
@@ -624,12 +625,12 @@ describe('Successful Recording Lifecycle', () => {
     simulateOffscreenStarted(true)
     await startPromise
 
-    // Check that gasoline_recording was saved to local storage
+    // Check that kaboom_recording was saved to local storage
     const setCalls = globalThis.chrome.storage.local.set.mock.calls
-    const recordingSet = setCalls.find((c) => c.arguments[0]?.gasoline_recording)
+    const recordingSet = setCalls.find((c) => c.arguments[0]?.kaboom_recording)
     assert.ok(recordingSet, 'Should persist recording state to local storage')
-    assert.strictEqual(recordingSet.arguments[0].gasoline_recording.active, true)
-    assert.strictEqual(recordingSet.arguments[0].gasoline_recording.name, 'popup-sync-test')
+    assert.strictEqual(recordingSet.arguments[0].kaboom_recording.active, true)
+    assert.strictEqual(recordingSet.arguments[0].kaboom_recording.name, 'popup-sync-test')
 
     // Cleanup
     const stopPromise = stopRecording()
@@ -694,7 +695,7 @@ describe('Successful Recording Lifecycle', () => {
 
     const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
     const startCmd = sendCalls.find(
-      (c) => c.arguments[0]?.type === 'OFFSCREEN_START_RECORDING'
+      (c) => c.arguments[0]?.type === 'offscreen_start_recording'
     )
     assert.ok(startCmd, 'Should send OFFSCREEN_START_RECORDING message')
     const msg = startCmd.arguments[0]
@@ -934,7 +935,7 @@ describe('stopRecording save toast', () => {
 
     const sendCalls = globalThis.chrome.tabs.sendMessage.mock.calls
     const toastCall = sendCalls.find(
-      (c) => c.arguments[1]?.type === 'GASOLINE_ACTION_TOAST' && c.arguments[1]?.text === 'Recording saved'
+      (c) => c.arguments[1]?.type === 'kaboom_action_toast' && c.arguments[1]?.text === 'Recording saved'
     )
     assert.ok(toastCall, 'Should show "Recording saved" toast')
     assert.ok(toastCall.arguments[1].detail.includes('5.0 MB'), 'Toast should include file size')
@@ -1083,7 +1084,7 @@ describe('Stop command to offscreen', () => {
     // Verify the stop command was sent
     const sendCalls = globalThis.chrome.runtime.sendMessage.mock.calls
     const stopCmd = sendCalls.find(
-      (c) => c.arguments[0]?.type === 'OFFSCREEN_STOP_RECORDING'
+      (c) => c.arguments[0]?.type === 'offscreen_stop_recording'
     )
     assert.ok(stopCmd, 'Should send OFFSCREEN_STOP_RECORDING message')
     assert.strictEqual(stopCmd.arguments[0].target, 'offscreen')
@@ -1163,7 +1164,7 @@ describe('Stop result passthrough', () => {
 // =============================================================================
 
 describe('Storage cleanup on stop', () => {
-  test('should remove gasoline_recording from storage on stop', async () => {
+  test('should remove recording state from storage on stop', async () => {
     globalThis.chrome = createRecordingChromeMock()
 
     const startPromise = startRecording('cleanup-test', 15, '', '', true)
@@ -1181,8 +1182,8 @@ describe('Storage cleanup on stop', () => {
     const removeCalls = globalThis.chrome.storage.local.remove.mock.calls
     const cleaned = removeCalls.some((call) => {
       const arg = call.arguments[0]
-      return arg === 'gasoline_recording' || (Array.isArray(arg) && arg.includes('gasoline_recording'))
+      return arg === 'kaboom_recording' || (Array.isArray(arg) && arg.includes('kaboom_recording'))
     })
-    assert.ok(cleaned, 'Should remove gasoline_recording from storage on stop')
+    assert.ok(cleaned, 'Should remove recording state from storage on stop')
   })
 })

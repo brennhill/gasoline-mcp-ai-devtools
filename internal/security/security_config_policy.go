@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 type SecurityConfig struct {
@@ -82,7 +82,7 @@ func blockSecurityConfigMutation(action string, origin string, detail string) er
 	}
 	err := errors.New(reason + " - " + securityConfigEditInstruction())
 
-	LogSecurityEvent(SecurityAuditEvent{
+	logSecurityEvent(SecurityAuditEvent{
 		Timestamp:  time.Now(),
 		Action:     "security_config_mutation_blocked",
 		Origin:     origin,

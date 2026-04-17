@@ -4,7 +4,7 @@
  * Docs: docs/features/feature/query-service/index.md
  */
 /**
- * @fileoverview Message Types for Gasoline Extension
+ * @fileoverview Message Types for Kaboom Extension
  *
  * Comprehensive discriminated unions for all message types used in the extension.
  * This is the single source of truth for message payloads between:

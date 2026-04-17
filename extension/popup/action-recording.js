@@ -5,6 +5,7 @@
  */
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
+import { getLocal, setLocal, removeLocal } from '../lib/storage-utils.js';
 const START_LABEL = 'Record action workflow';
 const STOP_LABEL = 'Stop recording';
 function showRecording(els, state) {
@@ -42,13 +43,9 @@ function showError(els, message) {
         els.statusEl.style.color = '';
     }, 5000);
 }
-function getServerUrl() {
-    return new Promise((resolve) => {
-        chrome.storage.local.get(StorageKey.SERVER_URL, (result) => {
-            void chrome.runtime.lastError;
-            resolve(result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL);
-        });
-    });
+async function getServerUrl() {
+    const value = await getLocal(StorageKey.SERVER_URL);
+    return value || DEFAULT_SERVER_URL;
 }
 function getConfigureError(data) {
     const message = data.error?.message;
@@ -91,13 +88,11 @@ async function startActionRecording(els, state) {
         state.recordingId = extractRecordingID(data);
         state.startTime = Date.now();
         // Persist state so reopening popup shows recording in progress
-        chrome.storage.local.set({
-            gasoline_action_recording: {
-                active: true,
-                recordingId: state.recordingId,
-                startTime: state.startTime
-            }
-        }, () => { void chrome.runtime.lastError; });
+        void setLocal(StorageKey.ACTION_RECORDING, {
+            active: true,
+            recordingId: state.recordingId,
+            startTime: state.startTime
+        });
         showRecording(els, state);
     }
     catch (err) {
@@ -116,9 +111,7 @@ async function stopActionRecording(els, state) {
         if (configureError) {
             showError(els, configureError);
         }
-        chrome.storage.local.remove('gasoline_action_recording', () => {
-            void chrome.runtime.lastError;
-        });
+        void removeLocal(StorageKey.ACTION_RECORDING);
         showIdle(els, state);
     }
     catch (err) {
@@ -140,9 +133,8 @@ export function setupActionRecordingUI() {
         startTime: null
     };
     // Restore state if popup was closed during recording
-    chrome.storage.local.get('gasoline_action_recording', (result) => {
-        void chrome.runtime.lastError;
-        const saved = result['gasoline_action_recording'];
+    void getLocal(StorageKey.ACTION_RECORDING).then((value) => {
+        const saved = value;
         if (saved?.active && saved.recordingId) {
             state.recordingId = saved.recordingId;
             state.startTime = saved.startTime ?? Date.now();

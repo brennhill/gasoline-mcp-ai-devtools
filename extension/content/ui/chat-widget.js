@@ -4,10 +4,10 @@
  * Docs: docs/features/feature/browser-push/index.md
  */
 // chat-widget.ts — Lower-corner command palette with pin toggle for chat push.
-const WIDGET_ID = 'gasoline-chat-widget';
-const INPUT_ID = 'gasoline-chat-input';
-const PIN_ID = 'gasoline-chat-pin';
-const STATUS_ID = 'gasoline-chat-status';
+const WIDGET_ID = 'kaboom-chat-widget';
+const INPUT_ID = 'kaboom-chat-input';
+const PIN_ID = 'kaboom-chat-pin';
+const STATUS_ID = 'kaboom-chat-status';
 /** Whether the widget should persist after sending (pin toggle) */
 let isPinned = false;
 /** Current client name for display */
@@ -278,7 +278,7 @@ function sendChatMessage() {
         statusEl.style.color = '#60a5fa';
     }
     chrome.runtime.sendMessage({
-        type: 'GASOLINE_PUSH_CHAT',
+        type: 'kaboom_push_chat',
         message,
         page_url: window.location.href
     }, (response) => {

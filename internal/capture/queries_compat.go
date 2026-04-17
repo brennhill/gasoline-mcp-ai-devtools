@@ -4,7 +4,7 @@
 
 package capture
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 
 const (
 	queryResultTTL = queries.QueryResultTTL // Re-export for queries_lifecycle_test.go

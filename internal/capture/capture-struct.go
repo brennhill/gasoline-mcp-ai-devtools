@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/redaction"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/performance"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/redaction"
 )
 
 // Capture manages all buffered browser state: WebSocket events, network bodies,
@@ -20,8 +20,9 @@ import (
 // Release locks before calling external callbacks. Use RLock() for read-only access.
 // Sub-struct locks: a11y, perf, session, mem use parent mu.
 //
-// Ring buffers (wsEvents, networkBodies, enhancedActions) maintain three parallel invariants:
-// 1. Parallel timestamp slices kept in perfect sync (wsAddedAt, networkAddedAt, actionAddedAt)
+// Ring buffers (wsEvents, networkBodies, enhancedActions) use entry wrapper structs that
+// bundle each datum with its ingestion timestamp, eliminating parallel-array desync risk:
+// 1. Each entry carries its own AddedAt timestamp (wsEventEntry, networkBodyEntry, enhancedActionEntry)
 // 2. Monotonic counters that survive eviction (wsTotalAdded, networkTotalAdded, actionTotalAdded)
 // 3. Memory totals that estimate buffer overhead (wsMemoryTotal, networkBodyMemoryTotal)
 //
@@ -77,7 +78,7 @@ type Capture struct {
 	// Debug Logging (Own Lock)
 	// ============================================
 
-	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu.
+	debug DebugLogger // Polling activity + HTTP debug circular buffers. Has own sync.Mutex — independent of Capture.mu. Delegates to internal/debuglog.
 
 	// Redaction engine for scrubbing sensitive values from extension debug logs.
 	logRedactor *redaction.Engine
@@ -103,8 +104,9 @@ type Capture struct {
 	// Lifecycle Event Callbacks
 	// ============================================
 
-	lifecycle          *LifecycleObserver // Typed event bus for lifecycle events (circuit breaker, extension state, buffer overflow). Has own lock — independent of Capture.mu.
+	lifecycle          *LifecycleObserver // Typed event bus for lifecycle events (circuit breaker, extension state, buffer overflow). Has own lock — independent of Capture.mu. Delegates to internal/lifecycle.
 	navigationCallback func()             // Optional callback fired after a navigation action is ingested (called outside lock)
+	featuresCallback   func(map[string]bool) // Optional callback fired when extension reports feature usage (called outside lock)
 
 	// ============================================
 	// Version Information

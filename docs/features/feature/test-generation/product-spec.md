@@ -18,21 +18,21 @@ last_verified_date: 2026-03-05
 Developers using AI coding assistants need automated test generation that validates code changes. Currently:
 
 1. **TestSprite** (competitor) offers AI-driven test generation but requires cloud, costs $29-99/month, and starts "blind" without runtime context
-2. Gasoline captures comprehensive error context but cannot generate tests from it
+2. Kaboom captures comprehensive error context but cannot generate tests from it
 3. Manual test writing is slow and error-prone
 4. Generated tests break when selectors change (no self-healing)
 
-This creates a gap: Gasoline has the best error context, but developers must use a separate tool (TestSprite) for test generation.
+This creates a gap: Kaboom has the best error context, but developers must use a separate tool (TestSprite) for test generation.
 
 ## Solution
 
-Extend Gasoline's `generate` tool with three new modes for the complete validation loop:
+Extend Kaboom's `generate` tool with three new modes for the complete validation loop:
 
 1. **`test_from_context`** — Generate tests from captured error/interaction context
 2. **`test_heal`** — Auto-repair broken selectors in existing tests
 3. **`test_classify`** — Classify test failures (real bug vs flaky vs environment)
 
-**Key advantage over TestSprite:** Gasoline already has the error context (console, network, DOM, state). Tests are generated from facts, not guesses.
+**Key advantage over TestSprite:** Kaboom already has the error context (console, network, DOM, state). Tests are generated from facts, not guesses.
 
 ## Requirements
 
@@ -40,7 +40,7 @@ Extend Gasoline's `generate` tool with three new modes for the complete validati
 
 #### 1. Test Generation Mode (`test_from_context`)
 
-Generate Playwright/Vitest tests from captured Gasoline context.
+Generate Playwright/Vitest tests from captured Kaboom context.
 
 ##### Actions:
 - `test_from_context.error` — Generate test that reproduces a captured error
@@ -292,7 +292,7 @@ Developer: Applies fix, test becomes stable
 
 ## Competitive Positioning
 
-| Feature | TestSprite | Gasoline |
+| Feature | TestSprite | Kaboom |
 |---------|-----------|----------|
 | Test generation | From PRD (blind) | From captured context (informed) |
 | Self-healing | Yes (cloud) | Yes (local) |
@@ -305,7 +305,7 @@ Developer: Applies fix, test becomes stable
 ## Notes
 
 - Extends existing `generate` tool (no new tool needed)
-- Leverages Gasoline's captured context advantage
+- Leverages Kaboom's captured context advantage
 - Local-only processing (privacy-first)
 - Complements existing `analyze` regression detection
 - AI decides when to generate vs heal vs classify based on context

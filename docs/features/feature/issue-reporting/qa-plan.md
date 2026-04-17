@@ -40,7 +40,7 @@ last_verified_date: 2026-03-05
 | `TestFormatIssueBody_NoDescriptionWhenEmpty` | No description section when user_context empty |
 | `TestSubmitViaGH_TargetRepo` | Target repo constant is correct |
 
-### `cmd/dev-console/` (14 tests)
+### `cmd/browser-agent/` (14 tests)
 
 | Test | Validates |
 |------|-----------|

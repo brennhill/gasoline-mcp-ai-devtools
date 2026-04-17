@@ -31,8 +31,8 @@ jobs:
 
           # Critical files that MUST match VERSION
           declare -A CRITICAL_FILES=(
-            ["cmd/dev-console/main.go"]="version = \"$VERSION\""
-            ["npm/gasoline-agentic-browser/package.json"]="\"version\": \"$VERSION\""
+            ["cmd/browser-agent/main.go"]="version = \"$VERSION\""
+            ["npm/kaboom-agentic-browser/package.json"]="\"version\": \"$VERSION\""
             ["npm/darwin-arm64/package.json"]="\"version\": \"$VERSION\""
             ["npm/darwin-x64/package.json"]="\"version\": \"$VERSION\""
             ["npm/linux-arm64/package.json"]="\"version\": \"$VERSION\""
@@ -61,9 +61,9 @@ jobs:
           echo ""
 
           # Check optionalDependencies in main package.json
-          echo "Checking optionalDependencies in npm/gasoline-agentic-browser/package.json..."
+          echo "Checking optionalDependencies in npm/kaboom-agentic-browser/package.json..."
           OPTIONAL_DEPS=$(node -e "
-            const pkg = require('./npm/gasoline-agentic-browser/package.json');
+            const pkg = require('./npm/kaboom-agentic-browser/package.json');
             const deps = pkg.optionalDependencies || {};
             let errors = 0;
             for (const [name, version] of Object.entries(deps)) {
@@ -97,7 +97,7 @@ jobs:
           VERSION=$(cat VERSION)
 
           # Check the version constant in main.go
-          GO_VERSION=$(grep -o 'version = "[^"]*"' cmd/dev-console/main.go | head -1 | cut -d'"' -f2)
+          GO_VERSION=$(grep -o 'version = "[^"]*"' cmd/browser-agent/main.go | head -1 | cut -d'"' -f2)
 
           if [ "$GO_VERSION" != "$VERSION" ]; then
             echo "❌ Go binary version mismatch: $GO_VERSION (expected $VERSION)"

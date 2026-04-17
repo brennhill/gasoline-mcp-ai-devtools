@@ -64,7 +64,7 @@ interface RequestInfo {
  * Network body payload posted to content script
  */
 interface NetworkBodyPostMessage {
-  type: 'GASOLINE_NETWORK_BODY'
+  type: 'kaboom_network_body'
   payload: {
     url: string
     method: string
@@ -282,7 +282,7 @@ export function setServerUrl(url: string): void {
 }
 
 /**
- * Check if a URL should be captured (not gasoline server or extension)
+ * Check if a URL should be captured (not kaboom server or extension)
  * @param url - The URL to check
  * @returns True if the URL should be captured
  */
@@ -403,7 +403,7 @@ export async function readResponseBodyWithTimeout(
  * Clears pending requests, resets counters, and restores default settings.
  * Call this in beforeEach/afterEach test hooks to prevent test pollution.
  */
-export function resetForTesting(): void {
+function resetForTesting(): void {
   configuredServerUrl = ''
   networkWaterfallEnabled = false
   pendingRequests.clear()
@@ -412,10 +412,10 @@ export function resetForTesting(): void {
   unwrapXHR()
   // Clean up early-patch globals if present
   if (typeof window !== 'undefined') {
-    delete window.__GASOLINE_ORIGINAL_FETCH__
-    delete window.__GASOLINE_ORIGINAL_XHR_OPEN__
-    delete window.__GASOLINE_ORIGINAL_XHR_SEND__
-    delete window.__GASOLINE_EARLY_BODIES__
+    delete window.__KABOOM_ORIGINAL_FETCH__
+    delete window.__KABOOM_ORIGINAL_XHR_OPEN__
+    delete window.__KABOOM_ORIGINAL_XHR_SEND__
+    delete window.__KABOOM_EARLY_BODIES__
   }
 }
 
@@ -470,7 +470,7 @@ function postNetworkBody(
   responseTruncated: boolean
 ): void {
   const message: NetworkBodyPostMessage = {
-    type: 'GASOLINE_NETWORK_BODY',
+    type: 'kaboom_network_body',
     payload: {
       url,
       method,
@@ -500,20 +500,20 @@ let originalXHRSend: typeof XMLHttpRequest.prototype.send | null = null
 export function wrapXHRWithBodies(): void {
   if (typeof XMLHttpRequest === 'undefined') return
   // Check for early-patch: use the saved originals, not the early-patch wrappers
-  const earlyOpen = typeof window !== 'undefined' ? window.__GASOLINE_ORIGINAL_XHR_OPEN__ : undefined
-  const earlySend = typeof window !== 'undefined' ? window.__GASOLINE_ORIGINAL_XHR_SEND__ : undefined
+  const earlyOpen = typeof window !== 'undefined' ? window.__KABOOM_ORIGINAL_XHR_OPEN__ : undefined
+  const earlySend = typeof window !== 'undefined' ? window.__KABOOM_ORIGINAL_XHR_SEND__ : undefined
   originalXHROpen = earlyOpen || XMLHttpRequest.prototype.open
   originalXHRSend = earlySend || XMLHttpRequest.prototype.send
 
   XMLHttpRequest.prototype.open = function (method: string, url: string | URL, ...rest: unknown[]) {
-    ;(this as XMLHttpRequest & { __gasolineMethod: string }).__gasolineMethod = method
-    ;(this as XMLHttpRequest & { __gasolineUrl: string }).__gasolineUrl = typeof url === 'string' ? url : url.toString()
+    ;(this as XMLHttpRequest & { __kaboomMethod: string }).__kaboomMethod = method
+    ;(this as XMLHttpRequest & { __kaboomUrl: string }).__kaboomUrl = typeof url === 'string' ? url : url.toString()
     return originalXHROpen!.apply(this, [method, url, ...rest] as Parameters<typeof XMLHttpRequest.prototype.open>)
   }
 
   XMLHttpRequest.prototype.send = function (body?: Document | XMLHttpRequestBodyInit | null) {
-    const url: string = (this as XMLHttpRequest & { __gasolineUrl?: string }).__gasolineUrl || ''
-    const method: string = (this as XMLHttpRequest & { __gasolineMethod?: string }).__gasolineMethod || 'GET'
+    const url: string = (this as XMLHttpRequest & { __kaboomUrl?: string }).__kaboomUrl || ''
+    const method: string = (this as XMLHttpRequest & { __kaboomMethod?: string }).__kaboomMethod || 'GET'
 
     if (shouldCaptureUrl(url) && networkBodyCaptureEnabled) {
       const startTime = Date.now()
@@ -586,20 +586,20 @@ export function unwrapXHR(): void {
 /**
  * Adopt network bodies buffered by the early-patch script (fetch + XHR).
  * Mirrors adoptEarlyConnections() in websocket.ts: reads from
- * window.__GASOLINE_EARLY_BODIES__, posts each as GASOLINE_NETWORK_BODY
+ * window.__KABOOM_EARLY_BODIES__, posts each as KABOOM_NETWORK_BODY
  * to the content script, then cleans up globals.
  * Called once during Phase 2 installation.
  */
 export function adoptEarlyBodies(): void {
   if (typeof window === 'undefined') return
 
-  const earlyBodies = window.__GASOLINE_EARLY_BODIES__
+  const earlyBodies = window.__KABOOM_EARLY_BODIES__
   if (!earlyBodies || earlyBodies.length === 0) {
     // Clean up globals even if no bodies
-    delete window.__GASOLINE_ORIGINAL_FETCH__
-    delete window.__GASOLINE_ORIGINAL_XHR_OPEN__
-    delete window.__GASOLINE_ORIGINAL_XHR_SEND__
-    delete window.__GASOLINE_EARLY_BODIES__
+    delete window.__KABOOM_ORIGINAL_FETCH__
+    delete window.__KABOOM_ORIGINAL_XHR_OPEN__
+    delete window.__KABOOM_ORIGINAL_XHR_SEND__
+    delete window.__KABOOM_EARLY_BODIES__
     return
   }
 
@@ -614,7 +614,7 @@ export function adoptEarlyBodies(): void {
     const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body)
 
     const message: NetworkBodyPostMessage = {
-      type: 'GASOLINE_NETWORK_BODY',
+      type: 'kaboom_network_body',
       payload: {
         url: entry.url,
         method: entry.method,
@@ -630,14 +630,14 @@ export function adoptEarlyBodies(): void {
   }
 
   if (adopted > 0) {
-    console.log(`[Gasoline] Adopted ${adopted} early network body(ies)`)
+    console.log(`[KaBOOM!] Adopted ${adopted} early network body(ies)`)
   }
 
   // Clean up early-patch globals
-  delete window.__GASOLINE_ORIGINAL_FETCH__
-  delete window.__GASOLINE_ORIGINAL_XHR_OPEN__
-  delete window.__GASOLINE_ORIGINAL_XHR_SEND__
-  delete window.__GASOLINE_EARLY_BODIES__
+  delete window.__KABOOM_ORIGINAL_FETCH__
+  delete window.__KABOOM_ORIGINAL_XHR_OPEN__
+  delete window.__KABOOM_ORIGINAL_XHR_SEND__
+  delete window.__KABOOM_EARLY_BODIES__
 }
 
 export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {
@@ -682,7 +682,7 @@ export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {
         }
       })
       .catch((err: Error) => {
-        console.debug('[Gasoline] Network body capture error:', err)
+        console.debug('[KaBOOM!] Network body capture error:', err)
       })
 
     return response

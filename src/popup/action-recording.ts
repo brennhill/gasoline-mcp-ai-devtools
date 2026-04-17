@@ -6,6 +6,7 @@
 
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js'
 import { postDaemonJSON } from '../lib/daemon-http.js'
+import { getLocal, setLocal, removeLocal } from '../lib/storage-utils.js'
 
 interface ActionRecordingElements {
   row: HTMLElement
@@ -66,13 +67,9 @@ function showError(els: ActionRecordingElements, message: string): void {
   }, 5000)
 }
 
-function getServerUrl(): Promise<string> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(StorageKey.SERVER_URL, (result: Record<string, unknown>) => {
-      void chrome.runtime.lastError
-      resolve((result[StorageKey.SERVER_URL] as string) || DEFAULT_SERVER_URL)
-    })
-  })
+async function getServerUrl(): Promise<string> {
+  const value = await getLocal(StorageKey.SERVER_URL)
+  return (value as string) || DEFAULT_SERVER_URL
 }
 
 function getConfigureError(data: ConfigureCallResponse): string | null {
@@ -123,13 +120,11 @@ async function startActionRecording(els: ActionRecordingElements, state: ActionR
     state.startTime = Date.now()
 
     // Persist state so reopening popup shows recording in progress
-    chrome.storage.local.set({
-      gasoline_action_recording: {
-        active: true,
-        recordingId: state.recordingId,
-        startTime: state.startTime
-      }
-    }, () => { void chrome.runtime.lastError })
+    void setLocal(StorageKey.ACTION_RECORDING, {
+      active: true,
+      recordingId: state.recordingId,
+      startTime: state.startTime
+    })
 
     showRecording(els, state)
   } catch (err) {
@@ -152,9 +147,7 @@ async function stopActionRecording(els: ActionRecordingElements, state: ActionRe
       showError(els, configureError)
     }
 
-    chrome.storage.local.remove('gasoline_action_recording', () => {
-      void chrome.runtime.lastError
-    })
+    void removeLocal(StorageKey.ACTION_RECORDING)
 
     showIdle(els, state)
   } catch (err) {
@@ -178,9 +171,8 @@ export function setupActionRecordingUI(): void {
   }
 
   // Restore state if popup was closed during recording
-  chrome.storage.local.get('gasoline_action_recording', (result: Record<string, unknown>) => {
-    void chrome.runtime.lastError
-    const saved = result['gasoline_action_recording'] as {
+  void getLocal(StorageKey.ACTION_RECORDING).then((value: unknown) => {
+    const saved = value as {
       active?: boolean
       recordingId?: string
       startTime?: number

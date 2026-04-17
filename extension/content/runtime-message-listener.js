@@ -1,4 +1,5 @@
 // runtime-message-listener.ts — Message routing between background and content contexts.
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { SettingName } from '../lib/constants.js';
 import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleFormStateQuery, handleDataTableQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
 import { showActionToast } from './ui/toast.js';
@@ -7,23 +8,38 @@ import { toggleChatWidget } from './ui/chat-widget.js';
 // Toggle state caches — updated by forwarded setting messages from background
 let actionToastsEnabled = true;
 let subtitlesEnabled = true;
+function applyOverlayToggleState(result) {
+    if (result.actionToastsEnabled !== undefined)
+        actionToastsEnabled = result.actionToastsEnabled;
+    if (result.subtitlesEnabled !== undefined)
+        subtitlesEnabled = result.subtitlesEnabled;
+}
+function hydrateOverlayToggleState() {
+    if (typeof chrome === 'undefined' || !chrome.storage?.local)
+        return;
+    try {
+        const maybePromise = chrome.storage.local.get(['actionToastsEnabled', 'subtitlesEnabled'], applyOverlayToggleState);
+        if (maybePromise && typeof maybePromise.then === 'function') {
+            void maybePromise.then((result) => applyOverlayToggleState(result));
+        }
+    }
+    catch {
+        // Storage hydration is best-effort. Keep defaults if the content context cannot read storage.
+    }
+}
 /**
  * Initialize runtime message listener
  * Listens for messages from background (feature toggles and pilot commands)
  */
 export function initRuntimeMessageListener() {
-    // Load overlay toggle states from storage
-    chrome.storage.local.get(['actionToastsEnabled', 'subtitlesEnabled'], (result) => {
-        if (result.actionToastsEnabled !== undefined)
-            actionToastsEnabled = result.actionToastsEnabled;
-        if (result.subtitlesEnabled !== undefined)
-            subtitlesEnabled = result.subtitlesEnabled;
-    });
+    actionToastsEnabled = true;
+    subtitlesEnabled = true;
+    hydrateOverlayToggleState();
     const syncHandlers = {
-        GASOLINE_PING: () => {
+        kaboom_ping: () => {
             /* handled below via sendResponse */
         },
-        GASOLINE_ACTION_TOAST: (msg) => {
+        kaboom_action_toast: (msg) => {
             if (!actionToastsEnabled)
                 return false;
             const m = msg;
@@ -31,15 +47,15 @@ export function initRuntimeMessageListener() {
                 showActionToast(m.text, m.detail, m.state || 'trying', m.duration_ms);
             return false;
         },
-        GASOLINE_TOGGLE_CHAT: (msg) => {
+        kaboom_toggle_chat: (msg) => {
             toggleChatWidget(msg.client_name);
             return false;
         },
-        GASOLINE_RECORDING_WATERMARK: (msg) => {
+        kaboom_recording_watermark: (msg) => {
             toggleRecordingWatermark(msg.visible ?? false);
             return false;
         },
-        GASOLINE_SUBTITLE: (msg) => {
+        kaboom_subtitle: (msg) => {
             if (!subtitlesEnabled)
                 return false;
             showSubtitle(msg.text ?? '');
@@ -55,7 +71,7 @@ export function initRuntimeMessageListener() {
         }
     };
     const delegatedHandlers = {
-        GASOLINE_DRAW_MODE_START: (msg, sr) => {
+        kaboom_draw_mode_start: (msg, sr) => {
             const m = msg;
             import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
                 .then((mod) => {
@@ -65,7 +81,7 @@ export function initRuntimeMessageListener() {
                 .catch((e) => sr({ error: 'draw_mode_load_failed', message: e.message }));
             return true;
         },
-        GASOLINE_DRAW_MODE_STOP: (_msg, sr) => {
+        kaboom_draw_mode_stop: (_msg, sr) => {
             import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
                 .then((mod) => {
                 const result = mod.deactivateAndSendResults?.() || mod.deactivateDrawMode?.();
@@ -74,7 +90,7 @@ export function initRuntimeMessageListener() {
                 .catch((e) => sr({ error: 'draw_mode_load_failed', message: e.message }));
             return true;
         },
-        GASOLINE_GET_ANNOTATIONS: (_msg, sr) => {
+        kaboom_get_annotations: (_msg, sr) => {
             import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
                 .then((mod) => {
                 sr({ draw_mode_active: mod.isDrawModeActive?.() ?? false });
@@ -82,39 +98,39 @@ export function initRuntimeMessageListener() {
                 .catch(() => sr({ draw_mode_active: false }));
             return true;
         },
-        GASOLINE_HIGHLIGHT: (msg, sr) => {
+        kaboom_highlight: (msg, sr) => {
             forwardHighlightMessage({ params: msg.params })
                 .then((r) => sr(r))
                 .catch((e) => sr({ success: false, error: e.message }));
             return true;
         },
-        GASOLINE_MANAGE_STATE: (msg, sr) => {
+        kaboom_manage_state: (msg, sr) => {
             handleStateCommand(msg.params)
                 .then((r) => sr(r))
                 .catch((e) => sr({ error: e.message }));
             return true;
         },
-        GASOLINE_EXECUTE_JS: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
-        GASOLINE_EXECUTE_QUERY: (msg, sr) => handleExecuteQuery((msg.params || {}), sr),
-        A11Y_QUERY: (msg, sr) => handleA11yQuery((msg.params || {}), sr),
-        DOM_QUERY: (msg, sr) => handleDomQuery((msg.params || {}), sr),
-        GET_NETWORK_WATERFALL: (_msg, sr) => handleGetNetworkWaterfall(sr),
-        LINK_HEALTH_QUERY: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}), sr),
-        COMPUTED_STYLES_QUERY: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}), sr),
-        FORM_DISCOVERY_QUERY: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}), sr),
-        FORM_STATE_QUERY: (msg, sr) => handleFormStateQuery((msg.params ?? {}), sr),
-        DATA_TABLE_QUERY: (msg, sr) => handleDataTableQuery((msg.params ?? {}), sr),
-        GASOLINE_GET_READABLE: (_msg, sr) => handleGetReadable(sr),
-        GASOLINE_GET_MARKDOWN: (_msg, sr) => handleGetMarkdown(sr),
-        GASOLINE_PAGE_SUMMARY: (_msg, sr) => handlePageSummary(sr)
+        kaboom_execute_js: (msg, sr) => handleExecuteJs(msg.params || {}, sr),
+        kaboom_execute_query: (msg, sr) => handleExecuteQuery((msg.params || {}), sr),
+        a11y_query: (msg, sr) => handleA11yQuery((msg.params || {}), sr),
+        dom_query: (msg, sr) => handleDomQuery((msg.params || {}), sr),
+        get_network_waterfall: (_msg, sr) => handleGetNetworkWaterfall(sr),
+        link_health_query: (msg, sr) => handleLinkHealthQuery((msg.params ?? {}), sr),
+        computed_styles_query: (msg, sr) => handleComputedStylesQuery((msg.params ?? {}), sr),
+        form_discovery_query: (msg, sr) => handleFormDiscoveryQuery((msg.params ?? {}), sr),
+        form_state_query: (msg, sr) => handleFormStateQuery((msg.params ?? {}), sr),
+        data_table_query: (msg, sr) => handleDataTableQuery((msg.params ?? {}), sr),
+        kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
+        kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
+        kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!isValidBackgroundSender(sender)) {
-            console.warn('[Gasoline] Rejected message from untrusted sender:', sender.id);
+            console.warn(KABOOM_LOG_PREFIX, 'Rejected message from untrusted sender:', sender.id);
             return false;
         }
         // Ping is special: sync handler that needs sendResponse
-        if (message.type === 'GASOLINE_PING')
+        if (message.type === 'kaboom_ping')
             return handlePing(sendResponse);
         // Try sync handlers first
         const syncHandler = syncHandlers[message.type]; // nosemgrep: unsafe-dynamic-method

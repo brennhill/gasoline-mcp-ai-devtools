@@ -1,0 +1,124 @@
+<svg viewBox="0 0 1000 550" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .section-header { fill: #F97316; stroke: #ea580c; stroke-width: 2; }
+      .section-title { fill: #0F172A; font-family: system-ui; font-size: 13px; font-weight: bold; }
+      .section-dark { fill: #0F172A; stroke: #F97316; stroke-width: 2; }
+      .section-light { fill: #1E293B; stroke: #F97316; stroke-width: 1; }
+      .text-dark { fill: #0F172A; font-family: system-ui; font-size: 12px; font-weight: bold; }
+      .text-light { fill: #FFFFFF; font-family: system-ui; font-size: 11px; }
+      .text-sm { font-size: 10px; }
+      .arrow { stroke: #F97316; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .label { fill: #FFFFFF; font-family: system-ui; font-size: 10px; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#F97316" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text style="font-size: 18px; font-weight: bold; fill: #FFFFFF;" x="20" y="35">KaBOOM Live: Production Error Capture</text>
+
+  <!-- Browser Section -->
+  <rect class="section-header" x="20" y="60" width="240" height="300" rx="6"/>
+  <text class="section-title" x="35" y="80">🌐 Production Browsers</text>
+
+  <rect class="section-light" x="35" y="100" width="210" height="230" rx="4"/>
+  <text class="text-light" x="50" y="120">KaBOOM Live SDK</text>
+  <text class="text-light text-sm" x="50" y="135">(<3KB gzipped)</text>
+  <text class="text-light text-sm" x="50" y="150">▪ window.onerror</text>
+  <text class="text-light text-sm" x="50" y="163">▪ Fetch interceptors</text>
+  <text class="text-light text-sm" x="50" y="176">▪ XHR interceptors</text>
+  <text class="text-light text-sm" x="50" y="189">▪ Web Vitals capture</text>
+  <text class="text-light text-sm" x="50" y="202">▪ Breadcrumb collector</text>
+  <text class="text-light text-sm" x="50" y="215">▪ Session recording</text>
+  <text class="text-light text-sm" x="50" y="228">▪ Batch → sendBeacon</text>
+
+  <!-- Server Section -->
+  <rect class="section-dark" x="310" y="60" width="650" height="300" rx="6"/>
+  <text class="text-light" x="330" y="80" style="font-size: 13px; font-weight: bold;">⚙️  KaBOOM Live Server (Go)</text>
+
+  <!-- Ingest Pipeline -->
+  <rect class="section-light" x="330" y="100" width="140" height="90" rx="4"/>
+  <text class="text-light" x="345" y="120" style="font-weight: bold;">Ingest</text>
+  <text class="text-light" x="345" y="133">Pipeline</text>
+  <text class="text-light text-sm" x="345" y="148">▪ Auth</text>
+  <text class="text-light text-sm" x="345" y="160">▪ Rate limit</text>
+  <text class="text-light text-sm" x="345" y="172">▪ Validate</text>
+  <text class="text-light text-sm" x="345" y="184">▪ Redact</text>
+
+  <!-- Ring Buffers -->
+  <rect class="section-light" x="500" y="100" width="140" height="90" rx="4"/>
+  <text class="text-light" x="515" y="120" style="font-weight: bold;">Ring</text>
+  <text class="text-light" x="515" y="133">Buffers</text>
+  <text class="text-light text-sm" x="515" y="148">▪ errors: 10K-1M</text>
+  <text class="text-light text-sm" x="515" y="160">▪ network: 5K-500K</text>
+  <text class="text-light text-sm" x="515" y="172">▪ perf: 1K-100K</text>
+
+  <!-- Source Map & Alerts -->
+  <rect class="section-light" x="330" y="220" width="140" height="90" rx="4"/>
+  <text class="text-light" x="345" y="240" style="font-weight: bold;">Source Map</text>
+  <text class="text-light text-sm" x="345" y="255">▪ LRU cache</text>
+  <text class="text-light text-sm" x="345" y="268">▪ Disk fallback</text>
+  <text class="text-light text-sm" x="345" y="281">▪ Stack trace</text>
+  <text class="text-light text-sm" x="345" y="294">▪ Unminification</text>
+
+  <rect class="section-light" x="500" y="220" width="140" height="90" rx="4"/>
+  <text class="text-light" x="515" y="240" style="font-weight: bold;">Alert Engine</text>
+  <text class="text-light text-sm" x="515" y="255">▪ Threshold</text>
+  <text class="text-light text-sm" x="515" y="268">▪ Anomaly detect</text>
+  <text class="text-light text-sm" x="515" y="281">▪ Release compare</text>
+  <text class="text-light text-sm" x="515" y="294">▪ Smart grouping</text>
+
+  <!-- MCP Interface -->
+  <rect class="section-light" x="670" y="100" width="140" height="210" rx="4"/>
+  <text class="text-light" x="685" y="120" style="font-weight: bold;">MCP Interface</text>
+  <text class="text-light text-sm" x="685" y="138">▪ observe_</text>
+  <text class="text-light text-sm" x="685" y="151">   production</text>
+  <text class="text-light text-sm" x="685" y="164">▪ analyze_</text>
+  <text class="text-light text-sm" x="685" y="177">   production</text>
+  <text class="text-light text-sm" x="685" y="190">▪ correlate</text>
+  <text class="text-light text-sm" x="685" y="203">▪ group_errors</text>
+  <text class="text-light text-sm" x="685" y="216">▪ perf_report</text>
+  <text class="text-light text-sm" x="685" y="229">▪ alert_status</text>
+
+  <!-- AI Tool -->
+  <rect class="section-dark" x="670" y="320" width="140" height="50" rx="4"/>
+  <text class="text-light" x="685" y="335" style="font-weight: bold;">🤖 AI Agent</text>
+  <text class="text-light text-sm" x="685" y="350">(Claude/Cursor)</text>
+
+  <!-- Kaboom Core -->
+  <rect class="section-light" x="330" y="320" width="300" height="50" rx="4"/>
+  <text class="text-light" x="345" y="335" style="font-weight: bold;">Kaboom Core (Dev-time)</text>
+  <text class="text-light text-sm" x="345" y="350">Correlation layer connects production ↔️ dev</text>
+
+  <!-- Data flow arrows -->
+  <!-- Browser to Pipeline -->
+  <path class="arrow" d="M 260 210 L 330 145"/>
+  <text class="label" x="270" y="165">sendBeacon</text>
+
+  <!-- Pipeline to Buffers -->
+  <path class="arrow" d="M 470 145 L 500 145"/>
+  <text class="label" x="475" y="140">errors</text>
+
+  <!-- To MCP -->
+  <path class="arrow" d="M 640 150 L 670 150"/>
+
+  <!-- To Alert -->
+  <path class="arrow" d="M 640 260 L 640 265"/>
+
+  <!-- To AI -->
+  <path class="arrow" d="M 740 320 L 740 310"/>
+
+  <!-- Summary box -->
+  <rect x="20" y="380" width="940" height="150" fill="none" stroke="#334155" stroke-width="1" rx="4"/>
+  <text style="fill: #F97316; font-weight: bold; font-size: 13px;" x="40" y="400">Key Features:</text>
+
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="420">✓ Lightweight SDK — <3KB gzipped. Minimal performance impact on user experience.</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="435">✓ Automatic error capture — window.onerror, unhandled promises, fetch/XHR errors all collected</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="450">✓ Smart alerts — detect error spikes, anomalies, release regressions, performance degradation</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="465">✓ Source map support — unminified stack traces for production debugging</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="480">✓ Breadcrumbs + session context — understand user journey before the error</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="495">✓ Web Vitals tracking — correlate errors with performance metrics (FCP, LCP, CLS)</text>
+  <text style="fill: #FFFFFF; font-size: 11px; font-family: system-ui;" x="40" y="510">✓ Integrated with Kaboom Core — see errors in dev-time context, set up local reproduction</text>
+</svg>

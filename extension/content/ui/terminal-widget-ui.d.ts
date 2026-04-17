@@ -11,9 +11,7 @@ export declare function registerUICallbacks(cbs: {
 }): void;
 export declare function showSandboxError(message: string, instruction: string, command: string): void;
 export declare function createWidget(token: string): HTMLDivElement;
-export declare function updateStatusDot(dotState: 'connected' | 'disconnected' | 'exited'): void;
 export declare function handleIframeMessage(event: MessageEvent): void;
-export declare function redrawTerminal(widget: HTMLElement, header: HTMLElement, minimizeButton: HTMLButtonElement): void;
 export declare function toggleMinimize(widget: HTMLElement, btn: HTMLButtonElement, header: HTMLElement): void;
 export declare function notifyIframe(command: string, data?: Record<string, unknown>): void;
 //# sourceMappingURL=terminal-widget-ui.d.ts.map

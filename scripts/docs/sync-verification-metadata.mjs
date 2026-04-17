@@ -19,7 +19,7 @@ const roots = [
     updateLastReviewed: true
   },
   {
-    dir: 'cookwithgasoline.com/src/content/docs',
+    dir: 'gokaboom.dev/src/content/docs',
     requireFrontmatter: false,
     updateLastReviewed: false
   }

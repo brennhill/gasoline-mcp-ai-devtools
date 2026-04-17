@@ -28,7 +28,7 @@ registerCommand('subtitle', async (ctx) => {
   const params = ctx.params as { text?: string }
   chrome.tabs
     .sendMessage(ctx.tabId, {
-      type: 'GASOLINE_SUBTITLE',
+      type: 'kaboom_subtitle',
       text: params.text ?? ''
     })
     .catch(() => {})
@@ -41,7 +41,7 @@ registerCommand('subtitle', async (ctx) => {
 
 registerCommand('highlight', async (ctx) => {
   const params = ctx.params
-  const result = await handlePilotCommand('GASOLINE_HIGHLIGHT', params, ctx.tabId)
+  const result = await handlePilotCommand('kaboom_highlight', params, ctx.tabId)
   ctx.sendResult(result)
 })
 
@@ -146,7 +146,7 @@ registerCommand('state_*', async (ctx) => {
     switch (action) {
       case 'capture': {
         const captureData = (await chrome.tabs.sendMessage(tabId, {
-          type: 'GASOLINE_MANAGE_STATE',
+          type: 'kaboom_manage_state',
           params: { action: 'capture' }
         })) as Record<string, unknown>
 
@@ -175,7 +175,7 @@ registerCommand('state_*', async (ctx) => {
 
       case 'save': {
         const captureResult = (await chrome.tabs.sendMessage(tabId, {
-          type: 'GASOLINE_MANAGE_STATE',
+          type: 'kaboom_manage_state',
           params: { action: 'capture' }
         })) as { error?: string } & {
           url: string
@@ -201,7 +201,7 @@ registerCommand('state_*', async (ctx) => {
           return
         }
         result = await chrome.tabs.sendMessage(tabId, {
-          type: 'GASOLINE_MANAGE_STATE',
+          type: 'kaboom_manage_state',
           params: {
             action: 'restore',
             state: snapshot,
@@ -292,12 +292,12 @@ function runHighlightFallback(params: { selector?: unknown; duration_ms?: unknow
       }
     }
 
-    const existing = document.getElementById('gasoline-highlighter')
+    const existing = document.getElementById('kaboom-highlighter')
     existing?.remove()
 
     const rect = target.getBoundingClientRect()
     const overlay = document.createElement('div')
-    overlay.id = 'gasoline-highlighter'
+    overlay.id = 'kaboom-highlighter'
     overlay.dataset.selector = selector
     overlay.style.position = 'fixed'
     overlay.style.top = `${rect.top}px`
@@ -404,7 +404,7 @@ async function handlePilotCommandOnTab(tabId: number, command: string, params: u
     })
     return result || { success: true }
   } catch (err) {
-    if (command === 'GASOLINE_HIGHLIGHT' && isContentScriptUnreachableError(err)) {
+    if (command === 'kaboom_highlight' && isContentScriptUnreachableError(err)) {
       return executeHighlightFallback(tabId, params, errorMessage(err, 'command_failed'))
     }
     throw err

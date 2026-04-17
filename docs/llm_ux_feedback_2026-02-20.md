@@ -2,11 +2,11 @@
 
 Date: 2026-02-20
 Evaluator: Codex (GPT-5)
-Version tested: Gasoline v7.8.0
+Version tested: Kaboom v7.8.0
 
 ## Summary
 
-Gasoline has strong observability and diagnostics when command execution is healthy. The biggest UX issue for LLM agents is command lifecycle reliability and clarity during degraded extension state.
+Kaboom has strong observability and diagnostics when command execution is healthy. The biggest UX issue for LLM agents is command lifecycle reliability and clarity during degraded extension state.
 
 ## What Was Easy
 
@@ -35,7 +35,7 @@ Gasoline has strong observability and diagnostics when command execution is heal
 - Timeout behavior is split across layers (tool-level waits, bridge-level request timeout), which can mask root cause.
 - Some workflows duplicated heavy operations (`run_a11y_and_export_sarif` calling a11y twice), creating hidden latency.
 - `draw_session` file loading did not automatically hydrate in-memory annotation state for `generate.annotation_*`.
-- Local test runs required specific env setup (`GOCACHE`, `GASOLINE_STATE_DIR`) to avoid sandbox permission failures.
+- Local test runs required specific env setup (`GOCACHE`, `KABOOM_STATE_DIR`) to avoid sandbox permission failures.
 
 ## What I Like
 
@@ -69,7 +69,7 @@ Gasoline has strong observability and diagnostics when command execution is heal
 7. Improve restart/reconnect behavior to prevent stale command handling after daemon restart.
 8. A single timeout model exposed consistently in responses (effective timeout + where it came from).
 9. Automatic state hydration bridges between persisted artifacts and generators (`draw_session` -> `generate.*`).
-10. First-class docs snippet for sandbox-safe test env (`GOCACHE`, `GASOLINE_STATE_DIR`) and known network-port test constraints.
+10. First-class docs snippet for sandbox-safe test env (`GOCACHE`, `KABOOM_STATE_DIR`) and known network-port test constraints.
 
 ## Suggested Acceptance Criteria For UX Improvements
 

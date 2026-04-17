@@ -13,7 +13,7 @@ export declare function clearSubtitle(): void;
  */
 export declare function showSubtitle(text: string): void;
 /**
- * Show or hide a recording watermark (Gasoline flame icon) in the bottom-right corner.
+ * Show or hide a recording watermark (Kaboom flame icon) in the bottom-right corner.
  * The icon renders at 64x64px with 50% opacity, captured in the tab video.
  */
 export declare function toggleRecordingWatermark(visible: boolean): void;

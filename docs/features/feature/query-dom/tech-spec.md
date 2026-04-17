@@ -16,14 +16,14 @@ last_verified_date: 2026-03-05
 # Query DOM Tech Spec (TARGET)
 
 ## Server Path
-1. `toolQueryDOM` in `cmd/dev-console/tools_analyze.go` validates `selector`.
+1. `toolQueryDOM` in `cmd/browser-agent/tools_analyze.go` validates `selector`.
 2. Server queues pending query type `dom` with correlation ID.
 3. Wait/queue behavior is governed by `maybeWaitForCommand`.
 
 ## Extension Path
 1. `src/background/pending-queries.ts` handles `query.type === 'dom'`.
 2. Background sends `DOM_QUERY` to content script.
-3. Content relays `GASOLINE_DOM_QUERY` to inject script.
+3. Content relays `KABOOM_DOM_QUERY` to inject script.
 4. Inject executes `executeDOMQuery` from `src/lib/dom-queries.ts`.
 5. Result returns through sync command-results channel.
 
@@ -43,7 +43,7 @@ last_verified_date: 2026-03-05
 - Content/inject failure -> structured command error in command result payload.
 
 ## Code Anchors
-- `cmd/dev-console/tools_analyze.go`
+- `cmd/browser-agent/tools_analyze.go`
 - `src/background/pending-queries.ts`
 - `src/content/message-handlers.ts`
 - `src/inject/message-handlers.ts`

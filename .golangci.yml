@@ -42,7 +42,7 @@ linters:
           files:
             - "$all"
           deny:
-            - pkg: github.com/dev-console/dev-console
+            - pkg: github.com/browser-agent/browser-agent
               desc: "Use module-local imports under github.com/brennhill/gasoline-agentic-browser-devtools-mcp."
 
   exclusions:

@@ -219,7 +219,7 @@ func TestNetworkWaterfall_MultipleEntriesInSinglePayload(t *testing.T) {
 func TestNetworkWaterfall_FeedsCSPGenerator(t *testing.T) {
 	t.Parallel()
 	// Skip: CSP generator integration not yet implemented.
-	// The cspGen field is set by cmd/dev-console during full server initialization,
+	// The cspGen field is set by cmd/browser-agent during full server initialization,
 	// not by NewCapture(). This test should be enabled when CSP generation
 	// is integrated into the network waterfall capture flow.
 	t.Skip("CSP generator integration not yet implemented")
@@ -301,30 +301,30 @@ func TestNetworkWaterfall_ConcurrentWrites(t *testing.T) {
 // MCP Tool Handler Tests (Skipped)
 // ============================================
 // NOTE: These tests are skipped because ToolHandler and MCPHandler
-// have not been moved to internal packages yet. They remain in cmd/dev-console
+// have not been moved to internal packages yet. They remain in cmd/browser-agent
 // and would create circular dependencies if imported here.
 
 func TestToolGetNetworkWaterfall_EmptyBuffer(t *testing.T) {
 	t.Parallel()
-	t.Skip("ToolHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("ToolHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestToolGetNetworkWaterfall_PopulatedBuffer(t *testing.T) {
 	t.Parallel()
-	t.Skip("ToolHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("ToolHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestToolGetNetworkWaterfall_LimitParameter(t *testing.T) {
 	t.Parallel()
-	t.Skip("ToolHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("ToolHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestToolGetNetworkWaterfall_URLFilter(t *testing.T) {
 	t.Parallel()
-	t.Skip("ToolHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("ToolHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }
 
 func TestToolGetNetworkWaterfall_ConcurrentAccessSafety(t *testing.T) {
 	t.Parallel()
-	t.Skip("ToolHandler not available in internal packages - requires cmd/dev-console refactoring")
+	t.Skip("ToolHandler not available in internal packages - requires cmd/browser-agent refactoring")
 }

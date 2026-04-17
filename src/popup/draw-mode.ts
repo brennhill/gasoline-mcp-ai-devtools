@@ -52,7 +52,7 @@ export function setupDrawModeButton(): void {
       label.textContent = 'Starting...'
       chrome.tabs.sendMessage(
         tab.id,
-        { type: 'GASOLINE_DRAW_MODE_START', started_by: 'user' },
+        { type: 'kaboom_draw_mode_start', started_by: 'user' },
         (resp: { status?: string; error?: string; message?: string } | undefined) => {
           if (chrome.runtime.lastError) {
             showDrawModeError(label, 'Content script not loaded — try refreshing the page')

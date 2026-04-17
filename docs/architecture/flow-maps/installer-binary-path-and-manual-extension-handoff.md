@@ -2,32 +2,35 @@
 doc_type: flow_map
 flow_id: installer-binary-path-and-manual-extension-handoff
 status: active
-last_reviewed: 2026-03-06
+last_reviewed: 2026-03-28
 owners:
   - Brenn
 entrypoints:
   - scripts/install.sh
   - scripts/install.ps1
   - scripts/build-crx.js
-  - cmd/dev-console/native_install.go:runNativeInstall
-  - npm/gasoline-agentic-browser/lib/install.js:executeInstall
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py:run_install
+  - cmd/browser-agent/native_install.go:runNativeInstall
+  - npm/kaboom-agentic-browser/lib/install.js:executeInstall
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py:run_install
 code_paths:
   - Makefile
   - scripts/build-crx.js
   - scripts/install.sh
   - scripts/install.ps1
   - server/scripts/install.js
-  - cmd/dev-console/native_install.go
-  - npm/gasoline-agentic-browser/lib/config.js
-  - npm/gasoline-agentic-browser/lib/install.js
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py
-  - pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py
+  - cmd/browser-agent/native_install.go
+  - npm/kaboom-agentic-browser/lib/config.js
+  - npm/kaboom-agentic-browser/lib/install.js
+  - npm/kaboom-agentic-browser/lib/uninstall.js
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py
+  - pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py
   - docs/mcp-install-guide.md
 test_paths:
-  - cmd/dev-console/native_install_test.go
-  - npm/gasoline-agentic-browser/lib/install.test.js
-  - pypi/gasoline-agentic-browser/tests/test_install.py
+  - cmd/browser-agent/native_install_test.go
+  - npm/kaboom-agentic-browser/lib/config.test.js
+  - npm/kaboom-agentic-browser/lib/install.test.js
+  - npm/kaboom-agentic-browser/lib/uninstall.test.js
+  - pypi/kaboom-agentic-browser/tests/test_install.py
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
@@ -45,7 +48,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 4. Installer output uses a consistent, polished step-and-checklist presentation across entrypoints.
 5. CRX fallback packaging must include the full `extension/` tree (no allowlist packaging).
 6. Extension refresh is atomic (stage + validate + promote) so failed upgrades do not destroy a previously working extension install.
-7. Installers support strict checksum enforcement (`GASOLINE_INSTALL_STRICT=1`) for fail-closed install workflows.
+7. Installers support strict checksum enforcement (`KABOOM_INSTALL_STRICT=1`) for fail-closed install workflows.
 
 ## Entrypoints
 
@@ -60,7 +63,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 3. Binary installers verify SHA-256 against release `checksums.txt` (or fail immediately in strict mode).
 4. Extension is extracted into a staging directory and validated for required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`, `theme-bootstrap.js`).
 5. If the release extension zip is incomplete, installer falls back to source-zip extraction and validates again.
-6. Only validated staging directories are promoted atomically to `~/GasolineAgenticDevtoolExtension`; prior extension state is restored on promotion failure.
+6. Only validated staging directories are promoted atomically to `~/KaboomAgenticDevtoolExtension`; prior extension state is restored on promotion failure.
 7. Wrapper/native install writes MCP client configs.
 8. Config entries prefer resolved binary paths over transient launchers.
 9. Installer prints explicit manual extension checklist:
@@ -77,19 +80,20 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 2. If release extension zip is missing required module files, installer falls back to source zip and revalidates staged files.
 3. If extension promotion fails, installer restores the pre-existing extension directory instead of leaving a partial install.
 4. If strict checksum mode is enabled and checksums cannot be verified, installers fail closed.
-5. npm postinstall validates existing `/health` identity/version when port is already in use and refuses false-positive success for non-Gasoline services.
+5. npm postinstall validates existing `/health` identity/version when port is already in use and refuses false-positive success for non-Kaboom services.
 6. If extension cannot be side-loaded automatically, installer still succeeds but instructs user on manual steps.
 7. Missing client config directories are skipped without aborting install.
 
 ## State and Contracts
 
-1. MCP server key remains `gasoline-browser-devtools`.
-2. File-based clients must receive deterministic command entries (`command` + `args`).
-3. Release extension artifacts must include the full extension tree so MV3 module imports resolve at runtime.
-4. Installer output must never imply that browser extension installation is fully automatic.
-5. In strict mode, checksum verification is mandatory for release binary downloads.
-6. Existing-daemon reuse on port checks requires service identity and version parity.
-7. Extension unpacked path defaults to `~/GasolineAgenticDevtoolExtension` (overridable with `GASOLINE_EXTENSION_DIR`).
+1. npm wrapper installs register MCP server key `kaboom-browser-devtools` and remove managed `kaboom-*`, `gasoline-*`, and `strum-*` entries during install/update/uninstall.
+2. npm wrapper config and doctor helpers share the same legacy-key list so diagnostics flag stale aliases that install/update will purge.
+3. File-based clients must receive deterministic command entries (`command` + `args`).
+4. Release extension artifacts must include the full extension tree so MV3 module imports resolve at runtime.
+5. Installer output must never imply that browser extension installation is fully automatic.
+6. In strict mode, checksum verification is mandatory for release binary downloads.
+7. Existing-daemon reuse on port checks requires service identity and version parity.
+8. Extension unpacked path defaults to `~/KaboomAgenticDevtoolExtension` (overridable with `KABOOM_EXTENSION_DIR`).
 
 ## Code Paths
 
@@ -98,23 +102,28 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 - `scripts/install.sh`
 - `scripts/install.ps1`
 - `server/scripts/install.js`
-- `cmd/dev-console/native_install.go`
-- `npm/gasoline-agentic-browser/lib/config.js`
-- `npm/gasoline-agentic-browser/lib/install.js`
-- `pypi/gasoline-agentic-browser/gasoline_agentic_browser/install.py`
-- `pypi/gasoline-agentic-browser/gasoline_agentic_browser/platform.py`
+- `cmd/browser-agent/native_install.go`
+- `npm/kaboom-agentic-browser/lib/config.js`
+- `npm/kaboom-agentic-browser/lib/install.js`
+- `npm/kaboom-agentic-browser/lib/uninstall.js`
+- `pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py`
+- `pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py`
 - `docs/mcp-install-guide.md`
 
 ## Test Paths
 
-- `cmd/dev-console/native_install_test.go`
-- `npm/gasoline-agentic-browser/lib/install.test.js`
-- `pypi/gasoline-agentic-browser/tests/test_install.py`
+- `cmd/browser-agent/native_install_test.go`
+- `npm/kaboom-agentic-browser/lib/config.test.js`
+- `npm/kaboom-agentic-browser/lib/install.test.js`
+- `npm/kaboom-agentic-browser/lib/uninstall.test.js`
+- `pypi/kaboom-agentic-browser/tests/test_install.py`
 - `tests/extension/release-extension-zip.test.js`
 - `tests/extension/release-extension-crx-fallback.test.js`
 - `tests/extension/manifest-startup-integrity.test.js`
 - `tests/extension/install-script-extension-source.test.js`
 - `tests/cli/server-install-hardening.test.cjs`
+- `tests/cli/install.test.cjs`
+- `tests/cli/uninstall.test.cjs`
 
 ## Edit Guardrails
 

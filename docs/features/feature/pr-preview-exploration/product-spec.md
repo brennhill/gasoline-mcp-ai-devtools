@@ -31,24 +31,24 @@ The gap is clear: code review has no runtime signal. Preview deployments have ru
 
 ## Solution
 
-PR Preview Exploration is a **multi-step workflow that the AI agent orchestrates** using existing Gasoline MCP tools. It is not a new Gasoline tool. Gasoline provides the observation and interaction primitives; the agent composes them into an exploration workflow.
+PR Preview Exploration is a **multi-step workflow that the AI agent orchestrates** using existing Kaboom MCP tools. It is not a new Kaboom tool. Kaboom provides the observation and interaction primitives; the agent composes them into an exploration workflow.
 
 The workflow proceeds in five phases:
 
 1. **Discover** — The agent learns the preview URL (from the human, from a convention, or from the GitHub deployment status API).
-2. **Baseline** — The agent captures a behavioral baseline of the main branch (or loads a previously saved baseline).
-3. **Explore** — The agent navigates to the preview URL, exercises the app, and lets Gasoline passively capture telemetry.
+2. **Baseline** — The agent captures a behavioral baseline of the stable branch (or loads a previously saved baseline).
+3. **Explore** — The agent navigates to the preview URL, exercises the app, and lets Kaboom passively capture telemetry.
 4. **Compare** — The agent compares the preview telemetry against the baseline to find regressions.
 5. **Report** — The agent produces a structured findings report, optionally posted as a PR comment.
 
 ### Architecture: Orchestration, Not a New Tool
 
-This feature strictly follows the Gasoline architecture: **5 tools, no more**. The agent uses existing modes across all five tools:
+This feature strictly follows the Kaboom architecture: **5 tools, no more**. The agent uses existing modes across all five tools:
 
 | Phase | Tool | Mode/Action | Purpose |
 |-------|------|-------------|---------|
 | Discover | (external) | GitHub API / user input | Get preview URL |
-| Baseline | `configure` | `diff_sessions` (capture) | Snapshot main branch state |
+| Baseline | `configure` | `diff_sessions` (capture) | Snapshot stable branch state |
 | Baseline | `configure` | `save_baseline` / `compare_baseline` | Behavioral fingerprint |
 | Explore | `interact` | `navigate` | Open the preview URL |
 | Explore | `interact` | `execute_js` | Click, type, scroll |
@@ -64,7 +64,7 @@ No new tools. No new modes. The entire feature is an agent behavior pattern that
 ## User Stories
 
 - As an AI coding agent, I want to navigate to a PR preview URL so that I can observe its runtime behavior.
-- As an AI coding agent, I want to compare preview telemetry against a main-branch baseline so that I can detect regressions introduced by the PR.
+- As an AI coding agent, I want to compare preview telemetry against a stable-branch baseline so that I can detect regressions introduced by the PR.
 - As an AI coding agent, I want to produce a structured findings report so that the PR author knows what runtime issues to fix before merging.
 - As a developer, I want AI to automatically explore my PR previews so that runtime bugs are caught before merge without manual testing.
 - As a team lead, I want PR preview exploration results posted as PR comments so that the review process includes runtime signal alongside code signal.
@@ -78,7 +78,7 @@ The agent needs to know where the preview is deployed. Three mechanisms, in prio
 
 **Mechanism A: Human provides the URL.** The simplest case. The developer pastes the preview URL into the conversation. The agent proceeds immediately.
 
-**Mechanism B: URL convention.** The developer (or team) configures a URL template in Gasoline's persistent memory:
+**Mechanism B: URL convention.** The developer (or team) configures a URL template in Kaboom's persistent memory:
 
 ```
 configure({action: "store", store_action: "save", key: "preview_url_template", value: "https://preview-{pr_number}.myapp.dev"})
@@ -86,7 +86,7 @@ configure({action: "store", store_action: "save", key: "preview_url_template", v
 
 The agent retrieves this template and substitutes the PR number.
 
-**Mechanism C: GitHub Deployment Status API.** The agent uses external tools (not Gasoline) to query the GitHub API for deployment status on the PR. This returns the preview URL from the `environment_url` field of the most recent successful deployment. This mechanism is outside Gasoline's scope — it depends on the agent's access to GitHub APIs via `gh` CLI or similar.
+**Mechanism C: GitHub Deployment Status API.** The agent uses external tools (not Kaboom) to query the GitHub API for deployment status on the PR. This returns the preview URL from the `environment_url` field of the most recent successful deployment. This mechanism is outside Kaboom's scope — it depends on the agent's access to GitHub APIs via `gh` CLI or similar.
 
 The agent tries mechanisms in order: if the human provided a URL, use it. If not, check persistent memory for a convention. If not, try the GitHub API. If all fail, ask the human.
 
@@ -94,19 +94,19 @@ The agent tries mechanisms in order: if the human provided a URL, use it. If not
 
 Before exploring the preview, the agent needs a "known good" state to compare against. Two strategies:
 
-**Strategy A: Live baseline.** The agent navigates to the production/main-branch version of the app, captures a session snapshot and a behavioral baseline, then navigates to the preview. This is the most accurate but doubles the exploration time.
+**Strategy A: Live baseline.** The agent navigates to the production/stable-branch version of the app, captures a session snapshot and a behavioral baseline, then navigates to the preview. This is the most accurate but doubles the exploration time.
 
 **Strategy B: Stored baseline.** The agent loads a previously saved baseline (from `compare_baseline` / `diff_sessions`). This is faster but may be stale. The agent checks the baseline's creation timestamp and warns if it is older than a configurable threshold (default: 24 hours).
 
 The choice between strategies depends on context. If the agent has access to the production URL and the exploration budget allows it, Strategy A is preferred. If a recent baseline exists, Strategy B saves time.
 
 Baseline capture uses:
-- `configure({action: "diff_sessions", session_action: "capture", name: "main-baseline"})` for session-level diffing
+- `configure({action: "diff_sessions", session_action: "capture", name: "stable-baseline"})` for session-level diffing
 - Behavioral baselines (`save_baseline`) for structured regression detection of network patterns, console errors, WebSocket state, and timing
 
 ### Phase 3: Exploration
 
-The agent opens the preview URL and exercises the application. This is where Gasoline's interact tool and passive telemetry capture work together.
+The agent opens the preview URL and exercises the application. This is where Kaboom's interact tool and passive telemetry capture work together.
 
 #### Step 3.1: Open the preview in a new tab.
 
@@ -131,7 +131,7 @@ The agent performs a bounded set of interactions:
 
 All interactions use `interact({action: "execute_js", ...})` with scripts that simulate user behavior (clicking elements, typing into inputs, submitting forms).
 
-While the agent interacts, Gasoline passively captures:
+While the agent interacts, Kaboom passively captures:
 - Console errors and warnings (log buffer)
 - Network requests and responses (network waterfall, network bodies)
 - WebSocket events
@@ -149,14 +149,14 @@ The agent compares the preview session against the baseline:
 
 #### Session diff:
 ```
-configure({action: "diff_sessions", session_action: "compare", compare_a: "main-baseline", compare_b: "preview-pr-42"})
+configure({action: "diff_sessions", session_action: "compare", compare_a: "stable-baseline", compare_b: "preview-pr-42"})
 ```
 
 This returns a structured diff showing new errors, changed network responses, performance deltas, and other differences.
 
 #### Behavioral baseline comparison (if baseline feature is available):
 ```
-configure({action: "compare_baseline", name: "main-baseline"})
+configure({action: "compare_baseline", name: "stable-baseline"})
 ```
 
 This returns regression categorization: network regressions (status code changes), timing regressions (latency spikes), console regressions (new errors), and WebSocket regressions.
@@ -201,7 +201,7 @@ The agent composes the final output, which includes:
 
 ## Exploration Bounds
 
-To prevent runaway exploration, the workflow enforces explicit bounds. These are not Gasoline server limits — they are agent-side constraints defined in the skill/workflow configuration.
+To prevent runaway exploration, the workflow enforces explicit bounds. These are not Kaboom server limits — they are agent-side constraints defined in the skill/workflow configuration.
 
 | Bound | Default | Rationale |
 |-------|---------|-----------|
@@ -236,36 +236,36 @@ If any bound is reached, the agent stops exploration, captures whatever telemetr
 ## Non-Goals
 
 - **This feature does NOT add new MCP tools or modes.** It composes existing primitives. The 5-tool model is inviolate.
-- **This feature does NOT implement CI/CD webhook handling.** How the agent gets triggered (webhook, cron, manual) is outside Gasoline's scope. Gasoline provides observation; triggering is the CI system's job.
+- **This feature does NOT implement CI/CD webhook handling.** How the agent gets triggered (webhook, cron, manual) is outside Kaboom's scope. Kaboom provides observation; triggering is the CI system's job.
 - **This feature does NOT implement GitHub PR comment posting.** The agent produces the report content; posting it to GitHub is the agent's responsibility via external tools (e.g., `gh pr comment`).
-- **This feature does NOT implement visual regression testing.** Gasoline captures behavioral telemetry (errors, network, performance), not pixel-level screenshots. Visual diffing is a separate concern.
+- **This feature does NOT implement visual regression testing.** Kaboom captures behavioral telemetry (errors, network, performance), not pixel-level screenshots. Visual diffing is a separate concern.
 - **This feature does NOT crawl the entire application.** Exploration is bounded and focused on key user flows, not exhaustive site mapping.
-- **Out of scope: Preview environment provisioning.** Gasoline does not create, manage, or tear down preview environments. It only observes them.
+- **Out of scope: Preview environment provisioning.** Kaboom does not create, manage, or tear down preview environments. It only observes them.
 
 ## Performance SLOs
 
 | Metric | Target | Notes |
 |--------|--------|-------|
-| Navigate to preview | < 2s (Gasoline overhead) | Actual page load depends on preview environment |
+| Navigate to preview | < 2s (Kaboom overhead) | Actual page load depends on preview environment |
 | Session capture | < 200ms | Existing `diff_sessions` capture performance |
 | Session comparison | < 500ms | Depends on session size |
 | Baseline comparison | < 20ms | Existing `compare_baseline` performance |
 | PR summary generation | < 300ms | Existing `pr_summary` generation performance |
-| Full exploration workflow | < 15 minutes | Agent-side bound, not a Gasoline SLO |
+| Full exploration workflow | < 15 minutes | Agent-side bound, not a Kaboom SLO |
 
-Gasoline's per-operation overhead is small. The dominant cost is page load time and agent reasoning time, both of which are outside Gasoline's control.
+Kaboom's per-operation overhead is small. The dominant cost is page load time and agent reasoning time, both of which are outside Kaboom's control.
 
 ## Security Considerations
 
 ### Preview URL validation
 
-The agent must only navigate to URLs that are plausible preview environments. Gasoline's `interact({action: "navigate"})` currently accepts any URL with no scheme or domain validation. The agent-side workflow should validate:
+The agent must only navigate to URLs that are plausible preview environments. Kaboom's `interact({action: "navigate"})` currently accepts any URL with no scheme or domain validation. The agent-side workflow should validate:
 
 - URL uses HTTPS (not HTTP, file://, javascript:, data:, or other schemes)
 - URL matches a configured domain pattern (e.g., `*.vercel.app`, `*.netlify.app`, or a custom domain)
-- URL does not target internal/private network addresses (no 10.x.x.x, 192.168.x.x, 127.0.0.x other than Gasoline itself)
+- URL does not target internal/private network addresses (no 10.x.x.x, 192.168.x.x, 127.0.0.x other than Kaboom itself)
 
-This validation belongs in the agent workflow, not in Gasoline. Gasoline is a general-purpose browser observation tool; it should not opinionately restrict navigation targets. The skill definition enforces the allowlist.
+This validation belongs in the agent workflow, not in Kaboom. Kaboom is a general-purpose browser observation tool; it should not opinionately restrict navigation targets. The skill definition enforces the allowlist.
 
 ### Authentication for preview environments
 
@@ -276,16 +276,16 @@ Many preview environments require authentication (basic auth, OAuth, API key). T
 **Bearer token in URL:** Some preview environments accept a token as a query parameter (e.g., `?token=abc`). The agent appends the token before navigating.
 
 #### Security constraints:
-- Auth tokens must never appear in Gasoline's telemetry buffers. Gasoline already strips Authorization headers from network captures. Cookie values set via `execute_js` are not captured in the log buffer (the script is captured, but not its side effects).
+- Auth tokens must never appear in Kaboom's telemetry buffers. Kaboom already strips Authorization headers from network captures. Cookie values set via `execute_js` are not captured in the log buffer (the script is captured, but not its side effects).
 - Auth tokens must never appear in the PR comment output. The agent must redact any token values from the exploration report.
 - The skill definition must document which secrets are required and how they are injected (environment variable, CI secret, etc.).
 
 ### Data sensitivity
 
-Preview environments may contain test data that resembles real user data. Gasoline's existing privacy controls apply:
+Preview environments may contain test data that resembles real user data. Kaboom's existing privacy controls apply:
 
 - Network body capture is opt-in (off by default). The agent should enable it selectively for API endpoints it wants to validate.
-- Gasoline strips sensitive headers (Authorization, Cookie, tokens) from captured network requests.
+- Kaboom strips sensitive headers (Authorization, Cookie, tokens) from captured network requests.
 - Redaction patterns (configured via `configure({action: "noise_rule"})`) apply to all captured data.
 
 ### execute_js security surface
@@ -294,7 +294,7 @@ The exploration phase uses `execute_js` to interact with the page. The principal
 
 - The agent generates scripts that simulate user behavior (clicking, typing, scrolling). It does not read sensitive page data (localStorage, sessionStorage, form values).
 - The skill definition should include a guidance prompt that restricts `execute_js` usage to interaction-only patterns.
-- Gasoline's AI Web Pilot toggle must be enabled by the human before `execute_js` works. This is an existing security gate — the human explicitly opts in to browser control.
+- Kaboom's AI Web Pilot toggle must be enabled by the human before `execute_js` works. This is an existing security gate — the human explicitly opts in to browser control.
 
 ## Edge Cases
 
@@ -312,7 +312,7 @@ The exploration phase uses `execute_js` to interact with the page. The principal
 
 - **Preview URL changes mid-exploration.** Some preview environments use dynamic URLs that change on redeployment. Expected behavior: The agent navigates to the URL once at the start. If the URL becomes invalid mid-exploration (page errors), the agent stops and reports partial results.
 
-- **No baseline available.** The agent cannot capture or load a baseline (first run, main branch unavailable). Expected behavior: The agent skips the comparison phase and reports absolute findings only (errors found, performance numbers, accessibility violations). The report notes "no baseline available — showing absolute findings, not regressions."
+- **No baseline available.** The agent cannot capture or load a baseline (first run, stable branch unavailable). Expected behavior: The agent skips the comparison phase and reports absolute findings only (errors found, performance numbers, accessibility violations). The report notes "no baseline available — showing absolute findings, not regressions."
 
 ## Dependencies
 
@@ -334,7 +334,7 @@ The exploration phase uses `execute_js` to interact with the page. The principal
 - A1: The browser extension is connected and tracking the tab used for preview exploration.
 - A2: The AI Web Pilot toggle is enabled (human has opted in to browser control).
 - A3: The preview environment is accessible from the machine running the browser (localhost or network-accessible).
-- A4: The Gasoline server is running and accepting MCP tool calls.
+- A4: The Kaboom server is running and accepting MCP tool calls.
 - A5: The agent has sufficient context window to hold the exploration report plus the PR diff (for correlation).
 - A6: Preview environments serve a web application that can be meaningfully explored via browser interactions (not a raw API, not a native app).
 
@@ -342,10 +342,10 @@ The exploration phase uses `execute_js` to interact with the page. The principal
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| OI-1 | Should Gasoline add URL scheme validation to `interact({action: "navigate"})`? | open | The current implementation accepts any URL. The PR preview review recommended scheme/domain allowlists. Question: should this be in Gasoline (all users benefit) or in the agent skill (more flexible)? Recommendation: add basic scheme validation (block `javascript:`, `data:`, `file://`) in Gasoline, leave domain allowlists to the skill. |
+| OI-1 | Should Kaboom add URL scheme validation to `interact({action: "navigate"})`? | open | The current implementation accepts any URL. The PR preview review recommended scheme/domain allowlists. Question: should this be in Kaboom (all users benefit) or in the agent skill (more flexible)? Recommendation: add basic scheme validation (block `javascript:`, `data:`, `file://`) in Kaboom, leave domain allowlists to the skill. |
 | OI-2 | How should the agent handle preview environments behind SSO/OAuth? | open | Cookie injection works for simple auth. OAuth flows require multi-step browser interaction that may exceed `execute_js` capabilities. May need a dedicated auth flow pattern in the skill definition. |
 | OI-3 | Should the exploration report include a confidence score? | open | The agent could rate its confidence in findings based on exploration coverage (pages visited vs total pages, actions taken vs available actions). This helps reviewers assess how thorough the exploration was. Risk: false confidence from arbitrary scoring. |
-| OI-4 | Should Gasoline add a "scan page" meta-action to `interact`? | open | The principal engineer review suggested this for performance. A single call that returns all interactive elements (links, buttons, inputs) would reduce the number of `execute_js` calls needed for exploration. This would be a new action under `interact`, not a new tool. |
+| OI-4 | Should Kaboom add a "scan page" meta-action to `interact`? | open | The principal engineer review suggested this for performance. A single call that returns all interactive elements (links, buttons, inputs) would reduce the number of `execute_js` calls needed for exploration. This would be a new action under `interact`, not a new tool. |
 | OI-5 | How should baseline staleness be handled? | open | If a stored baseline is 7 days old, is it still useful for comparison? The agent could warn on staleness, or automatically recapture. Default threshold proposal: 24 hours, configurable via persistent memory. |
-| OI-6 | Should incremental telemetry processing be a Gasoline feature or agent-side logic? | open | Processing errors per-page (to avoid buffer eviction) could be implemented as agent-side polling, or as a Gasoline mode that returns "errors since last read" (like a cursor). Agent-side is simpler and requires no Gasoline changes. |
+| OI-6 | Should incremental telemetry processing be a Kaboom feature or agent-side logic? | open | Processing errors per-page (to avoid buffer eviction) could be implemented as agent-side polling, or as a Kaboom mode that returns "errors since last read" (like a cursor). Agent-side is simpler and requires no Kaboom changes. |
 | OI-7 | What is the interaction model for the developer? | open | Options: (a) Developer explicitly triggers exploration ("explore my preview at URL"), (b) Exploration is triggered automatically by CI webhook, (c) Agent proactively offers to explore when it detects a preview URL in the conversation. All three should eventually be supported, but which is the v1 default? Recommendation: (a) for v1, with (b) as a fast-follow. |

@@ -72,7 +72,7 @@ export function startSyncClient(deps) {
             if (typeof chrome !== 'undefined' && chrome.runtime) {
                 chrome.runtime
                     .sendMessage({
-                    type: 'statusUpdate',
+                    type: 'status_update',
                     status: { ...deps.getConnectionStatus(), aiControlled: deps.getAiControlled() }
                 })
                     .catch(() => {
@@ -86,7 +86,7 @@ export function startSyncClient(deps) {
             if (typeof chrome !== 'undefined' && chrome.runtime) {
                 chrome.runtime
                     .sendMessage({
-                    type: 'statusUpdate',
+                    type: 'status_update',
                     status: { ...deps.getConnectionStatus(), aiControlled: deps.getAiControlled() }
                 })
                     .catch(() => {
@@ -107,7 +107,7 @@ export function startSyncClient(deps) {
             if (typeof chrome !== 'undefined' && chrome.runtime) {
                 chrome.runtime
                     .sendMessage({
-                    type: 'versionMismatch',
+                    type: 'version_mismatch',
                     extensionVersion,
                     serverVersion
                 })
@@ -162,7 +162,7 @@ export function startSyncClient(deps) {
 /**
  * Stop the sync client
  */
-export function stopSyncClient(debugLog) {
+function stopSyncClient(debugLog) {
     if (syncClient) {
         syncClient.stop();
         debugLog(DebugCategory.CONNECTION, 'Sync client stopped');

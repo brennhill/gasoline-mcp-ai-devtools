@@ -10,8 +10,10 @@ import type { SyncClient } from '../sync-client.js'
 import { getTrackedTabInfo, clearTrackedTab, getActiveTab } from '../event-listeners.js'
 import { DebugCategory } from '../debug.js'
 import { isAiWebPilotEnabled } from '../state.js'
+import { KABOOM_LOG_PREFIX } from '../../lib/brand.js'
 import { errorMessage } from '../../lib/error-utils.js'
 import { delay } from '../../lib/timeout-utils.js'
+import { setLocals } from '../../lib/storage-utils.js'
 
 // =============================================================================
 // EXPORTED TYPE ALIASES (used by browser-actions.ts, dom-dispatch.ts, etc.)
@@ -67,21 +69,22 @@ interface RecoveryAttempt {
 }
 
 export function debugLog(category: string, message: string, data: unknown = null): void {
-  const globalLogger = (globalThis as { __GASOLINE_DEBUG_LOG__?: (c: string, m: string, d?: unknown) => void })
-    .__GASOLINE_DEBUG_LOG__
+  const globalLogger = (globalThis as { __KABOOM_DEBUG_LOG__?: (c: string, m: string, d?: unknown) => void })
+    .__KABOOM_DEBUG_LOG__
   if (typeof globalLogger === 'function') {
     globalLogger(category, message, data)
     return
   }
 
   // Keep helpers usable before the main debug logger is initialized.
-  const debugEnabled = (globalThis as { __GASOLINE_REGISTRY_DEBUG__?: boolean }).__GASOLINE_REGISTRY_DEBUG__ === true
+  const debugEnabled = (globalThis as { __KABOOM_REGISTRY_DEBUG__?: boolean }).__KABOOM_REGISTRY_DEBUG__ === true
   if (!debugEnabled) return
+  const prefix = `${KABOOM_LOG_PREFIX.slice(0, -1)}:${category}]`
   if (data === null) {
-    console.debug(`[Gasoline:${category}] ${message}`)
+    console.debug(`${prefix} ${message}`)
     return
   }
-  console.debug(`[Gasoline:${category}] ${message}`, data)
+  console.debug(`${prefix} ${message}`, data)
 }
 
 function diagnosticLog(message: string): void {
@@ -199,7 +202,7 @@ export function actionToast(
   const toastCopy = resolveToastCopy(action, detail, state)
   chrome.tabs
     .sendMessage(tabId, {
-      type: 'GASOLINE_ACTION_TOAST',
+      type: 'kaboom_action_toast',
       text: toastCopy.text,
       detail: toastCopy.detail,
       state,
@@ -349,7 +352,7 @@ function buildMissingTargetError(
 
 export async function persistTrackedTab(tab: chrome.tabs.Tab): Promise<void> {
   if (!tab.id) return
-  await chrome.storage.local.set({
+  await setLocals({
     trackedTabId: tab.id,
     trackedTabUrl: tab.url || '',
     trackedTabTitle: tab.title || ''
@@ -638,7 +641,7 @@ export async function resolveTargetTab(
       if (toastTab?.id) {
         chrome.tabs
           .sendMessage(toastTab.id, {
-            type: 'GASOLINE_ACTION_TOAST',
+            type: 'kaboom_action_toast',
             text: 'Tracked tab unavailable',
             detail: "Provide tab_id or use 'use_active_tab=true'",
             state: 'warning',

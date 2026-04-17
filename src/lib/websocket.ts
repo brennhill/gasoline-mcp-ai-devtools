@@ -58,8 +58,8 @@ interface WsEventPayload {
 }
 
 /** PostMessage payload type */
-interface GasolineWsMessage {
-  type: 'GASOLINE_WS'
+interface KaboomWsMessage {
+  type: 'kaboom_ws'
   payload: WsEventPayload
 }
 
@@ -76,7 +76,7 @@ function postLifecycleEvent(
 ): void {
   window.postMessage(
     {
-      type: 'GASOLINE_WS',
+      type: 'kaboom_ws',
       payload: {
         type: 'websocket',
         event,
@@ -86,7 +86,7 @@ function postLifecycleEvent(
         ...(extra?.code !== undefined && { code: extra.code }),
         ...(extra?.reason !== undefined && { reason: extra.reason })
       }
-    } as GasolineWsMessage,
+    } as KaboomWsMessage,
     window.location.origin
   )
 }
@@ -104,7 +104,7 @@ function postMessageEvent(
 
   window.postMessage(
     {
-      type: 'GASOLINE_WS',
+      type: 'kaboom_ws',
       payload: {
         type: 'websocket',
         event: 'message',
@@ -116,7 +116,7 @@ function postMessageEvent(
         truncated: truncated || undefined,
         ts: new Date().toISOString()
       }
-    } as GasolineWsMessage,
+    } as KaboomWsMessage,
     window.location.origin
   )
 }
@@ -179,12 +179,12 @@ export function installWebSocketCapture(): void {
   webSocketCaptureEnabled = true // Ensure capture is enabled when installing
 
   // Check for early-patch: use the saved original, not the early-patch wrapper
-  const earlyOriginal = window.__GASOLINE_ORIGINAL_WS__
+  const earlyOriginal = window.__KABOOM_ORIGINAL_WS__
   originalWebSocket = earlyOriginal || window.WebSocket
 
   const OriginalWS = originalWebSocket
 
-  function GasolineWebSocket(this: WebSocket, url: string | URL, protocols?: string | string[]): WebSocket {
+  function KaboomWebSocket(this: WebSocket, url: string | URL, protocols?: string | string[]): WebSocket {
     const ws = new OriginalWS(url, protocols)
     const connectionId = crypto.randomUUID()
     const urlString = url.toString()
@@ -202,13 +202,13 @@ export function installWebSocketCapture(): void {
   }
 
   // Set up prototype chain and static properties
-  GasolineWebSocket.prototype = OriginalWS.prototype
-  Object.defineProperty(GasolineWebSocket, 'CONNECTING', { value: OriginalWS.CONNECTING, writable: false })
-  Object.defineProperty(GasolineWebSocket, 'OPEN', { value: OriginalWS.OPEN, writable: false })
-  Object.defineProperty(GasolineWebSocket, 'CLOSING', { value: OriginalWS.CLOSING, writable: false })
-  Object.defineProperty(GasolineWebSocket, 'CLOSED', { value: OriginalWS.CLOSED, writable: false })
+  KaboomWebSocket.prototype = OriginalWS.prototype
+  Object.defineProperty(KaboomWebSocket, 'CONNECTING', { value: OriginalWS.CONNECTING, writable: false })
+  Object.defineProperty(KaboomWebSocket, 'OPEN', { value: OriginalWS.OPEN, writable: false })
+  Object.defineProperty(KaboomWebSocket, 'CLOSING', { value: OriginalWS.CLOSING, writable: false })
+  Object.defineProperty(KaboomWebSocket, 'CLOSED', { value: OriginalWS.CLOSED, writable: false })
 
-  window.WebSocket = GasolineWebSocket as unknown as typeof WebSocket
+  window.WebSocket = KaboomWebSocket as unknown as typeof WebSocket
 
   // Adopt connections buffered by the early-patch script
   adoptEarlyConnections()
@@ -225,11 +225,11 @@ export function installWebSocketCapture(): void {
  * that opened before the inject script loaded.
  */
 function adoptEarlyConnections(): void {
-  const earlyConnections = window.__GASOLINE_EARLY_WS__
+  const earlyConnections = window.__KABOOM_EARLY_WS__
   if (!earlyConnections || earlyConnections.length === 0) {
     // Clean up globals even if no connections
-    delete window.__GASOLINE_ORIGINAL_WS__
-    delete window.__GASOLINE_EARLY_WS__
+    delete window.__KABOOM_ORIGINAL_WS__
+    delete window.__KABOOM_EARLY_WS__
     return
   }
 
@@ -260,12 +260,12 @@ function adoptEarlyConnections(): void {
   }
 
   if (adopted > 0) {
-    console.log(`[Gasoline] Adopted ${adopted} early WebSocket connection(s)`)
+    console.log(`[KaBOOM!] Adopted ${adopted} early WebSocket connection(s)`)
   }
 
   // Clean up early-patch globals
-  delete window.__GASOLINE_ORIGINAL_WS__
-  delete window.__GASOLINE_EARLY_WS__
+  delete window.__KABOOM_ORIGINAL_WS__
+  delete window.__KABOOM_EARLY_WS__
 }
 
 // =============================================================================
@@ -316,7 +316,7 @@ export function resetForTesting(): void {
   originalWebSocket = null
   // Clean up early-patch globals if present
   if (typeof window !== 'undefined') {
-    delete window.__GASOLINE_ORIGINAL_WS__
-    delete window.__GASOLINE_EARLY_WS__
+    delete window.__KABOOM_ORIGINAL_WS__
+    delete window.__KABOOM_EARLY_WS__
   }
 }

@@ -17,7 +17,7 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Enable LLMs and users to file sanitized bug reports to GitHub Issues directly from a Gasoline session. Explicit, opt-in exception to Rule 7 ("all data stays local") — the user must approve every submission.
+Enable LLMs and users to file sanitized bug reports to GitHub Issues directly from a Kaboom session. Explicit, opt-in exception to Rule 7 ("all data stays local") — the user must approve every submission.
 
 ## Operations (`operation`)
 

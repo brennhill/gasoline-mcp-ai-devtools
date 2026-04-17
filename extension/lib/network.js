@@ -164,7 +164,7 @@ export function setServerUrl(url) {
     configuredServerUrl = url || '';
 }
 /**
- * Check if a URL should be captured (not gasoline server or extension)
+ * Check if a URL should be captured (not kaboom server or extension)
  * @param url - The URL to check
  * @returns True if the URL should be captured
  */
@@ -282,7 +282,7 @@ export async function readResponseBodyWithTimeout(response, timeoutMs = BODY_REA
  * Clears pending requests, resets counters, and restores default settings.
  * Call this in beforeEach/afterEach test hooks to prevent test pollution.
  */
-export function resetForTesting() {
+function resetForTesting() {
     configuredServerUrl = '';
     networkWaterfallEnabled = false;
     pendingRequests.clear();
@@ -291,10 +291,10 @@ export function resetForTesting() {
     unwrapXHR();
     // Clean up early-patch globals if present
     if (typeof window !== 'undefined') {
-        delete window.__GASOLINE_ORIGINAL_FETCH__;
-        delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
-        delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
-        delete window.__GASOLINE_EARLY_BODIES__;
+        delete window.__KABOOM_ORIGINAL_FETCH__;
+        delete window.__KABOOM_ORIGINAL_XHR_OPEN__;
+        delete window.__KABOOM_ORIGINAL_XHR_SEND__;
+        delete window.__KABOOM_EARLY_BODIES__;
     }
 }
 /**
@@ -330,7 +330,7 @@ async function readCapturedBody(url, cloned, contentType) {
 }
 function postNetworkBody(win, url, method, response, contentType, requestBody, duration, truncResp, truncReq, responseTruncated) {
     const message = {
-        type: 'GASOLINE_NETWORK_BODY',
+        type: 'kaboom_network_body',
         payload: {
             url,
             method,
@@ -358,19 +358,19 @@ export function wrapXHRWithBodies() {
     if (typeof XMLHttpRequest === 'undefined')
         return;
     // Check for early-patch: use the saved originals, not the early-patch wrappers
-    const earlyOpen = typeof window !== 'undefined' ? window.__GASOLINE_ORIGINAL_XHR_OPEN__ : undefined;
-    const earlySend = typeof window !== 'undefined' ? window.__GASOLINE_ORIGINAL_XHR_SEND__ : undefined;
+    const earlyOpen = typeof window !== 'undefined' ? window.__KABOOM_ORIGINAL_XHR_OPEN__ : undefined;
+    const earlySend = typeof window !== 'undefined' ? window.__KABOOM_ORIGINAL_XHR_SEND__ : undefined;
     originalXHROpen = earlyOpen || XMLHttpRequest.prototype.open;
     originalXHRSend = earlySend || XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.open = function (method, url, ...rest) {
         ;
-        this.__gasolineMethod = method;
-        this.__gasolineUrl = typeof url === 'string' ? url : url.toString();
+        this.__kaboomMethod = method;
+        this.__kaboomUrl = typeof url === 'string' ? url : url.toString();
         return originalXHROpen.apply(this, [method, url, ...rest]);
     };
     XMLHttpRequest.prototype.send = function (body) {
-        const url = this.__gasolineUrl || '';
-        const method = this.__gasolineMethod || 'GET';
+        const url = this.__kaboomUrl || '';
+        const method = this.__kaboomMethod || 'GET';
         if (shouldCaptureUrl(url) && networkBodyCaptureEnabled) {
             const startTime = Date.now();
             const requestBody = typeof body === 'string' ? body : null;
@@ -429,20 +429,20 @@ export function unwrapXHR() {
 /**
  * Adopt network bodies buffered by the early-patch script (fetch + XHR).
  * Mirrors adoptEarlyConnections() in websocket.ts: reads from
- * window.__GASOLINE_EARLY_BODIES__, posts each as GASOLINE_NETWORK_BODY
+ * window.__KABOOM_EARLY_BODIES__, posts each as KABOOM_NETWORK_BODY
  * to the content script, then cleans up globals.
  * Called once during Phase 2 installation.
  */
 export function adoptEarlyBodies() {
     if (typeof window === 'undefined')
         return;
-    const earlyBodies = window.__GASOLINE_EARLY_BODIES__;
+    const earlyBodies = window.__KABOOM_EARLY_BODIES__;
     if (!earlyBodies || earlyBodies.length === 0) {
         // Clean up globals even if no bodies
-        delete window.__GASOLINE_ORIGINAL_FETCH__;
-        delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
-        delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
-        delete window.__GASOLINE_EARLY_BODIES__;
+        delete window.__KABOOM_ORIGINAL_FETCH__;
+        delete window.__KABOOM_ORIGINAL_XHR_OPEN__;
+        delete window.__KABOOM_ORIGINAL_XHR_SEND__;
+        delete window.__KABOOM_EARLY_BODIES__;
         return;
     }
     let adopted = 0;
@@ -454,7 +454,7 @@ export function adoptEarlyBodies() {
         adopted++;
         const { body: truncResp, truncated: respTruncated } = truncateResponseBody(entry.response_body);
         const message = {
-            type: 'GASOLINE_NETWORK_BODY',
+            type: 'kaboom_network_body',
             payload: {
                 url: entry.url,
                 method: entry.method,
@@ -468,13 +468,13 @@ export function adoptEarlyBodies() {
         window.postMessage(message, window.location.origin);
     }
     if (adopted > 0) {
-        console.log(`[Gasoline] Adopted ${adopted} early network body(ies)`);
+        console.log(`[KaBOOM!] Adopted ${adopted} early network body(ies)`);
     }
     // Clean up early-patch globals
-    delete window.__GASOLINE_ORIGINAL_FETCH__;
-    delete window.__GASOLINE_ORIGINAL_XHR_OPEN__;
-    delete window.__GASOLINE_ORIGINAL_XHR_SEND__;
-    delete window.__GASOLINE_EARLY_BODIES__;
+    delete window.__KABOOM_ORIGINAL_FETCH__;
+    delete window.__KABOOM_ORIGINAL_XHR_OPEN__;
+    delete window.__KABOOM_ORIGINAL_XHR_SEND__;
+    delete window.__KABOOM_EARLY_BODIES__;
 }
 export function wrapFetchWithBodies(fetchFn) {
     return async function (input, init) {
@@ -507,7 +507,7 @@ export function wrapFetchWithBodies(fetchFn) {
             }
         })
             .catch((err) => {
-            console.debug('[Gasoline] Network body capture error:', err);
+            console.debug('[KaBOOM!] Network body capture error:', err);
         });
         return response;
     };

@@ -138,7 +138,7 @@ const modeDefaults = {
         { selector: 'input[name="email"]', value: 'user@example.com' }
       ]
     },
-    run_a11y_and_export_sarif: { save_to: '.gasoline/reports/a11y.sarif' },
+    run_a11y_and_export_sarif: { save_to: '.kaboom/reports/a11y.sarif' },
     upload: { file_path: '/tmp/example.png', selector: 'input[type="file"]' },
     draw_mode_start: { annot_session: 'checkout-review' },
     hardware_click: { x: 640, y: 360 },
@@ -152,7 +152,7 @@ const modeDefaults = {
     set_cookie: { name: 'theme', value: 'dark', domain: 'example.com' },
     delete_cookie: { name: 'theme', domain: 'example.com' },
     batch: { steps: [{ what: 'navigate', url: 'https://example.com' }, { what: 'click', selector: 'text=Sign in' }] },
-    clipboard_write: { text: 'Copied by Gasoline' }
+    clipboard_write: { text: 'Copied by Kaboom' }
   }
 }
 
@@ -183,7 +183,7 @@ function expectedShape(tool, mode) {
     return {
       what: mode,
       content: [{ type: 'text', text: 'Generated artifact summary' }],
-      artifact: { format: mode, path: '.gasoline/reports/sample.out' }
+      artifact: { format: mode, path: '.kaboom/reports/sample.out' }
     }
   }
   return {
@@ -195,7 +195,7 @@ function expectedShape(tool, mode) {
 
 function failureExample(tool, mode, baseArgs) {
   const failureArgs = { ...baseArgs }
-  let fix = 'Use the documented parameter types for this mode.'
+  let fix
 
   if ('limit' in failureArgs) {
     failureArgs.limit = '100'
@@ -314,7 +314,7 @@ ${sections}`
 
 async function writePages() {
   const modes = await readModes()
-  const baseDir = path.join(repoRoot, 'cookwithgasoline.com/src/content/docs/reference/examples')
+  const baseDir = path.join(repoRoot, 'gokaboom.dev/src/content/docs/reference/examples')
   await fs.mkdir(baseDir, { recursive: true })
 
   const pages = [

@@ -27,7 +27,7 @@ Covers how user-facing action toast labels are normalized for `interact` actions
 
 ## Entrypoints
 
-1. `actionToast(...)` in `src/background/commands/helpers.ts` sends `GASOLINE_ACTION_TOAST` to the content overlay.
+1. `actionToast(...)` in `src/background/commands/helpers.ts` sends `KABOOM_ACTION_TOAST` to the content overlay.
 2. `executeDOMAction(...)` and `handleBrowserAction(...)` provide action labels (`reason` or `action`) to `actionToast`.
 3. `executeCDPAction(...)` emits action-specific copy for CDP toasts (`key_press` -> `Typing...`) while preserving existing `CDP <action>` labels for other CDP actions.
 

@@ -8,7 +8,7 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Why Gasoline Beats TestSprite
+# Why Kaboom Beats TestSprite
 
 ## The WebSocket Advantage
 
@@ -30,9 +30,9 @@ TestSprite operates on:
 - ❌ Message parsing failures
 - ❌ Protocol errors
 
-### What Gasoline Captures
+### What Kaboom Captures
 
-Gasoline monitors **in real-time:**
+Kaboom monitors **in real-time:**
 - ✅ WebSocket open/close/error events
 - ✅ Every frame sent and received
 - ✅ Frame payload content
@@ -40,7 +40,7 @@ Gasoline monitors **in real-time:**
 - ✅ Connection state changes
 - ✅ Frame parsing errors
 
-**Result:** Gasoline can generate tests for WebSocket-heavy apps that TestSprite cannot.
+**Result:** Kaboom can generate tests for WebSocket-heavy apps that TestSprite cannot.
 
 ---
 
@@ -57,7 +57,7 @@ Gasoline monitors **in real-time:**
 4. Suggests: "Check CSS visibility"
 5. ❌ **Misses root cause:** WebSocket sends `txt` field, client expects `text`
 
-#### Gasoline approach:
+#### Kaboom approach:
 1. Captures WebSocket frames in real-time
 2. Sees server sends: `{"type":"message","txt":"Hello"}`
 3. Sees client tries to read: `data.text` (undefined)
@@ -72,7 +72,7 @@ Gasoline monitors **in real-time:**
 
 **TestSprite:** Cannot test real-time multiplayer interactions at all.
 
-#### Gasoline:
+#### Kaboom:
 - Captures game state sync frames
 - Records player movement events
 - Monitors server tick rate
@@ -91,7 +91,7 @@ Gasoline monitors **in real-time:**
 ✅ IDE integrations
 ✅ Production deployment
 
-### What Gasoline Does Better
+### What Kaboom Does Better
 
 1. **WebSocket monitoring** — Unique capability
 2. **Real-time capture** — Not post-mortem
@@ -99,9 +99,9 @@ Gasoline monitors **in real-time:**
 4. **Cost** — Free vs $29-99/month
 5. **Cross-session memory** — Correlate issues over time
 
-### Ideal Use Cases for Gasoline
+### Ideal Use Cases for Kaboom
 
-#### Where Gasoline excels:
+#### Where Kaboom excels:
 - Real-time applications (chat, games, collaboration)
 - WebSocket-heavy apps
 - Privacy-sensitive environments
@@ -121,19 +121,19 @@ Gasoline monitors **in real-time:**
 
 **TestSprite:** "We'll generate tests from your PRD using AI"
 
-**Gasoline:** "We'll capture exactly what happened in your browser — including WebSocket frames — and generate tests that reproduce it"
+**Kaboom:** "We'll capture exactly what happened in your browser — including WebSocket frames — and generate tests that reproduce it"
 
 ### For Companies
 
 **TestSprite:** $29-99/month per user, cloud-based
 
-**Gasoline:** Free, localhost-only, your data never leaves your machine
+**Kaboom:** Free, localhost-only, your data never leaves your machine
 
 ### For Real-Time Apps
 
 **TestSprite:** ❌ Cannot test WebSocket interactions
 
-**Gasoline:** ✅ First-class WebSocket support, frame-level assertions
+**Kaboom:** ✅ First-class WebSocket support, frame-level assertions
 
 ---
 
@@ -149,7 +149,7 @@ Gasoline monitors **in real-time:**
 
 **Limitation:** No real-time telemetry, relies on post-mortem analysis
 
-### How Gasoline Works
+### How Kaboom Works
 
 1. **Browser extension captures everything:**
    - Console logs with full context
@@ -188,7 +188,7 @@ Gasoline monitors **in real-time:**
 **Time:** ~5 minutes
 **Impressive:** AI generates from English description
 
-### Gasoline Demo (with WebSocket bug)
+### Kaboom Demo (with WebSocket bug)
 
 ```
 1. Open chat, observe WebSocket error
@@ -225,7 +225,7 @@ Our validation plan focuses on **WebSocket scenarios** because:
 - Companies with testing budgets
 - Teams using Cursor/Windsurf
 
-### Gasoline's Target Market
+### Kaboom's Target Market
 
 - **Developers building real-time apps**
 - Privacy-conscious companies
@@ -262,7 +262,7 @@ After validation:
 
 ### After validation, we can confidently say:
 
-> "Gasoline provides everything TestSprite does, plus WebSocket monitoring, for free, with your data never leaving localhost."
+> "Kaboom provides everything TestSprite does, plus WebSocket monitoring, for free, with your data never leaving localhost."
 
 ### The honest assessment:
 

@@ -27,7 +27,7 @@ Chrome extensions run in a sandboxed environment that prevents:
 - Direct filesystem access from JavaScript
 - Simulating native OS file dialogs
 
-However, Gasoline has a Go server running as a native process with full filesystem and OS access. This spec defines how to leverage it with **intelligent escalation**: start with the least invasive approach (drag-drop), then escalate through form interception and finally OS-level automation.
+However, Kaboom has a Go server running as a native process with full filesystem and OS access. This spec defines how to leverage it with **intelligent escalation**: start with the least invasive approach (drag-drop), then escalate through form interception and finally OS-level automation.
 
 ---
 
@@ -36,7 +36,7 @@ However, Gasoline has a Go server running as a native process with full filesyst
 File upload automation requires **explicit server-side flags** to enable:
 
 ```bash
-gasoline-mcp --enable-os-upload-automation --upload-dir=/Users/brenn/Uploads
+kaboom-mcp --enable-os-upload-automation --upload-dir=/Users/brenn/Uploads
 ```
 
 ### Flags
@@ -145,7 +145,7 @@ C:\Windows\System32\drivers\etc\*
 **User-extensible:** Additional patterns can be added via `--upload-deny-pattern`:
 
 ```bash
-gasoline-mcp --enable-os-upload-automation \
+kaboom-mcp --enable-os-upload-automation \
   --upload-dir=/Users/brenn/Uploads \
   --upload-deny-pattern="**/company-secrets/*" \
   --upload-deny-pattern="**/*.sqlite"
@@ -688,7 +688,7 @@ ERROR
 
 #### Startup flags:
 ```bash
-gasoline-mcp --enable-os-upload-automation --upload-dir=/path/to/uploads
+kaboom-mcp --enable-os-upload-automation --upload-dir=/path/to/uploads
 ```
 
 #### File size handling:

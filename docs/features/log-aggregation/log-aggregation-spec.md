@@ -444,9 +444,9 @@ All regex patterns used for fingerprinting are pre-compiled at daemon startup, n
 | `internal/tools/observe/summarized_logs_test.go` | **NEW.** Unit tests. ~300 lines. |
 | `internal/tools/observe/handlers.go` | Add `"summarized_logs": GetSummarizedLogs` to `Handlers` map. ~1 line. |
 | `internal/tools/observe/schema.go` | Add `"summarized_logs"` to the `what` enum. ~1 line. |
-| `cmd/dev-console/tools_observe.go` | Add `"summarized_logs"` to `observeHandlers` map, delegating to `observe.GetSummarizedLogs`. ~3 lines. |
-| `cmd/dev-console/tools_schema.go` | Add `"summarized_logs"` to tool description. ~1 line. |
-| `cmd/dev-console/testdata/mcp-tools-list.golden.json` | Regenerate (includes new enum value). |
+| `cmd/browser-agent/tools_observe.go` | Add `"summarized_logs"` to `observeHandlers` map, delegating to `observe.GetSummarizedLogs`. ~3 lines. |
+| `cmd/browser-agent/tools_schema.go` | Add `"summarized_logs"` to tool description. ~1 line. |
+| `cmd/browser-agent/testdata/mcp-tools-list.golden.json` | Regenerate (includes new enum value). |
 
 ### No Extension Changes
 

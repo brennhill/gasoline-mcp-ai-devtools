@@ -388,7 +388,7 @@ const TAG_RULES = [
 
 ```typescript
 // Developer can add context tags
-window.__gasoline.annotate({
+window.__kaboom.annotate({
   message: "User logged in successfully",
   level: "info",
   tags: ["authentication", "user_flow"],
@@ -643,7 +643,7 @@ if event.TraceID == "" {
 - [ ] Update backend log streaming to normalize events
 - [ ] Update test capture to emit NormalizedEvent
 - [ ] Implement automatic tagging rules
-- [ ] Add window.__gasoline.annotate() for custom events
+- [ ] Add window.__kaboom.annotate() for custom events
 - [ ] Test MCP observe() filtering
 
 ### Phase 3: Correlation (v7.0)

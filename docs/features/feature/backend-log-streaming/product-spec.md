@@ -15,18 +15,18 @@ last_verified_date: 2026-03-05
 # Backend Log Streaming
 
 ## Overview
-Backend Log Streaming enables real-time capture of server-side logs through a bidirectional gRPC or WebSocket connection. This feature bridges the gap between frontend telemetry and backend operations, allowing developers to correlate frontend user actions with backend processing, errors, and state changes. By streaming logs directly from the backend service into Gasoline's observation pipeline, developers gain unified visibility across their entire stack.
+Backend Log Streaming enables real-time capture of server-side logs through a bidirectional gRPC or WebSocket connection. This feature bridges the gap between frontend telemetry and backend operations, allowing developers to correlate frontend user actions with backend processing, errors, and state changes. By streaming logs directly from the backend service into Kaboom's observation pipeline, developers gain unified visibility across their entire stack.
 
 ## Problem
-Currently, developers using Gasoline can observe frontend behavior in granular detail—every user click, network request, and DOM change. However, backend logs remain isolated in separate systems (CloudWatch, Datadog, ELK stacks). This creates a blind spot:
+Currently, developers using Kaboom can observe frontend behavior in granular detail—every user click, network request, and DOM change. However, backend logs remain isolated in separate systems (CloudWatch, Datadog, ELK stacks). This creates a blind spot:
 - When a user's action fails, developers must manually jump between frontend tools and backend logs
 - Backend errors are invisible until they cause user-visible failures
 - Debugging multi-service failures requires stitching together multiple log systems
 - Performance issues that originate on the backend are impossible to correlate with frontend impact
 
 ## Solution
-Backend Log Streaming establishes a persistent connection from a Gasoline-compatible backend service to the MCP server. The backend sends structured log entries (with severity, timestamp, service metadata, and request IDs) in real-time. These logs are:
-1. **Ingested** into Gasoline's central event stream
+Backend Log Streaming establishes a persistent connection from a Kaboom-compatible backend service to the MCP server. The backend sends structured log entries (with severity, timestamp, service metadata, and request IDs) in real-time. These logs are:
+1. **Ingested** into Kaboom's central event stream
 2. **Indexed** with correlation IDs (request tracing, session IDs, user IDs)
 3. **Exposed** through the MCP API for real-time observation and historical search
 4. **Correlated** with frontend events by shared tracing context
@@ -34,11 +34,11 @@ Backend Log Streaming establishes a persistent connection from a Gasoline-compat
 ## User Stories
 - As a full-stack developer, I want to see backend logs stream in real-time alongside frontend events so that I can immediately understand why a network request failed
 - As a DevOps engineer, I want to capture backend service startup logs, health checks, and lifecycle events so that I can audit service deployments
-- As a QA engineer, I want to verify that error logs appear in Gasoline when I trigger specific error conditions so that I can validate error handling
+- As a QA engineer, I want to verify that error logs appear in Kaboom when I trigger specific error conditions so that I can validate error handling
 - As a platform engineer, I want to rate-limit backend log ingestion to prevent flooding so that the observation system remains performant
 
 ## Acceptance Criteria
-- [ ] Backend can establish persistent connection to Gasoline MCP server via gRPC or WebSocket
+- [ ] Backend can establish persistent connection to Kaboom MCP server via gRPC or WebSocket
 - [ ] Backend sends structured log entries with timestamp, level, message, service name, request ID, span ID
 - [ ] Logs are deduplicated and buffered to handle burst traffic (max 10K logs/sec per service)
 - [ ] Logs expire from memory after 1 hour or when memory threshold is exceeded
@@ -52,7 +52,7 @@ Backend Log Streaming establishes a persistent connection from a Gasoline-compat
 - Long-term persistence (logs are ephemeral, for dev/test only)
 - Centralized log aggregation across multiple machines
 - Authentication/authorization for backend connections (assumes trusted network)
-- Multi-tenancy (Gasoline is single-user development tool)
+- Multi-tenancy (Kaboom is single-user development tool)
 
 ## Data Structures
 
@@ -104,7 +104,7 @@ type BackendLogEntry struct {
 [10:15:23.450] XHR Response: 500 (error)
 ```
 
-#### Backend (now visible in Gasoline):
+#### Backend (now visible in Kaboom):
 ```
 [10:15:23.200] INFO api-server: POST /api/payments/process (req-12345)
 [10:15:23.300] DEBUG api-server: User 987 processing payment

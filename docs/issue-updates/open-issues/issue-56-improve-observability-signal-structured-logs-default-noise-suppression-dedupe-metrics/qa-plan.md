@@ -1,7 +1,7 @@
 # QA Plan: Issue #56
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/56
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/56
 - Title: Improve observability signal: structured logs, default noise suppression, dedupe metrics
 
 ## QA Goal

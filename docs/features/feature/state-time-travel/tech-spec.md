@@ -14,7 +14,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture Overview
 
-State Time-Travel captures and buffers page events (user actions, network, DOM, console) in a persistent ring buffer. When the AI calls `observe({what: 'history'})`, Gasoline returns a curated timeline with causal links.
+State Time-Travel captures and buffers page events (user actions, network, DOM, console) in a persistent ring buffer. When the AI calls `observe({what: 'history'})`, Kaboom returns a curated timeline with causal links.
 
 ### Three layers:
 
@@ -49,7 +49,7 @@ State Time-Travel captures and buffers page events (user actions, network, DOM, 
   timestamp: number (milliseconds since page load),
   type: string (user_action, network_request, network_response, console, dom_mutation, page_event),
   details: { ... event-specific fields ... },
-  element?: { id, role, text, gasoline_id },
+  element?: { id, role, text, kaboom_id },
   cause?: string (pointer to causal parent event)
 }
 ```
@@ -69,7 +69,7 @@ State Time-Travel captures and buffers page events (user actions, network, DOM, 
 
 #### Example structure in sessionStorage:
 ```
-sessionStorage['gasoline-event-buffer'] = '
+sessionStorage['kaboom-event-buffer'] = '
 {"timestamp":0,"type":"page_load","url":"..."}
 {"timestamp":150,"type":"user_action","action":"input","element_id":"email-input"}
 {"timestamp":280,"type":"network_request","method":"POST","url":"/api/login","id":"req-1"}
@@ -157,7 +157,7 @@ Result: [success/failure/timeout]
       "type": "user_action",
       "action": "click",
       "element": "button#save",
-      "gasoline_id": "btn-save",
+      "kaboom_id": "btn-save",
       "result_summary": "1 network request, 1 error"
     },
     {
@@ -312,7 +312,7 @@ Buffer now includes events across reload
 - Event listeners — Standard DOM event API
 
 ### No External Dependencies
-- No npm packages (matches Gasoline's zero-deps philosophy)
+- No npm packages (matches Kaboom's zero-deps philosophy)
 
 ## Performance Considerations
 
@@ -377,7 +377,7 @@ Buffer now includes events across reload
       "timestamp_human": "0:03.214",
       "type": "user_action",
       "action": "click",
-      "element": { "id": "save-btn", "text": "Save", "gasoline_id": "btn-save" },
+      "element": { "id": "save-btn", "text": "Save", "kaboom_id": "btn-save" },
       "result_summary": "1 network request, 0 errors"
     },
     {

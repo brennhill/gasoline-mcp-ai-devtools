@@ -61,23 +61,21 @@ export declare const MAX_URL_LENGTH = 80;
  * are deliberately kept as literal strings for TypeScript discriminated union narrowing.
  */
 export declare const SettingName: {
-    readonly NETWORK_WATERFALL: "setNetworkWaterfallEnabled";
-    readonly PERFORMANCE_MARKS: "setPerformanceMarksEnabled";
-    readonly ACTION_REPLAY: "setActionReplayEnabled";
-    readonly WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled";
-    readonly WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode";
-    readonly PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled";
-    readonly DEFERRAL: "setDeferralEnabled";
-    readonly NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled";
-    readonly ACTION_TOASTS: "setActionToastsEnabled";
-    readonly SUBTITLES: "setSubtitlesEnabled";
-    readonly SERVER_URL: "setServerUrl";
+    readonly NETWORK_WATERFALL: "set_network_waterfall_enabled";
+    readonly PERFORMANCE_MARKS: "set_performance_marks_enabled";
+    readonly ACTION_REPLAY: "set_action_replay_enabled";
+    readonly WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled";
+    readonly WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode";
+    readonly PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled";
+    readonly DEFERRAL: "set_deferral_enabled";
+    readonly NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled";
+    readonly ACTION_TOASTS: "set_action_toasts_enabled";
+    readonly SUBTITLES: "set_subtitles_enabled";
+    readonly SERVER_URL: "set_server_url";
 };
 export type SettingNameValue = (typeof SettingName)[keyof typeof SettingName];
-/** All valid setting names as a Set (for runtime validation) */
-export declare const VALID_SETTING_NAMES: ReadonlySet<string>;
 export declare const RuntimeMessageName: {
-    readonly SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER";
+    readonly SHOW_TRACKED_HOVER_LAUNCHER: "kaboom_show_tracked_hover_launcher";
 };
 /**
  * Settings forwarded from background -> content -> inject (MAIN world).
@@ -110,17 +108,22 @@ export declare const StorageKey: {
     readonly NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled";
     readonly ACTION_TOASTS_ENABLED: "actionToastsEnabled";
     readonly SUBTITLES_ENABLED: "subtitlesEnabled";
-    readonly RECORDING: "gasoline_recording";
-    readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden";
-    readonly PENDING_RECORDING: "gasoline_pending_recording";
-    readonly PENDING_MIC_RECORDING: "gasoline_pending_mic_recording";
-    readonly MIC_GRANTED: "gasoline_mic_granted";
-    readonly RECORD_AUDIO_PREF: "gasoline_record_audio_pref";
-    readonly TERMINAL_CONFIG: "gasoline_terminal_config";
-    readonly TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command";
-    readonly TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root";
-    readonly POPUP_LAST_STATUS: "gasoline_popup_last_status";
-    readonly TERMINAL_SESSION: "gasoline_terminal_session";
-    readonly TERMINAL_UI_STATE: "gasoline_terminal_ui_state";
+    readonly ACTION_RECORDING: "kaboom_action_recording";
+    readonly RECORDING: "kaboom_recording";
+    readonly TRACKED_HOVER_LAUNCHER_HIDDEN: "kaboom_tracked_hover_launcher_hidden";
+    readonly PENDING_RECORDING: "kaboom_pending_recording";
+    readonly PENDING_MIC_RECORDING: "kaboom_pending_mic_recording";
+    readonly MIC_GRANTED: "kaboom_mic_granted";
+    readonly RECORD_AUDIO_PREF: "kaboom_record_audio_pref";
+    readonly TERMINAL_CONFIG: "kaboom_terminal_config";
+    readonly TERMINAL_AI_COMMAND: "kaboom_terminal_ai_command";
+    readonly TERMINAL_DEV_ROOT: "kaboom_terminal_dev_root";
+    readonly POPUP_LAST_STATUS: "kaboom_popup_last_status";
+    readonly TERMINAL_SESSION: "kaboom_terminal_session";
+    readonly TERMINAL_UI_STATE: "kaboom_terminal_ui_state";
+    readonly TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id";
+    readonly TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id";
+    readonly CLOAKED_DOMAINS: "kaboom_cloaked_domains";
+    readonly ERROR_GROUPS: "kaboom_error_groups";
 };
 //# sourceMappingURL=constants.d.ts.map

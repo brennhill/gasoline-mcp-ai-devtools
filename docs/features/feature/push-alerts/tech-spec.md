@@ -239,7 +239,7 @@ Uses standard MCP `notifications/message` method (not custom):
   "method": "notifications/message",
   "params": {
     "level": "warning",
-    "logger": "gasoline",
+    "logger": "kaboom",
     "data": {
       "category": "network_errors",
       "severity": "error",
@@ -275,7 +275,7 @@ func (s *StreamState) emitNotification(event StreamEvent) {
     notification := MCPNotification{
         JSONRPC: "2.0",
         Method:  "notifications/message",
-        Params:  notificationParams{Level: event.Severity, Logger: "gasoline", Data: event},
+        Params:  notificationParams{Level: event.Severity, Logger: "kaboom", Data: event},
     }
 
     // Write to stdout (MCP channel)

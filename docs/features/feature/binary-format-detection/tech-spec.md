@@ -182,6 +182,6 @@ For WebSocket connections that consistently use the same binary format, the dete
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/binary_detect.go` (detection logic, decoders, cache).
+Server implementation: `cmd/browser-agent/binary_detect.go` (detection logic, decoders, cache).
 
-Tests: `cmd/dev-console/binary_detect_test.go`.
+Tests: `cmd/browser-agent/binary_detect_test.go`.

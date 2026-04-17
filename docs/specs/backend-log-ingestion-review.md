@@ -1,9 +1,9 @@
 ---
 review_date: 2026-01-31
 reviewer: Principal Engineer (AI)
-spec_version: v1.0 (PRODUCT_SPEC.md, TECH_SPEC_GASOLINE_RUN.md, TECH_SPEC_LOCAL_TAILER.md, TECH_SPEC_SSH_TAILER.md)
+spec_version: v1.0 (PRODUCT_SPEC.md, TECH_SPEC_KABOOM_RUN.md, TECH_SPEC_LOCAL_TAILER.md, TECH_SPEC_SSH_TAILER.md)
 status: NEEDS REVISION
-relates_to: [PRODUCT_SPEC.md, TECH_SPEC_GASOLINE_RUN.md, TECH_SPEC_LOCAL_TAILER.md, TECH_SPEC_SSH_TAILER.md]
+relates_to: [PRODUCT_SPEC.md, TECH_SPEC_KABOOM_RUN.md, TECH_SPEC_LOCAL_TAILER.md, TECH_SPEC_SSH_TAILER.md]
 last-updated: 2026-01-31
 last_reviewed: 2026-02-16
 ---
@@ -19,9 +19,9 @@ last_reviewed: 2026-02-16
 
 ## Executive Summary
 
-The backend log ingestion specifications introduce a sophisticated multi-tailer architecture that significantly extends Gasoline's observability capabilities. The design demonstrates strong architectural thinking around separation of concerns (gasoline-run wrapper, local tailer, SSH tailer) and proper use of Go concurrency primitives. However, the specifications contain **8 critical issues** in performance guarantees, concurrency safety, data contract consistency, and error handling that must be addressed before implementation begins.
+The backend log ingestion specifications introduce a sophisticated multi-tailer architecture that significantly extends Kaboom's observability capabilities. The design demonstrates strong architectural thinking around separation of concerns (kaboom-run wrapper, local tailer, SSH tailer) and proper use of Go concurrency primitives. However, the specifications contain **8 critical issues** in performance guarantees, concurrency safety, data contract consistency, and error handling that must be addressed before implementation begins.
 
-**Key Concern:** The unbounded memory queue pattern in gasoline-run contradicts stated durability guarantees and creates backpressure failure modes that will cause dev server hangs under high throughput.
+**Key Concern:** The unbounded memory queue pattern in kaboom-run contradicts stated durability guarantees and creates backpressure failure modes that will cause dev server hangs under high throughput.
 
 **Status:** BLOCKED until critical issues are resolved.
 
@@ -30,7 +30,7 @@ The backend log ingestion specifications introduce a sophisticated multi-tailer 
 ## Critical Issues (Must Fix Before Implementation)
 
 ### 1. Unbounded Memory Queue Creates Backpressure Failure Mode
-- **Location:** TECH_SPEC_GASOLINE_RUN.md, lines 398-547
+- **Location:** TECH_SPEC_KABOOM_RUN.md, lines 398-547
 - **Severity:** CRITICAL
 - **Issue:**
   - Specification claims "unbounded channel" (line 544) with "Non-blocking send" pseudocode (line 438)
@@ -38,7 +38,7 @@ The backend log ingestion specifications introduce a sophisticated multi-tailer 
   - Under high throughput (100+ lines/sec), ingestion goroutine will block when queue fills
   - Violates guarantee: "ingestion must never block or slow down subprocess" (line 545)
 - **Impact:** Dev server's log I/O will hang under sustained load
-- **Test Case:** gasoline-run with Node server logging 1000 lines/sec for 10 seconds
+- **Test Case:** kaboom-run with Node server logging 1000 lines/sec for 10 seconds
 - **Recommended Fix:**
   ```go
   // Replace unbounded channel with bounded queue
@@ -58,12 +58,12 @@ The backend log ingestion specifications introduce a sophisticated multi-tailer 
   - Document whether to: drop oldest lines, block subprocess, or error to caller
   - Add metrics: queue depth, drop count, backpressure events
 
-**PR Blocker:** Yes. Must be resolved before gasoline-run implementation begins.
+**PR Blocker:** Yes. Must be resolved before kaboom-run implementation begins.
 
 ---
 
 ### 2. File Rotation Reader/Writer Race Condition
-- **Location:** TECH_SPEC_GASOLINE_RUN.md, lines 479-540
+- **Location:** TECH_SPEC_KABOOM_RUN.md, lines 479-540
 - **Severity:** CRITICAL
 - **Issue:**
   - Claims "clean reader/writer separation" with `.active` and `.NNN` files
@@ -282,11 +282,11 @@ The backend log ingestion specifications introduce a sophisticated multi-tailer 
 ---
 
 ### 6. API Contract Ambiguity: Event vs Events Endpoint
-- **Location:** TECH_SPEC_GASOLINE_RUN.md line 562 vs PRODUCT_SPEC.md line 410
+- **Location:** TECH_SPEC_KABOOM_RUN.md line 562 vs PRODUCT_SPEC.md line 410
 - **Severity:** HIGH
 - **Issue:**
   - PRODUCT_SPEC mentions `POST /event` (singular)
-  - TECH_SPEC_GASOLINE_RUN describes `POST /events` (plural with batch)
+  - TECH_SPEC_KABOOM_RUN describes `POST /events` (plural with batch)
   - Daemon not specified to handle both formats
   - TECH_SPEC_LOCAL_TAILER mentions `SendEvent(event)` (singular)
   - This inconsistency will cause integration failures
@@ -313,7 +313,7 @@ The backend log ingestion specifications introduce a sophisticated multi-tailer 
     "event_id": "evt_12345"
   }
 
-  // Format 2: Batch events (for gasoline-run efficiency)
+  // Format 2: Batch events (for kaboom-run efficiency)
   POST /events
   Content-Type: application/json
 
@@ -342,7 +342,7 @@ The backend log ingestion specifications introduce a sophisticated multi-tailer 
 ---
 
 ### 7. Correlation ID Extraction Reliability Not Quantified
-- **Location:** PRODUCT_SPEC.md line 294; TECH_SPEC_GASOLINE_RUN.md lines 291-307
+- **Location:** PRODUCT_SPEC.md line 294; TECH_SPEC_KABOOM_RUN.md lines 291-307
 - **Severity:** MEDIUM
 - **Issue:**
   - 95% success rate stated but not defined
@@ -434,7 +434,7 @@ The backend log ingestion specifications introduce a sophisticated multi-tailer 
 Rather than claiming an "unbounded" queue, implement explicit backpressure signaling. When disk buffer reaches threshold (e.g., 500MB), signal ingestion goroutine to apply backpressure (log warning, optionally drop lines). Makes failure modes explicit and testable.
 
 ### R2: Pre-Compile Regex Patterns
-Both TECH_SPEC_GASOLINE_RUN.md and TECH_SPEC_LOCAL_TAILER.md mention log parsing with regex. Pre-compile all patterns at daemon startup to avoid repeated compilation overhead. Critical for 10K lines/sec throughput target.
+Both TECH_SPEC_KABOOM_RUN.md and TECH_SPEC_LOCAL_TAILER.md mention log parsing with regex. Pre-compile all patterns at daemon startup to avoid repeated compilation overhead. Critical for 10K lines/sec throughput target.
 
 ### R3: Add Correlation ID Validation
 When receiving events, daemon should validate correlation_id is valid format (UUID, hex-string, or expected format). Prevents accidentally matching unrelated events. Catch misconfigured services early.
@@ -450,7 +450,7 @@ Current status endpoint only reports `median_skew_ms`. Add percentiles (p95, p99
 
 ### R7: Define Success Metrics for Testing
 Testing strategy lists manual tests but no quantitative success criteria. Add:
-- gasoline-run overhead <5ms per 100 log lines
+- kaboom-run overhead <5ms per 100 log lines
 - Memory usage <50MB for 1 hour of 1000 lines/sec
 - SSH reconnect <2s after network recovery
 - File tailer rotation detection within 100ms
@@ -468,11 +468,11 @@ Disk buffer has 24-hour TTL, but unclear if applies to all events. Clarify: Do F
 3. Get design review sign-off from principal engineer
 
 ### Phase 2: Core Infrastructure (5 days)
-4. Fix bounded memory queue implementation (gasoline-run) — **1 day**
-5. Fix file rotation with atomicity guarantees (gasoline-run) — **2 days**
+4. Fix bounded memory queue implementation (kaboom-run) — **1 day**
+5. Fix file rotation with atomicity guarantees (kaboom-run) — **2 days**
 6. Implement Log Parsers (JSON, structured, plaintext) with expanded regex — **2 days**
 
-### Phase 3: gasoline-run Executable (5 days)
+### Phase 3: kaboom-run Executable (5 days)
 7. Implement 3-goroutine pipeline (ingestion, disk buffer, sender) — **3 days**
 8. Integration & benchmarking tests — **2 days**
 
@@ -539,7 +539,7 @@ Bounded Queue Implementation (Critical)
   ↓
 File Rotation Atomicity (Critical)
   ↓
-gasoline-run Executable
+kaboom-run Executable
   ↓
 Tailer Implementations (can run in parallel)
   ↓

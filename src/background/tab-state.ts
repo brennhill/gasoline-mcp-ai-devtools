@@ -5,7 +5,9 @@
 
 import { scaleTimeout } from '../lib/timeouts.js'
 import { delay } from '../lib/timeout-utils.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { StorageKey } from '../lib/constants.js'
+import { getLocal, getLocals, setLocal, setLocals, removeLocals } from '../lib/storage-utils.js'
 
 // =============================================================================
 // CONTENT SCRIPT HELPERS
@@ -17,7 +19,7 @@ import { StorageKey } from '../lib/constants.js'
 export async function pingContentScript(tabId: number, timeoutMs = scaleTimeout(500)): Promise<boolean> {
   try {
     const response = (await Promise.race([
-      chrome.tabs.sendMessage(tabId, { type: 'GASOLINE_PING' }),
+      chrome.tabs.sendMessage(tabId, { type: 'kaboom_ping' }),
       new Promise<never>((_, reject) => {
         setTimeout(
           () => reject(new Error(`Content script ping timeout after ${timeoutMs}ms on tab ${tabId}`)),
@@ -94,12 +96,8 @@ export interface SavedSettings {
  * Load saved settings from chrome.storage.local
  */
 export async function loadSavedSettings(): Promise<SavedSettings> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return {}
-  }
-
   try {
-    const result = (await chrome.storage.local.get([
+    const result = (await getLocals([
       StorageKey.SERVER_URL,
       StorageKey.LOG_LEVEL,
       StorageKey.SCREENSHOT_ON_ERROR,
@@ -108,7 +106,7 @@ export async function loadSavedSettings(): Promise<SavedSettings> {
     ])) as SavedSettings
     return result
   } catch {
-    console.warn('[Gasoline] Could not load saved settings - using defaults')
+    console.warn(`${KABOOM_LOG_PREFIX} Could not load saved settings - using defaults`)
     return {}
   }
 }
@@ -117,16 +115,12 @@ export async function loadSavedSettings(): Promise<SavedSettings> {
  * Load AI Web Pilot enabled state from storage
  */
 export async function loadAiWebPilotState(logFn?: (message: string) => void): Promise<boolean> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return false
-  }
-
   const startTime = performance.now()
-  const result = (await chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED])) as { aiWebPilotEnabled?: boolean }
-  const wasLoaded = result.aiWebPilotEnabled !== false
+  const aiEnabled = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED)
+  const wasLoaded = aiEnabled !== false
   const loadTime = performance.now() - startTime
   if (logFn) {
-    logFn(`[Gasoline] AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
+    logFn(`${KABOOM_LOG_PREFIX} AI Web Pilot loaded on startup: ${wasLoaded} (took ${loadTime.toFixed(1)}ms)`)
   }
   return wasLoaded
 }
@@ -135,20 +129,15 @@ export async function loadAiWebPilotState(logFn?: (message: string) => void): Pr
  * Load debug mode state from storage
  */
 export async function loadDebugModeState(): Promise<boolean> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return false
-  }
-
-  const result = (await chrome.storage.local.get([StorageKey.DEBUG_MODE])) as { debugMode?: boolean }
-  return result.debugMode === true
+  const debugMode = await getLocal(StorageKey.DEBUG_MODE)
+  return debugMode === true
 }
 
 /**
  * Save setting to chrome.storage.local
  */
 export function saveSetting(key: string, value: unknown): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) return
-  chrome.storage.local.set({ [key]: value })
+  setLocal(key, value)
 }
 
 // =============================================================================
@@ -164,17 +153,71 @@ export interface TrackedTabInfo {
   trackedTabActive: boolean | null
 }
 
+export interface TerminalWorkspaceTarget {
+  hostTabId: number
+  mainTabId: number
+  tabGroupId: number
+}
+
 const TRACKED_TAB_STORAGE_KEYS = [StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL, StorageKey.TRACKED_TAB_TITLE]
+const TERMINAL_WORKSPACE_STORAGE_KEYS = [
+  StorageKey.TERMINAL_WORKSPACE_GROUP_ID,
+  StorageKey.TERMINAL_WORKSPACE_MAIN_TAB_ID,
+  StorageKey.TRACKED_TAB_ID
+]
+
+function getUngroupedTabGroupId(): number {
+  return chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1
+}
+
+function isGroupedTab(groupId: number | undefined): groupId is number {
+  return typeof groupId === 'number' && Number.isFinite(groupId) && groupId !== getUngroupedTabGroupId()
+}
+
+async function safeGetTab(tabId: number | null | undefined): Promise<chrome.tabs.Tab | null> {
+  if (typeof tabId !== 'number') return null
+  try {
+    return await chrome.tabs.get(tabId)
+  } catch {
+    return null
+  }
+}
+
+async function focusTab(tab: chrome.tabs.Tab): Promise<void> {
+  if (!tab.id) return
+  try {
+    await chrome.tabs.update(tab.id, { active: true })
+  } catch {
+    // Best effort.
+  }
+  if (typeof tab.windowId !== 'number' || !chrome.windows?.update) return
+  try {
+    await chrome.windows.update(tab.windowId, { focused: true })
+  } catch {
+    // Best effort.
+  }
+}
+
+async function createTerminalWorkspaceGroup(tabId: number): Promise<number | null> {
+  if (!chrome.tabs.group || !chrome.tabGroups?.update) return null
+  try {
+    const groupId = await chrome.tabs.group({ tabIds: [tabId] })
+    const color = chrome.tabGroups.Color?.ORANGE
+    const update = color
+      ? { title: 'KaBOOM!', color, collapsed: false }
+      : { title: 'KaBOOM!', collapsed: false }
+    await chrome.tabGroups.update(groupId, update)
+    return groupId
+  } catch {
+    return null
+  }
+}
 
 /**
  * Get tracked tab information, including Chrome tab status.
  */
 export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return { trackedTabId: null, trackedTabUrl: null, trackedTabTitle: null, tabStatus: null, trackedTabActive: null }
-  }
-
-  const result = (await chrome.storage.local.get(TRACKED_TAB_STORAGE_KEYS)) as {
+  const result = (await getLocals(TRACKED_TAB_STORAGE_KEYS)) as {
     trackedTabId?: number
     trackedTabUrl?: string
     trackedTabTitle?: string
@@ -210,8 +253,8 @@ export async function getTrackedTabInfo(): Promise<TrackedTabInfo> {
  * Persist tracked tab state.
  */
 export async function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 'title'>): Promise<void> {
-  if (typeof chrome === 'undefined' || !chrome.storage || !tab.id) return
-  await chrome.storage.local.set({
+  if (!tab.id) return
+  await setLocals({
     [StorageKey.TRACKED_TAB_ID]: tab.id,
     [StorageKey.TRACKED_TAB_URL]: tab.url ?? '',
     [StorageKey.TRACKED_TAB_TITLE]: tab.title ?? ''
@@ -222,19 +265,66 @@ export async function setTrackedTab(tab: Pick<chrome.tabs.Tab, 'id' | 'url' | 't
  * Clear tracked tab state
  */
 export function clearTrackedTab(): void {
-  if (typeof chrome === 'undefined' || !chrome.storage) return
-  chrome.storage.local.remove(TRACKED_TAB_STORAGE_KEYS)
+  removeLocals(TRACKED_TAB_STORAGE_KEYS)
+}
+
+export async function resolveTerminalWorkspaceTarget(requestTabId?: number): Promise<TerminalWorkspaceTarget | null> {
+  const result = (await getLocals(TERMINAL_WORKSPACE_STORAGE_KEYS)) as {
+    trackedTabId?: number
+    kaboom_terminal_workspace_group_id?: number
+    kaboom_terminal_workspace_main_tab_id?: number
+  }
+
+  const trackedTabId = typeof result.trackedTabId === 'number' ? result.trackedTabId : null
+  const storedMainTabId =
+    typeof result.kaboom_terminal_workspace_main_tab_id === 'number'
+      ? result.kaboom_terminal_workspace_main_tab_id
+      : null
+
+  const preferredMainTabId = trackedTabId ?? storedMainTabId ?? requestTabId ?? null
+  const requestTab = await safeGetTab(requestTabId)
+  let mainTab = await safeGetTab(preferredMainTabId)
+  if (!mainTab && requestTab) {
+    mainTab = requestTab
+  }
+  if (!mainTab) return null
+  const mainTabId = mainTab?.id
+  if (typeof mainTabId !== 'number') return null
+
+  let tabGroupId = isGroupedTab(mainTab.groupId) ? mainTab.groupId : null
+  if (tabGroupId === null) {
+    tabGroupId = await createTerminalWorkspaceGroup(mainTabId)
+    if (tabGroupId === null) {
+      tabGroupId = mainTab.groupId ?? getUngroupedTabGroupId()
+    } else {
+      mainTab = (await safeGetTab(mainTabId)) ?? mainTab
+    }
+  }
+
+  let hostTabId = mainTabId
+  if (requestTab?.id && requestTab.groupId === tabGroupId) {
+    hostTabId = requestTab.id
+  } else {
+    await focusTab(mainTab)
+  }
+
+  await setLocals({
+    [StorageKey.TERMINAL_WORKSPACE_GROUP_ID]: tabGroupId,
+    [StorageKey.TERMINAL_WORKSPACE_MAIN_TAB_ID]: mainTabId
+  })
+
+  return {
+    hostTabId,
+    mainTabId,
+    tabGroupId
+  }
 }
 
 /**
  * Get all extension config settings.
  */
-export async function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>> {
-  if (typeof chrome === 'undefined' || !chrome.storage) {
-    return {}
-  }
-
-  const result = (await chrome.storage.local.get([
+async function getAllConfigSettings(): Promise<Record<string, boolean | string | undefined>> {
+  const result = (await getLocals([
     StorageKey.AI_WEB_PILOT_ENABLED,
     StorageKey.WEBSOCKET_CAPTURE_ENABLED,
     StorageKey.NETWORK_WATERFALL_ENABLED,
@@ -266,11 +356,80 @@ export async function getActiveTab(): Promise<chrome.tabs.Tab | null> {
 }
 
 // =============================================================================
+// FOCUS-SAFE TAB CAPTURE
+// =============================================================================
+
+/**
+ * Capture a screenshot of a tab without permanently stealing focus.
+ * chrome.tabs.captureVisibleTab() requires the tab to be active. If the target
+ * tab isn't currently active, we briefly activate it, capture, then restore
+ * the previously active tab so the user's workflow isn't interrupted.
+ */
+export async function captureVisibleTabSafe(
+  tabId: number,
+  windowId: number,
+  options: { format: 'jpeg' | 'png'; quality?: number }
+): Promise<string> {
+  const [activeTab] = await chrome.tabs.query({ active: true, windowId })
+  const wasActive = activeTab?.id === tabId
+
+  if (!wasActive) {
+    await chrome.tabs.update(tabId, { active: true })
+  }
+
+  // Hide Kaboom UI overlay so it doesn't appear in screenshots.
+  await setKaboomOverlayVisibility(tabId, false)
+
+  try {
+    return await chrome.tabs.captureVisibleTab(windowId, options)
+  } finally {
+    await setKaboomOverlayVisibility(tabId, true)
+    if (!wasActive && activeTab?.id) {
+      await chrome.tabs.update(activeTab.id, { active: true }).catch(() => {
+        /* original tab may have been closed during capture */
+      })
+    }
+  }
+}
+
+/**
+ * Toggles visibility of all Kaboom UI overlays (hover launcher, draw mode)
+ * in the target tab. Uses executeScript for speed — no message round-trip needed.
+ */
+export async function setKaboomOverlayVisibility(tabId: number, visible: boolean): Promise<void> {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      func: (show: boolean) => {
+        const ids = [
+          'kaboom-tracked-hover-launcher',
+          'kaboom-draw-toolbar'
+        ]
+        for (const id of ids) {
+          const el = document.getElementById(id)
+          if (!el) continue
+          if (show) {
+            // Restore display:flex (the launcher root is a flex container).
+            // Setting '' would clear it to block, breaking the layout.
+            el.style.display = 'flex'
+          } else {
+            el.style.display = 'none'
+          }
+        }
+      },
+      args: [visible]
+    })
+  } catch {
+    // Tab may not have content script injected — safe to ignore
+  }
+}
+
+// =============================================================================
 // TAB TOAST
 // =============================================================================
 
 /**
- * Send a GASOLINE_ACTION_TOAST message to a tab.
+ * Send a kaboom_action_toast message to a tab.
  * Silently ignores errors (content script may not be loaded).
  */
 export function sendTabToast(
@@ -282,7 +441,7 @@ export function sendTabToast(
 ): void {
   chrome.tabs
     .sendMessage(tabId, {
-      type: 'GASOLINE_ACTION_TOAST' as const,
+      type: 'kaboom_action_toast' as const,
       text,
       detail,
       state,

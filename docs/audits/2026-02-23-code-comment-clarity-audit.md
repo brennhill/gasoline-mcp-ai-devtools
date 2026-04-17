@@ -3,12 +3,12 @@
 ## Scope
 
 Audited authored source in:
-- `cmd/dev-console/`
+- `cmd/browser-agent/`
 - `internal/`
 - `src/`
-- `npm/gasoline-mcp/lib/`
-- `pypi/gasoline-mcp/gasoline_mcp/`
-- `pypi/gasoline-mcp/tests/`
+- `npm/kaboom-agentic-browser/lib/`
+- `pypi/kaboom-agentic-browser/kaboom_mcp/`
+- `pypi/kaboom-agentic-browser/tests/`
 - `scripts/`
 
 Excluded generated artifacts (`*.map`, bundled extension outputs, `*.d.ts`, `node_modules`, `.egg-info`).
@@ -47,7 +47,7 @@ Excluded generated artifacts (`*.map`, bundled extension outputs, `*.d.ts`, `nod
 
 - Header quality audit over 800 files: `0` missing header, `0` missing `Purpose`, `0` missing `Why`, `0` missing `Docs` (in audited scope).
 - Source-header checks were executed during this one-time cleanup; ongoing CI enforcement is intentionally disabled.
-- `python3 -m unittest discover -s pypi/gasoline-mcp/tests -p 'test_*.py'` passes.
+- `python3 -m unittest discover -s pypi/kaboom-agentic-browser/tests -p 'test_*.py'` passes.
 - `go build ./...` passes.
 
 ## Remaining Gaps (Unrelated Existing Docs)

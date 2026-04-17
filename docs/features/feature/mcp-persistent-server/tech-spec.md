@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 # MCP Persistent Server Tech Spec
 
 ## Architecture
-- Startup/bridge orchestration: `cmd/dev-console/bridge*.go`
+- Startup/bridge orchestration: `cmd/browser-agent/bridge*.go`
 - Cross-platform process helpers: `internal/util/proc_unix.go`, `internal/util/proc_windows.go`
 - Startup convergence/leadership: `bridge_startup_orchestration.go`, lock/state helpers
 

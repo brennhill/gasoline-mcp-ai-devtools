@@ -24,7 +24,6 @@ export {
   setSourceMapCache,
   getSourceMapCache,
   getSourceMapCacheSize,
-  resetParsingForTesting
 } from './ai-context-parsing.js'
 
 // Re-export enrichment layer
@@ -36,7 +35,6 @@ export {
   enrichErrorWithAiContext,
   setAiContextEnabled,
   setAiContextStateSnapshot,
-  resetEnrichmentForTesting
 } from './ai-context-enrichment.js'
 
 import { resetParsingForTesting } from './ai-context-parsing.js'
@@ -47,7 +45,7 @@ import { resetEnrichmentForTesting } from './ai-context-enrichment.js'
  * Clears source map cache and restores default settings.
  * Call this in beforeEach/afterEach test hooks to prevent test pollution.
  */
-export function resetForTesting(): void {
+function resetForTesting(): void {
   resetParsingForTesting()
   resetEnrichmentForTesting()
 }

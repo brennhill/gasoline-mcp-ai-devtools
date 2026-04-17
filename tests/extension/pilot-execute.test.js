@@ -498,7 +498,7 @@ describe('Content Script Message Forwarding', () => {
     delete globalThis.window
   })
 
-  test('content script should forward GASOLINE_EXECUTE_JS to inject.js', async () => {
+  test('content script should forward kaboom_execute_js to inject.js', async () => {
     // Get the message listener from content.js
     await import('../../extension/content.js')
 
@@ -529,7 +529,7 @@ describe('Background Script Pilot Command Handler', () => {
     delete globalThis.window
   })
 
-  test('handlePilotCommand should forward GASOLINE_EXECUTE_JS to content script when enabled', async () => {
+  test('handlePilotCommand should forward kaboom_execute_js to content script when enabled', async () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: true })
     })
@@ -542,7 +542,7 @@ describe('Background Script Pilot Command Handler', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(true)
 
-    await handlePilotCommand('GASOLINE_EXECUTE_JS', {
+    await handlePilotCommand('kaboom_execute_js', {
       script: 'return 1+1',
       timeout_ms: 5000
     })
@@ -552,10 +552,10 @@ describe('Background Script Pilot Command Handler', () => {
 
     // Check the message type
     const sentMessage = mockChrome.tabs.sendMessage.mock.calls[0].arguments[1]
-    assert.strictEqual(sentMessage.type, 'GASOLINE_EXECUTE_JS', 'Should send correct message type')
+    assert.strictEqual(sentMessage.type, 'kaboom_execute_js', 'Should send correct message type')
   })
 
-  test('handlePilotCommand should reject GASOLINE_EXECUTE_JS when disabled', async () => {
+  test('handlePilotCommand should reject kaboom_execute_js when disabled', async () => {
     mockChrome.storage.sync.get.mock.mockImplementation((keys, callback) => {
       callback({ aiWebPilotEnabled: false })
     })
@@ -563,7 +563,7 @@ describe('Background Script Pilot Command Handler', () => {
     const { handlePilotCommand } = await import('../../extension/background.js')
     await resetPilotCacheForTesting(false)
 
-    const result = await handlePilotCommand('GASOLINE_EXECUTE_JS', {
+    const result = await handlePilotCommand('kaboom_execute_js', {
       script: 'return 1+1'
     })
 

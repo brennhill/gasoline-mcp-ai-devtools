@@ -1,20 +1,22 @@
 /**
- * Purpose: Chrome context menu installation and click handlers for Gasoline actions.
+ * Purpose: Chrome context menu installation and click handlers for Kaboom actions.
  * Split from event-listeners.ts to keep files under 800 LOC.
  */
 import { StorageKey } from '../lib/constants.js';
+import { getLocal } from '../lib/storage-utils.js';
 import { toggleScreenRecording, buildActionSequenceRecordingName } from './keyboard-shortcuts.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { toggleDrawModeForTab } from './draw-mode-toggle.js';
 import { setTrackedTab, clearTrackedTab } from './tab-state.js';
+import { trackUIFeature } from './ui-usage-tracker.js';
 // =============================================================================
 // CONTEXT MENU IDS
 // =============================================================================
-const MENU_ID_CONTROL = 'gasoline-control-page';
-const MENU_ID_SCREENSHOT = 'gasoline-screenshot';
-const MENU_ID_ANNOTATE = 'gasoline-annotate-page';
-const MENU_ID_RECORD = 'gasoline-record-screen';
-const MENU_ID_ACTION_RECORD = 'gasoline-action-record';
+const MENU_ID_CONTROL = 'kaboom-control-page';
+const MENU_ID_SCREENSHOT = 'kaboom-screenshot';
+const MENU_ID_ANNOTATE = 'kaboom-annotate-page';
+const MENU_ID_RECORD = 'kaboom-record-screen';
+const MENU_ID_ACTION_RECORD = 'kaboom-action-record';
 const CONTROL_TAB_TITLE = 'Control Tab';
 const RELEASE_CONTROL_TITLE = 'Release Control';
 const ANNOTATE_START_TITLE = 'Annotate Page';
@@ -33,7 +35,7 @@ async function isDrawModeActive(tabId) {
         return false;
     try {
         const result = (await chrome.tabs.sendMessage(tabId, {
-            type: 'GASOLINE_GET_ANNOTATIONS'
+            type: 'kaboom_get_annotations'
         }));
         return result?.draw_mode_active === true;
     }
@@ -42,8 +44,7 @@ async function isDrawModeActive(tabId) {
     }
 }
 async function refreshDynamicContextMenuTitles(tabId, recordingHandlers, actionRecordingHandlers) {
-    const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
-    const trackedTabId = tracked[StorageKey.TRACKED_TAB_ID];
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
     const drawModeActive = await isDrawModeActive(tabId);
     await Promise.all([
         updateContextMenuTitle(MENU_ID_CONTROL, trackedTabId && tabId === trackedTabId ? RELEASE_CONTROL_TITLE : CONTROL_TAB_TITLE),
@@ -58,7 +59,7 @@ async function refreshDynamicContextMenuTitles(tabId, recordingHandlers, actionR
 // CONTEXT MENU INSTALLATION
 // =============================================================================
 /**
- * Create context menu items for Gasoline actions.
+ * Create context menu items for Kaboom actions.
  * Chrome auto-groups multiple items under a parent with the extension icon.
  */
 export function installContextMenus(recordingHandlers, actionRecordingHandlers, logFn) {
@@ -84,8 +85,8 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
             return;
         if (info.menuItemId === MENU_ID_CONTROL) {
             try {
-                const tracked = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
-                if (tracked[StorageKey.TRACKED_TAB_ID] === tab.id) {
+                const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
+                if (trackedTabId === tab.id) {
                     clearTrackedTab();
                     if (logFn)
                         logFn(`Released control for tab ${tab.id}`);
@@ -103,7 +104,8 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_SCREENSHOT) {
             try {
-                chrome.tabs.sendMessage(tab.id, { type: 'captureScreenshot' });
+                trackUIFeature('screenshot');
+                chrome.tabs.sendMessage(tab.id, { type: 'capture_screenshot' });
             }
             catch {
                 if (logFn)
@@ -112,6 +114,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_RECORD) {
             try {
+                trackUIFeature('video');
                 await toggleScreenRecording(recordingHandlers, tab, logFn);
             }
             catch (err) {
@@ -136,6 +139,7 @@ export function installContextMenus(recordingHandlers, actionRecordingHandlers, 
         }
         else if (info.menuItemId === MENU_ID_ANNOTATE) {
             try {
+                trackUIFeature('annotations');
                 await toggleDrawModeForTab(tab.id);
             }
             catch {

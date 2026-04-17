@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. HAR files are notorious for containing sensitive data -- auth tokens, cookies, session IDs, PII in request/response bodies. Gasoline runs on localhost and data must never leave the machine unintentionally, but a HAR file is explicitly designed to be shared. Every field must be audited.
+**Goal:** Verify the feature does NOT expose data it shouldn't. HAR files are notorious for containing sensitive data -- auth tokens, cookies, session IDs, PII in request/response bodies. Kaboom runs on localhost and data must never leave the machine unintentionally, but a HAR file is explicitly designed to be shared. Every field must be audited.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
@@ -95,7 +95,7 @@ last_verified_date: 2026-03-05
 - [ ] `include_bodies` defaults to `true` (most useful default)
 - [ ] Default redaction covers Authorization, Cookie, and common auth headers without configuration
 - [ ] When `output_path` is omitted, HAR JSON is returned inline in MCP response
-- [ ] Creator field auto-populates with Gasoline name and version
+- [ ] Creator field auto-populates with Kaboom name and version
 
 ---
 
@@ -121,7 +121,7 @@ last_verified_date: 2026-03-05
 | UT-14 | Empty buffer | No network bodies captured | Valid HAR with empty `entries` array and note | must |
 | UT-15 | `include_bodies: false` | Normal entries | No `postData.text` or `content.text` fields | should |
 | UT-16 | HAR version field | Any export | `log.version` is `"1.2"` | must |
-| UT-17 | Creator field | Any export | `log.creator.name` is `"Gasoline"`, version matches server | must |
+| UT-17 | Creator field | Any export | `log.creator.name` is `"Kaboom"`, version matches server | must |
 | UT-18 | Resource timing mapping | Entry with full Performance API timing | Granular `timings` (dns, connect, ssl, send, wait, receive) | should |
 | UT-19 | Timing fallback | Entry with only total duration | `wait` equals total duration, others are 0 | must |
 | UT-20 | Data URL exclusion | Data URL entry in buffer | Not included in HAR output | should |
@@ -170,7 +170,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web page loaded with various network requests (API calls, static assets, errors)
 - [ ] At least one POST request with JSON body has been made
@@ -181,7 +181,7 @@ last_verified_date: 2026-03-05
 | # | Step (AI executes) | Human Observes | Expected Result | Pass |
 |---|-------------------|----------------|-----------------|------|
 | UAT-1 | `{"tool": "generate", "arguments": {"type": "har"}}` | Review inline HAR JSON in MCP response | Valid HAR with `log.version: "1.2"`, entries array, creator field | [ ] |
-| UAT-2 | `{"tool": "generate", "arguments": {"type": "har", "output_path": ".gasoline/reports/test.har"}}` | Check file exists at specified path | File created, response shows `file_path`, `entry_count`, `total_size_bytes` | [ ] |
+| UAT-2 | `{"tool": "generate", "arguments": {"type": "har", "output_path": ".kaboom/reports/test.har"}}` | Check file exists at specified path | File created, response shows `file_path`, `entry_count`, `total_size_bytes` | [ ] |
 | UAT-3 | `{"tool": "generate", "arguments": {"type": "har", "url_filter": "/api/"}}` | Compare entry count to unfiltered | Only API-path entries included, count is lower | [ ] |
 | UAT-4 | `{"tool": "generate", "arguments": {"type": "har", "status_filter": {"min": 400, "max": 599}}}` | Verify all entries are errors | Every entry has status 4xx or 5xx | [ ] |
 | UAT-5 | `{"tool": "generate", "arguments": {"type": "har", "include_bodies": false}}` | Open HAR file, check for body content | No `postData.text` or `content.text` fields present | [ ] |

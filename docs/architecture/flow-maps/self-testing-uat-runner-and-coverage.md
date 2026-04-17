@@ -89,11 +89,11 @@ Covers the split UAT orchestration flow, category result integrity checks, and o
 2. Smoke module checks validate live contracts including `_push_*` piggyback hints (module 14), upload success-page and MD5 verification (module 15), framework resilience retries (module 29), and shutdown/restart availability (module 30).
 3. After smoke modules complete, daemon teardown/retention honors `SMOKE_KEEP_DAEMON_ON_EXIT` (default keep-alive for local workflows; strict cleanup mode for automation).
 4. `test-all-split.sh` optionally builds a coverage-instrumented daemon (`go build -cover -coverpkg=./...`) when `UAT_GO_COVERAGE=1`.
-5. The split runner exports `GASOLINE_UAT_WRAPPER` and `GASOLINE_UAT_GOCOVERDIR` so category daemons run with optional runtime coverage emission.
+5. The split runner exports `KABOOM_UAT_WRAPPER` and `KABOOM_UAT_GOCOVERDIR` so category daemons run with optional runtime coverage emission.
 6. Phase runners launch category scripts in parallel and wait for completion.
 7. Each category script uses `framework.sh`; `finish_category` writes a structured result file with `PASS_COUNT`, `FAIL_COUNT`, `SKIP_COUNT`, and metadata.
 8. Phase runners parse result files via `scripts/uat-result-lib.sh`, aggregate totals, and fail on missing/corrupt/invalid result files when integrity enforcement is enabled.
-9. Phase runners emit machine-readable phase summaries (`GASOLINE_UAT_SUMMARY_FILE`) for the split runner.
+9. Phase runners emit machine-readable phase summaries (`KABOOM_UAT_SUMMARY_FILE`) for the split runner.
 10. The split runner merges phase summaries, reports real pass/fail/skip totals and category coverage, and optionally reports runtime Go coverage via `go tool covdata`.
 
 ## Error and Recovery Paths

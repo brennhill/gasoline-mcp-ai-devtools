@@ -4,12 +4,12 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Video Script: Gasoline MCP - Quick Start Demo
+# Video Script: Kaboom MCP - Quick Start Demo
 
-**Title:** Get Gasoline MCP Running in 2 Minutes  
+**Title:** Get Kaboom MCP Running in 2 Minutes  
 **Duration:** 2:00-2:30  
 **Format:** Screen recording with voiceover  
-**Target:** Developers new to Gasoline MCP
+**Target:** Developers new to Kaboom MCP
 
 ---
 
@@ -17,63 +17,63 @@ last_reviewed: 2026-02-16
 
 ### [0:00-0:10] Intro
 
-**Visual:** Gasoline logo animation + title screen
+**Visual:** Kaboom logo animation + title screen
 
 **Voiceover:**
-"Gasoline MCP gives your AI coding agents real-time visibility into browser activity. Let's get it running in under two minutes."
+"Kaboom MCP gives your AI coding agents real-time visibility into browser activity. Let's get it running in under two minutes."
 
 ### [0:10-0:30] Step 1: Install Extension
 
 **Visual:** 
-- Show cookwithgasoline.com/downloads page
+- Show gokaboom.dev/downloads page
 - Download CRX file
 - Open chrome://extensions
 - Enable Developer mode
 - Drag and drop CRX
 
 **Voiceover:**
-"First, download the Chrome extension from cookwithgasoline.com/downloads. Open chrome://extensions, enable Developer mode, and drag the CRX file to install it."
+"First, download the Chrome extension from gokaboom.dev/downloads. Open chrome://extensions, enable Developer mode, and drag the CRX file to install it."
 
 ### [0:30-0:50] Step 2: Start MCP Server
 
 **Visual:**
 - Open terminal
-- Type: `npx gasoline-mcp@6.0.0`
+- Type: `npx kaboom-mcp@6.0.0`
 - Show server starting up
 - Show health check: `curl http://localhost:7890/health`
 
 **Voiceover:**
-"Now start the MCP server. Just run `npx gasoline-mcp@6.0.0`. The server starts automatically on port 7890. You can verify it's running with a quick health check."
+"Now start the MCP server. Just run `npx kaboom-mcp@6.0.0`. The server starts automatically on port 7890. You can verify it's running with a quick health check."
 
 ### [0:50-1:10] Step 3: Configure AI Tool
 
 **Visual:**
 - Show Claude Desktop settings
 - Open MCP config file
-- Add Gasoline configuration
+- Add Kaboom configuration
 - Show JSON config
 
 **Voiceover:**
-"Add Gasoline to your AI tool's MCP config. For Claude Desktop, add this JSON configuration. The same pattern works for Cursor, Windsurf, Zed, and any MCP-compatible tool."
+"Add Kaboom to your AI tool's MCP config. For Claude Desktop, add this JSON configuration. The same pattern works for Cursor, Windsurf, Zed, and any MCP-compatible tool."
 
 ### [1:10-1:30] Step 4: Test It Out
 
 **Visual:**
 - Open a test website
-- Show Gasoline icon in browser
+- Show Kaboom icon in browser
 - Click to open popup
 - Show captured console logs
 - Show network requests
 
 **Voiceover:**
-"Open any website and you'll see Gasoline capturing data in real-time. Console logs, network requests, WebSocket events—it's all there."
+"Open any website and you'll see Kaboom capturing data in real-time. Console logs, network requests, WebSocket events—it's all there."
 
 ### [1:30-1:50] Step 5: Use with AI
 
 **Visual:**
 - Open Claude Code
 - Ask Claude to debug an issue
-- Show Claude using Gasoline tools
+- Show Claude using Kaboom tools
 - Show Claude seeing browser data
 - Show Claude suggesting a fix
 
@@ -83,12 +83,12 @@ last_reviewed: 2026-02-16
 ### [1:50-2:00] Outro
 
 **Visual:** 
-- Show cookwithgasoline.com
+- Show gokaboom.dev
 - Show GitHub repo
 - Show Discord link
 
 **Voiceover:**
-"That's it! Gasoline MCP is running and your AI assistant can now see browser telemetry. Check the links below for documentation, or join our Discord community. Happy debugging!"
+"That's it! Kaboom MCP is running and your AI assistant can now see browser telemetry. Check the links below for documentation, or join our Discord community. Happy debugging!"
 
 ---
 
@@ -114,8 +114,8 @@ last_reviewed: 2026-02-16
 - Include chapter markers for easy navigation
 
 ### Visual Assets Needed
-- Gasoline logo (PNG/SVG)
-- cookwithgasoline.com screenshots
+- Kaboom logo (PNG/SVG)
+- gokaboom.dev screenshots
 - Chrome extension icon
 - AI tool logos (Claude, Cursor, Windsurf, Zed)
 - Discord logo
@@ -128,7 +128,7 @@ last_reviewed: 2026-02-16
 - Join Discord community
 
 ### SEO Keywords
-- Gasoline MCP
+- Kaboom MCP
 - AI debugging tools
 - Browser observability
 - Claude Code tutorial
@@ -136,9 +136,9 @@ last_reviewed: 2026-02-16
 - AI coding assistant
 
 ### Related Videos
-- How Gasoline Captures WebSocket Messages
-- Debugging AI-Generated Code with Gasoline
-- Gasoline vs Puppeteer Comparison
+- How Kaboom Captures WebSocket Messages
+- Debugging AI-Generated Code with Kaboom
+- Kaboom vs Puppeteer Comparison
 
 ---
 
@@ -151,7 +151,7 @@ last_reviewed: 2026-02-16
 [Fast montage of: download extension → start server → configure → debug]
 
 ### [0:15-0:20] CTA
-"Get Gasoline MCP at cookwithgasoline.com. Link in description."
+"Get Kaboom MCP at gokaboom.dev. Link in description."
 
 ### [0:20-0:30] Outro
 "Subscribe for more AI devtools tutorials!"
@@ -164,10 +164,10 @@ last_reviewed: 2026-02-16
 "Your AI assistant can now see your browser."
 
 ### [0:05-0:10] Demo
-[Quick screen capture showing Claude debugging via Gasoline]
+[Quick screen capture showing Claude debugging via Kaboom]
 
 ### [0:10-0:15] CTA
-"Get Gasoline MCP. Link in bio."
+"Get Kaboom MCP. Link in bio."
 
 ---
 
@@ -175,7 +175,7 @@ last_reviewed: 2026-02-16
 
 1. Split screen: Left = AI assistant, Right = Browser dev tools
 2. "Debug AI Code in 2 Minutes" with clock icon
-3. Gasoline logo + "Browser Observability for AI"
+3. Kaboom logo + "Browser Observability for AI"
 4. Before/After: "Manual Debugging" vs "AI Debugging"
 
 ---
@@ -183,9 +183,9 @@ last_reviewed: 2026-02-16
 ## Description Template
 
 ```
-Get Gasoline MCP running in under 2 minutes! 🚀
+Get Kaboom MCP running in under 2 minutes! 🚀
 
-Gasoline MCP gives your AI coding agents (Claude Code, Cursor, Windsurf, Zed) real-time visibility into browser activity—console logs, network errors, WebSocket events, and more.
+Kaboom MCP gives your AI coding agents (Claude Code, Cursor, Windsurf, Zed) real-time visibility into browser activity—console logs, network errors, WebSocket events, and more.
 
 In this video, you'll learn:
 ✅ How to install the Chrome extension
@@ -193,9 +193,9 @@ In this video, you'll learn:
 ✅ How to configure your AI tool
 ✅ How to debug with AI assistance
 
-📦 Download: https://cookwithgasoline.com/downloads/
-📖 Docs: https://cookwithgasoline.com
-💻 GitHub: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+📦 Download: https://gokaboom.dev/downloads/
+📖 Docs: https://gokaboom.dev
+💻 GitHub: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 💬 Discord: [LINK]
 
 Timestamps:
@@ -207,14 +207,14 @@ Timestamps:
 1:30 - Use with AI
 1:50 - Outro
 
-#GasolineMCP #AI #DevTools #ClaudeCode #BrowserObservability
+#KaboomMCP #AI #DevTools #ClaudeCode #BrowserObservability
 ```
 
 ---
 
 ## Hashtags
 
-#GasolineMCP #AI #DevTools #ClaudeCode #Cursor #Windsurf #Zed #BrowserObservability #MCP #AIAssistedDevelopment #Debugging #OpenSource
+#KaboomMCP #AI #DevTools #ClaudeCode #Cursor #Windsurf #Zed #BrowserObservability #MCP #AIAssistedDevelopment #Debugging #OpenSource
 
 ---
 

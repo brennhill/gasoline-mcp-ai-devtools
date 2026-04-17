@@ -6,6 +6,7 @@
  */
 import { errorMessage } from '../lib/error-utils.js';
 import { buildDaemonHeaders } from '../lib/daemon-http.js';
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
 /** Maximum recording size in bytes before auto-stop (1GB). */
 const MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
 const defaultState = {
@@ -23,7 +24,7 @@ const defaultState = {
     totalBytes: 0
 };
 let state = { ...defaultState };
-const LOG = '[Gasoline REC offscreen]';
+const LOG = `${KABOOM_RECORDING_LOG_PREFIX} offscreen`;
 /**
  * Start recording using a tab capture stream ID.
  * Called when the service worker sends OFFSCREEN_START_RECORDING.
@@ -42,7 +43,7 @@ async function handleStartRecording(msg) {
         console.warn(LOG, 'START BLOCKED: already recording');
         chrome.runtime.sendMessage({
             target: 'background',
-            type: 'OFFSCREEN_RECORDING_STARTED',
+            type: 'offscreen_recording_started',
             success: false,
             error: 'RECORD_START: Already recording in offscreen document.'
         });
@@ -171,7 +172,7 @@ async function handleStartRecording(msg) {
         console.log(LOG, 'Recording STARTED, sending confirmation to background');
         chrome.runtime.sendMessage({
             target: 'background',
-            type: 'OFFSCREEN_RECORDING_STARTED',
+            type: 'offscreen_recording_started',
             success: true
         });
     }
@@ -185,7 +186,7 @@ async function handleStartRecording(msg) {
         state = { ...defaultState }; // eslint-disable-line require-atomic-updates
         chrome.runtime.sendMessage({
             target: 'background',
-            type: 'OFFSCREEN_RECORDING_STARTED',
+            type: 'offscreen_recording_started',
             success: false,
             error: `RECORD_START: ${errorMessage(err, 'Failed to start recording in offscreen document.')}`
         });
@@ -208,7 +209,7 @@ function handleStopRecording(truncated = false) {
         console.warn(LOG, 'STOP: not active');
         chrome.runtime.sendMessage({
             target: 'background',
-            type: 'OFFSCREEN_RECORDING_STOPPED',
+            type: 'offscreen_recording_stopped',
             status: 'error',
             name: '',
             error: 'RECORD_STOP: No active recording in offscreen document.'
@@ -225,7 +226,7 @@ function handleStopRecording(truncated = false) {
         state = { ...defaultState };
         chrome.runtime.sendMessage({
             target: 'background',
-            type: 'OFFSCREEN_RECORDING_STOPPED',
+            type: 'offscreen_recording_stopped',
             status: 'error',
             name: '',
             error: 'RECORD_STOP: Recorder already inactive.'
@@ -269,7 +270,7 @@ function handleStopRecording(truncated = false) {
             const response = await fetch(`${serverUrl}/recordings/save`, {
                 method: 'POST',
                 headers: buildDaemonHeaders({
-                    clientName: 'gasoline-extension-offscreen',
+                    clientName: 'kaboom-extension-offscreen',
                     contentType: null
                 }),
                 body: formData
@@ -280,7 +281,7 @@ function handleStopRecording(truncated = false) {
                 console.error(LOG, 'Server returned error:', response.status);
                 chrome.runtime.sendMessage({
                     target: 'background',
-                    type: 'OFFSCREEN_RECORDING_STOPPED',
+                    type: 'offscreen_recording_stopped',
                     status: 'error',
                     name,
                     error: `RECORD_STOP: Server returned ${response.status}.`
@@ -298,7 +299,7 @@ function handleStopRecording(truncated = false) {
             console.log(LOG, 'Recording SAVED', { name, duration, size: blob.size, path: savePath });
             chrome.runtime.sendMessage({
                 target: 'background',
-                type: 'OFFSCREEN_RECORDING_STOPPED',
+                type: 'offscreen_recording_stopped',
                 status: 'saved',
                 name,
                 duration_seconds: duration,
@@ -312,7 +313,7 @@ function handleStopRecording(truncated = false) {
             state = { ...defaultState };
             chrome.runtime.sendMessage({
                 target: 'background',
-                type: 'OFFSCREEN_RECORDING_STOPPED',
+                type: 'offscreen_recording_stopped',
                 status: 'error',
                 name,
                 error: `RECORD_STOP: ${errorMessage(err, 'Save failed.')}`
@@ -331,10 +332,10 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     if (message.target !== 'offscreen')
         return;
     console.log(LOG, 'Received message:', message.type);
-    if (message.type === 'OFFSCREEN_START_RECORDING') {
+    if (message.type === 'offscreen_start_recording') {
         handleStartRecording(message);
     }
-    else if (message.type === 'OFFSCREEN_STOP_RECORDING') {
+    else if (message.type === 'offscreen_stop_recording') {
         handleStopRecording();
     }
 });

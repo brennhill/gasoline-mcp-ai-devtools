@@ -1,7 +1,7 @@
 # QA Plan: Issue #44
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/44
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/44
 - Title: Test 10.3: Recording watermark smoke test fails but feature works
 
 ## QA Goal

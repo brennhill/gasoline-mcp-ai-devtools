@@ -6,16 +6,16 @@ tags: [features, navigation, index, lookup]
 relates-to: [FEATURE-INDEX.md, README.md]
 canonical: true
 last-verified: 2026-03-05
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-04-03
+last_verified_version: 0.8.1
+last_verified_date: 2026-04-03
 ---
 
 # Feature Navigation Index
 
 **For LLM Agents:** Quick lookup to find feature documentation folders and their key files.
 
-**Last updated:** 2026-03-01
+**Last updated:** 2026-04-03
 
 ---
 
@@ -35,6 +35,7 @@ Features with active code implementations referencing their feature docs.
 
 | Feature | Folder | Files | Purpose |
 |---------|--------|-------|---------|
+| auto-fix | `feature/auto-fix/` | index.md, flow-map.md | Phase 1 tracked-site audit workflow, `/kaboom/audit` assets, and shared popup/hover Audit bridge |
 | ai-capture-control | `feature/ai-capture-control/` | product-spec.md, qa-plan.md, tech-spec.md | AI-driven capture control for selective telemetry |
 | ai-web-pilot | `feature/ai-web-pilot/` | product-spec.md, qa-plan.md, tech-spec.md, test-plan.md | AI Web Pilot browser automation framework |
 | analyze-tool | `feature/analyze-tool/` | product-spec.md, qa-plan.md, tech-spec.md, uat-guide.md, MIGRATION.md | Analyze tool for DOM, accessibility, security, and performance |
@@ -67,6 +68,7 @@ Features with active code implementations referencing their feature docs.
 | observe | `feature/observe/` | product-spec.md, qa-plan.md, tech-spec.md | Core observe tool for browser telemetry retrieval |
 | pagination | `feature/pagination/` | product-spec.md, qa-plan.md, tech-spec.md | Cursor-based pagination for large result sets |
 | performance-audit | `feature/performance-audit/` | product-spec.md, qa-plan.md, tech-spec.md | Performance auditing and Web Vitals analysis |
+| quality-gates | `feature/quality-gates/` | flow-map.md | Automated code quality gates via configure(what="setup_quality_gates") |
 | persistent-memory | `feature/persistent-memory/` | product-spec.md, qa-plan.md, tech-spec.md | Persistent key-value store across sessions |
 | playback-engine | `feature/playback-engine/` | product-spec.md | Recording playback and replay engine |
 | project-isolation | `feature/project-isolation/` | product-spec.md, qa-plan.md, tech-spec.md | Per-project data isolation |
@@ -125,7 +127,7 @@ Features that are documented but not yet implemented in code.
 | error-bundling | `feature/error-bundling/` | tech-spec.md | Error bundling with surrounding context |
 | flow-recording | `feature/flow-recording/` | product-spec.md, qa-plan.md, tech-spec.md | User flow recording and replay |
 | form-filling | `feature/form-filling/` | product-spec.md, qa-plan.md, tech-spec.md | Automated form filling and submission |
-| gasoline-ci | `feature/gasoline-ci/` | product-spec.md, qa-plan.md, tech-spec.md | Gasoline CI runner for headless testing |
+| kaboom-ci | `feature/kaboom-ci/` | product-spec.md, qa-plan.md, tech-spec.md | Kaboom CI runner for headless testing |
 | git-event-tracking | `feature/git-event-tracking/` | product-spec.md, qa-plan.md, tech-spec.md | Git event tracking and correlation |
 | idl-migration | `feature/idl-migration/` | design-spec.md | IDL-based schema migration |
 | in-browser-agent-panel | `feature/in-browser-agent-panel/` | product-spec.md, qa-plan.md, tech-spec.md | In-browser agent control panel UI |

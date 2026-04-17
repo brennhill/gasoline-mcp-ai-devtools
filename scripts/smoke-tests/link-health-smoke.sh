@@ -10,12 +10,12 @@ echo "============================================================"
 echo ""
 
 # Get the binary
-BINARY="${1:-gasoline-mcp}"
+BINARY="${1:-kaboom-agentic-browser}"
 PORT="${2:-7890}"
 
 if ! command -v "$BINARY" &> /dev/null; then
     echo "ERROR: $BINARY not found in PATH"
-    echo "Install with: npm install -g gasoline-mcp"
+    echo "Install with: npm install -g kaboom-agentic-browser"
     exit 1
 fi
 
@@ -29,7 +29,7 @@ sleep 0.5
 
 # Start daemon
 echo "Starting daemon on port $PORT..."
-"$BINARY" --port "$PORT" > /tmp/gasoline-smoke.log 2>&1 &
+"$BINARY" --port "$PORT" > /tmp/kaboom-smoke.log 2>&1 &
 DAEMON_PID=$!
 trap "kill $DAEMON_PID 2>/dev/null || true" EXIT
 
@@ -40,7 +40,7 @@ sleep 2
 echo "Checking daemon health..."
 if ! nc -z localhost "$PORT" 2>/dev/null; then
     echo "ERROR: Daemon failed to start"
-    cat /tmp/gasoline-smoke.log
+    cat /tmp/kaboom-smoke.log
     exit 1
 fi
 echo "✓ Daemon is running"

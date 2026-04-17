@@ -3,9 +3,9 @@ feature: Enhanced CLI Configuration Management
 status: proposed
 doc_type: tech-spec
 feature_id: feature-enhanced-cli-config
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-03-28
+last_verified_version: 0.8.1
+last_verified_date: 2026-03-28
 ---
 
 # Tech Spec: Enhanced CLI Configuration Management
@@ -16,18 +16,18 @@ last_verified_date: 2026-03-05
 
 The enhancement extends **both wrappers** with the same CLI commands:
 
-### NPM Wrapper (`npm/gasoline-mcp/bin/gasoline-mcp`)
+### NPM Wrapper (`npm/kaboom-agentic-browser/bin/kaboom-agentic-browser`)
 Node.js CLI entry point. Current structure:
-- **Lines 32-68**: `findBinary()` - Locates gasoline binary on disk
+- **Lines 32-68**: `findBinary()` - Locates the Kaboom binary on disk
 - **Lines 70-81**: `generateMCPConfig()` - Builds MCP config object
 - **Lines 83-102**: `showConfigCommand()` - Displays config template + locations
 - **Lines 104-151**: `installCommand()` - Writes config to first matching location
 - **Lines 153-169**: Command routing (--config, --install, --help)
 
-### PyPI Wrapper (`pypi/gasoline-mcp/gasoline_mcp/__main__.py`)
+### PyPI Wrapper (`pypi/kaboom-agentic-browser/kaboom_agentic_browser/__main__.py`)
 Python CLI entry point. Current structure:
 - **Lines 1-12**: Entry point that calls `run()` function
-- Related: `pypi/gasoline-mcp/gasoline_mcp/platform.py` has `get_binary_path()` and `run()` functions
+- Related: `pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py` has `get_binary_path()` and `run()` functions
 
 ### New additions (both wrappers)
 - Shared utility functions for config file operations (JSON read/write/validate)
@@ -40,34 +40,34 @@ Python CLI entry point. Current structure:
 ### Bundled Skill Installation Paths
 
 - **npm**:
-  - `npm/gasoline-mcp/lib/postinstall-skills.js` installs bundled skills on package install.
-  - `npm/gasoline-mcp/lib/cli.js` invokes `installBundledSkills()` during `--install`.
+  - `npm/kaboom-agentic-browser/lib/postinstall-skills.js` installs bundled skills on package install.
+  - `npm/kaboom-agentic-browser/lib/cli.js` invokes `installBundledSkills()` during `--install`.
 - **PyPI**:
-  - `pypi/gasoline-mcp/gasoline_mcp/platform.py` invokes `install_bundled_skills()` during `--install`.
-  - `pypi/gasoline-mcp/gasoline_mcp/skills.py` implements managed write/update/legacy cleanup behavior.
-  - `pypi/gasoline-mcp/pyproject.toml` includes bundled skill files as package data.
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py` invokes `install_bundled_skills()` during `--install`.
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/skills.py` implements managed write/update/legacy cleanup behavior.
+  - `pypi/kaboom-agentic-browser/pyproject.toml` includes bundled skill files as package data.
 - **Manual/local source build**:
-  - `scripts/install-bundled-skills.sh` installs bundled skills from `npm/gasoline-mcp/skills` into target agent directories.
+  - `scripts/install-bundled-skills.sh` installs bundled skills from `npm/kaboom-agentic-browser/skills` into target agent directories.
 
 ## Implementation: NPM vs. Python
 
 ### NPM (Node.js)
 - **Language**: JavaScript (Node.js stdlib)
-- **Location**: `npm/gasoline-mcp/bin/gasoline-mcp`
+- **Location**: `npm/kaboom-agentic-browser/bin/kaboom-agentic-browser`
 - **Modules**: `lib/config.js`, `lib/doctor.js`, `lib/install.js`, `lib/uninstall.js`, `lib/output.js`, `lib/errors.js`
 - **File I/O**: `fs` module
 - **JSON**: Built-in `JSON.parse()` and `JSON.stringify()`
 
 ### Python
 - **Language**: Python 3 (stdlib only)
-- **Location**: `pypi/gasoline-mcp/gasoline_mcp/__main__.py` (entry point) + new module files
+- **Location**: `pypi/kaboom-agentic-browser/kaboom_agentic_browser/__main__.py` (entry point) + new module files
 - **Modules**:
-  - `pypi/gasoline-mcp/gasoline_mcp/config.py` (config utilities)
-  - `pypi/gasoline-mcp/gasoline_mcp/doctor.py` (diagnostics)
-  - `pypi/gasoline-mcp/gasoline_mcp/install.py` (install logic)
-  - `pypi/gasoline-mcp/gasoline_mcp/uninstall.py` (uninstall logic)
-  - `pypi/gasoline-mcp/gasoline_mcp/output.py` (formatters)
-  - `pypi/gasoline-mcp/gasoline_mcp/errors.py` (error classes)
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/config.py` (config utilities)
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/doctor.py` (diagnostics)
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py` (install logic)
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/uninstall.py` (uninstall logic)
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/output.py` (formatters)
+  - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/errors.py` (error classes)
 - **File I/O**: `pathlib.Path` or `os`/`open()`
 - **JSON**: Built-in `json` module
 - **Entry Point**: Updated `__main__.py` to parse CLI args and route commands
@@ -92,12 +92,12 @@ Both wrappers must:
 - `readConfigFile(path)`: Safely reads and parses JSON, returns `{valid: bool, data: obj, error: string}`
 - `writeConfigFile(path, data, dryRun)`: Writes JSON to file; if `dryRun=true`, returns what would be written without actually writing
 - `validateMCPConfig(data)`: Ensures config has `mcpServers` object
-- `mergeGassolineConfig(existing, gassolineEntry, envVars)`: Merges new gasoline entry into existing mcpServers
+- `mergeKaboomConfig(existing, kaboomEntry, envVars)`: Merges the canonical Kaboom entry into existing `mcpServers` and strips legacy `kaboom-*`, `gasoline-*`, and `strum-*` keys
 
 ### 2. **Diagnostic Engine**
 - `runDiagnostics()`: Iterates through all client definitions, tests each one:
-  - For file-type clients: config file exists, JSON valid, gasoline entry present
-  - For CLI-type clients: runs `claude mcp get gasoline-browser-devtools` to check status
+  - For file-type clients: config file exists, JSON valid, Kaboom entry present, and legacy aliases are flagged
+  - For CLI-type clients: runs `claude mcp get kaboom-browser-devtools` to check status
   - Detects legacy config paths (orphaned configs at old incorrect locations)
   - Returns report object with health status for each client
 
@@ -106,15 +106,15 @@ Both wrappers must:
   - `{dryRun: bool}` - Preview mode
   - `{envVars: {KEY: VALUE}}` - Environment variables to inject
   - Installs to all detected clients by default (file-type via config write, CLI-type via subprocess)
-  - Claude Code: uses `claude mcp add-json --scope user gasoline-browser-devtools` subprocess (unsets `CLAUDECODE` env var)
+  - Claude Code: uses `claude mcp add-json --scope user kaboom-browser-devtools` subprocess (unsets `CLAUDECODE` env var)
   - Returns `{success: bool, installed: [{name, method, path}], errors: [details]}`
 
 ### 4. **Uninstall Engine**
-- `executeUninstall(options)`: Removes gasoline from configs:
+- `executeUninstall(options)`: Removes Kaboom and legacy managed aliases from configs:
   - `{dryRun: bool}` - Preview mode
   - Iterates all detected clients
-  - For file-type: removes gasoline entry from mcpServers, preserves other servers
-  - For CLI-type: runs `claude mcp remove --scope user gasoline-browser-devtools`
+  - For file-type: removes Kaboom-managed entries from `mcpServers`, preserves other servers
+  - For CLI-type: runs `claude mcp remove --scope user kaboom-browser-devtools`
   - Returns `{removed: [{name, method, path}], notConfigured, errors}`
 
 ### 5. **Output Formatters**
@@ -134,8 +134,8 @@ Build install options object {dryRun, envVars}
 Execute install:
   - Get detected clients (CLIENT_DEFINITIONS filtered by isClientInstalled)
   - For each detected client:
-    - If CLI-type: run subprocess (e.g., `claude mcp add-json --scope user gasoline-browser-devtools`)
-    - If file-type: read existing config, merge gasoline entry + env vars, write
+    - If CLI-type: run subprocess (e.g., `claude mcp add-json --scope user kaboom-browser-devtools`)
+    - If file-type: read existing config, merge the Kaboom entry + env vars, write
     - If dryRun: show what would be written, don't actually execute
   ↓
 Report results (clients installed, errors)
@@ -146,8 +146,8 @@ Report results (clients installed, errors)
 Parse CLI args (--doctor, --verbose)
   ↓
 For each client in CLIENT_DEFINITIONS:
-  - If file-type: check config file exists, validate JSON, verify gasoline entry
-  - If CLI-type: run subprocess to check status (e.g., `claude mcp get gasoline-browser-devtools`)
+  - If file-type: check config file exists, validate JSON, verify the Kaboom entry, and flag legacy aliases
+  - If CLI-type: run subprocess to check status (e.g., `claude mcp get kaboom-browser-devtools`)
   - If not detected: report as "not detected" (info)
   ↓
 Check legacy paths for orphaned configs
@@ -168,7 +168,7 @@ Execute uninstall:
   - Get detected clients
   - For each detected client:
     - If CLI-type: run remove subprocess
-    - If file-type: read config, remove gasoline entry, write back
+    - If file-type: read config, remove Kaboom-managed entries, write back
     - If dryRun: show what would be removed
   ↓
 Report results (clients removed, errors)
@@ -194,7 +194,7 @@ Report results (clients removed, errors)
 3. For each candidate, run checks:
    - `fs.existsSync(path)` for file existence
    - `JSON.parse()` for JSON validity
-   - Check `data.mcpServers["gasoline-browser-devtools"]` exists
+   - Check `data.mcpServers["kaboom-browser-devtools"]` exists
    - Check binary path exists and is executable
 4. Format output with emojis (✅/❌/⚠️) and recovery suggestions
 
@@ -214,7 +214,7 @@ Report results (clients removed, errors)
 1. Create `executeUninstall()` function
 2. For each candidate:
    - Read config
-   - Delete `data.mcpServers["gasoline-browser-devtools"]` (and any legacy aliases during migration)
+   - Delete `data.mcpServers["kaboom-browser-devtools"]` and any legacy aliases during migration
    - Write back (if changed)
 3. Report removed count and tool names
 
@@ -223,7 +223,7 @@ Report results (clients removed, errors)
 2. For each error type, provide context and next steps:
    - **Permission denied** → "Run with `sudo` or check file permissions"
    - **Invalid JSON** → "Config has syntax error at line X, use `--doctor` to see issues"
-   - **Binary not found** → "Reinstall: `npm install -g gasoline-mcp`"
+   - **Binary not found** → "Reinstall: `npm install -g kaboom-agentic-browser`"
 3. Test error paths with deliberately broken configs
 
 ## Edge Cases & Assumptions
@@ -233,17 +233,17 @@ Report results (clients removed, errors)
 | **No clients detected** | `--install` reports no clients found; `--doctor` reports all as "not detected" |
 | **Config file has invalid JSON** | `--doctor` reports syntax error; `--install` refuses to write (don't corrupt) |
 | **User lacks file permissions** | Error message with `sudo` suggestion; `--doctor` reports permission issue |
-| **gasoline binary not found** | All commands report binary path issue; suggest reinstall |
+| **Kaboom binary not found** | All commands report binary path issue; suggest reinstall |
 | **File partially written (crash)** | `--dry-run` prevents this; next `--install` attempt merges cleanly |
-| **Multiple gasoline entries** | Merge/update first found; warn if duplicates detected |
-| **Other MCP servers in config** | Preserve them; only touch gasoline entry |
+| **Multiple legacy/managed entries** | Rewrite to one canonical `kaboom-browser-devtools` entry and warn during doctor |
+| **Other MCP servers in config** | Preserve them; only touch Kaboom-managed entries |
 | **Config file deleted during operation** | No-op, file doesn't exist; report in results |
 | **User runs --env without --install** | Show error: "--env only works with --install" |
 
 **Assumptions**:
 - Config files are valid JSON when user didn't edit them
 - User's home directory is writable (or at least one config location is)
-- gasoline binary is installed and on PATH or findable via node_modules
+- Kaboom binary is installed and on PATH or findable via node_modules
 - AI clients (Claude Code, VS Code, etc.) may not be running when --doctor executes
 
 ## Risks & Mitigations
@@ -251,10 +251,10 @@ Report results (clients removed, errors)
 | Risk | Mitigation |
 |------|-----------|
 | **Corrupt config on write failure** | Always `--dry-run` first; use atomic writes (write temp file, rename) |
-| **Merge conflicts between gasoline + user edits** | Read existing config, merge gasoline entry into mcpServers, preserve other keys |
-| **User loses other MCP server configs** | Test with multi-server configs; never overwrite entire mcpServers |
+| **Merge conflicts between Kaboom + user edits** | Read existing config, merge the Kaboom entry into `mcpServers`, preserve other keys |
+| **User loses other MCP server configs** | Test with multi-server configs; never overwrite entire `mcpServers` |
 | **--doctor false negatives** | Can only verify local state; cannot test actual MCP connection. Document limitation. |
-| **--uninstall removes wrong data** | Test with configs having multiple MCP servers; verify only gasoline removed |
+| **--uninstall removes wrong data** | Test with configs having multiple MCP servers; verify only Kaboom-managed entries are removed |
 | **Breaking change from v5.2 CLI** | Keep v5.2 commands working: --config, --install, --help all unchanged |
 
 ## Dependencies
@@ -302,11 +302,11 @@ Report results (clients removed, errors)
    - Use `path.resolve()` and `path.normalize()` to avoid symlink attacks
 
 4. **Env Var Injection**:
-   - Document that env vars are passed as-is to gasoline binary
+   - Document that env vars are passed as-is to the Kaboom binary
    - Users responsible for safe values (no shell injection from our side)
    - Config stored in JSON; not vulnerable to YAML or shell parsing
    - **Caution**: Never store API keys or secrets in --env
-   - Example: Store API key in `~/.gasoline/secrets` (mode 600), pass only path with `--env SECRETS_FILE=...`
+   - Example: Store API key in `~/.kaboom/secrets` (mode 600), pass only path with `--env SECRETS_FILE=...`
 
 5. **File Size Limits**:
    - Limit config file size to 1MB (prevents DoS from crafted configs)
@@ -316,7 +316,7 @@ Report results (clients removed, errors)
 6. **Private Keys**:
    - Config files stored in user's home directory (standard)
    - Warn in help text: don't store secrets in env vars; use config file permissions instead
-   - Example: Store API key in ~/.gasoline/config instead of in --env
+   - Example: Store API key in `~/.kaboom/config` instead of in `--env`
 
 7. **Audit**:
    - Log all file modifications with timestamps when `--verbose`
@@ -347,8 +347,8 @@ Diagnostic Report:
       name: "Claude Code",
       type: "cli",
       status: "ok" | "error" | "warning" | "info",
-      issues: ["gasoline entry missing", ...],
-      suggestions: ["Run: gasoline-mcp --install", ...]
+      issues: ["kaboom-browser-devtools entry missing", ...],
+      suggestions: ["Run: kaboom-agentic-browser --install", ...]
     },
     ...
   ],
@@ -359,8 +359,8 @@ Diagnostic Report:
 Config Structure:
 {
   mcpServers: {
-    gasoline: {
-      command: "gasoline-mcp",
+    "kaboom-browser-devtools": {
+      command: "kaboom-agentic-browser",
       args: [],
       env: {
         KEY: "VALUE",

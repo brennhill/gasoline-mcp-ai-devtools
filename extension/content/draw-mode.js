@@ -129,7 +129,7 @@ export function isDrawModeActive() {
 
 function createOverlay() {
   overlay = document.createElement('div')
-  overlay.id = 'gasoline-draw-overlay'
+  overlay.id = 'kaboom-draw-overlay'
   Object.assign(overlay.style, {
     position: 'fixed',
     top: '0',
@@ -158,7 +158,7 @@ function createOverlay() {
 
   // Mode badge (top-right) — small indicator, no ESC hint here
   const badge = document.createElement('div')
-  badge.id = 'gasoline-draw-badge'
+  badge.id = 'kaboom-draw-badge'
   Object.assign(badge.style, {
     position: 'absolute',
     top: '12px',
@@ -185,7 +185,7 @@ function createOverlay() {
     borderRadius: '50%',
     background: '#ef4444',
     display: 'inline-block',
-    animation: 'gasoline-draw-pulse 1.5s ease-in-out infinite'
+    animation: 'kaboom-draw-pulse 1.5s ease-in-out infinite'
   })
   badge.appendChild(dot)
   badge.appendChild(document.createTextNode('Draw Mode'))
@@ -193,7 +193,7 @@ function createOverlay() {
 
   // Persistent centered ESC hint — stays visible throughout draw mode
   const escHint = document.createElement('div')
-  escHint.id = 'gasoline-draw-esc-hint'
+  escHint.id = 'kaboom-draw-esc-hint'
   Object.assign(escHint.style, {
     position: 'absolute',
     bottom: '32px',
@@ -216,7 +216,7 @@ function createOverlay() {
 
   // Center instruction toast — fades out after 2.5s
   const instruction = document.createElement('div')
-  instruction.id = 'gasoline-draw-instruction'
+  instruction.id = 'kaboom-draw-instruction'
   Object.assign(instruction.style, {
     position: 'absolute',
     top: '50%',
@@ -290,7 +290,7 @@ function destroyOverlay() {
     overlay = null
   }
   // Safety: remove any orphaned overlay left by a failed deactivation cycle
-  const orphan = document.getElementById('gasoline-draw-overlay')
+  const orphan = document.getElementById('kaboom-draw-overlay')
   if (orphan) orphan.remove()
   document.removeEventListener('keydown', onKeyDown)
   document.removeEventListener('click', onActionClick, true)
@@ -309,11 +309,11 @@ function destroyOverlay() {
 }
 
 function injectStyles() {
-  if (document.getElementById('gasoline-draw-styles')) return
+  if (document.getElementById('kaboom-draw-styles')) return
   const style = document.createElement('style')
-  style.id = 'gasoline-draw-styles'
+  style.id = 'kaboom-draw-styles'
   style.textContent = `
-        @keyframes gasoline-draw-pulse {
+        @keyframes kaboom-draw-pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
@@ -322,7 +322,7 @@ function injectStyles() {
 }
 
 function removeStyles() {
-  const style = document.getElementById('gasoline-draw-styles')
+  const style = document.getElementById('kaboom-draw-styles')
   if (style) style.remove()
 }
 
@@ -595,7 +595,7 @@ function showTextInput(rect, elementData) {
   // Hint below input: enter submits current annotation. Re-pressing the
   // draw-mode shortcut while editing also submits and exits draw mode.
   const inputHint = document.createElement('div')
-  inputHint.id = 'gasoline-draw-input-hint'
+  inputHint.id = 'kaboom-draw-input-hint'
   const hintTop = parseInt(input.style.top) + 42
   Object.assign(inputHint.style, {
     position: 'absolute',
@@ -634,7 +634,7 @@ function onTextInputBlur() {
 }
 
 function removeInputHint() {
-  const hint = document.getElementById('gasoline-draw-input-hint')
+  const hint = document.getElementById('kaboom-draw-input-hint')
   if (hint) hint.remove()
 }
 
@@ -1693,7 +1693,7 @@ function loadAnnotations() {
 
 /**
  * Called when user presses ESC (no active text input), from popup toggle,
- * or from GASOLINE_DRAW_MODE_STOP message.
+ * or from KABOOM_DRAW_MODE_STOP message.
  * Captures screenshot WHILE overlay is still visible, then deactivates and sends results.
  * Protected by re-entry guard to prevent double-ESC races.
  */
@@ -1730,7 +1730,7 @@ export function deactivateAndSendResults() {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.sendMessage({
-          type: 'GASOLINE_ACTION_TOAST',
+          type: 'kaboom_action_toast',
           text: 'Annotations submitted',
           state: 'success',
           duration_ms: 2000
@@ -1749,7 +1749,7 @@ export function deactivateAndSendResults() {
       try {
         if (typeof chrome !== 'undefined' && chrome.runtime) {
           const msg = {
-            type: 'DRAW_MODE_COMPLETED',
+            type: 'draw_mode_completed',
             annotations: result.annotations,
             elementDetails: result.elementDetails,
             page_url: pageUrl,
@@ -1768,7 +1768,7 @@ export function deactivateAndSendResults() {
       // Dispatch CustomEvent so content-script peers (e.g. terminal launcher)
       // can auto-send annotation summaries without round-tripping through background.
       try {
-        window.dispatchEvent(new CustomEvent('gasoline-annotations-ready', {
+        window.dispatchEvent(new CustomEvent('kaboom-annotations-ready', {
           detail: {
             annotations: result.annotations,
             page_url: pageUrl
@@ -1798,7 +1798,7 @@ export function deactivateAndSendResults() {
     }, 1000)
 
     try {
-      chrome.runtime.sendMessage({ type: 'GASOLINE_CAPTURE_SCREENSHOT' }, (screenshotResponse) => {
+      chrome.runtime.sendMessage({ type: 'kaboom_capture_screenshot' }, (screenshotResponse) => {
         if (screenshotHandled) return // Timeout already fired
         screenshotHandled = true
         clearTimeout(fallbackTimer)
@@ -1825,7 +1825,7 @@ function submitActiveTextInputBeforeExit() {
     try {
       if (typeof chrome !== 'undefined' && chrome.runtime) {
         chrome.runtime.sendMessage({
-          type: 'GASOLINE_ACTION_TOAST',
+          type: 'kaboom_action_toast',
           text: 'Annotation text required',
           detail: 'Type feedback, then press the shortcut again to submit.',
           state: 'error',

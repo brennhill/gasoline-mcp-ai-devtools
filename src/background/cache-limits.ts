@@ -6,7 +6,7 @@
 /**
  * @fileoverview Cache Limits and Memory Management
  *
- * Implements rate limiting and DoS protection for Gasoline:
+ * Implements rate limiting and DoS protection for Kaboom:
  *
  * RATE LIMITING:
  * - Screenshot rate limit: 1 per 5 seconds per tab
@@ -80,7 +80,11 @@ interface RateLimitResult {
 /** Screenshot rate limiting state */
 const screenshotTimestamps = new Map<number, number[]>()
 
-/** Source map cache */
+/**
+ * Source map cache — intentionally NOT persisted across service worker restarts.
+ * Source maps are a cache (not state) and will rebuild on next error occurrence.
+ * Persisting parsed source maps would be expensive and unnecessary.
+ */
 const sourceMapCache = new Map<string, ParsedSourceMap | null>()
 
 /** Memory pressure state */

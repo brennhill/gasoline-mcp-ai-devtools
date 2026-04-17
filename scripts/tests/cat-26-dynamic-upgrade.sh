@@ -18,11 +18,11 @@ mkdir -p "$UPGRADE_DIR"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 UPGRADE_PORT=19160
 
-# Build helper: compile a gasoline binary with a specific version
+# Build helper: compile a kaboom binary with a specific version
 build_version() {
     local ver="$1"
     local output="$2"
-    go build -ldflags "-X main.version=$ver" -o "$output" "$PROJECT_ROOT/cmd/dev-console/" 2>/dev/null
+    go build -ldflags "-X main.version=$ver" -o "$output" "$PROJECT_ROOT/cmd/browser-agent/" 2>/dev/null
 }
 
 # Kill any leftover on the upgrade test port
@@ -38,7 +38,7 @@ begin_test "26.1" "Binary replacement detected in health endpoint" \
     "Core detection: daemon must notice the new binary and report it"
 
 run_test_26_1() {
-    local bin="$UPGRADE_DIR/gasoline-mcp"
+    local bin="$UPGRADE_DIR/kaboom-agentic-browser"
     cleanup_upgrade_test
 
     # Build and start old version
@@ -109,7 +109,7 @@ begin_test "26.2" "Daemon exits after upgrade grace period" \
     "Auto-restart requires the old daemon to SIGTERM itself"
 
 run_test_26_2() {
-    local bin="$UPGRADE_DIR/gasoline-mcp"
+    local bin="$UPGRADE_DIR/kaboom-agentic-browser"
     cleanup_upgrade_test
 
     if ! build_version "0.7.5" "$bin"; then
@@ -161,8 +161,8 @@ begin_test "26.3" "Upgrade marker file persisted for new daemon" \
     "The marker allows the new daemon to report the completed upgrade"
 
 run_test_26_3() {
-    local bin="$UPGRADE_DIR/gasoline-mcp"
-    local marker_path="$HOME/.gasoline/run/last-upgrade.json"
+    local bin="$UPGRADE_DIR/kaboom-agentic-browser"
+    local marker_path="$HOME/.kaboom/run/last-upgrade.json"
     cleanup_upgrade_test
 
     # Remove any existing marker

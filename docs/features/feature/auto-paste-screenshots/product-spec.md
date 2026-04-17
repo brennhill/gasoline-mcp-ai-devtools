@@ -26,13 +26,13 @@ AI coding assistants working through MCP receive structured text data (errors, l
 2. **Error context** -- A JavaScript exception is more actionable when the AI can see the visual state that triggered it (e.g., a half-rendered form, a broken modal overlay).
 3. **Verification loops** -- After the AI suggests a fix and the developer applies it, the AI currently must ask "did that work?" and parse text descriptions. With screenshots, it can verify visually.
 
-Today, Gasoline captures screenshots to disk (JPEG files) via the extension's `captureVisibleTab` API and stores filename references in log entries. But these files are inaccessible to MCP clients -- the AI agent only sees a filename string like `example.com-20260128-143022.jpg`, with no way to view the actual image. The screenshot capture infrastructure exists but delivers zero value to the AI.
+Today, Kaboom captures screenshots to disk (JPEG files) via the extension's `captureVisibleTab` API and stores filename references in log entries. But these files are inaccessible to MCP clients -- the AI agent only sees a filename string like `example.com-20260128-143022.jpg`, with no way to view the actual image. The screenshot capture infrastructure exists but delivers zero value to the AI.
 
 MCP supports returning images as base64-encoded content blocks alongside text. This feature bridges the gap: screenshots flow directly into MCP responses where multimodal AI models can interpret them.
 
 ## Solution
 
-Extend Gasoline's MCP response pipeline to optionally include a screenshot as a base64 image content block appended to any `observe` or `generate` tool response. The screenshot is captured on-demand at response time (not from a stale cache), ensuring the AI sees the current page state.
+Extend Kaboom's MCP response pipeline to optionally include a screenshot as a base64 image content block appended to any `observe` or `generate` tool response. The screenshot is captured on-demand at response time (not from a stale cache), ensuring the AI sees the current page state.
 
 ### Design decision: `configure`-based global setting, not per-request parameter.
 
@@ -56,7 +56,7 @@ This is appended as an additional content block after the text block(s) in the `
 
 - As an AI coding agent, I want to see a screenshot of the browser alongside error data so that I can correlate visual state with exceptions.
 - As an AI coding agent, I want to toggle screenshots on/off for a session so that I only pay the token cost when visual context is needed.
-- As a developer using Gasoline, I want my AI assistant to see what I see in the browser so that I spend less time describing visual bugs.
+- As a developer using Kaboom, I want my AI assistant to see what I see in the browser so that I spend less time describing visual bugs.
 - As an AI coding agent, I want screenshots automatically included with `observe({what: "page"})` responses when screenshot mode is enabled so that I get a complete picture of the current page.
 
 ## MCP Interface
@@ -186,7 +186,7 @@ At quality 60 (R9), typical screenshots will be 150-300KB base64. This is signif
 ## Security Considerations
 
 - **Data captured:** The full visible browser viewport, which may contain sensitive information (PII, passwords, financial data). This is the same data already captured by the existing `captureVisibleTab` screenshot feature.
-- **No new attack surface:** Screenshots are captured by the same extension code that already exists. The only new path is encoding to base64 and including in MCP responses (localhost-only, same as all other Gasoline data).
+- **No new attack surface:** Screenshots are captured by the same extension code that already exists. The only new path is encoding to base64 and including in MCP responses (localhost-only, same as all other Kaboom data).
 - **Privacy:** Screenshot mode defaults to `off`. The AI agent must explicitly enable it. The existing `screenshotOnError` setting and this new `screenshot_mode` are independent controls.
 - **Sensitive content warning:** When `screenshot_mode` is first set to `on` or `errors_only`, the response should include a note: "Screenshots may contain sensitive page content (passwords, PII). Ensure your MCP client handles image data appropriately."
 - **No persistence change:** Screenshots included in MCP responses are transient (in-memory only during serialization). They are NOT saved to disk by this feature. The existing disk-save behavior via `/screenshots` endpoint is unchanged and independent.

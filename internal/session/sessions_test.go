@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/performance"
 )
 
 // ============================================
@@ -1010,7 +1010,9 @@ func TestHandleDiffSessions_Capture(t *testing.T) {
 
 	resultJSON, _ := json.Marshal(result)
 	var response map[string]any
-	json.Unmarshal(resultJSON, &response)
+	if err := json.Unmarshal(resultJSON, &response); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if response["action"] != "captured" {
 		t.Errorf("Expected action 'captured', got %v", response["action"])
@@ -1038,7 +1040,9 @@ func TestHandleDiffSessions_List(t *testing.T) {
 
 	resultJSON, _ := json.Marshal(result)
 	var response map[string]any
-	json.Unmarshal(resultJSON, &response)
+	if err := json.Unmarshal(resultJSON, &response); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if response["action"] != "listed" {
 		t.Errorf("Expected action 'listed', got %v", response["action"])
@@ -1076,7 +1080,9 @@ func TestHandleDiffSessions_Compare(t *testing.T) {
 
 	resultJSON, _ := json.Marshal(result)
 	var response map[string]any
-	json.Unmarshal(resultJSON, &response)
+	if err := json.Unmarshal(resultJSON, &response); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if response["action"] != "compared" {
 		t.Errorf("Expected action 'compared', got %v", response["action"])
@@ -1103,7 +1109,9 @@ func TestHandleDiffSessions_Delete(t *testing.T) {
 
 	resultJSON, _ := json.Marshal(result)
 	var response map[string]any
-	json.Unmarshal(resultJSON, &response)
+	if err := json.Unmarshal(resultJSON, &response); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if response["action"] != "deleted" {
 		t.Errorf("Expected action 'deleted', got %v", response["action"])

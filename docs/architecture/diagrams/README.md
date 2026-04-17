@@ -8,7 +8,7 @@ last_verified_date: 2026-03-05
 
 # Architecture Diagrams
 
-Visual guides to understanding Gasoline's core architecture.
+Visual guides to understanding Kaboom's core architecture.
 
 ## Quick Navigation
 
@@ -17,7 +17,7 @@ Visual guides to understanding Gasoline's core architecture.
 **[C1: System Context](system-architecture.md)**
 - High-level system boundary
 - External actors (AI Agent, Developer, Browser)
-- Gasoline system as black box
+- Kaboom system as black box
 - Data flows at system level
 
 **[C2: Containers](c2-containers.md)** ⭐ **NEW - START HERE**
@@ -133,7 +133,7 @@ When adding new diagrams:
 
 ## Color Scheme
 
-Standard Gasoline colors used in diagrams:
+Standard Kaboom colors used in diagrams:
 
 | Color | Hex | Usage |
 | --- | --- | --- |

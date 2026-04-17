@@ -14,10 +14,10 @@ import { errorMessage } from '../lib/error-utils.js';
  * Valid setting names from content script — imported from canonical constants.
  */
 export const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS;
-export const VALID_STATE_ACTIONS = new Set(['capture', 'restore']);
+const VALID_STATE_ACTIONS = new Set(['capture', 'restore']);
 export function isValidSettingPayload(data) {
     if (!VALID_SETTINGS.has(data.setting)) {
-        console.warn('[Gasoline] Invalid setting:', data.setting);
+        console.warn('[KaBOOM!] Invalid setting:', data.setting);
         return false;
     }
     if (data.setting === SettingName.WEBSOCKET_CAPTURE_MODE)
@@ -26,7 +26,7 @@ export function isValidSettingPayload(data) {
         return typeof data.url === 'string';
     // Boolean settings
     if (typeof data.enabled !== 'boolean') {
-        console.warn('[Gasoline] Invalid enabled value type');
+        console.warn('[KaBOOM!] Invalid enabled value type');
         return false;
     }
     return true;
@@ -63,9 +63,9 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     const { messageId, action, state } = data;
     // Validate action
     if (!VALID_STATE_ACTIONS.has(action)) {
-        console.warn('[Gasoline] Invalid state action:', action);
+        console.warn('[KaBOOM!] Invalid state action:', action);
         window.postMessage({
-            type: 'GASOLINE_STATE_RESPONSE',
+            type: 'kaboom_state_response',
             messageId,
             result: { error: `Invalid action: ${action}` }
         }, window.location.origin);
@@ -73,9 +73,9 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     }
     // Validate state object for restore action
     if (action === 'restore' && (!state || typeof state !== 'object')) {
-        console.warn('[Gasoline] Invalid state object for restore');
+        console.warn('[KaBOOM!] Invalid state object for restore');
         window.postMessage({
-            type: 'GASOLINE_STATE_RESPONSE',
+            type: 'kaboom_state_response',
             messageId,
             result: { error: 'Invalid state object' }
         }, window.location.origin);
@@ -99,7 +99,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     }
     // Send response back to content script
     window.postMessage({
-        type: 'GASOLINE_STATE_RESPONSE',
+        type: 'kaboom_state_response',
         messageId,
         result
     }, window.location.origin);

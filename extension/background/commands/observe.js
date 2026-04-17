@@ -14,6 +14,7 @@ import { CDP_VERSION } from '../../lib/constants.js';
 import { errorMessage } from '../../lib/error-utils.js';
 import { delay } from '../../lib/timeout-utils.js';
 import { postDaemonJSON } from '../../lib/daemon-http.js';
+import { captureVisibleTabSafe } from '../tab-state.js';
 // =============================================================================
 // SCREENSHOT
 // =============================================================================
@@ -26,7 +27,7 @@ const DEFAULT_CAPTURE_HEIGHT = 720;
  * Temporarily expands scrollable containers so CDP captures full content.
  * Stores original styles in data attributes for restoration.
  */
-export function screenshotExpandContainers() {
+function screenshotExpandContainers() {
     let count = 0;
     let contentHeightHint = Math.max(document.documentElement?.scrollHeight || 0, document.body?.scrollHeight || 0);
     function tryExpand(el) {
@@ -43,7 +44,7 @@ export function screenshotExpandContainers() {
             ov === 'clip';
         if (isScrollable && el.scrollHeight > el.clientHeight + 1) {
             const targetHeight = Math.max(el.scrollHeight, el.clientHeight);
-            el.setAttribute('data-gasoline-fpx', JSON.stringify({
+            el.setAttribute('data-kaboom-fpx', JSON.stringify({
                 o: el.style.overflow,
                 oy: el.style.overflowY,
                 ox: el.style.overflowX,
@@ -76,9 +77,9 @@ export function screenshotExpandContainers() {
     return { expanded: count, content_height_hint: Math.ceil(contentHeightHint) };
 }
 /** Self-contained: restore containers after full-page capture. */
-export function screenshotRestoreContainers() {
+function screenshotRestoreContainers() {
     function tryRestore(el) {
-        const raw = el.getAttribute('data-gasoline-fpx');
+        const raw = el.getAttribute('data-kaboom-fpx');
         if (!raw)
             return;
         try {
@@ -95,16 +96,16 @@ export function screenshotRestoreContainers() {
         catch {
             /* ignore parse errors */
         }
-        el.removeAttribute('data-gasoline-fpx');
+        el.removeAttribute('data-kaboom-fpx');
     }
     tryRestore(document.documentElement);
-    const all = document.querySelectorAll('[data-gasoline-fpx]');
+    const all = document.querySelectorAll('[data-kaboom-fpx]');
     for (let i = 0; i < all.length; i++) {
         tryRestore(all[i]);
     }
 }
 /** Derive bounded screenshot dimensions with fallback defaults and optional expanded-content hint. */
-export function computeFullPageCaptureDimensions(contentWidth, contentHeight, hintedHeight) {
+function computeFullPageCaptureDimensions(contentWidth, contentHeight, hintedHeight) {
     const safeWidth = Number.isFinite(contentWidth) && contentWidth > 0 ? Math.ceil(contentWidth) : DEFAULT_CAPTURE_WIDTH;
     const safeHeight = Number.isFinite(contentHeight) && contentHeight > 0 ? Math.ceil(contentHeight) : DEFAULT_CAPTURE_HEIGHT;
     const safeHint = Number.isFinite(hintedHeight) && hintedHeight > 0 ? Math.ceil(hintedHeight) : 0;
@@ -133,12 +134,11 @@ registerCommand('screenshot', async (ctx) => {
     const fullPage = ctx.params.full_page === true;
     try {
         const tab = await chrome.tabs.get(ctx.tabId);
-        await chrome.tabs.update(ctx.tabId, { active: true });
         if (fullPage) {
             await captureFullPage(ctx, tab, format, quality);
             return;
         }
-        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        const dataUrl = await captureVisibleTabSafe(ctx.tabId, tab.windowId, {
             format: format,
             quality
         });
@@ -242,7 +242,7 @@ async function captureFullPage(ctx, tab, format, quality) {
         debugLog(DebugCategory.CAPTURE, 'Full-page CDP failed, falling back to viewport capture', {
             error: errorMessage(err)
         });
-        const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        const dataUrl = await captureVisibleTabSafe(ctx.tabId, tab.windowId, {
             format: format,
             quality
         });
@@ -274,7 +274,7 @@ registerCommand('waterfall', async (ctx) => {
         const tab = await chrome.tabs.get(ctx.tabId);
         debugLog(DebugCategory.CAPTURE, 'Got tab for waterfall', { tabId: ctx.tabId, url: tab.url });
         const result = (await chrome.tabs.sendMessage(ctx.tabId, {
-            type: 'GET_NETWORK_WATERFALL'
+            type: 'get_network_waterfall'
         }));
         debugLog(DebugCategory.CAPTURE, 'Waterfall result from content script', {
             entries: result?.entries?.length || 0

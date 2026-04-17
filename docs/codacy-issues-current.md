@@ -49,40 +49,40 @@ Files with too many lines of code (limit: 600 lines)
 
 ### Lizard_ccn-medium (68 issues)
 
-**cmd/dev-console/alerts.go** (1 issues)
+**cmd/browser-agent/alerts.go** (1 issues)
 - Line 291: Method handleCIWebhook has a cyclomatic complexity of 17 (limit is 8)
 
-**cmd/dev-console/bridge_faststart_test.go** (1 issues)
+**cmd/browser-agent/bridge_faststart_test.go** (1 issues)
 - Line 18: Method TestFastStart_InitializeRespondsImmediately has a cyclomatic complexity of 15 (limit is 8)
 
-**cmd/dev-console/mcp_protocol_test.go** (1 issues)
+**cmd/browser-agent/mcp_protocol_test.go** (1 issues)
 - Line 512: Method TestMCPProtocol_ToolsListStructure has a cyclomatic complexity of 10 (limit is 8)
 
-**cmd/dev-console/reproduction.go** (1 issues)
+**cmd/browser-agent/reproduction.go** (1 issues)
 - Line 347: Method describeElement has a cyclomatic complexity of 13 (limit is 8)
 
-**cmd/dev-console/server_reliability_integration_test.go** (1 issues)
+**cmd/browser-agent/server_reliability_integration_test.go** (1 issues)
 - Line 36: Method TestReliability_MCPTraffic_RealisticSession has a cyclomatic complexity of 11 (limit is 8)
 
-**cmd/dev-console/server_reliability_test.go** (1 issues)
+**cmd/browser-agent/server_reliability_test.go** (1 issues)
 - Line 234: Method TestReliability_ResourceLeaks_Goroutines has a cyclomatic complexity of 11 (limit is 8)
 
-**cmd/dev-console/server_routes.go** (1 issues)
+**cmd/browser-agent/server_routes.go** (1 issues)
 - Line 45: Method handleScreenshot has a cyclomatic complexity of 18 (limit is 8)
 
-**cmd/dev-console/stdio_silence_test.go** (1 issues)
+**cmd/browser-agent/stdio_silence_test.go** (1 issues)
 - Line 167: Method TestStdioSilence_MultiClientSpawn has a cyclomatic complexity of 12 (limit is 8)
 
-**cmd/dev-console/tools_generate.go** (1 issues)
+**cmd/browser-agent/tools_generate.go** (1 issues)
 - Line 114: Method toolGenerateCSP has a cyclomatic complexity of 12 (limit is 8)
 
-**cmd/dev-console/tools_observe.go** (1 issues)
+**cmd/browser-agent/tools_observe.go** (1 issues)
 - Line 144: Method  has a cyclomatic complexity of 13 (limit is 8)
 
-**cmd/dev-console/tools_observe_analysis.go** (1 issues)
+**cmd/browser-agent/tools_observe_analysis.go** (1 issues)
 - Line 100: Method findIgnoreCase has a cyclomatic complexity of 9 (limit is 8)
 
-**cmd/dev-console/tools_observe_bundling.go** (1 issues)
+**cmd/browser-agent/tools_observe_bundling.go** (1 issues)
 - Line 11: Method toolGetErrorBundles has a cyclomatic complexity of 27 (limit is 8)
 
 **internal/ai/ai_checkpoint_compute.go** (1 issues)
@@ -226,8 +226,8 @@ Files with too many lines of code (limit: 600 lines)
 
 ### Lizard_file-nloc-medium (8 issues)
 
-**cmd/dev-console/tools_interact_upload_test.go** (1 issues)
-- Line 1: File cmd/dev-console/tools_interact_upload_test.go has 549 non-comment lines of code
+**cmd/browser-agent/tools_interact_upload_test.go** (1 issues)
+- Line 1: File cmd/browser-agent/tools_interact_upload_test.go has 549 non-comment lines of code
 
 **internal/capture/websocket_test.go** (1 issues)
 - Line 1: File internal/capture/websocket_test.go has 770 non-comment lines of code
@@ -253,22 +253,22 @@ Files with too many lines of code (limit: 600 lines)
 
 ### Lizard_nloc-medium (24 issues)
 
-**cmd/dev-console/alerts.go** (1 issues)
+**cmd/browser-agent/alerts.go** (1 issues)
 - Line 291: Method handleCIWebhook has 65 lines of code (limit is 50)
 
-**cmd/dev-console/main_connection.go** (1 issues)
+**cmd/browser-agent/main_connection.go** (1 issues)
 - Line 317: Method gatherConnectionDiagnostics has 104 lines of code (limit is 50)
 
-**cmd/dev-console/mcp_protocol_test.go** (1 issues)
+**cmd/browser-agent/mcp_protocol_test.go** (1 issues)
 - Line 512: Method TestMCPProtocol_ToolsListStructure has 58 lines of code (limit is 50)
 
-**cmd/dev-console/tools_interact_rich_test.go** (1 issues)
+**cmd/browser-agent/tools_interact_rich_test.go** (1 issues)
 - Line 453: Method TestRichAction_DomSummaryPassthrough has 51 lines of code (limit is 50)
 
-**cmd/gasoline-cmd/commands/configure.go** (1 issues)
+**cmd/kaboom-cmd/commands/configure.go** (1 issues)
 - Line 8: Method ConfigureArgs has 64 lines of code (limit is 50)
 
-**cmd/gasoline-cmd/commands/interact.go** (1 issues)
+**cmd/kaboom-cmd/commands/interact.go** (1 issues)
 - Line 28: Method InteractArgs has 80 lines of code (limit is 50)
 
 **internal/ai/ai_noise.go** (1 issues)

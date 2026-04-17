@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline Chrome Extension - Security Audit & Fixes Summary
+# Kaboom Chrome Extension - Security Audit & Fixes Summary
 
 **Date:** January 29, 2026
 **Status:** COMPLETE - All security improvements implemented and tested
@@ -13,7 +13,7 @@ last_reviewed: 2026-02-16
 
 ## Executive Summary
 
-Comprehensive security audit and hardening of the Gasoline Chrome extension addressing MV3 best practices, state management, message protocol security, and DoS protection.
+Comprehensive security audit and hardening of the Kaboom Chrome extension addressing MV3 best practices, state management, message protocol security, and DoS protection.
 
 **Key Improvements:**
 - ✅ Added sender/origin validation to all message handlers
@@ -34,7 +34,7 @@ Chrome message handlers (`chrome.runtime.onMessage`) needed sender validation to
 
 ### Solution: Sender Validation
 
-**File:** `/Users/brenn/dev/gasoline/src/background/message-handlers.ts`
+**File:** `/Users/brenn/dev/kaboom/src/background/message-handlers.ts`
 
 Added `isValidMessageSender()` function that validates:
 ```typescript
@@ -57,7 +57,7 @@ function isValidMessageSender(sender: ChromeMessageSender & { id?: string }): bo
 - Logs rejected messages for debugging
 - Prevents message injection attacks from compromised page context
 
-**File:** `/Users/brenn/dev/gasoline/src/content.ts`
+**File:** `/Users/brenn/dev/kaboom/src/content.ts`
 
 Added `isValidBackgroundSender()` function for content script:
 ```typescript
@@ -89,9 +89,9 @@ All message handlers use TypeScript's discriminated union types from `/src/types
 - Logging for unexpected message types
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/background/message-handlers.ts` - Added sender validation
-- `/Users/brenn/dev/gasoline/src/content.ts` - Added background sender validation
-- `/Users/brenn/dev/gasoline/src/types/messages.ts` - Already had discriminated unions
+- `/Users/brenn/dev/kaboom/src/background/message-handlers.ts` - Added sender validation
+- `/Users/brenn/dev/kaboom/src/content.ts` - Added background sender validation
+- `/Users/brenn/dev/kaboom/src/types/messages.ts` - Already had discriminated unions
 
 ---
 
@@ -105,7 +105,7 @@ Ephemeral state (temp data that should reset on service worker restart) was usin
 
 ### Solution: Storage Utilities Module
 
-**File:** `/Users/brenn/dev/gasoline/src/background/storage-utils.ts` (NEW)
+**File:** `/Users/brenn/dev/kaboom/src/background/storage-utils.ts` (NEW)
 
 Created comprehensive storage wrapper with:
 
@@ -149,24 +149,24 @@ Created comprehensive storage wrapper with:
 - `screenshotOnError` - User preference
 - `sourceMapEnabled` - User preference
 - `debugMode` - User preference
-- `gasoline_state_snapshots` - State management
+- `kaboom_state_snapshots` - State management
 
 **Ephemeral (chrome.storage.session):**
 - `trackedTabId` - Current tab being debugged
 - `trackedTabUrl` - URL of tracked tab
-- `gasoline_state_version` - Version marker for restart detection
+- `kaboom_state_version` - Version marker for restart detection
 
 ### Backward Compatibility
 
-Modified `/Users/brenn/dev/gasoline/src/background/event-listeners.ts`:
+Modified `/Users/brenn/dev/kaboom/src/background/event-listeners.ts`:
 - `handleTrackedTabClosed()` - Checks both local and session storage
 - `getTrackedTabInfo()` - Callback-based for compatibility
 - `getAllConfigSettings()` - Callback-based for compatibility
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/background/storage-utils.ts` - NEW module
-- `/Users/brenn/dev/gasoline/src/background/event-listeners.ts` - Updated for compatibility
-- `/Users/brenn/dev/gasoline/src/background/init.ts` - Uses storage utils for state recovery
+- `/Users/brenn/dev/kaboom/src/background/storage-utils.ts` - NEW module
+- `/Users/brenn/dev/kaboom/src/background/event-listeners.ts` - Updated for compatibility
+- `/Users/brenn/dev/kaboom/src/background/init.ts` - Uses storage utils for state recovery
 
 ---
 
@@ -181,11 +181,11 @@ Service workers are terminated and restarted by Chrome after 5-30 minutes of ina
 
 ### Solution: State Recovery Logic
 
-**File:** `/Users/brenn/dev/gasoline/src/background/storage-utils.ts`
+**File:** `/Users/brenn/dev/kaboom/src/background/storage-utils.ts`
 
 Added state version tracking:
 ```typescript
-const STATE_VERSION_KEY = 'gasoline_state_version';
+const STATE_VERSION_KEY = 'kaboom_state_version';
 const CURRENT_STATE_VERSION = '1.0.0';
 
 export function wasServiceWorkerRestarted(callback: (wasRestarted: boolean) => void): void {
@@ -201,7 +201,7 @@ export function markStateVersion(callback?: () => void): void {
 }
 ```
 
-**File:** `/Users/brenn/dev/gasoline/src/background/init.ts`
+**File:** `/Users/brenn/dev/kaboom/src/background/init.ts`
 
 Added recovery on startup:
 ```typescript
@@ -210,7 +210,7 @@ export function initializeExtension(): void {
   storageUtils.wasServiceWorkerRestarted((wasRestarted) => {
     if (wasRestarted) {
       console.warn(
-        '[Gasoline] Service worker restarted - ephemeral state cleared. ' +
+        '[Kaboom] Service worker restarted - ephemeral state cleared. ' +
           'User preferences restored from persistent storage.'
       );
       index.debugLog(index.DebugCategory.LIFECYCLE, 'Service worker restarted, ephemeral state recovered');
@@ -252,9 +252,9 @@ export function initializeExtension(): void {
 8. Attempts to reconnect to MCP server
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/background/init.ts` - State recovery logic
-- `/Users/brenn/dev/gasoline/src/background/storage-utils.ts` - State version tracking
-- `/Users/brenn/dev/gasoline/src/background/event-listeners.ts` - Settings loading
+- `/Users/brenn/dev/kaboom/src/background/init.ts` - State recovery logic
+- `/Users/brenn/dev/kaboom/src/background/storage-utils.ts` - State version tracking
+- `/Users/brenn/dev/kaboom/src/background/event-listeners.ts` - Settings loading
 
 ---
 
@@ -265,7 +265,7 @@ Manifest permissions need documentation explaining why each is needed and what s
 
 ### Solution: permissions.md
 
-**File:** `/Users/brenn/dev/gasoline/src/docs/permissions.md` (NEW)
+**File:** `/Users/brenn/dev/kaboom/src/docs/permissions.md` (NEW)
 
 Comprehensive security documentation including:
 
@@ -308,7 +308,7 @@ Comprehensive security documentation including:
    - Change server URL
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/docs/permissions.md` - NEW comprehensive security model
+- `/Users/brenn/dev/kaboom/src/docs/permissions.md` - NEW comprehensive security model
 
 ---
 
@@ -320,11 +320,11 @@ Ensure all message handlers use discriminated unions and have exhaustive type ch
 ### Solution: Type Guards with Discriminated Unions
 
 **Existing (already good):**
-- `/Users/brenn/dev/gasoline/src/types/messages.ts` - Comprehensive discriminated unions
+- `/Users/brenn/dev/kaboom/src/types/messages.ts` - Comprehensive discriminated unions
 
 **Enhanced:**
-- `/Users/brenn/dev/gasoline/src/background/message-handlers.ts` - Type validation function
-- `/Users/brenn/dev/gasoline/src/content.ts` - Already using discriminated unions well
+- `/Users/brenn/dev/kaboom/src/background/message-handlers.ts` - Type validation function
+- `/Users/brenn/dev/kaboom/src/content.ts` - Already using discriminated unions well
 
 **Type Coverage:**
 
@@ -369,23 +369,23 @@ export type ContentMessage =
 Page messages (postMessage between content and page):
 ```typescript
 export type PageMessageType =
-  | 'GASOLINE_LOG'
-  | 'GASOLINE_WS'
-  | 'GASOLINE_NETWORK_BODY'
-  | 'GASOLINE_ENHANCED_ACTION'
-  | 'GASOLINE_PERFORMANCE_SNAPSHOT'
-  | 'GASOLINE_HIGHLIGHT_RESPONSE'
-  | 'GASOLINE_EXECUTE_JS_RESULT'
-  | 'GASOLINE_A11Y_QUERY_RESPONSE'
-  | 'GASOLINE_DOM_QUERY_RESPONSE'
-  | 'GASOLINE_STATE_RESPONSE'
-  | 'GASOLINE_WATERFALL_RESPONSE';
+  | 'KABOOM_LOG'
+  | 'KABOOM_WS'
+  | 'KABOOM_NETWORK_BODY'
+  | 'KABOOM_ENHANCED_ACTION'
+  | 'KABOOM_PERFORMANCE_SNAPSHOT'
+  | 'KABOOM_HIGHLIGHT_RESPONSE'
+  | 'KABOOM_EXECUTE_JS_RESULT'
+  | 'KABOOM_A11Y_QUERY_RESPONSE'
+  | 'KABOOM_DOM_QUERY_RESPONSE'
+  | 'KABOOM_STATE_RESPONSE'
+  | 'KABOOM_WATERFALL_RESPONSE';
 ```
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/types/messages.ts` - Already comprehensive
-- `/Users/brenn/dev/gasoline/src/background/message-handlers.ts` - Added validation function
-- `/Users/brenn/dev/gasoline/src/content.ts` - Added sender validation
+- `/Users/brenn/dev/kaboom/src/types/messages.ts` - Already comprehensive
+- `/Users/brenn/dev/kaboom/src/background/message-handlers.ts` - Added validation function
+- `/Users/brenn/dev/kaboom/src/content.ts` - Added sender validation
 
 ---
 
@@ -396,7 +396,7 @@ Ensure content script doesn't trust inject.js (page context is compromisable).
 
 ### Solution: Validation & Explicit targetOrigin
 
-**File:** `/Users/brenn/dev/gasoline/src/content.ts`
+**File:** `/Users/brenn/dev/kaboom/src/content.ts`
 
 1. **postMessage with explicit targetOrigin:**
 ```typescript
@@ -428,7 +428,7 @@ if (!isTrackedTab) {
 ```
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/content.ts` - Enhanced validation
+- `/Users/brenn/dev/kaboom/src/content.ts` - Enhanced validation
 
 ---
 
@@ -439,7 +439,7 @@ Chrome API listeners (onMessage, onChanged, onAlarm, onRemoved) need security va
 
 ### Solution: Documented & Validated Listeners
 
-**File:** `/Users/brenn/dev/gasoline/src/background/event-listeners.ts`
+**File:** `/Users/brenn/dev/kaboom/src/background/event-listeners.ts`
 
 1. **Chrome Alarms:**
    - Re-created on service worker startup
@@ -464,13 +464,13 @@ Chrome API listeners (onMessage, onChanged, onAlarm, onRemoved) need security va
 ### Error Handling
 ```typescript
 if (chrome.runtime.lastError) {
-  console.warn('[Gasoline] Could not load saved settings:', chrome.runtime.lastError.message);
+  console.warn('[Kaboom] Could not load saved settings:', chrome.runtime.lastError.message);
   // Graceful degradation with defaults
 }
 ```
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/background/event-listeners.ts` - Enhanced documentation
+- `/Users/brenn/dev/kaboom/src/background/event-listeners.ts` - Enhanced documentation
 
 ---
 
@@ -481,7 +481,7 @@ Document existing rate limiting and DoS protection mechanisms.
 
 ### Solution: Comprehensive Documentation
 
-**File:** `/Users/brenn/dev/gasoline/src/background/cache-limits.ts`
+**File:** `/Users/brenn/dev/kaboom/src/background/cache-limits.ts`
 
 Added detailed documentation explaining:
 
@@ -501,7 +501,7 @@ Added detailed documentation explaining:
  */
 ```
 
-**File:** `/Users/brenn/dev/gasoline/src/background/event-listeners.ts`
+**File:** `/Users/brenn/dev/kaboom/src/background/event-listeners.ts`
 
 Added alarm documentation:
 
@@ -558,8 +558,8 @@ const ERROR_GROUP_CLEANUP_INTERVAL_MINUTES = 10;
 - Prevents connection storms
 
 ### Affected Files
-- `/Users/brenn/dev/gasoline/src/background/cache-limits.ts` - Enhanced documentation
-- `/Users/brenn/dev/gasoline/src/background/event-listeners.ts` - Alarm documentation
+- `/Users/brenn/dev/kaboom/src/background/cache-limits.ts` - Enhanced documentation
+- `/Users/brenn/dev/kaboom/src/background/event-listeners.ts` - Alarm documentation
 
 ---
 
@@ -596,12 +596,12 @@ All existing tests pass with no regressions:
 ## Files Modified
 
 ### New Files (2)
-1. **`/Users/brenn/dev/gasoline/src/background/storage-utils.ts`**
+1. **`/Users/brenn/dev/kaboom/src/background/storage-utils.ts`**
    - Storage wrapper with session/local support
    - State recovery detection
    - Feature detection and graceful degradation
 
-2. **`/Users/brenn/dev/gasoline/src/docs/permissions.md`**
+2. **`/Users/brenn/dev/kaboom/src/docs/permissions.md`**
    - Comprehensive security model documentation
    - Permission justifications
    - Trust boundary definitions
@@ -609,29 +609,29 @@ All existing tests pass with no regressions:
    - User controls
 
 ### Modified Files (5)
-1. **`/Users/brenn/dev/gasoline/src/background/message-handlers.ts`**
+1. **`/Users/brenn/dev/kaboom/src/background/message-handlers.ts`**
    - Added `isValidMessageSender()` function
    - Added sender validation to message listener
    - Added type validation helper
 
-2. **`/Users/brenn/dev/gasoline/src/background/event-listeners.ts`**
+2. **`/Users/brenn/dev/kaboom/src/background/event-listeners.ts`**
    - Enhanced `handleTrackedTabClosed()` for session storage compatibility
    - Updated `getTrackedTabInfo()` to callback-based
    - Updated `getAllConfigSettings()` to callback-based
    - Added detailed alarm documentation
    - Added rate limiting documentation
 
-3. **`/Users/brenn/dev/gasoline/src/background/init.ts`**
+3. **`/Users/brenn/dev/kaboom/src/background/init.ts`**
    - Added state recovery detection
    - Import storage-utils module
    - Call state version marking on startup
 
-4. **`/Users/brenn/dev/gasoline/src/content.ts`**
+4. **`/Users/brenn/dev/kaboom/src/content.ts`**
    - Added `isValidBackgroundSender()` function
    - Added sender ID validation to background message listener
    - Enhanced postMessage documentation
 
-5. **`/Users/brenn/dev/gasoline/src/background/cache-limits.ts`**
+5. **`/Users/brenn/dev/kaboom/src/background/cache-limits.ts`**
    - Added comprehensive rate limiting documentation
    - Added memory enforcement documentation
    - Added security properties documentation

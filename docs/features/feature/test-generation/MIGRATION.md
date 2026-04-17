@@ -10,7 +10,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-This document outlines the migration plan for adding test generation capabilities to Gasoline's `generate` tool. This is a non-breaking addition that extends existing functionality.
+This document outlines the migration plan for adding test generation capabilities to Kaboom's `generate` tool. This is a non-breaking addition that extends existing functionality.
 
 ## Version Impact
 
@@ -24,7 +24,7 @@ This document outlines the migration plan for adding test generation capabilitie
 
 #### Files to Create:
 ```
-cmd/dev-console/
+cmd/browser-agent/
 ├── testgen.go           # Test generation from context
 ├── testgen_heal.go      # Selector healing
 ├── testgen_classify.go  # Failure classification
@@ -33,7 +33,7 @@ cmd/dev-console/
 
 #### Files to Modify:
 ```
-cmd/dev-console/tools_core.go  # Add dispatch for new generate modes
+cmd/browser-agent/tools_core.go  # Add dispatch for new generate modes
 ```
 
 **Estimated LOC:** ~800-1000
@@ -140,7 +140,7 @@ Add to `getToolSchema()` for the generate tool:
 
 Run with:
 ```bash
-go test -v ./cmd/dev-console/ -run TestGen
+go test -v ./cmd/browser-agent/ -run TestGen
 ```
 
 Coverage targets:
@@ -151,7 +151,7 @@ Coverage targets:
 ### Integration Tests
 
 ```bash
-go test -v ./cmd/dev-console/ -run TestGenIntegration
+go test -v ./cmd/browser-agent/ -run TestGenIntegration
 ```
 
 ### Manual Testing
@@ -223,9 +223,9 @@ After release, measure:
 
 ## Appendix: Competitive Parity
 
-This feature positions Gasoline to compete with TestSprite by providing:
+This feature positions Kaboom to compete with TestSprite by providing:
 
-| Capability | TestSprite | Gasoline (After) |
+| Capability | TestSprite | Kaboom (After) |
 |------------|------------|------------------|
 | Test generation | From PRD | From captured context |
 | Self-healing | Cloud-based | Local |

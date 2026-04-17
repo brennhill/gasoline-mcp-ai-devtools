@@ -10,7 +10,7 @@ import { test, describe, mock, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert'
 
 // Define esbuild constant not available in Node test env
-globalThis.__GASOLINE_VERSION__ = 'test'
+globalThis.__KABOOM_VERSION__ = 'test'
 
 let originalWindow
 let originalPerformance
@@ -498,19 +498,19 @@ describe('Performance Marks - Configuration', () => {
     assert.strictEqual(isPerformanceMarksEnabled(), false)
   })
 
-  test('should expose performance marks through __gasoline API', async () => {
-    const { installGasolineAPI, uninstallGasolineAPI, setPerformanceMarksEnabled } =
+  test('should expose performance marks through __kaboom API', async () => {
+    const { installKaboomAPI, uninstallKaboomAPI, setPerformanceMarksEnabled } =
       await import('../../extension/inject.js')
 
     setPerformanceMarksEnabled(true)
-    installGasolineAPI()
+    installKaboomAPI()
 
-    assert.ok(globalThis.window.__gasoline)
-    assert.ok(typeof globalThis.window.__gasoline.setPerformanceMarks === 'function')
-    assert.ok(typeof globalThis.window.__gasoline.getMarks === 'function')
-    assert.ok(typeof globalThis.window.__gasoline.getMeasures === 'function')
+    assert.ok(globalThis.window.__kaboom)
+    assert.ok(typeof globalThis.window.__kaboom.setPerformanceMarks === 'function')
+    assert.ok(typeof globalThis.window.__kaboom.getMarks === 'function')
+    assert.ok(typeof globalThis.window.__kaboom.getMeasures === 'function')
 
-    uninstallGasolineAPI()
+    uninstallKaboomAPI()
   })
 
   test('should clear captured data on uninstall', async () => {

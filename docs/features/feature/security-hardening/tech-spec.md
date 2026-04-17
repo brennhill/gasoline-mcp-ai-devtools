@@ -20,9 +20,9 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Developers often know they should add security headers, configure CSP, and audit third-party dependencies — but these tasks are tedious and error-prone when done manually. These four tools flip the model: instead of the developer researching what to configure, Gasoline observes what the app actually does and generates the correct security configuration automatically.
+Developers often know they should add security headers, configure CSP, and audit third-party dependencies — but these tasks are tedious and error-prone when done manually. These four tools flip the model: instead of the developer researching what to configure, Kaboom observes what the app actually does and generates the correct security configuration automatically.
 
-All four tools are opt-in. They analyze data Gasoline already captures (network requests, response headers, resource origins) and produce actionable output the developer can directly apply to their app.
+All four tools are opt-in. They analyze data Kaboom already captures (network requests, response headers, resource origins) and produce actionable output the developer can directly apply to their app.
 
 ---
 
@@ -32,7 +32,7 @@ All four tools are opt-in. They analyze data Gasoline already captures (network 
 
 Content Security Policy is the single most effective defense against XSS, but writing one from scratch is painful. You need to enumerate every script origin, style source, font host, image CDN, API endpoint, and WebSocket connection your app uses. Miss one and the page breaks. Be too permissive and the CSP provides no protection.
 
-Gasoline already sees every resource the page loads. The CSP Generator analyzes a session's worth of network traffic and produces a tight policy that allows exactly what was observed — nothing more.
+Kaboom already sees every resource the page loads. The CSP Generator analyzes a session's worth of network traffic and produces a tight policy that allows exactly what was observed — nothing more.
 
 ### The Attack: Cross-Site Scripting (XSS)
 
@@ -49,7 +49,7 @@ XSS remains the #1 web vulnerability by volume (OWASP Top 10, CWE-79). The attac
 
 **Real-world CSP adoption:** As of 2024, only ~14% of the top 1M websites deploy CSP at all. Of those, ~40% use `unsafe-inline` which defeats the purpose entirely. The problem isn't awareness — it's that writing a correct policy is genuinely hard.
 
-**How Gasoline solves this:** Instead of the developer manually researching what origins to include, Gasoline observes what the app actually loads during normal development. The developer just browses their app. Gasoline produces the exact CSP needed — nothing more, nothing less. The barrier goes from "spend hours researching CDN origins" to "browse your app for 5 minutes, copy the header."
+**How Kaboom solves this:** Instead of the developer manually researching what origins to include, Kaboom observes what the app actually loads during normal development. The developer just browses their app. Kaboom produces the exact CSP needed — nothing more, nothing less. The barrier goes from "spend hours researching CDN origins" to "browse your app for 5 minutes, copy the header."
 
 ### How It Works
 
@@ -99,7 +99,7 @@ The accumulator is cleared when the session resets (server restart or explicit c
       },
       "include_report_uri": {
         "type": "boolean",
-        "description": "Include a report-uri directive pointing to a Gasoline endpoint for violation logging (default: false)"
+        "description": "Include a report-uri directive pointing to a Kaboom endpoint for violation logging (default: false)"
       },
       "exclude_origins": {
         "type": "array",
@@ -186,13 +186,13 @@ The accumulator is cleared when the session resets (server restart or explicit c
       "recommendation": "Move to external file or add hash to script-src"
     }
   ],
-  "recommended_next_step": "Deploy as Content-Security-Policy-Report-Only first. Browse all pages again and check for violations via Gasoline's console error capture. Once no violations occur, switch to enforcing mode."
+  "recommended_next_step": "Deploy as Content-Security-Policy-Report-Only first. Browse all pages again and check for violations via Kaboom's console error capture. Once no violations occur, switch to enforcing mode."
 }
 ```
 
 ### Resource Classification
 
-Gasoline maps network requests to CSP directives based on response content-type and request context:
+Kaboom maps network requests to CSP directives based on response content-type and request context:
 
 | Content-Type / Context | CSP Directive |
 |----------------------|---------------|
@@ -218,7 +218,7 @@ For each captured resource URL, the origin is extracted as `scheme://host[:port]
 
 ### Inline Detection
 
-Gasoline detects inline scripts/styles through:
+Kaboom detects inline scripts/styles through:
 - CSP violation console errors mentioning `inline` (if a CSP is already partially configured)
 - Same-origin script/style responses where the URL is the page URL itself (indicates inline)
 - The DOM query tool can be used to enumerate `<script>` and `<style>` tags without `src`/`href`
@@ -276,7 +276,7 @@ Generating and immediately enforcing a CSP is risky — missing origins break pa
 1. Browse the app normally (hit all routes, trigger all features)
 2. Call `generate_csp` with `mode: "report_only"`
 3. Deploy the policy as `Content-Security-Policy-Report-Only` header
-4. Browse the app again — violations appear in console (Gasoline captures these)
+4. Browse the app again — violations appear in console (Kaboom captures these)
 
 #### Pass 2: Refine and Enforce
 5. Call `generate_csp` again — violations from pass 1 inform missing origins
@@ -343,7 +343,7 @@ Since this tool generates a security policy, it is itself a security-sensitive c
 
 Modern web apps pull in dozens of third-party resources — CDNs, analytics, fonts, ad networks, payment processors, chat widgets. Developers often don't know the full extent of what their app loads or what data it sends to external services.
 
-Gasoline sees every network request, making it trivial to build a complete map of third-party communication. This tool categorizes each external domain by risk level based on what type of access it has (executable code vs. static assets) and what data flows to it.
+Kaboom sees every network request, making it trivial to build a complete map of third-party communication. This tool categorizes each external domain by risk level based on what type of access it has (executable code vs. static assets) and what data flows to it.
 
 ### The Attacks
 
@@ -356,7 +356,7 @@ Gasoline sees every network request, making it trivial to build a complete map o
 
 **What makes this devastating:** The developer explicitly added this script. It's in their HTML. Their tests pass. Their CSP allows it. The attack happens entirely within "legitimate" infrastructure.
 
-**How Gasoline helps:** The audit tool shows exactly which third-party origins have script-level access to your page. Combined with SRI (Tool 4), you can detect when a CDN-served resource changes unexpectedly. The reputation system flags origins that become suspicious after initial inclusion. This doesn't prevent the attack, but it surfaces the attack surface explicitly — most developers can't name all third-party origins their app communicates with.
+**How Kaboom helps:** The audit tool shows exactly which third-party origins have script-level access to your page. Combined with SRI (Tool 4), you can detect when a CDN-served resource changes unexpectedly. The reputation system flags origins that become suspicious after initial inclusion. This doesn't prevent the attack, but it surfaces the attack surface explicitly — most developers can't name all third-party origins their app communicates with.
 
 #### Attack 2: Transitive Dependency Exfiltration
 
@@ -365,7 +365,7 @@ Gasoline sees every network request, making it trivial to build a complete map o
 3. **Fourth-party origins now have access** to the page context or receive data about user behavior
 4. **Developer never consented to these additional origins** — they added ONE library, not six third-party connections
 
-**How Gasoline helps:** The audit maps ALL third-party communication, not just what the developer explicitly added. A developer who adds `date-picker.js` might not know it loads scripts from `analytics.datepicker-company.com` and sends usage data to `telemetry.lib-metrics.io`. The audit makes this visible.
+**How Kaboom helps:** The audit maps ALL third-party communication, not just what the developer explicitly added. A developer who adds `date-picker.js` might not know it loads scripts from `analytics.datepicker-company.com` and sends usage data to `telemetry.lib-metrics.io`. The audit makes this visible.
 
 #### Attack 3: Privacy Violation (PII Leakage to Third Parties)
 
@@ -376,7 +376,7 @@ Gasoline sees every network request, making it trivial to build a complete map o
 
 **Real-world example:** In 2022, Meta Pixel was found to be collecting health data from hospital websites, tax information from tax prep sites, and financial data from banking apps — all via automatic form capture that developers didn't realize was active.
 
-**How Gasoline helps:** The tool inspects outbound POST/PUT request bodies to third-party origins and flags field names matching PII patterns. If your analytics SDK is sending `email`, `phone`, or `ssn` to a third-party server, the audit surfaces this explicitly with field names and destination.
+**How Kaboom helps:** The tool inspects outbound POST/PUT request bodies to third-party origins and flags field names matching PII patterns. If your analytics SDK is sending `email`, `phone`, or `ssn` to a third-party server, the audit surfaces this explicitly with field names and destination.
 
 ### How It Works
 
@@ -581,18 +581,18 @@ For POST/PUT requests to third-party origins, the tool checks request bodies for
 
 ### Domain Reputation
 
-Every third-party origin is classified using a layered reputation system. The base layer uses bundled lists that ship with the Gasoline binary — no network calls required. An optional external enrichment layer provides deeper intelligence for organizations that opt in.
+Every third-party origin is classified using a layered reputation system. The base layer uses bundled lists that ship with the Kaboom binary — no network calls required. An optional external enrichment layer provides deeper intelligence for organizations that opt in.
 
 #### Bundled Lists (~380KB total, compiled into binary)
 
 | List | Source | Purpose | Update Cadence |
 |------|--------|---------|---------------|
-| **Disconnect.me Tracker List** | disconnect.me/trackerprotection | Classify known trackers, ad networks, social widgets | Each Gasoline release |
-| **Tranco Top 10K** | tranco-list.eu | Identify well-established domains (high Tranco rank = low suspicion) | Each Gasoline release |
-| **Curated CDN List** | Maintained by Gasoline | Recognize known-good CDNs (jsdelivr, cdnjs, unpkg, googleapis, cloudflare, etc.) | Each Gasoline release |
-| **Mozilla Public Suffix List** | publicsuffix.org | Proper domain extraction (distinguishes `github.io` from `user.github.io`) | Each Gasoline release |
+| **Disconnect.me Tracker List** | disconnect.me/trackerprotection | Classify known trackers, ad networks, social widgets | Each Kaboom release |
+| **Tranco Top 10K** | tranco-list.eu | Identify well-established domains (high Tranco rank = low suspicion) | Each Kaboom release |
+| **Curated CDN List** | Maintained by Kaboom | Recognize known-good CDNs (jsdelivr, cdnjs, unpkg, googleapis, cloudflare, etc.) | Each Kaboom release |
+| **Mozilla Public Suffix List** | publicsuffix.org | Proper domain extraction (distinguishes `github.io` from `user.github.io`) | Each Kaboom release |
 
-Lists are compiled into the binary as Go maps at build time. No filesystem access or runtime downloads needed. The lists ship at the version available when the Gasoline binary was built. Users update reputation data by updating Gasoline itself.
+Lists are compiled into the binary as Go maps at build time. No filesystem access or runtime downloads needed. The lists ship at the version available when the Kaboom binary was built. Users update reputation data by updating Kaboom itself.
 
 #### Classification Logic
 
@@ -709,17 +709,17 @@ The custom lists file can be validated in CI:
 
 ```bash
 # Validate JSON schema
-gasoline validate-lists .gasoline/custom-lists.json
+kaboom validate-lists .kaboom/custom-lists.json
 
 # Audit against a live session (headless browser)
-gasoline audit --custom-lists .gasoline/custom-lists.json --url https://staging.example.com
+kaboom audit --custom-lists .kaboom/custom-lists.json --url https://staging.example.com
 ```
 
 These CLI commands are future work — initially, custom lists are consumed only via the MCP tool interface.
 
 ### Optional External Enrichment
 
-When `enable_external_enrichment: true` is passed, the tool makes network requests to external services for deeper intelligence. This is opt-in because it breaks Gasoline's zero-network-calls principle — organizations that enable it accept the privacy trade-off (domain names are sent to external services).
+When `enable_external_enrichment: true` is passed, the tool makes network requests to external services for deeper intelligence. This is opt-in because it breaks Kaboom's zero-network-calls principle — organizations that enable it accept the privacy trade-off (domain names are sent to external services).
 
 #### Available Enrichment Sources
 
@@ -825,7 +825,7 @@ The CSP generator reports which confidence decisions were modified by reputation
 - Only sees requests that occurred during the session. Background processes or periodic requests may be missed.
 - Cannot determine the purpose of a third-party (analytics vs. critical functionality) — that's for the developer to assess.
 - Cookie analysis only shows presence (Set-Cookie header observed), not cookie content (values are redacted).
-- Bundled reputation lists are static per Gasoline release. A newly-compromised CDN won't be flagged until the next Gasoline update.
+- Bundled reputation lists are static per Kaboom release. A newly-compromised CDN won't be flagged until the next Kaboom update.
 - Domain heuristics produce false positives — legitimate services sometimes use unusual TLDs or random-looking subdomains. Heuristics are flags, not verdicts.
 - External enrichment sends domain names to third-party services. Organizations with strict data handling policies should evaluate this before enabling.
 - RDAP data can be falsified by malicious registrants (fake registrar, misleading dates). Use as one signal among many.
@@ -874,7 +874,7 @@ This tool takes a security posture snapshot and compares it against a later stat
 
 **Why this is hard to catch:** None of these produce compile errors, test failures, or runtime exceptions. The app works perfectly — it just works insecurely. The developer would need to manually check every response header, cookie flag, and auth requirement after every change. Nobody does this.
 
-**How Gasoline helps:** Take a snapshot before making changes. Make changes. Compare. Any security-relevant regression is immediately surfaced with severity and explanation. The developer doesn't need to remember which headers to check or which cookie flags matter — the tool knows.
+**How Kaboom helps:** Take a snapshot before making changes. Make changes. Compare. Any security-relevant regression is immediately surfaced with severity and explanation. The developer doesn't need to remember which headers to check or which cookie flags matter — the tool knows.
 
 ### How It Works
 
@@ -1019,7 +1019,7 @@ If `diff_sessions` is already being used, `diff_security` can read the same snap
 
 Subresource Integrity (SRI) protects against CDN compromise and supply-chain attacks. If a third-party CDN is hacked and serves malicious code, SRI-protected resources will be blocked by the browser because their hash won't match.
 
-Despite being easy to implement (just add an `integrity` attribute), most developers don't bother because computing the hashes manually is tedious. Gasoline already captures the response bodies of external resources — it can compute the SRI hashes automatically.
+Despite being easy to implement (just add an `integrity` attribute), most developers don't bother because computing the hashes manually is tedious. Kaboom already captures the response bodies of external resources — it can compute the SRI hashes automatically.
 
 ### The Attack: CDN Compromise
 
@@ -1038,7 +1038,7 @@ Despite being easy to implement (just add an `integrity` attribute), most develo
 
 **Why developers don't use SRI:** You need to manually compute the SHA-384 hash of each third-party resource, format it correctly, and update it every time the resource version changes. For a site with 10 CDN resources, that's 10 hashes to maintain. Miss one version bump and your site breaks.
 
-**How Gasoline helps:** The tool computes hashes from the response bodies Gasoline already captured. No manual curl + openssl pipeline. No copy-pasting from srihash.org one URL at a time. One tool call produces all hashes for all third-party resources in the correct format, ready to paste into HTML.
+**How Kaboom helps:** The tool computes hashes from the response bodies Kaboom already captured. No manual curl + openssl pipeline. No copy-pasting from srihash.org one URL at a time. One tool call produces all hashes for all third-party resources in the correct format, ready to paste into HTML.
 
 ### How It Works
 
@@ -1121,7 +1121,7 @@ The tool analyzes all captured network responses for third-party scripts and sty
 ### Hash Computation
 
 For each third-party resource:
-1. Read the response body from Gasoline's network body buffer
+1. Read the response body from Kaboom's network body buffer
 2. Compute SHA-384 hash (the recommended algorithm — stronger than SHA-256, faster than SHA-512)
 3. Base64-encode the hash
 4. Format as `sha384-{base64hash}`
@@ -1142,7 +1142,7 @@ Some resources can't use SRI via HTML attributes because they're loaded dynamica
 
 - SRI only works for resources served with appropriate CORS headers (`Access-Control-Allow-Origin`). Resources without CORS headers can't be integrity-checked. The tool flags these.
 - Dynamic resources (e.g., Google Fonts CSS that varies by User-Agent) will have different hashes per browser. The tool warns about these based on response header analysis (presence of `Vary: User-Agent`).
-- Gasoline only has the response body if it was captured during the session. Resources loaded before Gasoline connected (or after the capture buffer was full) won't have hashes.
+- Kaboom only has the response body if it was captured during the session. Resources loaded before Kaboom connected (or after the capture buffer was full) won't have hashes.
 - Response bodies larger than the capture limit (10KB default) are truncated — SRI can't be computed for truncated bodies. The tool flags these as "body too large for SRI computation."
 
 ### Network Body Size Requirement
@@ -1332,7 +1332,7 @@ This section honestly evaluates what each tool brings that's genuinely new versu
 - Work passively (developer just browses; no configuration, no report endpoint, no production traffic needed)
 - Operate with zero network calls (no data leaves the machine)
 
-**The gap Gasoline fills:** Every existing CSP tool requires either (a) a deployed application with real production traffic generating violation reports, or (b) the developer manually figuring out what origins to allow. There is no tool that says "browse your app locally for a few minutes, here's your CSP." This is a genuine gap.
+**The gap Kaboom fills:** Every existing CSP tool requires either (a) a deployed application with real production traffic generating violation reports, or (b) the developer manually figuring out what origins to allow. There is no tool that says "browse your app locally for a few minutes, here's your CSP." This is a genuine gap.
 
 **Why it matters:** The 14% CSP adoption rate isn't because developers don't know about CSP. It's because writing a correct one is tedious enough that they never get around to it. Reducing the effort from "hours of research" to "one tool call" could meaningfully move adoption.
 
@@ -1365,7 +1365,7 @@ This section honestly evaluates what each tool brings that's genuinely new versu
 
 **The consolidation value:** A developer CAN open DevTools, manually note every third-party domain, cross-reference each against Disconnect.me, check Tranco rankings, compute risk levels, and inspect outbound POST bodies for PII fields. But nobody does this. The consolidation isn't just convenience — it's the difference between "theoretically possible" and "actually happens."
 
-**The enterprise angle is genuinely novel.** No existing tool lets a security team publish a `.gasoline/custom-lists.json` file that all developers automatically enforce during local development. Approved vendor management at dev-time is new.
+**The enterprise angle is genuinely novel.** No existing tool lets a security team publish a `.kaboom/custom-lists.json` file that all developers automatically enforce during local development. Approved vendor management at dev-time is new.
 
 **Counter-argument:** For individual developers without enterprise policies, this tool is mostly a prettier version of the DevTools Network tab. The PII detection adds genuine value, but the rest is consolidation.
 
@@ -1401,7 +1401,7 @@ The attack scenarios (middleware removal, CORS misconfiguration) are real but re
 2. QA/pentest catches missing headers weeks later
 3. Developer adds them back
 
-Gasoline makes step 2 happen immediately instead of weeks later. That's valuable, but it's acceleration — not a new capability. A team that already runs Mozilla Observatory in CI gets the same protection, just at deploy time instead of dev time.
+Kaboom makes step 2 happen immediately instead of weeks later. That's valuable, but it's acceleration — not a new capability. A team that already runs Mozilla Observatory in CI gets the same protection, just at deploy time instead of dev time.
 
 **Counter-argument against shipping:** A developer who cares enough to run `diff_security` probably already has CI-based header checks. A developer who doesn't care about security headers won't use this tool either. The middle ground — "would use it if it were easy" — is real but narrow.
 
@@ -1437,7 +1437,7 @@ Modern web applications increasingly use bundlers (Webpack, Vite, esbuild) that 
 - Use import maps with version-pinned URLs (equivalent protection to SRI)
 - Have built-in SRI plugins that handle this automatically
 
-The only scenario where Gasoline's SRI tool adds value over existing bundler plugins is **legacy applications that load scripts directly from CDNs via `<script>` tags in HTML**. This is a real but shrinking population.
+The only scenario where Kaboom's SRI tool adds value over existing bundler plugins is **legacy applications that load scripts directly from CDNs via `<script>` tags in HTML**. This is a real but shrinking population.
 
 **Counter-argument for shipping:** Even with bundlers, some resources can't be bundled (Google Analytics, third-party widgets, payment processor scripts like Stripe.js). These are loaded via `<script>` tags and should have SRI. But they're typically 2-5 scripts per app, making the "bulk generation" value minimal — you could use srihash.org for each one in under a minute.
 
@@ -1462,19 +1462,19 @@ The only scenario where Gasoline's SRI tool adds value over existing bundler plu
 
 It's not the individual checks. It's the context.
 
-Every capability described here can be achieved with existing tools — if the developer goes and uses them. The unique value Gasoline provides is:
+Every capability described here can be achieved with existing tools — if the developer goes and uses them. The unique value Kaboom provides is:
 
 1. **Available in the AI's context during active development.** When an AI coding assistant has security posture data in its context, it can proactively suggest fixes while the developer is already working on related code. "I notice your CDN scripts don't have SRI — want me to add integrity attributes?" is infinitely more actionable than "remember to run srihash.org when you're done."
 
-2. **Zero-configuration observation.** The developer doesn't install a security scanner, configure a report endpoint, set up CI checks, or visit an external website. They just develop normally. Gasoline captures everything passively. The security data is always available.
+2. **Zero-configuration observation.** The developer doesn't install a security scanner, configure a report endpoint, set up CI checks, or visit an external website. They just develop normally. Kaboom captures everything passively. The security data is always available.
 
-3. **Contextual to what the app actually does.** External scanners check against generic checklists. Gasoline checks against the specific origins, endpoints, and data flows of THIS application. The CSP is tailored to THIS app's resources. The third-party audit shows THIS app's actual communication. The regression detection compares THIS app's actual security state.
+3. **Contextual to what the app actually does.** External scanners check against generic checklists. Kaboom checks against the specific origins, endpoints, and data flows of THIS application. The CSP is tailored to THIS app's resources. The third-party audit shows THIS app's actual communication. The regression detection compares THIS app's actual security state.
 
 **The consolidation IS the product.** Individual security checks are commoditized. What's not commoditized is having them all available, passively, in the AI's development context, without configuration. That's the value proposition — not "we compute SHA-384 better than openssl."
 
 ### Honest Risks
 
-1. **Feature creep into "security product" territory.** These tools make Gasoline look like a security product, which raises expectations. If a developer deploys a CSP generated by Gasoline and gets breached anyway (because they didn't exercise all routes), Gasoline's reputation suffers — even though the tool warned about incomplete coverage.
+1. **Feature creep into "security product" territory.** These tools make Kaboom look like a security product, which raises expectations. If a developer deploys a CSP generated by Kaboom and gets breached anyway (because they didn't exercise all routes), Kaboom's reputation suffers — even though the tool warned about incomplete coverage.
 
 2. **Maintenance burden of bundled lists.** Shipping Disconnect.me, Tranco, and curated CDN lists means updating them every release. Stale lists produce incorrect classifications. This is an ongoing cost.
 

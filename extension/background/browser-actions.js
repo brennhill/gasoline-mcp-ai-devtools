@@ -48,7 +48,7 @@ async function enrichWithCSP(tabId, result) {
     }
 }
 // #lizard forgives
-export async function handleNavigateAction(tabId, url, actionToast, reason) {
+async function handleNavigateAction(tabId, url, actionToast, reason) {
     if (url.startsWith('chrome://') || url.startsWith('chrome-extension://')) {
         return { success: false, error: 'restricted_url', message: 'Cannot navigate to Chrome internal pages' };
     }

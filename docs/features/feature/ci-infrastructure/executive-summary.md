@@ -1,5 +1,5 @@
 ---
-feature: Gasoline CI Infrastructure
+feature: Kaboom CI Infrastructure
 status: proposed
 tier: v6.0 Wave 1 (Core Thesis)
 last_reviewed: 2026-03-05
@@ -7,11 +7,11 @@ last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
 
-# Executive Summary: Gasoline CI Infrastructure
+# Executive Summary: Kaboom CI Infrastructure
 
 ## What It Does (In 30 Seconds)
 
-**Gasoline CI Infrastructure** captures browser state (DOM, network calls, logs) when tests fail in CI, then gives AI agents the ability to autonomously diagnose failures and repair tests **in the same container**, with automatic verification.
+**Kaboom CI Infrastructure** captures browser state (DOM, network calls, logs) when tests fail in CI, then gives AI agents the ability to autonomously diagnose failures and repair tests **in the same container**, with automatic verification.
 
 **Before:** Test fails in GitHub Actions → Engineer spends 45 minutes reproducing locally → Manually diagnoses → Fixes locally → Re-runs in CI to confirm
 
@@ -39,7 +39,7 @@ GitHub Actions runs tests
   ↓
 Test fails: "Cannot find element"
   ↓
-[AUTOMATIC] Gasoline captures snapshot (DOM, network, logs)
+[AUTOMATIC] Kaboom captures snapshot (DOM, network, logs)
   ↓
 [AUTOMATIC] AI diagnoses: "Selector is stale; use data-testid instead"
   ↓
@@ -57,7 +57,7 @@ Engineer reviews comment, merges if satisfied
 #### Anthropic, Cursor, GitHub Copilot, etc.
 - **Problem:** "Our AI agents work great locally but can't repair tests in CI"
 - **When they use it:** When proposing fixes to test failures
-- **What they see:** Integration with Gasoline means fixes are verified before suggesting
+- **What they see:** Integration with Kaboom means fixes are verified before suggesting
 - **Value:** End-to-end autonomy (diagnose + repair + verify in CI)
 
 ---
@@ -122,7 +122,7 @@ STEP 1: Test Fails in CI (5 min)
 │ Expected: "Success"         │
 │ Got: "Loading"              │
 │                             │
-│ [Gasoline auto-captures]    │
+│ [Kaboom auto-captures]    │
 │ • DOM snapshot              │
 │ • Network calls             │
 │ • Console logs              │
@@ -180,7 +180,7 @@ TOTAL TIME: 13 minutes per failure (4x faster)
 
 ```javascript
 test('checkout', async ({ page }) => {
-  await gasoline.snapshot('before-purchase');  // ← Capture state
+  await kaboom.snapshot('before-purchase');  // ← Capture state
   
   await page.click('[data-testid="purchase"]');
   await expect(page).toContainText('Success');  // ← If fails, AI can restore to snapshot
@@ -196,8 +196,8 @@ test('checkout', async ({ page }) => {
 **What it does:** Marks "this log is from my test" vs "background noise"
 
 ```javascript
-test('user login', async ({ page, gasoline }) => {
-  await gasoline.testBoundary('login-test');  // ← Mark test-specific logs
+test('user login', async ({ page, kaboom }) => {
+  await kaboom.testBoundary('login-test');  // ← Mark test-specific logs
   
   await page.fill('[name="email"]', 'user@example.com');
   await page.click('[data-testid="login"]');
@@ -215,11 +215,11 @@ test('user login', async ({ page, gasoline }) => {
 
 ### **Feature 3: Network Mocking**
 
-**What it does:** AI tells Gasoline "make this API return this response"
+**What it does:** AI tells Kaboom "make this API return this response"
 
 ```javascript
 // AI applies this during diagnosis:
-await gasoline.configure({
+await kaboom.configure({
   action: 'mock',
   endpoint: '/api/payment',
   response: { statusCode: 402, body: { error: 'Card declined' } }
@@ -235,15 +235,15 @@ await gasoline.configure({
 
 ### **Feature 4: Playwright Fixtures**
 
-**What it does:** Makes Gasoline APIs available in test setup/teardown
+**What it does:** Makes Kaboom APIs available in test setup/teardown
 
 ```typescript
 import { test as base } from '@playwright/test';
-import { Gasoline } from './gasoline';
+import { Kaboom } from './kaboom';
 
 export const test = base.extend({
-  gasoline: async ({ page }, use) => {
-    const g = new Gasoline();
+  kaboom: async ({ page }, use) => {
+    const g = new Kaboom();
     await g.initialize();
     await use(g);
     await g.cleanup();
@@ -251,10 +251,10 @@ export const test = base.extend({
 });
 
 // Now in tests:
-test('my test', async ({ page, gasoline }) => {
-  // Full Gasoline API available
-  await gasoline.snapshot('state1');
-  await gasoline.configure({ action: 'mock', ... });
+test('my test', async ({ page, kaboom }) => {
+  // Full Kaboom API available
+  await kaboom.snapshot('state1');
+  await kaboom.configure({ action: 'mock', ... });
 });
 ```
 
@@ -268,11 +268,11 @@ test('my test', async ({ page, gasoline }) => {
 
 ```javascript
 // Old (hangs server):
-await gasoline.rerunTest('checkout.spec.ts');  // Server blocked for 30 seconds
+await kaboom.rerunTest('checkout.spec.ts');  // Server blocked for 30 seconds
 
 // New (async-safe):
-const result = await gasoline.async(() => {
-  return gasoline.rerunTest('checkout.spec.ts');  // Server still responsive
+const result = await kaboom.async(() => {
+  return kaboom.rerunTest('checkout.spec.ts');  // Server still responsive
 });
 ```
 
@@ -420,7 +420,7 @@ Developer workflow:
     ↓
   [5 min] One test fails in checkout.spec.ts
     ↓
-  [30 sec] Gasoline snapshot captured
+  [30 sec] Kaboom snapshot captured
     ↓
   [1 min] AI diagnoses: "Selector timeout; increase to 10s"
     ↓
@@ -459,7 +459,7 @@ Developer workflow:
 - Takes 30-45 minutes
 - Ties up engineer
 
-#### Gasoline CI Infrastructure (new):
+#### Kaboom CI Infrastructure (new):
 - ✅ Captures full browser state automatically
 - ✅ AI diagnoses autonomously
 - ✅ AI repairs + verifies automatically
@@ -491,7 +491,7 @@ Developer workflow:
 
 ## Bottom Line
 
-**Gasoline CI Infrastructure** turns CI test failures from a 50-minute drain into a 5-minute autonomous process. It's the difference between "tests fail, engineer debugs" and "tests fail, AI diagnoses, engineer reviews fix."
+**Kaboom CI Infrastructure** turns CI test failures from a 50-minute drain into a 5-minute autonomous process. It's the difference between "tests fail, engineer debugs" and "tests fail, AI diagnoses, engineer reviews fix."
 
 **ROI:** Saves $667k/year per 100-person engineering team. Payback period: <1 day.
 

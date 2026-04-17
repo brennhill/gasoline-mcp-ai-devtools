@@ -14,7 +14,7 @@ Key types:
 
 Key functions:
   - SafeMarshal: defensive JSON marshaling with fallback.
-  - GetJSONFieldNames: extracts known JSON field names from struct tags for validation.
+  - getJSONFieldNames: extracts known JSON field names from struct tags for validation.
   - NewToolError: creates a structured error with diagnostic hints.
 */
 package mcp

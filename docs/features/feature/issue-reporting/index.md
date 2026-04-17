@@ -6,13 +6,13 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/tools_configure_report_issue.go
+  - cmd/browser-agent/tools_configure_report_issue.go
   - internal/issuereport/types.go
   - internal/issuereport/templates.go
   - internal/issuereport/sanitize.go
   - internal/issuereport/submit.go
 test_paths:
-  - cmd/dev-console/tools_configure_report_issue_test.go
+  - cmd/browser-agent/tools_configure_report_issue_test.go
   - internal/issuereport/templates_test.go
   - internal/issuereport/sanitize_test.go
   - internal/issuereport/submit_test.go

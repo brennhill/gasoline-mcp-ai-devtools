@@ -9,12 +9,15 @@
  * Manages recording controls, timer display, and mic permission flow.
  */
 import { StorageKey } from '../lib/constants.js';
-import { errorMessage } from '../lib/error-utils.js';
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
+import { getLocal, removeLocal, onStorageChanged } from '../lib/storage-utils.js';
+import { sendRecordingGestureDecision, handleStartClick, handleStopClick } from './recording-io.js';
 const START_LABEL = 'Record screen';
 const STOP_LABEL = 'Stop recording';
 const HIGHLIGHT_LABEL = '\u25CF \u00AB Click here to record';
 const RECENT_RECORDING_START_MS = 8000;
 const TOP_NOTICE_DURATION_MS = 4000;
+const LOG = `${KABOOM_RECORDING_LOG_PREFIX} Popup:`;
 const AUDIO_LABELS = {
     '': 'Video only',
     tab: 'Video + tab audio',
@@ -120,11 +123,6 @@ function setApprovalPendingState(els, approvalEls, state, pending) {
     if (!state.isRecording && els.optionsEl)
         els.optionsEl.style.display = 'block';
 }
-function sendRecordingGestureDecision(type) {
-    chrome.runtime.sendMessage({ type }, () => {
-        void chrome.runtime.lastError;
-    });
-}
 function showTopNotice(els, text) {
     const notice = els.topNoticeEl;
     if (!notice)
@@ -151,7 +149,7 @@ function showSavedLink(saveInfoEl, displayName, filePath) {
     if (linkEl) {
         linkEl.addEventListener('click', (e) => {
             e.preventDefault();
-            chrome.runtime.sendMessage({ type: 'REVEAL_FILE', path: filePath }, (result) => {
+            chrome.runtime.sendMessage({ type: 'reveal_file', path: filePath }, (result) => {
                 if (result?.error) {
                     saveInfoEl.textContent = `Could not open folder: ${result.error}`;
                     saveInfoEl.style.color = '#f85149';
@@ -191,91 +189,6 @@ function showStartError(saveInfoEl, errorText) {
         saveInfoEl.style.color = '#3fb950';
     }, 5000);
 }
-function showMicPermissionPrompt(saveInfoEl, audioMode) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
-        chrome.storage.local.set({
-            [StorageKey.PENDING_MIC_RECORDING]: { audioMode, returnTabId: activeTabs[0]?.id }
-        });
-    });
-    saveInfoEl.innerHTML =
-        'Microphone access needed. <a href="#" id="grant-mic-link" style="color: #58a6ff; text-decoration: underline; cursor: pointer">Grant access</a>';
-    saveInfoEl.style.display = 'block';
-    saveInfoEl.style.background = 'rgba(248, 81, 73, 0.1)';
-    saveInfoEl.style.color = '#f85149';
-    const link = document.getElementById('grant-mic-link');
-    if (link) {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            chrome.tabs.create({ url: chrome.runtime.getURL('mic-permission.html') });
-        });
-    }
-}
-function sendRecordStart(els, state, audioMode) {
-    console.log('[Gasoline REC] Popup: sendStart() called, sending screen_recording_start with audio:', audioMode);
-    chrome.runtime.sendMessage({ type: 'screen_recording_start', audio: audioMode }, (resp) => {
-        console.log('[Gasoline REC] Popup: screen_recording_start response:', resp);
-        if (chrome.runtime.lastError) {
-            console.error('[Gasoline REC] Popup: screen_recording_start lastError:', chrome.runtime.lastError.message);
-        }
-        if (resp?.status === 'recording' && resp.name) {
-            showRecording(els, state, resp.name, resp.startTime ?? Date.now());
-        }
-        else {
-            showIdle(els, state);
-            if (resp?.error)
-                showStartError(els.saveInfoEl, resp.error);
-        }
-    });
-}
-// #lizard forgives
-function tryMicPermissionThenStart(els, state, audioMode) {
-    console.log('[Gasoline REC] Popup: trying getUserMedia from popup...');
-    navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((micStream) => {
-        console.log('[Gasoline REC] Popup: getUserMedia succeeded from popup');
-        micStream.getTracks().forEach((t) => t.stop());
-        chrome.storage.local.set({ [StorageKey.MIC_GRANTED]: true });
-        sendRecordStart(els, state, audioMode);
-    })
-        .catch((err) => {
-        console.log('[Gasoline REC] Popup: getUserMedia FAILED:', err.name, errorMessage(err));
-        chrome.storage.local.remove(StorageKey.MIC_GRANTED);
-        showIdle(els, state);
-        if (els.saveInfoEl)
-            showMicPermissionPrompt(els.saveInfoEl, audioMode);
-    });
-}
-function handleStartClick(els, state) {
-    const audioSelect = document.getElementById('record-audio-mode');
-    const audioMode = audioSelect?.value ?? '';
-    chrome.storage.local.set({ [StorageKey.RECORD_AUDIO_PREF]: audioMode });
-    if (els.optionsEl)
-        els.optionsEl.style.display = 'none';
-    if (els.saveInfoEl)
-        els.saveInfoEl.style.display = 'none';
-    els.label.textContent = 'Starting...';
-    if (audioMode === 'mic' || audioMode === 'both') {
-        console.log('[Gasoline REC] Popup: mic/both mode — checking gasoline_mic_granted');
-        tryMicPermissionThenStart(els, state, audioMode);
-    }
-    else {
-        sendRecordStart(els, state, audioMode);
-    }
-}
-function handleStopClick(els, state) {
-    els.row.classList.remove('is-recording');
-    els.label.textContent = 'Saving...';
-    console.log('[Gasoline REC] Popup: sending screen_recording_stop');
-    chrome.runtime.sendMessage({ type: 'screen_recording_stop' }, (resp) => {
-        console.log('[Gasoline REC] Popup: screen_recording_stop response:', resp);
-        if (chrome.runtime.lastError) {
-            console.error('[Gasoline REC] Popup: screen_recording_stop lastError:', chrome.runtime.lastError.message);
-        }
-        showIdle(els, state);
-        showSaveResult(els.saveInfoEl, resp);
-    });
-}
 export function setupRecordingUI() {
     const row = document.getElementById('record-row');
     const label = document.getElementById('record-label');
@@ -304,7 +217,7 @@ export function setupRecordingUI() {
             applyRecordHighlight(els);
             pendingRecordingIntent = null;
             setApprovalPendingState(els, approvalEls, state, null);
-            chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+            void removeLocal(StorageKey.PENDING_RECORDING);
             return;
         }
         pendingRecordingIntent = pending && !pending.highlight ? pending : null;
@@ -315,27 +228,25 @@ export function setupRecordingUI() {
     const clearPendingRecordingIntent = () => {
         pendingRecordingIntent = null;
         setApprovalPendingState(els, approvalEls, state, null);
-        chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+        void removeLocal(StorageKey.PENDING_RECORDING);
     };
-    row.style.visibility = 'hidden';
-    chrome.storage.local.get(StorageKey.RECORDING, (result) => {
-        const rec = result[StorageKey.RECORDING];
-        console.log('[Gasoline REC] Popup: gasoline_recording from storage:', rec);
+    // Row is visible immediately with default "not recording" state.
+    // Storage read updates it async — visual change is minimal (button label toggle).
+    void getLocal(StorageKey.RECORDING).then(async (value) => {
+        const rec = value;
+        console.log(LOG, 'recording state from storage:', rec);
         if (rec?.active && rec.name && rec.startTime) {
-            console.log('[Gasoline REC] Popup: resuming recording UI for', rec.name);
+            console.log(LOG, 'resuming recording UI for', rec.name);
             showRecording(els, state, rec.name, rec.startTime);
         }
-        row.style.visibility = 'visible';
         // Check for highlight request from hover launcher
-        chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult) => {
-            void chrome.runtime.lastError;
-            updatePendingRecording(pendingResult[StorageKey.PENDING_RECORDING]);
-        });
+        const pendingValue = await getLocal(StorageKey.PENDING_RECORDING);
+        updatePendingRecording(pendingValue);
     });
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
         if (areaName === 'local' && changes[StorageKey.RECORDING]) {
             const rec = changes[StorageKey.RECORDING].newValue;
-            console.log('[Gasoline REC] Popup: gasoline_recording changed:', rec);
+            console.log(LOG, 'recording state changed:', rec);
             if (rec?.active && rec.name && rec.startTime) {
                 showRecording(els, state, rec.name, rec.startTime);
             }
@@ -351,26 +262,26 @@ export function setupRecordingUI() {
     });
     approvalEls.approveBtn?.addEventListener('click', (event) => {
         event.preventDefault();
-        sendRecordingGestureDecision('RECORDING_GESTURE_GRANTED');
+        sendRecordingGestureDecision('recording_gesture_granted');
         clearPendingRecordingIntent();
     });
     approvalEls.denyBtn?.addEventListener('click', (event) => {
         event.preventDefault();
-        sendRecordingGestureDecision('RECORDING_GESTURE_DENIED');
+        sendRecordingGestureDecision('recording_gesture_denied');
         clearPendingRecordingIntent();
     });
-    chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
-        const intent = result[StorageKey.PENDING_MIC_RECORDING];
-        console.log('[Gasoline REC] Popup: pending_mic_recording intent:', intent);
+    void getLocal(StorageKey.PENDING_MIC_RECORDING).then(async (value) => {
+        const intent = value;
+        console.log(LOG, 'pending mic recording intent:', intent);
         if (!intent?.audioMode)
             return;
-        console.log('[Gasoline REC] Popup: consuming mic intent, pre-selecting audioMode:', intent.audioMode);
-        chrome.storage.local.remove(StorageKey.PENDING_MIC_RECORDING);
+        console.log(LOG, 'consuming mic intent, pre-selecting audio mode:', intent.audioMode);
+        await removeLocal(StorageKey.PENDING_MIC_RECORDING);
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]?.id) {
                 chrome.tabs
                     .sendMessage(tabs[0].id, {
-                    type: 'GASOLINE_ACTION_TOAST',
+                    type: 'kaboom_action_toast',
                     text: '',
                     detail: '',
                     state: 'success',
@@ -383,8 +294,8 @@ export function setupRecordingUI() {
         if (audioSelect)
             audioSelect.value = intent.audioMode;
     });
-    chrome.storage.local.get(StorageKey.RECORD_AUDIO_PREF, (result) => {
-        const saved = result[StorageKey.RECORD_AUDIO_PREF];
+    void getLocal(StorageKey.RECORD_AUDIO_PREF).then((value) => {
+        const saved = value;
         if (saved) {
             const audioSelect = document.getElementById('record-audio-mode');
             if (audioSelect)
@@ -392,17 +303,17 @@ export function setupRecordingUI() {
         }
     });
     row.addEventListener('click', () => {
-        console.log('[Gasoline REC] Popup: record row clicked, isRecording:', state.isRecording);
+        console.log(LOG, 'record row clicked, isRecording:', state.isRecording);
         if (pendingRecordingIntent && !state.isRecording) {
-            console.log('[Gasoline REC] Popup: record row click ignored while approval is pending');
+            console.log(LOG, 'record row click ignored while approval is pending');
             return;
         }
         removeRecordHighlight(els);
         if (state.isRecording) {
-            handleStopClick(els, state);
+            handleStopClick(els, state, showIdle, showSaveResult);
         }
         else {
-            handleStartClick(els, state);
+            handleStartClick(els, state, showRecording, showIdle, showStartError);
         }
     });
 }

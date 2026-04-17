@@ -73,7 +73,7 @@ export interface ExecutionResult {
  * or when inject script is not loaded.
  * The func is injected natively by Chrome's extension system.
  */
-export async function executeViaScriptingAPI(
+async function executeViaScriptingAPI(
   tabId: number,
   script: string,
   timeoutMs: number,
@@ -312,7 +312,7 @@ export async function executeWithWorldRouting(
   // MAIN or AUTO: try content script (MAIN world) first
   try {
     const result = (await chrome.tabs.sendMessage(tabId, {
-      type: 'GASOLINE_EXECUTE_QUERY',
+      type: 'kaboom_execute_query',
       params: queryParams
     })) as ExecutionResult
 

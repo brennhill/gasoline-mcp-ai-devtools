@@ -1,5 +1,6 @@
 {
-  "name": "gasoline-agentic-browser",
+  "name": "kaboom-browser-ai-devtools-mcp",
+  "version": "0.8.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +14,7 @@
     "docs:lint:integrity": "python3 scripts/lint-documentation.py docs/features docs/architecture",
     "docs:check": "node scripts/docs/check-feature-bundles.js",
     "docs:check:strict": "DOCS_STRICT_FRONTMATTER=1 node scripts/docs/check-feature-bundles.js",
-    "docs:lint:content-contract": "node scripts/docs/check-cookwithgasoline-content-contract.mjs",
+    "docs:lint:content-contract": "node scripts/docs/check-gokaboom-content-contract.mjs",
     "docs:lint:style-contract": "node scripts/docs/check-content-style-contract.mjs",
     "docs:lint:vale": "node scripts/docs/run-vale-on-changed.mjs",
     "docs:lint:downloads-contract": "node scripts/docs/check-downloads-page-contract.mjs",
@@ -57,13 +58,13 @@
     "typescript": "^5.5.0",
     "vue": "^3.5.29"
   },
-  "homepage": "https://cookwithgasoline.com",
+  "homepage": "https://gokaboom.dev",
   "repository": {
     "type": "git",
-    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp"
+    "url": "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP"
   },
   "bugs": {
-    "url": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues"
+    "url": "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/issues"
   },
   "engines": {
     "node": ">=20.0.0"

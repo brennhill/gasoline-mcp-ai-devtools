@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 # Test Execution Capture
 
 ## Overview
-Test Execution Capture integrates Gasoline directly into test frameworks (Jest, Playwright, Mocha, Pytest, etc.), capturing the complete test execution context and correlating it with frontend behavior and backend logs. When a test runs, Gasoline records not just pass/fail, but the entire lifecycle: setup, page loads, user interactions, assertions, and cleanup. A failed assertion doesn't just show "expect(x).toBe(5)" in test output—it shows the exact browser state, network requests, backend logs, and custom events that led to that failure. Developers debug failing tests 10x faster because they see the full stack trace: browser state + network + backend.
+Test Execution Capture integrates Kaboom directly into test frameworks (Jest, Playwright, Mocha, Pytest, etc.), capturing the complete test execution context and correlating it with frontend behavior and backend logs. When a test runs, Kaboom records not just pass/fail, but the entire lifecycle: setup, page loads, user interactions, assertions, and cleanup. A failed assertion doesn't just show "expect(x).toBe(5)" in test output—it shows the exact browser state, network requests, backend logs, and custom events that led to that failure. Developers debug failing tests 10x faster because they see the full stack trace: browser state + network + backend.
 
 ## Problem
 Current test runners (Jest, Playwright) provide excellent test output and failure messages, but are isolated from system observability:
@@ -26,19 +26,19 @@ Current test runners (Jest, Playwright) provide excellent test output and failur
 - Test infrastructure events (setup, teardown, retry) are invisible to the observation system
 
 ## Solution
-Test Execution Capture integrates test frameworks with Gasoline's event system:
+Test Execution Capture integrates test frameworks with Kaboom's event system:
 1. **Test Framework Integration:** Adapters for Jest, Playwright, Mocha, Pytest emit test lifecycle events (test:start, test:end, assertion)
-2. **Session Correlation:** Each test run establishes a Gasoline session with a unique trace_id
+2. **Session Correlation:** Each test run establishes a Kaboom session with a unique trace_id
 3. **Complete Context Capture:** Frontend state, network requests, backend logs, and custom events are all tagged with the test's trace_id
 4. **Assertion Linking:** Failed assertions emit events with stack traces, expected/actual values
-5. **Unified Report:** On test completion, Gasoline generates a report showing the entire execution timeline
+5. **Unified Report:** On test completion, Kaboom generates a report showing the entire execution timeline
 
 ## User Stories
 - As a QA engineer, I want to see the complete browser state and network requests when a test fails so that I can immediately understand the cause
 - As a frontend developer, I want failed E2E tests to include backend logs so that I can see if the failure was due to a service error
 - As a DevOps engineer, I want to verify tests run in isolation and don't interfere with each other through shared state
 - As a test maintainer, I want to analyze test execution time and identify slow operations (setup, assertions, navigation)
-- As a CI/CD engineer, I want to automatically capture Gasoline sessions on test failure and attach them to CI logs
+- As a CI/CD engineer, I want to automatically capture Kaboom sessions on test failure and attach them to CI logs
 
 ## Acceptance Criteria
 - [ ] Test framework adapters (Jest, Playwright) emit test lifecycle events
@@ -46,7 +46,7 @@ Test Execution Capture integrates test frameworks with Gasoline's event system:
 - [ ] Failed assertions emit event with stack trace, expected, actual, and browser state at failure
 - [ ] Test setup/teardown time captured and reported
 - [ ] Each test's observables (logs, network, events) are queryable as a group
-- [ ] Gasoline generates HTML report on test completion with timeline, flamegraph, and links to detailed logs
+- [ ] Kaboom generates HTML report on test completion with timeline, flamegraph, and links to detailed logs
 - [ ] Performance: test instrumentation adds <10% overhead
 - [ ] Support for test retries: each retry is a separate trace_id, linked to parent test
 
@@ -131,7 +131,7 @@ it('should process payment', async () => {
 });
 ```
 
-#### Gasoline Timeline (on failure):
+#### Kaboom Timeline (on failure):
 ```
 [10:15:23.100] test:started (should process payment, trace-123)
 [10:15:23.200] page:load (checkout page)
@@ -164,7 +164,7 @@ emit({ type: 'test:teardown:started', trace_id });
 emit({ type: 'test:teardown:completed', trace_id, duration_ms: 100 });
 ```
 
-Gasoline report shows: "Setup took 450ms, test took 1800ms, teardown took 100ms. Consider optimizing setup (database seeding?)."
+Kaboom report shows: "Setup took 450ms, test took 1800ms, teardown took 100ms. Consider optimizing setup (database seeding?)."
 
 ### Example 3: Assertion with Screenshot
 #### Test fails:
@@ -177,7 +177,7 @@ await expect(page).toHaveSelector('.order-confirmation');
 //   - Backend logs show: ERROR: Payment processing failed
 ```
 
-Gasoline captures the entire context, making debugging instant.
+Kaboom captures the entire context, making debugging instant.
 
 ## Integration Points
 - **Jest:** `expect()` overrides to emit assertion events
@@ -200,6 +200,6 @@ New report generation:
 ```javascript
 generateTestReport({
   trace_id: 'test-run-12345',
-  format: 'html'  // Returns URL to HTML report in Gasoline UI
+  format: 'html'  // Returns URL to HTML report in Kaboom UI
 })
 ```

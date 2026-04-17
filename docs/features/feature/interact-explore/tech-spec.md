@@ -16,9 +16,9 @@ last_verified_date: 2026-03-05
 # Interact Tech Spec (TARGET)
 
 ## Dispatcher
-- Entry: `toolInteract` in `cmd/dev-console/tools_interact_entrypoint.go`
+- Entry: `toolInteract` in `cmd/browser-agent/tools_interact_entrypoint.go`
 - Action routing:
-- named action handlers (`interactActionHandler.interactDispatch` map in `cmd/dev-console/tools_interact_dispatch.go`)
+- named action handlers (`interactActionHandler.interactDispatch` map in `cmd/browser-agent/tools_interact_dispatch.go`)
 - DOM primitives (`domPrimitiveActions` -> `handleDOMPrimitive`)
 
 ### Handler Decomposition (Issue #402)
@@ -30,7 +30,7 @@ last_verified_date: 2026-03-05
 - `list_interactive` orchestration + index metadata/truncation post-processing
 - DOM primitive selector resolution (`index`/`index_generation`) before queueing `dom_action`
 - browser action implementation internals (navigate/refresh/back/forward/new_tab/switch_tab/activate_tab/close_tab, highlight, execute_js, subtitle/screenshot aliases)
-- URL rewrite (`gasoline-insecure://`) and perf snapshot staging for `perf_diff`
+- URL rewrite (`kaboom-insecure://`) and perf snapshot staging for `perf_diff`
 - interact dispatch map now points directly to `interactActionHandler` methods (ToolHandler browser wrappers removed)
 - storage/cookie mutation handlers (`set/delete/clear_storage`, `set/delete_cookie`) and execute-script queueing helper
 - composed workflow handlers (`navigate_and_wait_for`, `fill_form`, `fill_form_and_submit`, `run_a11y_and_export_sarif`) plus field-step internals
@@ -62,10 +62,10 @@ last_verified_date: 2026-03-05
 - Performance diff enrichment is attached at command-result formatting time.
 
 ## Code Anchors
-- `cmd/dev-console/tools_interact_action_handler.go`
-- `cmd/dev-console/tools_interact_entrypoint.go`
-- `cmd/dev-console/tools_interact_dispatch.go`
-- `cmd/dev-console/tools_interact_draw.go`
-- `cmd/dev-console/tools_interact_upload.go`
+- `cmd/browser-agent/tools_interact_action_handler.go`
+- `cmd/browser-agent/tools_interact_entrypoint.go`
+- `cmd/browser-agent/tools_interact_dispatch.go`
+- `cmd/browser-agent/tools_interact_draw.go`
+- `cmd/browser-agent/tools_interact_upload.go`
 - `src/background/pending-queries.ts`
 - `src/background/query-execution.ts`

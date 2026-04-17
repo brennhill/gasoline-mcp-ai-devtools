@@ -58,7 +58,7 @@ Returns {image: "data:image/png;base64,...", uidMap: {...}}
 - `extension/inject.js` (modified): Coordinate screenshot capture and annotation
 
 **Server files**:
-- `cmd/dev-console/generate.go`: Add `generateAnnotatedScreenshot()` handler
+- `cmd/browser-agent/generate.go`: Add `generateAnnotatedScreenshot()` handler
 
 **Trade-offs**:
 - Visible viewport only (not full-page scrolling screenshot) to keep simple

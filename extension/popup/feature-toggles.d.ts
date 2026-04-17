@@ -20,7 +20,12 @@ export declare const FEATURE_TOGGLES: readonly FeatureToggleConfig[];
  */
 export declare function handleFeatureToggle(storageKey: string, messageType: string, enabled: boolean): void;
 /**
- * Initialize all feature toggles
+ * Apply pre-loaded toggle values to DOM checkboxes and wire up change handlers.
+ * Called from the orchestrator after a single batched storage read.
+ */
+export declare function applyFeatureToggles(result: Record<string, unknown>): void;
+/**
+ * Initialize all feature toggles (self-contained async version for backward compat)
  */
 export declare function initFeatureToggles(): Promise<void>;
 //# sourceMappingURL=feature-toggles.d.ts.map

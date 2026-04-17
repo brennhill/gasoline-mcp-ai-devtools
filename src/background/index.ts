@@ -56,13 +56,13 @@ import {
 import { getTrackedTabInfo } from './event-listeners.js'
 import { DebugCategory } from './debug.js'
 import { getRequestHeaders } from './server.js'
-import { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot } from './message-handlers.js'
 import {
   handlePendingQuery as handlePendingQueryImpl,
   handlePilotCommand as handlePilotCommandImpl
 } from './pending-queries.js'
 import { updateVersionFromHealth } from './version-check.js'
 import { createBatcherInstances } from './batcher-instances.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { errorMessage } from '../lib/error-utils.js'
 import {
   startSyncClient as startSyncClientImpl,
@@ -82,7 +82,7 @@ export { DebugCategory } from './debug.js'
 /**
  * Log a diagnostic message only when debug mode is enabled
  */
-export function diagnosticLog(message: string): void {
+function diagnosticLog(message: string): void {
   if (isDebugMode()) {
     console.log(message)
   }
@@ -116,7 +116,7 @@ export function debugLog(category: string, message: string, data: unknown = null
   capExtensionLogs(2000)
 
   if (isDebugMode()) {
-    const prefix = `[Gasoline:${category}]`
+    const prefix = `${KABOOM_LOG_PREFIX.slice(0, -1)}:${category}]`
     if (data !== null) {
       console.log(prefix, message, data) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal error message, not user-controlled
     } else {
@@ -125,7 +125,7 @@ export function debugLog(category: string, message: string, data: unknown = null
   }
 }
 
-;(globalThis as { __GASOLINE_DEBUG_LOG__?: typeof debugLog }).__GASOLINE_DEBUG_LOG__ = debugLog
+;(globalThis as { __KABOOM_DEBUG_LOG__?: typeof debugLog }).__KABOOM_DEBUG_LOG__ = debugLog
 
 /**
  * Get all debug log entries
@@ -201,15 +201,15 @@ const _batchers = createBatcherInstances(
   sharedServerCircuitBreaker
 )
 
-export const logBatcherWithCB = _batchers.logBatcherWithCB
+const logBatcherWithCB = _batchers.logBatcherWithCB
 export const logBatcher = _batchers.logBatcher
-export const wsBatcherWithCB = _batchers.wsBatcherWithCB
+const wsBatcherWithCB = _batchers.wsBatcherWithCB
 export const wsBatcher = _batchers.wsBatcher
-export const enhancedActionBatcherWithCB = _batchers.enhancedActionBatcherWithCB
+const enhancedActionBatcherWithCB = _batchers.enhancedActionBatcherWithCB
 export const enhancedActionBatcher = _batchers.enhancedActionBatcher
-export const networkBodyBatcherWithCB = _batchers.networkBodyBatcherWithCB
+const networkBodyBatcherWithCB = _batchers.networkBodyBatcherWithCB
 export const networkBodyBatcher = _batchers.networkBodyBatcher
-export const perfBatcherWithCB = _batchers.perfBatcherWithCB
+const perfBatcherWithCB = _batchers.perfBatcherWithCB
 export const perfBatcher = _batchers.perfBatcher
 
 // =============================================================================
@@ -375,8 +375,8 @@ function logConnectionChange(
 function broadcastStatusUpdate(): void {
   if (typeof chrome === 'undefined' || !chrome.runtime) return
   chrome.runtime
-    .sendMessage({ type: 'statusUpdate', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
-    .catch((err) => console.error('[Gasoline] Error sending status update:', err))
+    .sendMessage({ type: 'status_update', status: { ...getConnectionStatus(), aiControlled: isAiControlled() } })
+    .catch((err) => console.error(`${KABOOM_LOG_PREFIX} Error sending status update:`, err))
 }
 
 // eslint-disable-next-line security-node/detect-unhandled-async-errors
@@ -460,6 +460,3 @@ export function resetSyncClientConnection(): void {
 // Re-export statically imported functions (Service Workers don't support dynamic import())
 export const handlePendingQuery = handlePendingQueryImpl
 export const handlePilotCommand = handlePilotCommandImpl
-
-// Export snapshot/state management for backward compatibility
-export { saveStateSnapshot, loadStateSnapshot, listStateSnapshots, deleteStateSnapshot }

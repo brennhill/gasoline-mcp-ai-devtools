@@ -351,8 +351,8 @@ Returns 25 requests:
 | Tool | Pagination | Basic Filters | Advanced Filters | Presets |
 |------|------------|---------------|------------------|---------|
 | Chrome DevTools | ❌ No | ✅ Yes | ✅ Yes | ⚠️ Manual |
-| Gasoline v5.3 | ✅ Yes | ⚠️ URL only | ❌ No | ❌ No |
-| **Gasoline v6.0** | **✅ Yes** | **✅ Yes** | **✅ Yes** | **✅ Yes** |
+| Kaboom v5.3 | ✅ Yes | ⚠️ URL only | ❌ No | ❌ No |
+| **Kaboom v6.0** | **✅ Yes** | **✅ Yes** | **✅ Yes** | **✅ Yes** |
 
 **Competitive Advantage:** AI-optimized filter presets that understand common noise patterns.
 
@@ -425,6 +425,6 @@ Together, they enable LLMs to focus on **relevant debugging context** within tok
 - Better AI suggestions (focused on signal, not noise)
 
 ### Strategic Value:
-- Differentiates Gasoline from basic MCP tools
+- Differentiates Kaboom from basic MCP tools
 - Aligns with "semantic debugging context" vision
 - Enables enterprise adoption (production traffic is noisy)

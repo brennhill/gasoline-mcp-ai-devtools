@@ -1,12 +1,12 @@
 # Product Update: Issue #125
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/125
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/125
 - Title: MCP compliance hardening: JSON-RPC error IDs + 2025-06-18 transport/lifecycle alignment
 - Last Updated: 2026-02-17T11:44:22Z
 
 ## Change Summary
-This update resolves or advances Issue #125 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #125 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 MCP compliance hardening: JSON-RPC error IDs + 2025-06-18 transport/lifecycle alignment

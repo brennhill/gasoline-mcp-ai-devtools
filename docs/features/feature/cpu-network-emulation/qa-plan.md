@@ -45,7 +45,7 @@ last_verified_date: 2026-03-05
 ### Scenario 1: Slow 3G Network Test (Happy Path)
 1. Setup:
    - Open large page (e.g., news site with many images)
-   - Start Gasoline
+   - Start Kaboom
 2. Steps:
    - [ ] Observe baseline: `observe({what: "vitals"})` note LCP time
    - [ ] Apply throttle: `configure({action: "emulation", network: "Slow 3G"})`

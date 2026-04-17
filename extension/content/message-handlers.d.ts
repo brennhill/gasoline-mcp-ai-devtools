@@ -7,7 +7,6 @@
  * Handles messages from background script
  */
 import type { ContentMessage, ContentPingResponse, WebSocketCaptureMode, HighlightResponse, WaterfallEntry, StateAction, BrowserStateSnapshot, A11yAuditResult } from '../types/index.js';
-export declare const TOGGLE_MESSAGES: ReadonlySet<string>;
 /**
  * Security: Validate sender is from the extension background script
  * Prevents content script from trusting messages from compromised page context
@@ -35,7 +34,7 @@ export declare function handleStateCommand(params: {
     [key: string]: unknown;
 }>;
 /**
- * Handle GASOLINE_PING message
+ * Handle KABOOM_PING message
  */
 export declare function handlePing(sendResponse: (response: ContentPingResponse) => void): boolean;
 /**
@@ -54,7 +53,7 @@ type ExecuteJsResponse = {
     stack?: string;
 };
 /**
- * Handle GASOLINE_EXECUTE_JS message.
+ * Handle kaboom_execute_js message.
  * Always executes in MAIN world via inject script.
  * Returns inject_not_loaded error if inject script isn't available,
  * so background can fallback to chrome.scripting API.
@@ -64,7 +63,7 @@ export declare function handleExecuteJs(params: {
     timeout_ms?: number;
 }, sendResponse: (result: ExecuteJsResponse) => void): boolean;
 /**
- * Handle GASOLINE_EXECUTE_QUERY message (async command path)
+ * Handle KABOOM_EXECUTE_QUERY message (async command path)
  */
 export declare function handleExecuteQuery(params: string | Record<string, unknown>, sendResponse: (result: ExecuteJsResponse) => void): boolean;
 /**

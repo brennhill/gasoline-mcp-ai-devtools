@@ -5,7 +5,7 @@
 
 package capture
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/recording"
 
 // Constants re-exported as unexported for capture-package test compatibility.
 const (

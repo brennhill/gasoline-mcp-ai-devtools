@@ -2,7 +2,7 @@
 status: draft
 priority: tier-1
 phase: v5.4-foundation
-relates-to: [PRODUCT_SPEC.md, TECH_SPEC_GASOLINE_RUN.md]
+relates-to: [PRODUCT_SPEC.md, TECH_SPEC_KABOOM_RUN.md]
 last-updated: 2026-01-31
 last_reviewed: 2026-03-05
 last_verified_version: 0.7.12
@@ -18,13 +18,13 @@ last_verified_date: 2026-03-05
 ## Process Architecture
 
 ```
-Gasoline Daemon
+Kaboom Daemon
    │
    ├─ HTTP Server (localhost:7890)
    ├─ MCP Server (stdio)
    └─ Log Ingestion Goroutines
        │
-       ├─ gasoline-run Listener (accepts HTTP /event)
+       ├─ kaboom-run Listener (accepts HTTP /event)
        │
        ├─ Local File Tailer (this spec)
        │  ├─ Poll: /var/log/app.log every 100ms
@@ -291,7 +291,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/gasoline/pkg/ingest"
+	"github.com/kaboom/pkg/ingest"
 )
 
 // IngestionManager manages all log sources
@@ -698,7 +698,7 @@ Response:
 ```bash
 # Test 1: Basic tailing
 $ touch /tmp/test.log
-$ gasoline-run --local-tailer /tmp/test.log
+$ kaboom-run --local-tailer /tmp/test.log
 $ echo "Hello" >> /tmp/test.log
 # Verify: Message appears in daemon
 
@@ -936,7 +936,7 @@ User session timeout after 30 minutes
 ## Related Documents
 
 - **Product Spec:** [PRODUCT_SPEC.md](PRODUCT_SPEC.md)
-- **gasoline-run:** [TECH_SPEC_GASOLINE_RUN.md](TECH_SPEC_GASOLINE_RUN.md)
+- **kaboom-run:** [TECH_SPEC_KABOOM_RUN.md](TECH_SPEC_KABOOM_RUN.md)
 - **SSH Tailer:** [TECH_SPEC_SSH_TAILER.md](TECH_SPEC_SSH_TAILER.md)
 - **Architecture:** [layer1-be-observability.md](../../core/layer1-be-observability.md)
 

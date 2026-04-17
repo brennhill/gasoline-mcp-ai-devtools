@@ -28,7 +28,7 @@ last_verified_date: 2026-03-05
 - `timeout_ms` and `max_workers` apply to both client and server variants (bounded by implementation limits).
 
 ## Code Anchors
-- `cmd/dev-console/tools_analyze.go`
+- `cmd/browser-agent/tools_analyze.go`
 - `src/lib/link-health.ts`
 - `src/background/pending-queries.ts`
 - `src/content/message-handlers.ts`

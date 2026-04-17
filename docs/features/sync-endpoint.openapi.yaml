@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Gasoline Sync API
+  title: Kaboom Sync API
   description: |
     Unified bidirectional sync endpoint for extension ↔ server communication.
     Replaces: /pending-queries (GET), /settings (POST), /extension-logs (POST).
@@ -8,8 +8,8 @@ info:
     The extension POSTs to /sync every ~1 second (controlled by server via next_poll_ms).
   version: 1.0.0
   contact:
-    name: Gasoline
-    url: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+    name: Kaboom
+    url: https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP
 
 servers:
   - url: http://localhost:9331
@@ -66,7 +66,7 @@ paths:
                       status: "complete"
                       result: {"dom": "<html>...</html>"}
       parameters:
-        - name: X-Gasoline-Client
+        - name: X-Kaboom-Client
           in: header
           required: false
           schema:
@@ -74,7 +74,7 @@ paths:
           description: |
             Client identifier for multi-client support.
             When provided, commands are scoped to this specific client.
-        - name: X-Gasoline-Extension-Version
+        - name: X-Kaboom-Extension-Version
           in: header
           required: false
           schema:

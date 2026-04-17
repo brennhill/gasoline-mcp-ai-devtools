@@ -1,0 +1,61 @@
+<svg
+  width="1280"
+  height="360"
+  viewBox="0 0 1280 360"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">KaBOOM agent overlay tool palette</title>
+  <desc id="desc">A white-background preview of the KaBOOM overlay with tool buttons and a flame badge.</desc>
+
+  <defs>
+    <filter id="shadow" x="90" y="78" width="1040" height="208" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#1B2230" flood-opacity="0.14" />
+    </filter>
+  </defs>
+
+  <rect width="1280" height="360" fill="#FFFFFF" />
+
+  <g filter="url(#shadow)">
+    <rect x="112" y="96" width="996" height="168" rx="44" fill="#F7F9FD" stroke="#DCE3EE" stroke-width="3" />
+    <rect x="130" y="114" width="782" height="132" rx="34" fill="#EEF2F8" stroke="#D4DCE8" stroke-width="2" />
+  </g>
+
+  <rect x="148" y="128" width="166" height="104" rx="23" fill="#EAF0F7" stroke="#C9D2DF" stroke-width="2.5" />
+  <rect x="328" y="128" width="166" height="104" rx="23" fill="#EAF0F7" stroke="#C9D2DF" stroke-width="2.5" />
+  <rect x="508" y="128" width="166" height="104" rx="23" fill="#EAF0F7" stroke="#C9D2DF" stroke-width="2.5" />
+  <rect x="758" y="128" width="166" height="104" rx="23" fill="#EAF0F7" stroke="#C9D2DF" stroke-width="2.5" />
+
+  <path
+    d="M201 160L190 171L218 199L229 188M201 160L214 147L242 175L229 188M201 160L229 188M233 192L245 204"
+    stroke="#2A3346"
+    stroke-width="5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <circle cx="411" cy="180" r="22" stroke="#2A3346" stroke-width="5" />
+  <path d="M411 151V165M411 195V209M382 180H396M426 180H440" stroke="#2A3346" stroke-width="5" stroke-linecap="round" />
+
+  <path d="M560 183H622M602 163L622 183L602 203" stroke="#2A3346" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+
+  <circle cx="716" cy="170" r="3.3" fill="#8B96A8" />
+  <circle cx="716" cy="180" r="3.3" fill="#8B96A8" />
+  <circle cx="716" cy="190" r="3.3" fill="#8B96A8" />
+
+  <circle cx="841" cy="180" r="24" fill="#2A3346" />
+  <circle cx="841" cy="180" r="12.5" fill="#EDF2F9" />
+  <path
+    d="M841 144V154M866 155L859 162M877 180H867M866 205L859 198M841 216V206M816 205L823 198M805 180H815M816 155L823 162"
+    stroke="#2A3346"
+    stroke-width="4.5"
+    stroke-linecap="round"
+  />
+
+  <circle cx="1018" cy="180" r="74" fill="#F5EADB" />
+  <circle cx="1018" cy="180" r="62" fill="#151C28" />
+  <path d="M1018 132C1038 160 1050 176 1050 202C1050 235 1036 258 1018 258C1000 258 986 235 986 202C986 176 998 160 1018 132Z" fill="#F6B035" />
+  <path d="M1018 150C1032 171 1041 184 1041 204C1041 228 1032 243 1018 243C1004 243 995 228 995 204C995 184 1004 171 1018 150Z" fill="#FFE76B" />
+</svg>

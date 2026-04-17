@@ -2,7 +2,7 @@
 // Docs: docs/features/feature/reproduction-scripts/index.md
 
 // reproduction_test.go — Tests for reproduction script generation.
-// Verifies Gasoline (natural language) and Playwright output formats,
+// Verifies Kaboom (natural language) and Playwright output formats,
 // selector priority, timing pauses, URL rewriting, and edge cases.
 package reproduction
 
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // ============================================
@@ -72,13 +72,13 @@ func basicFlow() []capture.EnhancedAction {
 }
 
 // ============================================
-// Gasoline Format Tests
+// Kaboom Format Tests
 // ============================================
 
-func TestReproduction_Gasoline_BasicFlow(t *testing.T) {
+func TestReproduction_Kaboom_BasicFlow(t *testing.T) {
 	t.Parallel()
 	actions := basicFlow()
-	script := GenerateGasolineScript(actions, Params{})
+	script := GenerateKaboomScript(actions, Params{})
 
 	// Header
 	if !strings.Contains(script, "# Reproduction:") {
@@ -104,7 +104,7 @@ func TestReproduction_Gasoline_BasicFlow(t *testing.T) {
 	}
 }
 
-func TestReproduction_Gasoline_AllActionTypes(t *testing.T) {
+func TestReproduction_Kaboom_AllActionTypes(t *testing.T) {
 	t.Parallel()
 	actions := []capture.EnhancedAction{
 		makeTestAction("navigate", 1000, map[string]any{"toURL": "https://example.com"}),
@@ -123,7 +123,7 @@ func TestReproduction_Gasoline_AllActionTypes(t *testing.T) {
 		makeTestAction("scroll", 6000, map[string]any{"scrollY": 500}),
 	}
 
-	script := GenerateGasolineScript(actions, Params{})
+	script := GenerateKaboomScript(actions, Params{})
 
 	if !strings.Contains(script, "Navigate to:") {
 		t.Error("missing navigate")
@@ -145,7 +145,7 @@ func TestReproduction_Gasoline_AllActionTypes(t *testing.T) {
 	}
 }
 
-func TestReproduction_Gasoline_ElementDescriptionPriority(t *testing.T) {
+func TestReproduction_Kaboom_ElementDescriptionPriority(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -211,7 +211,7 @@ func TestReproduction_Gasoline_ElementDescriptionPriority(t *testing.T) {
 	}
 }
 
-func TestReproduction_Gasoline_TimingPauses(t *testing.T) {
+func TestReproduction_Kaboom_TimingPauses(t *testing.T) {
 	t.Parallel()
 	actions := []capture.EnhancedAction{
 		makeTestAction("click", 1000, map[string]any{
@@ -225,7 +225,7 @@ func TestReproduction_Gasoline_TimingPauses(t *testing.T) {
 		}),
 	}
 
-	script := GenerateGasolineScript(actions, Params{})
+	script := GenerateKaboomScript(actions, Params{})
 
 	if !strings.Contains(script, "[4s pause]") {
 		t.Errorf("expected [4s pause], got:\n%s", script)
@@ -242,7 +242,7 @@ func TestReproduction_Gasoline_TimingPauses(t *testing.T) {
 	}
 }
 
-func TestReproduction_Gasoline_RedactedValues(t *testing.T) {
+func TestReproduction_Kaboom_RedactedValues(t *testing.T) {
 	t.Parallel()
 	actions := []capture.EnhancedAction{
 		makeTestAction("input", 1000, map[string]any{
@@ -251,7 +251,7 @@ func TestReproduction_Gasoline_RedactedValues(t *testing.T) {
 		}),
 	}
 
-	script := GenerateGasolineScript(actions, Params{})
+	script := GenerateKaboomScript(actions, Params{})
 
 	if !strings.Contains(script, "[user-provided]") {
 		t.Errorf("expected [user-provided] for redacted value, got:\n%s", script)
@@ -261,7 +261,7 @@ func TestReproduction_Gasoline_RedactedValues(t *testing.T) {
 	}
 }
 
-func TestReproduction_Gasoline_AIActions(t *testing.T) {
+func TestReproduction_Kaboom_AIActions(t *testing.T) {
 	t.Parallel()
 	actions := []capture.EnhancedAction{
 		makeTestAction("click", 1000, map[string]any{
@@ -273,7 +273,7 @@ func TestReproduction_Gasoline_AIActions(t *testing.T) {
 		}),
 	}
 
-	script := GenerateGasolineScript(actions, Params{})
+	script := GenerateKaboomScript(actions, Params{})
 
 	if !strings.Contains(script, "(AI) Click:") {
 		t.Errorf("expected (AI) prefix for AI action, got:\n%s", script)
@@ -284,10 +284,10 @@ func TestReproduction_Gasoline_AIActions(t *testing.T) {
 	}
 }
 
-func TestReproduction_Gasoline_ErrorMessage(t *testing.T) {
+func TestReproduction_Kaboom_ErrorMessage(t *testing.T) {
 	t.Parallel()
 	actions := basicFlow()
-	script := GenerateGasolineScript(actions, Params{
+	script := GenerateKaboomScript(actions, Params{
 		ErrorMessage: "Cannot read property 'x' of undefined",
 	})
 
@@ -438,9 +438,9 @@ func TestReproduction_Playwright_TimingPauses(t *testing.T) {
 func TestReproduction_EmptyActions(t *testing.T) {
 	t.Parallel()
 
-	gasoline := GenerateGasolineScript(nil, Params{})
-	if !strings.Contains(gasoline, "No actions") {
-		t.Errorf("gasoline should indicate no actions, got:\n%s", gasoline)
+	kaboom := GenerateKaboomScript(nil, Params{})
+	if !strings.Contains(kaboom, "No actions") {
+		t.Errorf("kaboom should indicate no actions, got:\n%s", kaboom)
 	}
 
 	playwright := GeneratePlaywrightScript(nil, Params{})
@@ -457,7 +457,7 @@ func TestReproduction_LastN(t *testing.T) {
 		makeTestAction("click", 3000, map[string]any{"selectors": map[string]any{"text": "Third"}}),
 	}
 
-	script := GenerateGasolineScript(actions, Params{LastN: 2})
+	script := GenerateKaboomScript(actions, Params{LastN: 2})
 
 	if strings.Contains(script, "First") {
 		t.Error("last_n=2 should exclude first action")
@@ -469,14 +469,14 @@ func TestReproduction_LastN(t *testing.T) {
 
 func TestReproduction_DefaultFormat(t *testing.T) {
 	t.Parallel()
-	// When output_format is empty, should default to "gasoline-agentic-browser"
+	// When output_format is empty, should default to "kaboom-agentic-browser"
 	params := Params{}
 	format := params.OutputFormat
 	if format == "" {
-		format = "gasoline-agentic-browser" // default
+		format = "kaboom-agentic-browser" // default
 	}
-	if format != "gasoline-agentic-browser" {
-		t.Errorf("expected default format 'gasoline-agentic-browser', got %q", format)
+	if format != "kaboom-agentic-browser" {
+		t.Errorf("expected default format 'kaboom-agentic-browser', got %q", format)
 	}
 }
 
@@ -584,10 +584,10 @@ func TestReproduction_NavigateNoURL(t *testing.T) {
 		makeTestAction("click", 2000, map[string]any{"selectors": map[string]any{"text": "Go"}}),
 	}
 
-	gasoline := GenerateGasolineScript(actions, Params{})
+	kaboom := GenerateKaboomScript(actions, Params{})
 	// Should skip the empty navigate, only have 1 numbered step
-	if strings.Contains(gasoline, "Navigate to: \n") || strings.Contains(gasoline, "Navigate to:  ") {
-		t.Errorf("should skip navigate with no URL, got:\n%s", gasoline)
+	if strings.Contains(kaboom, "Navigate to: \n") || strings.Contains(kaboom, "Navigate to:  ") {
+		t.Errorf("should skip navigate with no URL, got:\n%s", kaboom)
 	}
 }
 
@@ -670,65 +670,65 @@ func TestPlaywrightStep_ScrollElement(t *testing.T) {
 	}
 }
 
-func TestGasolineStep_Refresh(t *testing.T) {
+func TestKaboomStep_Refresh(t *testing.T) {
 	t.Parallel()
 	action := makeTestAction("refresh", 1000, map[string]any{})
-	got := GasolineStep(action, Params{})
+	got := KaboomStep(action, Params{})
 	if got != "Refresh page" {
-		t.Errorf("GasolineStep(refresh) = %q", got)
+		t.Errorf("KaboomStep(refresh) = %q", got)
 	}
 }
 
-func TestGasolineStep_Back(t *testing.T) {
+func TestKaboomStep_Back(t *testing.T) {
 	t.Parallel()
 	action := makeTestAction("back", 1000, map[string]any{})
-	got := GasolineStep(action, Params{})
+	got := KaboomStep(action, Params{})
 	if got != "Navigate back" {
-		t.Errorf("GasolineStep(back) = %q", got)
+		t.Errorf("KaboomStep(back) = %q", got)
 	}
 }
 
-func TestGasolineStep_Forward(t *testing.T) {
+func TestKaboomStep_Forward(t *testing.T) {
 	t.Parallel()
 	action := makeTestAction("forward", 1000, map[string]any{})
-	got := GasolineStep(action, Params{})
+	got := KaboomStep(action, Params{})
 	if got != "Navigate forward" {
-		t.Errorf("GasolineStep(forward) = %q", got)
+		t.Errorf("KaboomStep(forward) = %q", got)
 	}
 }
 
-func TestGasolineStep_NewTab(t *testing.T) {
+func TestKaboomStep_NewTab(t *testing.T) {
 	t.Parallel()
 	action := capture.EnhancedAction{
 		Type:      "new_tab",
 		Timestamp: 1000,
 		URL:       "https://example.com/new",
 	}
-	got := GasolineStep(action, Params{})
+	got := KaboomStep(action, Params{})
 	if got != "Open new tab: https://example.com/new" {
-		t.Errorf("GasolineStep(new_tab) = %q", got)
+		t.Errorf("KaboomStep(new_tab) = %q", got)
 	}
 }
 
-func TestGasolineStep_Focus(t *testing.T) {
+func TestKaboomStep_Focus(t *testing.T) {
 	t.Parallel()
 	action := makeTestAction("focus", 1000, map[string]any{
 		"selectors": map[string]any{"id": "email"},
 	})
-	got := GasolineStep(action, Params{})
+	got := KaboomStep(action, Params{})
 	if !strings.Contains(got, "Focus:") {
-		t.Errorf("GasolineStep(focus) = %q, want Focus: ...", got)
+		t.Errorf("KaboomStep(focus) = %q, want Focus: ...", got)
 	}
 }
 
-func TestGasolineStep_ScrollElement(t *testing.T) {
+func TestKaboomStep_ScrollElement(t *testing.T) {
 	t.Parallel()
 	action := makeTestAction("scroll_element", 1000, map[string]any{
 		"selectors": map[string]any{"id": "results"},
 	})
-	got := GasolineStep(action, Params{})
+	got := KaboomStep(action, Params{})
 	if !strings.Contains(got, "Scroll to element:") {
-		t.Errorf("GasolineStep(scroll_element) = %q, want element-targeted scroll step", got)
+		t.Errorf("KaboomStep(scroll_element) = %q, want element-targeted scroll step", got)
 	}
 }
 
@@ -767,19 +767,19 @@ func TestReproduction_AIActionsFromInteract(t *testing.T) {
 		},
 	}
 
-	// Gasoline format should include all actions
-	gasoline := GenerateGasolineScript(actions, Params{})
-	if !strings.Contains(gasoline, "Navigate to:") {
-		t.Errorf("gasoline missing navigate, got:\n%s", gasoline)
+	// Kaboom format should include all actions
+	kaboom := GenerateKaboomScript(actions, Params{})
+	if !strings.Contains(kaboom, "Navigate to:") {
+		t.Errorf("kaboom missing navigate, got:\n%s", kaboom)
 	}
-	if !strings.Contains(gasoline, "Click:") {
-		t.Errorf("gasoline missing click, got:\n%s", gasoline)
+	if !strings.Contains(kaboom, "Click:") {
+		t.Errorf("kaboom missing click, got:\n%s", kaboom)
 	}
-	if !strings.Contains(gasoline, "Type") && !strings.Contains(gasoline, "user@test.com") {
-		t.Errorf("gasoline missing input, got:\n%s", gasoline)
+	if !strings.Contains(kaboom, "Type") && !strings.Contains(kaboom, "user@test.com") {
+		t.Errorf("kaboom missing input, got:\n%s", kaboom)
 	}
-	if !strings.Contains(gasoline, "Press: Enter") {
-		t.Errorf("gasoline missing keypress, got:\n%s", gasoline)
+	if !strings.Contains(kaboom, "Press: Enter") {
+		t.Errorf("kaboom missing keypress, got:\n%s", kaboom)
 	}
 
 	// Playwright format should include all actions

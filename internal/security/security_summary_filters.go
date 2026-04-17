@@ -5,7 +5,7 @@ package security
 import (
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 func buildSummary(findings []SecurityFinding, bodies []capture.NetworkBody) ScanSummary {

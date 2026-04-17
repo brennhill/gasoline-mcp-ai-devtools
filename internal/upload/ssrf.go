@@ -45,8 +45,8 @@ func SetSkipSSRFCheck(skip bool) {
 	ssrfSkipCheck = skip
 }
 
-// SkipSSRFCheckEnabled returns true when private-IP blocking is bypassed.
-func SkipSSRFCheckEnabled() bool {
+// skipSSRFCheckEnabled returns true when private-IP blocking is bypassed.
+func skipSSRFCheckEnabled() bool {
 	ssrfMu.RLock()
 	defer ssrfMu.RUnlock()
 	return ssrfSkipCheck

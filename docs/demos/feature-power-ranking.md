@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Gasoline — Feature Power Ranking for Demos
+# Kaboom Feature Power Ranking for Demos
 
 ## Tier 1 — "This changes everything"
 
@@ -43,7 +43,7 @@ Track LCP/CLS/INP, detect regressions after code changes, pinpoint the cause via
 **Demo value:** High. Measurable before/after metrics. Core Web Vitals are universally understood.
 
 ### 7. Noise Filtering (auto_detect)
-AI asks Gasoline to analyze the error buffer and auto-suggest noise rules. Instantly silences framework spam, analytics errors, and extension noise.
+AI asks Kaboom to analyze the error buffer and auto-suggest noise rules. Instantly silences framework spam, analytics errors, and extension noise.
 
 **Demo value:** Medium-high. Subtle but powerful. Shows AI debugging real bugs, not noise.
 

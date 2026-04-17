@@ -70,7 +70,7 @@ This produces a template like: "Failed to fetch {url}: {id} not found" that matc
 
 ### Cluster Lifecycle
 
-Clusters are ephemeral — they exist only while the server is running (consistent with Gasoline's session-scoped model). On restart, clustering starts fresh. This is intentional: stale clusters from yesterday's bugs shouldn't influence today's diagnosis.
+Clusters are ephemeral — they exist only while the server is running (consistent with Kaboom's session-scoped model). On restart, clustering starts fresh. This is intentional: stale clusters from yesterday's bugs shouldn't influence today's diagnosis.
 
 A cluster is considered "resolved" and removed when no new instances arrive for 5 minutes. This prevents old clusters from accumulating indefinitely during a long session.
 
@@ -212,6 +212,6 @@ Framework frames are identified by path patterns: `node_modules/react`, `node_mo
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/clustering.go` (cluster formation, matching, lifecycle, MCP tool handler).
+Server implementation: `cmd/browser-agent/clustering.go` (cluster formation, matching, lifecycle, MCP tool handler).
 
-Tests: `cmd/dev-console/clustering_test.go`.
+Tests: `cmd/browser-agent/clustering_test.go`.

@@ -13,7 +13,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Gasoline provides two complementary tools for observing network activity:
+Kaboom provides two complementary tools for observing network activity:
 
 1. **`network_waterfall`** - Captures timing metadata for ALL network requests
 2. **`network_bodies`** - Captures request/response bodies for `window.fetch()` calls only
@@ -81,7 +81,7 @@ observe({what: "network_waterfall", limit: 50})
 
 ### Why This Limitation?
 
-**Technical Constraint:** Gasoline injects scripts into **page context** (not extension context) to intercept JavaScript APIs. In page context:
+**Technical Constraint:** Kaboom injects scripts into **page context** (not extension context) to intercept JavaScript APIs. In page context:
 
 - ✅ **Can wrap:** `window.fetch` (JavaScript function)
 - ❌ **Cannot intercept:** Browser-level navigation, resource loading, form submissions
@@ -216,7 +216,7 @@ These would require Chrome Extension API changes or violate Web Store policies:
 - ❌ Capture resource loading bodies (`<script>`, `<img>`)
 - ❌ Use `webRequest` blocking API (deprecated in MV3)
 
-**Workaround:** Use Chrome DevTools Network tab alongside Gasoline for these cases.
+**Workaround:** Use Chrome DevTools Network tab alongside Kaboom for these cases.
 
 ---
 

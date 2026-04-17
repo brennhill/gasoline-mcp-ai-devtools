@@ -12,8 +12,10 @@ import { sendTabToast } from './event-listeners.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { delay } from '../lib/timeout-utils.js'
 import { buildRecordingToastLabel } from './recording-utils.js'
+import { setLocal, removeLocal } from '../lib/storage-utils.js'
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js'
 
-const LOG = '[Gasoline REC]'
+const LOG = KABOOM_RECORDING_LOG_PREFIX
 const AWAITING_APPROVAL_BADGE_TEXT = '?'
 const AWAITING_APPROVAL_BADGE_COLOR = '#d29922'
 
@@ -105,7 +107,7 @@ function getStreamId(tabId: number): Promise<string> {
 
 /**
  * Request user gesture for recording permission (used for MCP-initiated recordings).
- * Shows a toast prompting the user to open the Gasoline popup and approve.
+ * Shows a toast prompting the user to open the Kaboom popup and approve.
  */
 export async function requestRecordingGesture(
   tab: chrome.tabs.Tab,
@@ -117,20 +119,20 @@ export async function requestRecordingGesture(
   chrome.tabs.update(tab.id!, { active: true })
   sendTabToast(
     tab.id!,
-    `\u2191 Open Gasoline Popup`,
+    `\u2191 Open KaBOOM!`,
     `Approve ${mediaType.toLowerCase()} recording request`,
     'audio',
     scaleTimeout(30000)
   )
 
-  await chrome.storage.local.set({ [StorageKey.PENDING_RECORDING]: { name, fps, audio, tabId: tab.id, url: tab.url } })
+  await setLocal(StorageKey.PENDING_RECORDING, { name, fps, audio, tabId: tab.id, url: tab.url })
   startAwaitingApprovalBadge()
   let gestureResult: 'granted' | 'denied' | 'timeout'
   try {
     gestureResult = await waitForRecordingGesture(scaleTimeout(30000))
   } finally {
     stopAwaitingApprovalBadge()
-    await chrome.storage.local.remove(StorageKey.PENDING_RECORDING)
+    await removeLocal(StorageKey.PENDING_RECORDING)
   }
 
   if (gestureResult === 'denied') {
@@ -138,7 +140,7 @@ export async function requestRecordingGesture(
     return {
       status: 'error',
       name: '',
-      error: `RECORD_START: ${mediaType} recording request was denied in the Gasoline popup.`
+      error: `RECORD_START: ${mediaType} recording request was denied in the KaBOOM! popup.`
     }
   }
 
@@ -146,7 +148,7 @@ export async function requestRecordingGesture(
     console.log(LOG, 'GESTURE_TIMEOUT: User did not approve recording request within 30s')
     sendTabToast(
       tab.id!,
-      `\u2191 Open Gasoline Popup`,
+      `\u2191 Open KaBOOM!`,
       `Approve ${mediaType.toLowerCase()} recording request`,
       'audio',
       scaleTimeout(8000)
@@ -154,7 +156,7 @@ export async function requestRecordingGesture(
     return {
       status: 'error',
       name: '',
-      error: `RECORD_START: ${mediaType} recording requires popup approval. Open the Gasoline popup, click Approve, then try again.`
+      error: `RECORD_START: ${mediaType} recording requires popup approval. Open the KaBOOM! popup, click Approve, then try again.`
     }
   }
 
@@ -172,13 +174,13 @@ function waitForRecordingGesture(timeoutMs: number): Promise<'granted' | 'denied
     }, timeoutMs)
 
     const listener = (message: { type?: string }) => {
-      if (message.type === 'RECORDING_GESTURE_GRANTED') {
+      if (message.type === 'recording_gesture_granted') {
         clearTimeout(timeout)
         chrome.runtime.onMessage.removeListener(listener)
         resolve('granted')
         return
       }
-      if (message.type === 'RECORDING_GESTURE_DENIED') {
+      if (message.type === 'recording_gesture_denied') {
         clearTimeout(timeout)
         chrome.runtime.onMessage.removeListener(listener)
         resolve('denied')

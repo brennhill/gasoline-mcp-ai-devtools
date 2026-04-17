@@ -78,7 +78,7 @@ We've built **defense-in-depth** protection for the async queue-and-poll archite
 ### 4. GitHub Actions (CI Enforcement) 📋
 
 **File**: `.github/workflows/architecture-validation.yml`
-**Triggers**: Every PR/push to main/UNSTABLE/develop
+**Triggers**: Every PR/push to stable/UNSTABLE/develop
 
 **What it does**:
 - Runs validation script
@@ -359,7 +359,7 @@ git checkout <commit-hash> -- internal/capture/
 - `internal/capture/async_queue_integration_test.go` (280 lines)
 - `internal/capture/correlation_tracking_test.go` (190 lines)
 - `internal/capture/async_queue_reliability_test.go` (274 lines)
-- `cmd/dev-console/bridge_reliability_test.go` (220 lines)
+- `cmd/browser-agent/bridge_reliability_test.go` (220 lines)
 
 **Total**: ~3,700 lines of enforcement code and documentation
 
@@ -388,6 +388,6 @@ git checkout <commit-hash> -- internal/capture/
 
 ---
 
-**The async queue is now the most protected code in Gasoline.**
+**The async queue is now the most protected code in Kaboom.**
 
 **Mission accomplished! 🚀**

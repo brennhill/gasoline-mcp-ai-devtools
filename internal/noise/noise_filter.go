@@ -4,7 +4,7 @@
 
 package noise
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 
 // IsConsoleNoise checks if a console log entry matches any noise rule.
 func (nc *NoiseConfig) IsConsoleNoise(entry LogEntry) bool {

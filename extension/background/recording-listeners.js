@@ -8,14 +8,16 @@
 // Deps are injected to avoid circular imports with recording.ts.
 import { scaleTimeout } from '../lib/timeouts.js';
 import { StorageKey } from '../lib/constants.js';
+import { getLocal } from '../lib/storage-utils.js';
 import { errorMessage } from '../lib/error-utils.js';
+import { trackUIFeature } from './ui-usage-tracker.js';
 import { postDaemonJSON } from '../lib/daemon-http.js';
 import { buildScreenRecordingSlug } from './recording-utils.js';
 import { stopRecordingBadgeTimer } from './recording-badge.js';
-const LOG = '[Gasoline REC]';
+import { KABOOM_RECORDING_LOG_PREFIX } from '../lib/brand.js';
+const LOG = KABOOM_RECORDING_LOG_PREFIX;
 async function resolvePopupRecordingTargetTab() {
-    const trackedResult = (await chrome.storage.local.get(StorageKey.TRACKED_TAB_ID));
-    const trackedTabId = trackedResult[StorageKey.TRACKED_TAB_ID];
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
     if (trackedTabId) {
         try {
             return await chrome.tabs.get(trackedTabId);
@@ -42,7 +44,7 @@ export function installRecordingListeners(deps) {
         // Only accept messages from the extension itself
         if (sender.id !== chrome.runtime.id)
             return;
-        if (message.target !== 'background' || message.type !== 'OFFSCREEN_RECORDING_STOPPED')
+        if (message.target !== 'background' || message.type !== 'offscreen_recording_stopped')
             return;
         // Only handle if we think we're still recording (auto-stop case)
         if (!deps.isActive())
@@ -64,6 +66,7 @@ export function installRecordingListeners(deps) {
         if (sender.id !== chrome.runtime.id)
             return false;
         if (message.type === 'screen_recording_start') {
+            trackUIFeature('video');
             console.log(LOG, 'Popup screen_recording_start received', { audio: message.audio });
             resolvePopupRecordingTargetTab().then((targetTab) => {
                 const slug = buildScreenRecordingSlug(targetTab?.url);
@@ -104,7 +107,7 @@ export function installRecordingListeners(deps) {
         return false;
     });
     /**
-     * Handle MIC_GRANTED_CLOSE_TAB from the mic-permission page.
+     * Handle mic_granted_close_tab from the mic-permission page.
      * Closes the permission tab, activates the original tab, and shows a guidance toast.
      */
     // #lizard forgives
@@ -112,13 +115,15 @@ export function installRecordingListeners(deps) {
         // Only accept messages from the extension itself
         if (sender.id !== chrome.runtime.id)
             return false;
-        if (message.type !== 'MIC_GRANTED_CLOSE_TAB')
+        if (message.type !== 'mic_granted_close_tab')
             return false;
-        console.log(LOG, 'MIC_GRANTED_CLOSE_TAB received from tab', sender.tab?.id);
+        console.log(LOG, 'mic_granted_close_tab received from tab', sender.tab?.id);
         // Read the stored return tab before closing the permission tab
-        chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
-            const returnTabId = result[StorageKey.PENDING_MIC_RECORDING]?.returnTabId;
-            console.log(LOG, 'Pending mic recording intent:', result[StorageKey.PENDING_MIC_RECORDING], 'returnTabId:', returnTabId);
+        void (async () => {
+            const value = await getLocal(StorageKey.PENDING_MIC_RECORDING);
+            const pending = value;
+            const returnTabId = pending?.returnTabId;
+            console.log(LOG, 'Pending mic recording intent:', pending, 'returnTabId:', returnTabId);
             // Close the permission tab
             if (sender.tab?.id) {
                 console.log(LOG, 'Closing permission tab', sender.tab.id);
@@ -136,9 +141,9 @@ export function installRecordingListeners(deps) {
                         console.log(LOG, 'Sending guidance toast to tab', returnTabId);
                         chrome.tabs
                             .sendMessage(returnTabId, {
-                            type: 'GASOLINE_ACTION_TOAST',
+                            type: 'kaboom_action_toast',
                             text: 'Mic permission granted',
-                            detail: 'Open Gasoline and click Record',
+                            detail: 'Open KaBOOM! and click Record',
                             state: 'success',
                             duration_ms: scaleTimeout(8000)
                         })
@@ -154,17 +159,17 @@ export function installRecordingListeners(deps) {
             else {
                 console.warn(LOG, 'No returnTabId found — cannot activate tab or show toast');
             }
-        });
+        })();
         return false;
     });
     /**
-     * Handle REVEAL_FILE — opens the file in the OS file manager via the Go server.
+     * Handle reveal_file — opens the file in the OS file manager via the Go server.
      */
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Only accept messages from the extension itself
         if (sender.id !== chrome.runtime.id)
             return false;
-        if (message.type !== 'REVEAL_FILE' || !message.path)
+        if (message.type !== 'reveal_file' || !message.path)
             return false;
         postDaemonJSON(`${deps.getServerUrl()}/recordings/reveal`, { path: message.path })
             .then((r) => {

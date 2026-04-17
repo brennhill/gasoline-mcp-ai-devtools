@@ -13,9 +13,9 @@ last_verified_date: 2026-03-05
 This UAT plan proves that noise filtering rules persist across server restarts, crashes, and kills, without data loss or ID collisions.
 
 ### Test Environment:
-- Single gasoline-mcp daemon
+- Single kaboom-mcp daemon
 - Controlled restart cycles
-- Filesystem inspection (.gasoline/noise/rules.json)
+- Filesystem inspection (.kaboom/noise/rules.json)
 - MCP tool calls to configure/observe rules
 
 ---
@@ -29,7 +29,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 1. Start daemon on port 7920
 2. Call `configure(action: "noise_rule", noise_action: "add", rules: [{ category: "console", classification: "test", match_spec: { message_regex: "test.*pattern" } }])`
 3. Call `configure(action: "noise_rule", noise_action: "list")` → verify rule added with ID `user_1`
-4. Inspect `.gasoline/noise/rules.json` on disk → verify file created, contains `user_1`
+4. Inspect `.kaboom/noise/rules.json` on disk → verify file created, contains `user_1`
 5. Kill daemon (SIGKILL)
 6. Start daemon on same port again
 7. Call `configure(action: "noise_rule", noise_action: "list")` → verify rule still present with ID `user_1`
@@ -55,7 +55,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 #### Steps:
 1. Start daemon
 2. Add rule 1 → ID `user_1`
-3. Check `.gasoline/noise/rules.json` → `next_user_id: 2`
+3. Check `.kaboom/noise/rules.json` → `next_user_id: 2`
 4. Kill and restart daemon
 5. Add rule 2 → ID `user_2` (NOT `user_1`)
 6. Verify both rules present: `user_1` and `user_2`
@@ -81,7 +81,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 
 #### Steps:
 1. Start daemon and add rule → creates file
-2. Manually corrupt `.gasoline/noise/rules.json` → `{invalid json}`
+2. Manually corrupt `.kaboom/noise/rules.json` → `{invalid json}`
 3. Kill and restart daemon
 4. Verify daemon starts successfully (no crash)
 5. Call `configure(action: "noise_rule", noise_action: "list")` → returns built-in rules only
@@ -107,7 +107,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 #### Steps:
 1. Start daemon (has ~50 built-in rules)
 2. Add user rule → file created with `next_user_id: 2`
-3. Inspect `.gasoline/noise/rules.json` → verify NO `builtin_*` rules in file
+3. Inspect `.kaboom/noise/rules.json` → verify NO `builtin_*` rules in file
 4. Add another user rule
 5. Inspect file again → verify still NO built-in rules
 6. Kill and restart daemon
@@ -160,7 +160,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 
 #### Steps:
 1. Start daemon and add rules → `user_1`, `user_2`, `user_3`
-2. Manually edit `.gasoline/noise/rules.json`:
+2. Manually edit `.kaboom/noise/rules.json`:
    - Set `next_user_id: 2` (corrupted, should be 4)
    - Keep all 3 rules (`user_1`, `user_2`, `user_3`)
 3. Kill and restart daemon
@@ -211,7 +211,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 1. Start daemon and add rule
 2. Generate 10 entries matching rule → should be filtered
 3. Check `configure(action: "noise_rule", noise_action: "list")` → statistics show rule ID with count ~10
-4. Manually verify `.gasoline/noise/rules.json` contains statistics
+4. Manually verify `.kaboom/noise/rules.json` contains statistics
 5. Kill and restart daemon
 6. Check statistics → should still show count ~10 for that rule
 
@@ -231,7 +231,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 **Objective:** Prove server works without persistence (backward compatibility)
 
 #### Steps:
-1. If SessionStore init fails (simulated by deleting .gasoline directory mid-test):
+1. If SessionStore init fails (simulated by deleting .kaboom directory mid-test):
 2. Start daemon without SessionStore
 3. Add rule → no error
 4. Verify rule in memory
@@ -255,7 +255,7 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 
 #### Steps:
 1. Start daemon
-2. Manually create `.gasoline/noise/rules.json` with 80 user rules (exceeds max of 55 with built-ins)
+2. Manually create `.kaboom/noise/rules.json` with 80 user rules (exceeds max of 55 with built-ins)
 3. Start daemon
 4. List rules → should have only 55 user rules + built-ins (100 total)
 5. Check stderr logs → warning about truncation
@@ -276,11 +276,11 @@ This UAT plan proves that noise filtering rules persist across server restarts, 
 ## Validation Checklist
 
 ### File System
-- [ ] `.gasoline/` directory created
-- [ ] `.gasoline/noise/` subdirectory exists
+- [ ] `.kaboom/` directory created
+- [ ] `.kaboom/noise/` subdirectory exists
 - [ ] `rules.json` file exists and valid JSON
 - [ ] File has correct permissions (0644)
-- [ ] `.gitignore` updated to exclude `.gasoline/`
+- [ ] `.gitignore` updated to exclude `.kaboom/`
 
 ### JSON Schema
 - [ ] `version: 1` field present
@@ -328,7 +328,7 @@ PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Helper: start daemon and wait for ready
 start_daemon() {
     local port=$1
-    $PROJECT_ROOT/gasoline-mcp --daemon --port "$port" > "$TMPDIR/daemon.log" 2>&1 &
+    $PROJECT_ROOT/kaboom-mcp --daemon --port "$port" > "$TMPDIR/daemon.log" 2>&1 &
     sleep 1  # wait for startup
 }
 
@@ -348,17 +348,17 @@ mcp_call $DAEMON_PORT configure '{"action":"noise_rule","noise_action":"add","ru
 mcp_call $DAEMON_PORT configure '{"action":"noise_rule","noise_action":"list"}' | jq '.result.rules[] | select(.id=="user_1")'
 
 # Verify file exists
-test -f "$PROJECT_ROOT/.gasoline/noise/rules.json" || exit 1
+test -f "$PROJECT_ROOT/.kaboom/noise/rules.json" || exit 1
 
-pkill -9 -f "gasoline-mcp.*$DAEMON_PORT" || true
+pkill -9 -f "kaboom-mcp.*$DAEMON_PORT" || true
 sleep 1
 
 start_daemon $DAEMON_PORT
 mcp_call $DAEMON_PORT configure '{"action":"noise_rule","noise_action":"list"}' | jq '.result.rules[] | select(.id=="user_1")' || exit 1
 echo "✅ Test 1 passed"
 
-pkill -9 -f "gasoline-mcp.*$DAEMON_PORT" || true
-rm -rf "$TMPDIR" "$PROJECT_ROOT/.gasoline"
+pkill -9 -f "kaboom-mcp.*$DAEMON_PORT" || true
+rm -rf "$TMPDIR" "$PROJECT_ROOT/.kaboom"
 ```
 
 ---
@@ -388,10 +388,10 @@ rm -rf "$TMPDIR" "$PROJECT_ROOT/.gasoline"
 5. **Inspection:**
    ```bash
    # Check persisted file
-   cat .gasoline/noise/rules.json | jq .
+   cat .kaboom/noise/rules.json | jq .
 
    # Check server logs for persistence errors
-   tail -f daemon.log | grep gasoline
+   tail -f daemon.log | grep kaboom
    ```
 
 ---

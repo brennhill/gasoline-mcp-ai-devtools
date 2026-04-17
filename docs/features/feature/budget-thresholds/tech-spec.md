@@ -32,11 +32,11 @@ This makes the AI an enforcer of team standards, not just a detector of relative
 
 **Declarative performance contracts**: Teams can codify performance expectations in a config file that lives in version control. New developers, new AI agents, and CI systems all read the same budgets. No tribal knowledge needed.
 
-**Lighthouse CI alignment**: Lighthouse CI uses a similar concept (performance budgets in JSON). Gasoline's config format is compatible — teams that already have Lighthouse budgets can reference the same numbers. The AI enforces locally what CI enforces remotely, catching issues before they reach the pipeline.
+**Lighthouse CI alignment**: Lighthouse CI uses a similar concept (performance budgets in JSON). Kaboom's config format is compatible — teams that already have Lighthouse budgets can reference the same numbers. The AI enforces locally what CI enforces remotely, catching issues before they reach the pipeline.
 
-**Webpack/Vite bundle size budgets**: Bundlers have their own size warnings (`performance.maxAssetSize` in webpack). Gasoline's budgets complement these by measuring the actual transfer size (compressed, over the network) rather than the raw asset size. Transfer size is what users experience.
+**Webpack/Vite bundle size budgets**: Bundlers have their own size warnings (`performance.maxAssetSize` in webpack). Kaboom's budgets complement these by measuring the actual transfer size (compressed, over the network) rather than the raw asset size. Transfer size is what users experience.
 
-**Web Vitals thresholds built in**: Google's good/needs-improvement/poor thresholds are universal. A `.gasoline.json` file can reference "web-vitals-good" as a preset and automatically get FCP ≤1.8s, LCP ≤2.5s, CLS ≤0.1, INP ≤200ms — no manual configuration needed.
+**Web Vitals thresholds built in**: Google's good/needs-improvement/poor thresholds are universal. A `.kaboom.json` file can reference "web-vitals-good" as a preset and automatically get FCP ≤1.8s, LCP ≤2.5s, CLS ≤0.1, INP ≤200ms — no manual configuration needed.
 
 **Per-route budgets**: SPAs have routes with different performance characteristics. The dashboard with charts might have a 3s budget while the login page needs to load in under 1s. Per-route budgets let teams set appropriate limits for each part of their app.
 
@@ -48,7 +48,7 @@ This makes the AI an enforcer of team standards, not just a detector of relative
 
 ### Config File
 
-Performance budgets are defined in `.gasoline.json` at the project root (or `.gasoline/budgets.json` if the project uses the `.gasoline/` directory). The file is optional — without it, only relative regression detection applies.
+Performance budgets are defined in `.kaboom.json` at the project root (or `.kaboom/budgets.json` if the project uses the `.kaboom/` directory). The file is optional — without it, only relative regression detection applies.
 
 ### Config Format
 
@@ -128,7 +128,7 @@ Similar to regression alerts, but with a different `type`:
     { "metric": "lcp_ms", "budget": 2500, "actual": 2800, "over_by": "300ms (12%)" }
   ],
   "summary": "2 budget violations on /dashboard: transfer size +120KB, LCP +300ms over budget.",
-  "recommendation": "Reduce bundle size or increase budget in .gasoline.json"
+  "recommendation": "Reduce bundle size or increase budget in .kaboom.json"
 }
 ```
 
@@ -143,7 +143,7 @@ A dedicated tool for explicit budget checking (in addition to automatic alerts).
 **Response**:
 ```
 {
-  "config_file": ".gasoline.json",
+  "config_file": ".kaboom.json",
   "urls_checked": 3,
   "violations": [...],
   "passing": [...],  // if show_passing=true
@@ -228,8 +228,8 @@ The server checks the config file's modification time every 30 seconds. If chang
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/budgets.go` (config loading, evaluation, MCP tool).
+Server implementation: `cmd/browser-agent/budgets.go` (config loading, evaluation, MCP tool).
 
-Config file: `.gasoline.json` or `.gasoline/budgets.json` at project root.
+Config file: `.kaboom.json` or `.kaboom/budgets.json` at project root.
 
-Tests: `cmd/dev-console/budgets_test.go`.
+Tests: `cmd/browser-agent/budgets_test.go`.

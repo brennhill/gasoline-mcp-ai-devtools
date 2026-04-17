@@ -2,11 +2,11 @@
 (() => {
   // extension/lib/timeouts.js
   function readTestScale() {
-    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.GASOLINE_TEST_TIMEOUT_SCALE === "number" ? globalThis.GASOLINE_TEST_TIMEOUT_SCALE : null;
+    const globalScale = typeof globalThis !== "undefined" && typeof globalThis.KABOOM_TEST_TIMEOUT_SCALE === "number" ? globalThis.KABOOM_TEST_TIMEOUT_SCALE : null;
     if (globalScale !== null)
       return globalScale;
     if (typeof process !== "undefined" && process.env) {
-      const raw = process.env.GASOLINE_TEST_TIMEOUT_SCALE || process.env.GASOLINE_TEST_TIME_SCALE;
+      const raw = process.env.KABOOM_TEST_TIMEOUT_SCALE || process.env.KABOOM_TEST_TIME_SCALE;
       if (raw) {
         const parsed = Number(raw);
         if (Number.isFinite(parsed))
@@ -28,21 +28,21 @@
   var ASYNC_COMMAND_TIMEOUT_MS = scaleTimeout(6e4);
   var AI_CONTEXT_PIPELINE_TIMEOUT_MS = scaleTimeout(3e3);
   var SettingName = {
-    NETWORK_WATERFALL: "setNetworkWaterfallEnabled",
-    PERFORMANCE_MARKS: "setPerformanceMarksEnabled",
-    ACTION_REPLAY: "setActionReplayEnabled",
-    WEBSOCKET_CAPTURE: "setWebSocketCaptureEnabled",
-    WEBSOCKET_CAPTURE_MODE: "setWebSocketCaptureMode",
-    PERFORMANCE_SNAPSHOT: "setPerformanceSnapshotEnabled",
-    DEFERRAL: "setDeferralEnabled",
-    NETWORK_BODY_CAPTURE: "setNetworkBodyCaptureEnabled",
-    ACTION_TOASTS: "setActionToastsEnabled",
-    SUBTITLES: "setSubtitlesEnabled",
-    SERVER_URL: "setServerUrl"
+    NETWORK_WATERFALL: "set_network_waterfall_enabled",
+    PERFORMANCE_MARKS: "set_performance_marks_enabled",
+    ACTION_REPLAY: "set_action_replay_enabled",
+    WEBSOCKET_CAPTURE: "set_web_socket_capture_enabled",
+    WEBSOCKET_CAPTURE_MODE: "set_web_socket_capture_mode",
+    PERFORMANCE_SNAPSHOT: "set_performance_snapshot_enabled",
+    DEFERRAL: "set_deferral_enabled",
+    NETWORK_BODY_CAPTURE: "set_network_body_capture_enabled",
+    ACTION_TOASTS: "set_action_toasts_enabled",
+    SUBTITLES: "set_subtitles_enabled",
+    SERVER_URL: "set_server_url"
   };
   var VALID_SETTING_NAMES = new Set(Object.values(SettingName));
   var RuntimeMessageName = {
-    SHOW_TRACKED_HOVER_LAUNCHER: "GASOLINE_SHOW_TRACKED_HOVER_LAUNCHER"
+    SHOW_TRACKED_HOVER_LAUNCHER: "kaboom_show_tracked_hover_launcher"
   };
   var INJECT_FORWARDED_SETTINGS = /* @__PURE__ */ new Set([
     SettingName.NETWORK_WATERFALL,
@@ -75,19 +75,142 @@
     NETWORK_BODY_CAPTURE_ENABLED: "networkBodyCaptureEnabled",
     ACTION_TOASTS_ENABLED: "actionToastsEnabled",
     SUBTITLES_ENABLED: "subtitlesEnabled",
-    RECORDING: "gasoline_recording",
-    TRACKED_HOVER_LAUNCHER_HIDDEN: "gasoline_tracked_hover_launcher_hidden",
-    PENDING_RECORDING: "gasoline_pending_recording",
-    PENDING_MIC_RECORDING: "gasoline_pending_mic_recording",
-    MIC_GRANTED: "gasoline_mic_granted",
-    RECORD_AUDIO_PREF: "gasoline_record_audio_pref",
-    TERMINAL_CONFIG: "gasoline_terminal_config",
-    TERMINAL_AI_COMMAND: "gasoline_terminal_ai_command",
-    TERMINAL_DEV_ROOT: "gasoline_terminal_dev_root",
-    POPUP_LAST_STATUS: "gasoline_popup_last_status",
-    TERMINAL_SESSION: "gasoline_terminal_session",
-    TERMINAL_UI_STATE: "gasoline_terminal_ui_state"
+    ACTION_RECORDING: "kaboom_action_recording",
+    RECORDING: "kaboom_recording",
+    TRACKED_HOVER_LAUNCHER_HIDDEN: "kaboom_tracked_hover_launcher_hidden",
+    PENDING_RECORDING: "kaboom_pending_recording",
+    PENDING_MIC_RECORDING: "kaboom_pending_mic_recording",
+    MIC_GRANTED: "kaboom_mic_granted",
+    RECORD_AUDIO_PREF: "kaboom_record_audio_pref",
+    TERMINAL_CONFIG: "kaboom_terminal_config",
+    TERMINAL_AI_COMMAND: "kaboom_terminal_ai_command",
+    TERMINAL_DEV_ROOT: "kaboom_terminal_dev_root",
+    POPUP_LAST_STATUS: "kaboom_popup_last_status",
+    TERMINAL_SESSION: "kaboom_terminal_session",
+    TERMINAL_UI_STATE: "kaboom_terminal_ui_state",
+    TERMINAL_WORKSPACE_GROUP_ID: "kaboom_terminal_workspace_group_id",
+    TERMINAL_WORKSPACE_MAIN_TAB_ID: "kaboom_terminal_workspace_main_tab_id",
+    CLOAKED_DOMAINS: "kaboom_cloaked_domains",
+    ERROR_GROUPS: "kaboom_error_groups"
   };
+
+  // extension/lib/storage-utils.js
+  function getStorageWithSession() {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return null;
+    return chrome.storage;
+  }
+  function isPromiseLike(value) {
+    return typeof value === "object" && value !== null && typeof value.then === "function";
+  }
+  function readStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = (result = {}) => {
+        if (settled)
+          return;
+        settled = true;
+        resolve(result);
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then((result) => finish(result ?? {})).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function writeStorage(method, items) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(items, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  function removeFromStorage(method, keys) {
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      const finish = () => {
+        if (settled)
+          return;
+        settled = true;
+        resolve();
+      };
+      try {
+        const maybePromise = method(keys, finish);
+        if (isPromiseLike(maybePromise)) {
+          maybePromise.then(() => finish()).catch(reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+  async function getLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return void 0;
+    const result = await readStorage(chrome.storage.local.get.bind(chrome.storage.local), key);
+    return result[key];
+  }
+  async function getLocals(keys) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return {};
+    return await readStorage(chrome.storage.local.get.bind(chrome.storage.local), keys);
+  }
+  async function setLocal(key, value) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), { [key]: value });
+  }
+  async function setLocals(items) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await writeStorage(chrome.storage.local.set.bind(chrome.storage.local), items);
+  }
+  async function removeLocal(key) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), [key]);
+  }
+  async function removeLocals(keys) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return;
+    await removeFromStorage(chrome.storage.local.remove.bind(chrome.storage.local), keys);
+  }
+  async function getSession(key) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return void 0;
+    const result = await readStorage(storage.session.get.bind(storage.session), key);
+    return result[key];
+  }
+  async function setSession(key, value) {
+    const storage = getStorageWithSession();
+    if (!storage || !storage.session)
+      return;
+    await writeStorage(storage.session.set.bind(storage.session), { [key]: value });
+  }
+  function onStorageChanged(listener) {
+    if (typeof chrome === "undefined" || !chrome.storage)
+      return () => {
+      };
+    chrome.storage.onChanged.addListener(listener);
+    return () => chrome.storage.onChanged.removeListener(listener);
+  }
 
   // extension/popup/ui-utils.js
   function formatFileSize(bytes) {
@@ -134,7 +257,7 @@
       }
     } else {
       if (statusEl) {
-        statusEl.textContent = "Disconnected";
+        statusEl.textContent = "Offline";
         statusEl.classList.remove("connected");
         statusEl.classList.add("disconnected");
       }
@@ -239,6 +362,10 @@
     }
   }
 
+  // extension/lib/brand.js
+  var KABOOM_LOG_PREFIX = "[KaBOOM!]";
+  var KABOOM_RECORDING_LOG_PREFIX = "[KaBOOM! REC]";
+
   // extension/lib/error-utils.js
   function errorMessage(err, fallback = "Unknown error") {
     if (err instanceof Error && err.message)
@@ -248,12 +375,97 @@
     return fallback;
   }
 
+  // extension/popup/recording-io.js
+  var LOG = `${KABOOM_RECORDING_LOG_PREFIX} Popup:`;
+  function sendRecordingGestureDecision(type) {
+    chrome.runtime.sendMessage({ type }, () => {
+      void chrome.runtime.lastError;
+    });
+  }
+  function showMicPermissionPrompt(saveInfoEl, audioMode) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
+      void setLocal(StorageKey.PENDING_MIC_RECORDING, { audioMode, returnTabId: activeTabs[0]?.id });
+    });
+    saveInfoEl.innerHTML = 'Microphone access needed. <a href="#" id="grant-mic-link" style="color: #58a6ff; text-decoration: underline; cursor: pointer">Grant access</a>';
+    saveInfoEl.style.display = "block";
+    saveInfoEl.style.background = "rgba(248, 81, 73, 0.1)";
+    saveInfoEl.style.color = "#f85149";
+    const link = document.getElementById("grant-mic-link");
+    if (link) {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        chrome.tabs.create({ url: chrome.runtime.getURL("mic-permission.html") });
+      });
+    }
+  }
+  function sendRecordStart(els, state, audioMode, showRecording3, showIdle3, showStartError2) {
+    console.log(LOG, "sendStart() called, sending screen_recording_start with audio:", audioMode);
+    chrome.runtime.sendMessage({ type: "screen_recording_start", audio: audioMode }, (resp) => {
+      console.log(LOG, "screen_recording_start response:", resp);
+      if (chrome.runtime.lastError) {
+        console.error(LOG, "screen_recording_start lastError:", chrome.runtime.lastError.message);
+      }
+      if (resp?.status === "recording" && resp.name) {
+        showRecording3(els, state, resp.name, resp.startTime ?? Date.now());
+      } else {
+        showIdle3(els, state);
+        if (resp?.error)
+          showStartError2(els.saveInfoEl, resp.error);
+      }
+    });
+  }
+  function tryMicPermissionThenStart(els, state, audioMode, showRecording3, showIdle3, showStartError2) {
+    console.log(LOG, "trying getUserMedia from popup...");
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((micStream) => {
+      console.log(LOG, "getUserMedia succeeded from popup");
+      micStream.getTracks().forEach((t) => t.stop());
+      void setLocal(StorageKey.MIC_GRANTED, true);
+      sendRecordStart(els, state, audioMode, showRecording3, showIdle3, showStartError2);
+    }).catch((err) => {
+      console.log(LOG, "getUserMedia FAILED:", err.name, errorMessage(err));
+      void removeLocal(StorageKey.MIC_GRANTED);
+      showIdle3(els, state);
+      if (els.saveInfoEl)
+        showMicPermissionPrompt(els.saveInfoEl, audioMode);
+    });
+  }
+  function handleStartClick(els, state, showRecording3, showIdle3, showStartError2) {
+    const audioSelect = document.getElementById("record-audio-mode");
+    const audioMode = audioSelect?.value ?? "";
+    void setLocal(StorageKey.RECORD_AUDIO_PREF, audioMode);
+    if (els.optionsEl)
+      els.optionsEl.style.display = "none";
+    if (els.saveInfoEl)
+      els.saveInfoEl.style.display = "none";
+    els.label.textContent = "Starting...";
+    if (audioMode === "mic" || audioMode === "both") {
+      console.log(LOG, "mic/both mode \u2014 checking stored mic approval");
+      tryMicPermissionThenStart(els, state, audioMode, showRecording3, showIdle3, showStartError2);
+    } else {
+      sendRecordStart(els, state, audioMode, showRecording3, showIdle3, showStartError2);
+    }
+  }
+  function handleStopClick(els, state, showIdle3, showSaveResult2) {
+    els.row.classList.remove("is-recording");
+    els.label.textContent = "Saving...";
+    console.log(LOG, "sending screen_recording_stop");
+    chrome.runtime.sendMessage({ type: "screen_recording_stop" }, (resp) => {
+      console.log(LOG, "screen_recording_stop response:", resp);
+      if (chrome.runtime.lastError) {
+        console.error(LOG, "screen_recording_stop lastError:", chrome.runtime.lastError.message);
+      }
+      showIdle3(els, state);
+      showSaveResult2(els.saveInfoEl, resp);
+    });
+  }
+
   // extension/popup/recording.js
   var START_LABEL = "Record screen";
   var STOP_LABEL = "Stop recording";
   var HIGHLIGHT_LABEL = "\u25CF \xAB Click here to record";
   var RECENT_RECORDING_START_MS = 8e3;
   var TOP_NOTICE_DURATION_MS = 4e3;
+  var LOG2 = `${KABOOM_RECORDING_LOG_PREFIX} Popup:`;
   var AUDIO_LABELS = {
     "": "Video only",
     tab: "Video + tab audio",
@@ -358,11 +570,6 @@
     if (!state.isRecording && els.optionsEl)
       els.optionsEl.style.display = "block";
   }
-  function sendRecordingGestureDecision(type) {
-    chrome.runtime.sendMessage({ type }, () => {
-      void chrome.runtime.lastError;
-    });
-  }
   function showTopNotice(els, text) {
     const notice = els.topNoticeEl;
     if (!notice)
@@ -389,7 +596,7 @@
     if (linkEl) {
       linkEl.addEventListener("click", (e) => {
         e.preventDefault();
-        chrome.runtime.sendMessage({ type: "REVEAL_FILE", path: filePath }, (result) => {
+        chrome.runtime.sendMessage({ type: "reveal_file", path: filePath }, (result) => {
           if (result?.error) {
             saveInfoEl.textContent = `Could not open folder: ${result.error}`;
             saveInfoEl.style.color = "#f85149";
@@ -428,84 +635,6 @@
       saveInfoEl.style.color = "#3fb950";
     }, 5e3);
   }
-  function showMicPermissionPrompt(saveInfoEl, audioMode) {
-    chrome.tabs.query({ active: true, currentWindow: true }, (activeTabs) => {
-      chrome.storage.local.set({
-        [StorageKey.PENDING_MIC_RECORDING]: { audioMode, returnTabId: activeTabs[0]?.id }
-      });
-    });
-    saveInfoEl.innerHTML = 'Microphone access needed. <a href="#" id="grant-mic-link" style="color: #58a6ff; text-decoration: underline; cursor: pointer">Grant access</a>';
-    saveInfoEl.style.display = "block";
-    saveInfoEl.style.background = "rgba(248, 81, 73, 0.1)";
-    saveInfoEl.style.color = "#f85149";
-    const link = document.getElementById("grant-mic-link");
-    if (link) {
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        chrome.tabs.create({ url: chrome.runtime.getURL("mic-permission.html") });
-      });
-    }
-  }
-  function sendRecordStart(els, state, audioMode) {
-    console.log("[Gasoline REC] Popup: sendStart() called, sending screen_recording_start with audio:", audioMode);
-    chrome.runtime.sendMessage({ type: "screen_recording_start", audio: audioMode }, (resp) => {
-      console.log("[Gasoline REC] Popup: screen_recording_start response:", resp);
-      if (chrome.runtime.lastError) {
-        console.error("[Gasoline REC] Popup: screen_recording_start lastError:", chrome.runtime.lastError.message);
-      }
-      if (resp?.status === "recording" && resp.name) {
-        showRecording(els, state, resp.name, resp.startTime ?? Date.now());
-      } else {
-        showIdle(els, state);
-        if (resp?.error)
-          showStartError(els.saveInfoEl, resp.error);
-      }
-    });
-  }
-  function tryMicPermissionThenStart(els, state, audioMode) {
-    console.log("[Gasoline REC] Popup: trying getUserMedia from popup...");
-    navigator.mediaDevices.getUserMedia({ audio: true }).then((micStream) => {
-      console.log("[Gasoline REC] Popup: getUserMedia succeeded from popup");
-      micStream.getTracks().forEach((t) => t.stop());
-      chrome.storage.local.set({ [StorageKey.MIC_GRANTED]: true });
-      sendRecordStart(els, state, audioMode);
-    }).catch((err) => {
-      console.log("[Gasoline REC] Popup: getUserMedia FAILED:", err.name, errorMessage(err));
-      chrome.storage.local.remove(StorageKey.MIC_GRANTED);
-      showIdle(els, state);
-      if (els.saveInfoEl)
-        showMicPermissionPrompt(els.saveInfoEl, audioMode);
-    });
-  }
-  function handleStartClick(els, state) {
-    const audioSelect = document.getElementById("record-audio-mode");
-    const audioMode = audioSelect?.value ?? "";
-    chrome.storage.local.set({ [StorageKey.RECORD_AUDIO_PREF]: audioMode });
-    if (els.optionsEl)
-      els.optionsEl.style.display = "none";
-    if (els.saveInfoEl)
-      els.saveInfoEl.style.display = "none";
-    els.label.textContent = "Starting...";
-    if (audioMode === "mic" || audioMode === "both") {
-      console.log("[Gasoline REC] Popup: mic/both mode \u2014 checking gasoline_mic_granted");
-      tryMicPermissionThenStart(els, state, audioMode);
-    } else {
-      sendRecordStart(els, state, audioMode);
-    }
-  }
-  function handleStopClick(els, state) {
-    els.row.classList.remove("is-recording");
-    els.label.textContent = "Saving...";
-    console.log("[Gasoline REC] Popup: sending screen_recording_stop");
-    chrome.runtime.sendMessage({ type: "screen_recording_stop" }, (resp) => {
-      console.log("[Gasoline REC] Popup: screen_recording_stop response:", resp);
-      if (chrome.runtime.lastError) {
-        console.error("[Gasoline REC] Popup: screen_recording_stop lastError:", chrome.runtime.lastError.message);
-      }
-      showIdle(els, state);
-      showSaveResult(els.saveInfoEl, resp);
-    });
-  }
   function setupRecordingUI() {
     const row = document.getElementById("record-row");
     const label = document.getElementById("record-label");
@@ -534,7 +663,7 @@
         applyRecordHighlight(els);
         pendingRecordingIntent = null;
         setApprovalPendingState(els, approvalEls, state, null);
-        chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+        void removeLocal(StorageKey.PENDING_RECORDING);
         return;
       }
       pendingRecordingIntent = pending && !pending.highlight ? pending : null;
@@ -545,26 +674,22 @@
     const clearPendingRecordingIntent = () => {
       pendingRecordingIntent = null;
       setApprovalPendingState(els, approvalEls, state, null);
-      chrome.storage.local.remove(StorageKey.PENDING_RECORDING);
+      void removeLocal(StorageKey.PENDING_RECORDING);
     };
-    row.style.visibility = "hidden";
-    chrome.storage.local.get(StorageKey.RECORDING, (result) => {
-      const rec = result[StorageKey.RECORDING];
-      console.log("[Gasoline REC] Popup: gasoline_recording from storage:", rec);
+    void getLocal(StorageKey.RECORDING).then(async (value) => {
+      const rec = value;
+      console.log(LOG2, "recording state from storage:", rec);
       if (rec?.active && rec.name && rec.startTime) {
-        console.log("[Gasoline REC] Popup: resuming recording UI for", rec.name);
+        console.log(LOG2, "resuming recording UI for", rec.name);
         showRecording(els, state, rec.name, rec.startTime);
       }
-      row.style.visibility = "visible";
-      chrome.storage.local.get(StorageKey.PENDING_RECORDING, (pendingResult) => {
-        void chrome.runtime.lastError;
-        updatePendingRecording(pendingResult[StorageKey.PENDING_RECORDING]);
-      });
+      const pendingValue = await getLocal(StorageKey.PENDING_RECORDING);
+      updatePendingRecording(pendingValue);
     });
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
       if (areaName === "local" && changes[StorageKey.RECORDING]) {
         const rec = changes[StorageKey.RECORDING].newValue;
-        console.log("[Gasoline REC] Popup: gasoline_recording changed:", rec);
+        console.log(LOG2, "recording state changed:", rec);
         if (rec?.active && rec.name && rec.startTime) {
           showRecording(els, state, rec.name, rec.startTime);
         } else {
@@ -579,25 +704,25 @@
     });
     approvalEls.approveBtn?.addEventListener("click", (event) => {
       event.preventDefault();
-      sendRecordingGestureDecision("RECORDING_GESTURE_GRANTED");
+      sendRecordingGestureDecision("recording_gesture_granted");
       clearPendingRecordingIntent();
     });
     approvalEls.denyBtn?.addEventListener("click", (event) => {
       event.preventDefault();
-      sendRecordingGestureDecision("RECORDING_GESTURE_DENIED");
+      sendRecordingGestureDecision("recording_gesture_denied");
       clearPendingRecordingIntent();
     });
-    chrome.storage.local.get(StorageKey.PENDING_MIC_RECORDING, (result) => {
-      const intent = result[StorageKey.PENDING_MIC_RECORDING];
-      console.log("[Gasoline REC] Popup: pending_mic_recording intent:", intent);
+    void getLocal(StorageKey.PENDING_MIC_RECORDING).then(async (value) => {
+      const intent = value;
+      console.log(LOG2, "pending mic recording intent:", intent);
       if (!intent?.audioMode)
         return;
-      console.log("[Gasoline REC] Popup: consuming mic intent, pre-selecting audioMode:", intent.audioMode);
-      chrome.storage.local.remove(StorageKey.PENDING_MIC_RECORDING);
+      console.log(LOG2, "consuming mic intent, pre-selecting audio mode:", intent.audioMode);
+      await removeLocal(StorageKey.PENDING_MIC_RECORDING);
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]?.id) {
           chrome.tabs.sendMessage(tabs[0].id, {
-            type: "GASOLINE_ACTION_TOAST",
+            type: "kaboom_action_toast",
             text: "",
             detail: "",
             state: "success",
@@ -610,8 +735,8 @@
       if (audioSelect)
         audioSelect.value = intent.audioMode;
     });
-    chrome.storage.local.get(StorageKey.RECORD_AUDIO_PREF, (result) => {
-      const saved = result[StorageKey.RECORD_AUDIO_PREF];
+    void getLocal(StorageKey.RECORD_AUDIO_PREF).then((value) => {
+      const saved = value;
       if (saved) {
         const audioSelect = document.getElementById("record-audio-mode");
         if (audioSelect)
@@ -619,16 +744,16 @@
       }
     });
     row.addEventListener("click", () => {
-      console.log("[Gasoline REC] Popup: record row clicked, isRecording:", state.isRecording);
+      console.log(LOG2, "record row clicked, isRecording:", state.isRecording);
       if (pendingRecordingIntent && !state.isRecording) {
-        console.log("[Gasoline REC] Popup: record row click ignored while approval is pending");
+        console.log(LOG2, "record row click ignored while approval is pending");
         return;
       }
       removeRecordHighlight(els);
       if (state.isRecording) {
-        handleStopClick(els, state);
+        handleStopClick(els, state, showIdle, showSaveResult);
       } else {
-        handleStartClick(els, state);
+        handleStartClick(els, state, showRecording, showIdle, showStartError);
       }
     });
   }
@@ -665,7 +790,7 @@
           return;
         }
         label.textContent = "Starting...";
-        chrome.tabs.sendMessage(tab.id, { type: "GASOLINE_DRAW_MODE_START", started_by: "user" }, (resp) => {
+        chrome.tabs.sendMessage(tab.id, { type: "kaboom_draw_mode_start", started_by: "user" }, (resp) => {
           if (chrome.runtime.lastError) {
             showDrawModeError(label, "Content script not loaded \u2014 try refreshing the page");
             return;
@@ -681,18 +806,18 @@
   }
 
   // extension/lib/daemon-http.js
-  var DEFAULT_CLIENT_NAME = "gasoline-extension";
+  var DEFAULT_CLIENT_NAME = "kaboom-extension";
   function buildDaemonHeaders(options = {}) {
     const { clientName = DEFAULT_CLIENT_NAME, extensionVersion, contentType = "application/json", additionalHeaders = {} } = options;
     const normalizedVersion = typeof extensionVersion === "string" && extensionVersion.trim().length > 0 ? extensionVersion.trim() : "";
     const headers = {
-      "X-Gasoline-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
+      "X-Kaboom-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
     };
     if (contentType !== null) {
       headers["Content-Type"] = contentType;
     }
     if (normalizedVersion) {
-      headers["X-Gasoline-Extension-Version"] = normalizedVersion;
+      headers["X-Kaboom-Extension-Version"] = normalizedVersion;
     }
     return {
       ...headers,
@@ -752,13 +877,9 @@
       els.statusEl.style.color = "";
     }, 5e3);
   }
-  function getServerUrl() {
-    return new Promise((resolve) => {
-      chrome.storage.local.get(StorageKey.SERVER_URL, (result) => {
-        void chrome.runtime.lastError;
-        resolve(result[StorageKey.SERVER_URL] || DEFAULT_SERVER_URL);
-      });
-    });
+  async function getServerUrl() {
+    const value = await getLocal(StorageKey.SERVER_URL);
+    return value || DEFAULT_SERVER_URL;
   }
   function getConfigureError(data) {
     const message = data.error?.message;
@@ -800,14 +921,10 @@
       }
       state.recordingId = extractRecordingID(data);
       state.startTime = Date.now();
-      chrome.storage.local.set({
-        gasoline_action_recording: {
-          active: true,
-          recordingId: state.recordingId,
-          startTime: state.startTime
-        }
-      }, () => {
-        void chrome.runtime.lastError;
+      void setLocal(StorageKey.ACTION_RECORDING, {
+        active: true,
+        recordingId: state.recordingId,
+        startTime: state.startTime
       });
       showRecording2(els, state);
     } catch (err) {
@@ -826,9 +943,7 @@
       if (configureError) {
         showError(els, configureError);
       }
-      chrome.storage.local.remove("gasoline_action_recording", () => {
-        void chrome.runtime.lastError;
-      });
+      void removeLocal(StorageKey.ACTION_RECORDING);
       showIdle2(els, state);
     } catch (err) {
       showIdle2(els, state);
@@ -848,9 +963,8 @@
       timerInterval: null,
       startTime: null
     };
-    chrome.storage.local.get("gasoline_action_recording", (result) => {
-      void chrome.runtime.lastError;
-      const saved = result["gasoline_action_recording"];
+    void getLocal(StorageKey.ACTION_RECORDING).then((value) => {
+      const saved = value;
       if (saved?.active && saved.recordingId) {
         state.recordingId = saved.recordingId;
         state.startTime = saved.startTime ?? Date.now();
@@ -895,13 +1009,13 @@
     {
       id: "toggle-screenshot",
       storageKey: StorageKey.SCREENSHOT_ON_ERROR,
-      messageType: "setScreenshotOnError",
+      messageType: "set_screenshot_on_error",
       default: true
     },
     {
       id: "toggle-source-maps",
       storageKey: StorageKey.SOURCE_MAP_ENABLED,
-      messageType: "setSourceMapEnabled",
+      messageType: "set_source_map_enabled",
       default: true
     },
     {
@@ -926,42 +1040,185 @@
   function handleFeatureToggle(storageKey, messageType, enabled) {
     chrome.runtime.sendMessage({ type: messageType, enabled }, (response) => {
       if (chrome.runtime.lastError) {
-        console.error(`[Gasoline] Message error for ${messageType}:`, chrome.runtime.lastError.message);
+        console.error(`[KaBOOM!] Message error for ${messageType}:`, chrome.runtime.lastError.message);
       } else if (response?.success) {
-        console.log(`[Gasoline] ${messageType} acknowledged by background`);
+        console.log(`[KaBOOM!] ${messageType} acknowledged by background`);
       } else {
-        console.warn(`[Gasoline] ${messageType} - no response from background`);
+        console.warn(`[KaBOOM!] ${messageType} - no response from background`);
       }
     });
   }
+  function applyFeatureToggles(result) {
+    for (const toggle of FEATURE_TOGGLES) {
+      const checkbox = document.getElementById(toggle.id);
+      if (checkbox) {
+        const savedValue = result[toggle.storageKey];
+        checkbox.checked = savedValue !== void 0 ? savedValue : toggle.default;
+        checkbox.addEventListener("change", () => {
+          handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked);
+        });
+      }
+    }
+  }
   async function initFeatureToggles() {
     const storageKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
-    return new Promise((resolve) => {
-      chrome.storage.local.get(storageKeys, (result) => {
-        for (const toggle of FEATURE_TOGGLES) {
-          const checkbox = document.getElementById(toggle.id);
-          if (checkbox) {
-            const savedValue = result[toggle.storageKey];
-            checkbox.checked = savedValue !== void 0 ? savedValue : toggle.default;
-            checkbox.addEventListener("change", () => {
-              handleFeatureToggle(toggle.storageKey, toggle.messageType, checkbox.checked);
-            });
-          }
+    const result = await getLocals(storageKeys);
+    applyFeatureToggles(result);
+  }
+
+  // extension/lib/cloaked-domains.js
+  var BUILTIN_CLOAKED = [
+    "cloudflare.com",
+    "dash.cloudflare.com"
+  ];
+  function matchesDomain(hostname, domain) {
+    return hostname === domain || hostname.endsWith("." + domain);
+  }
+  async function isDomainCloaked(hostname) {
+    const host = hostname || (typeof location !== "undefined" ? location.hostname : "");
+    if (!host)
+      return false;
+    for (const domain of BUILTIN_CLOAKED) {
+      if (matchesDomain(host, domain))
+        return true;
+    }
+    try {
+      const userDomains = await getLocal(StorageKey.CLOAKED_DOMAINS);
+      if (userDomains && Array.isArray(userDomains)) {
+        for (const domain of userDomains) {
+          if (matchesDomain(host, domain))
+            return true;
         }
-        resolve();
-      });
+      }
+    } catch {
+    }
+    return false;
+  }
+
+  // extension/lib/request-audit.js
+  async function requestAudit(pageUrl) {
+    try {
+      await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+    } catch {
+    }
+    await chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: pageUrl });
+  }
+
+  // extension/popup/tab-tracking-api.js
+  async function handleAuditClick(pageUrl) {
+    await requestAudit(pageUrl);
+  }
+  async function handleStopTracking(showIdleState2) {
+    const prevTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+    if (!prevTabId)
+      return;
+    await removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
+    const btn = document.getElementById("track-page-btn");
+    if (btn)
+      showIdleState2(btn);
+    chrome.runtime.sendMessage({ type: "screen_recording_stop" }, () => {
+      if (chrome.runtime.lastError) {
+      }
     });
+    chrome.tabs.sendMessage(prevTabId, {
+      type: "tracking_state_changed",
+      state: { isTracked: false, aiPilotEnabled: false }
+    }).catch(() => {
+    });
+    console.log(KABOOM_LOG_PREFIX, "Stopped tracking via bar stop button");
+  }
+  async function handleUrlClick(tabId) {
+    if (!tabId)
+      return;
+    try {
+      await chrome.tabs.update(tabId, { active: true });
+      const tab = await chrome.tabs.get(tabId);
+      if (tab.windowId) {
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }
+      console.log(KABOOM_LOG_PREFIX, "Switched to tracked tab:", tabId);
+    } catch (err) {
+      console.error(KABOOM_LOG_PREFIX, "Failed to switch to tracked tab:", err);
+      void removeLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
+    }
+  }
+  async function handleTrackPageClick(showInternalPageState2, showCloakedState2, showTrackingState2, showIdleState2) {
+    const btn = document.getElementById("track-page-btn");
+    const trackedTabId = await getLocal(StorageKey.TRACKED_TAB_ID);
+    if (trackedTabId) {
+      await handleStopTracking(showIdleState2);
+      return;
+    }
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab)
+      return;
+    if (isInternalUrl(tab.url)) {
+      if (btn)
+        showInternalPageState2(btn);
+      return;
+    }
+    let hostname = "";
+    try {
+      hostname = tab.url ? new URL(tab.url).hostname : "";
+    } catch {
+    }
+    if (await isDomainCloaked(hostname)) {
+      if (btn)
+        showCloakedState2(btn);
+      return;
+    }
+    await setLocals({
+      [StorageKey.TRACKED_TAB_ID]: tab.id,
+      [StorageKey.TRACKED_TAB_URL]: tab.url,
+      [StorageKey.TRACKED_TAB_TITLE]: tab.title || ""
+    });
+    if (btn)
+      showTrackingState2(btn, tab.url, tab.id);
+    console.log(KABOOM_LOG_PREFIX, "Now tracking tab:", tab.id, tab.url);
+    if (tab.id) {
+      const tabId = tab.id;
+      chrome.tabs.sendMessage(tabId, { type: "kaboom_ping" }, (response) => {
+        if (chrome.runtime.lastError || !response?.status) {
+          console.log(KABOOM_LOG_PREFIX, "Content script not found, reloading tab", tabId);
+          chrome.tabs.reload(tabId);
+        } else {
+          console.log(KABOOM_LOG_PREFIX, "Content script already loaded, skipping reload");
+          chrome.tabs.sendMessage(tabId, {
+            type: "tracking_state_changed",
+            state: { isTracked: true, aiPilotEnabled: false }
+          });
+        }
+      });
+    }
   }
 
   // extension/popup/tab-tracking.js
   var trackingStorageSyncInstalled = false;
+  function hideAuditButton() {
+    const trackingBarAudit = document.getElementById("tracking-bar-audit");
+    if (!trackingBarAudit)
+      return;
+    trackingBarAudit.style.display = "none";
+    trackingBarAudit.onclick = null;
+  }
   function showInternalPageState(btn) {
     const trackingBar = document.getElementById("tracking-bar");
     if (trackingBar)
       trackingBar.style.display = "none";
+    hideAuditButton();
     btn.disabled = true;
     btn.textContent = "Cannot Track Internal Pages";
     btn.title = "Chrome blocks extensions on internal pages like chrome:// and about:";
+    Object.assign(btn.style, { opacity: "0.5", background: "#252525", color: "#888", borderColor: "#333" });
+  }
+  function showCloakedState(btn) {
+    const trackingBar = document.getElementById("tracking-bar");
+    if (trackingBar)
+      trackingBar.style.display = "none";
+    hideAuditButton();
+    btn.disabled = true;
+    btn.textContent = "Tracking Disabled on This Site";
+    btn.title = "This domain is in the cloaked domains list. KaBOOM! is disabled here to prevent interference.";
     Object.assign(btn.style, { opacity: "0.5", background: "#252525", color: "#888", borderColor: "#333" });
   }
   function showTrackingState(btn, trackedTabUrl, trackedTabId) {
@@ -973,6 +1230,7 @@
       noTrackEl.style.display = "none";
     const trackingBar = document.getElementById("tracking-bar");
     const trackingBarUrl = document.getElementById("tracking-bar-url");
+    const trackingBarAudit = document.getElementById("tracking-bar-audit");
     const trackingBarStop = document.getElementById("tracking-bar-stop");
     if (trackingBar)
       trackingBar.style.display = "flex";
@@ -982,10 +1240,17 @@
         void handleUrlClick(trackedTabId);
       };
     }
+    if (trackingBarAudit) {
+      trackingBarAudit.textContent = "Audit";
+      trackingBarAudit.style.display = "inline-flex";
+      trackingBarAudit.onclick = () => {
+        void handleAuditClick(trackedTabUrl);
+      };
+    }
     if (trackingBarStop) {
       trackingBarStop.onclick = (e) => {
         e.stopPropagation();
-        handleStopTracking();
+        void handleStopTracking(showIdleState);
       };
     }
   }
@@ -1009,20 +1274,34 @@
     const trackingBar = document.getElementById("tracking-bar");
     if (trackingBar)
       trackingBar.style.display = "none";
+    hideAuditButton();
     const noTrackEl = document.getElementById("no-tracking-warning");
     if (noTrackEl)
       noTrackEl.style.display = "block";
   }
   function syncTrackButtonState(btn) {
-    chrome.storage.local.get([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], (result) => {
+    void getLocals([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]).then((result) => {
+      const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
+      const trackedTabUrl = result[StorageKey.TRACKED_TAB_URL];
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const currentUrl = tabs?.[0]?.url;
-        if (result.trackedTabId) {
-          showTrackingState(btn, result.trackedTabUrl, result.trackedTabId);
+        if (trackedTabId) {
+          showTrackingState(btn, trackedTabUrl, trackedTabId);
         } else if (isInternalUrl(currentUrl)) {
           showInternalPageState(btn);
         } else {
-          showIdleState(btn);
+          let hostname = "";
+          try {
+            hostname = currentUrl ? new URL(currentUrl).hostname : "";
+          } catch {
+          }
+          isDomainCloaked(hostname).then((cloaked) => {
+            if (cloaked) {
+              showCloakedState(btn);
+            } else {
+              showIdleState(btn);
+            }
+          }).catch(() => showIdleState(btn));
         }
       });
     });
@@ -1031,34 +1310,12 @@
     if (trackingStorageSyncInstalled)
       return;
     trackingStorageSyncInstalled = true;
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
       if (areaName !== "local")
         return;
       if (!changes[StorageKey.TRACKED_TAB_ID] && !changes[StorageKey.TRACKED_TAB_URL])
         return;
       syncTrackButtonState(btn);
-    });
-  }
-  function handleStopTracking() {
-    chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], (result) => {
-      const prevTabId = result.trackedTabId;
-      if (!prevTabId)
-        return;
-      chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL], () => {
-        const btn = document.getElementById("track-page-btn");
-        if (btn)
-          showIdleState(btn);
-        chrome.runtime.sendMessage({ type: "screen_recording_stop" }, () => {
-          if (chrome.runtime.lastError) {
-          }
-        });
-        chrome.tabs.sendMessage(prevTabId, {
-          type: "trackingStateChanged",
-          state: { isTracked: false, aiPilotEnabled: false }
-        }).catch(() => {
-        });
-        console.log("[Gasoline] Stopped tracking via bar stop button");
-      });
     });
   }
   function initTrackPageButton() {
@@ -1067,84 +1324,32 @@
       return;
     syncTrackButtonState(btn);
     installTrackingStorageSync(btn);
-    btn.addEventListener("click", handleTrackPageClick);
-  }
-  async function handleUrlClick(tabId) {
-    if (!tabId)
-      return;
-    try {
-      await chrome.tabs.update(tabId, { active: true });
-      const tab = await chrome.tabs.get(tabId);
-      if (tab.windowId) {
-        await chrome.windows.update(tab.windowId, { focused: true });
-      }
-      console.log("[Gasoline] Switched to tracked tab:", tabId);
-    } catch (err) {
-      console.error("[Gasoline] Failed to switch to tracked tab:", err);
-      chrome.storage.local.remove([StorageKey.TRACKED_TAB_ID, StorageKey.TRACKED_TAB_URL]);
-    }
-  }
-  async function handleTrackPageClick() {
-    const btn = document.getElementById("track-page-btn");
-    chrome.storage.local.get([StorageKey.TRACKED_TAB_ID], async (result) => {
-      if (result.trackedTabId) {
-        handleStopTracking();
-      } else {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs[0]) {
-            const tab = tabs[0];
-            if (isInternalUrl(tab.url)) {
-              if (btn) {
-                btn.disabled = true;
-                btn.textContent = "Cannot Track Internal Pages";
-                btn.style.opacity = "0.5";
-              }
-              return;
-            }
-            chrome.storage.local.set({ trackedTabId: tab.id, trackedTabUrl: tab.url, trackedTabTitle: tab.title || "" }, () => {
-              showTrackingState(btn, tab.url, tab.id);
-              console.log("[Gasoline] Now tracking tab:", tab.id, tab.url);
-              if (tab.id) {
-                const tabId = tab.id;
-                chrome.tabs.sendMessage(tabId, { type: "GASOLINE_PING" }, (response) => {
-                  if (chrome.runtime.lastError || !response?.status) {
-                    console.log("[Gasoline] Content script not found, reloading tab", tabId);
-                    chrome.tabs.reload(tabId);
-                  } else {
-                    console.log("[Gasoline] Content script already loaded, skipping reload");
-                    chrome.tabs.sendMessage(tabId, {
-                      type: "trackingStateChanged",
-                      state: { isTracked: true, aiPilotEnabled: false }
-                    });
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
+    btn.addEventListener("click", () => {
+      void handleTrackPageClick(showInternalPageState, showCloakedState, showTrackingState, showIdleState);
     });
+  }
+  async function handleTrackPageClick2() {
+    return handleTrackPageClick(showInternalPageState, showCloakedState, showTrackingState, showIdleState);
   }
 
   // extension/popup/ai-web-pilot.js
-  async function initAiWebPilotToggle() {
+  function applyAiWebPilotToggle(value) {
     const toggle = document.getElementById("aiWebPilotEnabled");
     if (!toggle)
       return;
-    return new Promise((resolve) => {
-      chrome.storage.local.get([StorageKey.AI_WEB_PILOT_ENABLED], (result) => {
-        toggle.checked = result.aiWebPilotEnabled !== false;
-        toggle.addEventListener("change", () => {
-          handleAiWebPilotToggle(toggle.checked);
-        });
-        resolve();
-      });
+    toggle.checked = value !== false;
+    toggle.addEventListener("change", () => {
+      handleAiWebPilotToggle(toggle.checked);
     });
   }
+  async function initAiWebPilotToggle() {
+    const value = await getLocal(StorageKey.AI_WEB_PILOT_ENABLED);
+    applyAiWebPilotToggle(value);
+  }
   async function handleAiWebPilotToggle(enabled) {
-    chrome.runtime.sendMessage({ type: "setAiWebPilotEnabled", enabled }, (response) => {
+    chrome.runtime.sendMessage({ type: "set_ai_web_pilot_enabled", enabled }, (response) => {
       if (!response || !response.success) {
-        console.error("[Gasoline] Failed to set AI Web Pilot toggle in background");
+        console.error("[KaBOOM!] Failed to set AI Web Pilot toggle in background");
         const toggle = document.getElementById("aiWebPilotEnabled");
         if (toggle) {
           toggle.checked = !enabled;
@@ -1153,21 +1358,28 @@
     });
   }
 
+  // extension/popup/logo-motion.js
+  function initPopupLogoMotion() {
+    const logo = document.querySelector(".logo");
+    if (!logo)
+      return;
+    logo.src = chrome.runtime.getURL("icons/icon.svg");
+  }
+
   // extension/popup/settings.js
   function handleWebSocketModeChange(mode) {
-    chrome.storage.local.set({ webSocketCaptureMode: mode });
+    void setLocal(StorageKey.WEBSOCKET_CAPTURE_MODE, mode);
     chrome.runtime.sendMessage({ type: SettingName.WEBSOCKET_CAPTURE_MODE, mode });
   }
-  async function initWebSocketModeSelector() {
+  function applyWebSocketMode(value) {
     const modeSelect = document.getElementById("ws-mode");
     if (!modeSelect)
       return;
-    return new Promise((resolve) => {
-      chrome.storage.local.get(["webSocketCaptureMode"], (result) => {
-        modeSelect.value = result.webSocketCaptureMode || "medium";
-        resolve();
-      });
-    });
+    modeSelect.value = value || "medium";
+  }
+  async function initWebSocketModeSelector() {
+    const value = await getLocal(StorageKey.WEBSOCKET_CAPTURE_MODE);
+    applyWebSocketMode(value);
   }
   var clearConfirmPending = false;
   var clearConfirmTimer = null;
@@ -1201,7 +1413,7 @@
       clearBtn.textContent = "Clearing...";
     }
     return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: "clearLogs" }, (response) => {
+      chrome.runtime.sendMessage({ type: "clear_logs" }, (response) => {
         if (clearBtn) {
           clearBtn.disabled = false;
           clearBtn.textContent = "Clear Logs";
@@ -1222,14 +1434,10 @@
   }
 
   // extension/popup.js
-  try {
-    chrome.storage.local.get("theme", (r) => {
-      void chrome.runtime.lastError;
-      if (r?.["theme"] === "light")
-        document.body.classList.add("light-theme");
-    });
-  } catch {
-  }
+  void getLocal("theme").then((value) => {
+    if (value === "light")
+      document.body.classList.add("light-theme");
+  });
   var DEFAULT_MAX_ENTRIES2 = 1e3;
   var RESHOW_TRACKED_HOVER_LAUNCHER_MESSAGE = {
     type: RuntimeMessageName.SHOW_TRACKED_HOVER_LAUNCHER
@@ -1287,26 +1495,39 @@
     });
   }
   function cacheStatus(status) {
-    try {
-      chrome.storage.session.set({ [StorageKey.POPUP_LAST_STATUS]: status }, () => {
-        void chrome.runtime.lastError;
-      });
-    } catch {
-    }
+    void setSession(StorageKey.POPUP_LAST_STATUS, status);
   }
   function initPopup() {
-    requestTrackedHoverLauncherReshow();
+    setupRecordingUI();
+    setupActionRecordingUI();
+    initTrackPageButton();
+    setupWebSocketUI();
+    setupToggleWarnings();
+    const clearBtn = document.getElementById("clear-btn");
+    if (clearBtn)
+      clearBtn.addEventListener("click", handleClearLogs);
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === "status_update" && message.status) {
+        updateConnectionStatus(message.status);
+        cacheStatus(message.status);
+      }
+    });
+    onStorageChanged((changes, areaName) => {
+      if (areaName === "local" && changes[StorageKey.TRACKED_TAB_URL]) {
+        const urlEl = document.getElementById("tracking-bar-url");
+        if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
+          urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
+          console.log("[KaBOOM!] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
+        }
+      }
+    });
+    void getSession(StorageKey.POPUP_LAST_STATUS).then((value) => {
+      const cached = value;
+      if (cached)
+        updateConnectionStatus(cached);
+    });
     try {
-      chrome.storage.session.get([StorageKey.POPUP_LAST_STATUS], (result) => {
-        void chrome.runtime.lastError;
-        const cached = result?.[StorageKey.POPUP_LAST_STATUS];
-        if (cached)
-          updateConnectionStatus(cached);
-      });
-    } catch {
-    }
-    try {
-      chrome.runtime.sendMessage({ type: "getStatus" }, (status) => {
+      chrome.runtime.sendMessage({ type: "get_status" }, (status) => {
         if (chrome.runtime.lastError) {
           updateConnectionStatus({
             connected: false,
@@ -1333,39 +1554,27 @@
         error: "Extension error \u2014 try reloading the extension"
       });
     }
-    setupRecordingUI();
-    setupActionRecordingUI();
-    initFeatureToggles();
-    initWebSocketModeSelector();
-    initAiWebPilotToggle();
-    initTrackPageButton();
-    setupWebSocketUI();
-    setupToggleWarnings();
-    setupDrawModeButton();
-    const clearBtn = document.getElementById("clear-btn");
-    if (clearBtn)
-      clearBtn.addEventListener("click", handleClearLogs);
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === "statusUpdate" && message.status) {
-        updateConnectionStatus(message.status);
-        cacheStatus(message.status);
-      } else if (message.type === "pilotStatusChanged") {
-        const toggle = document.getElementById("aiWebPilotEnabled");
-        if (toggle) {
-          toggle.checked = message.enabled === true;
-          console.log("[Gasoline] Pilot status confirmed:", message.enabled);
-        }
-      }
+    const toggleKeys = FEATURE_TOGGLES.map((t) => t.storageKey);
+    const allKeys = [
+      ...toggleKeys,
+      StorageKey.WEBSOCKET_CAPTURE_MODE,
+      StorageKey.AI_WEB_PILOT_ENABLED
+    ];
+    void getLocals(allKeys).then((result) => {
+      applyFeatureToggles(result);
+      applyWebSocketMode(result[StorageKey.WEBSOCKET_CAPTURE_MODE]);
+      applyAiWebPilotToggle(result[StorageKey.AI_WEB_PILOT_ENABLED]);
     });
-    chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName === "local" && changes[StorageKey.TRACKED_TAB_URL]) {
-        const urlEl = document.getElementById("tracking-bar-url");
-        if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
-          urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
-          console.log("[Gasoline] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
-        }
-      }
-    });
+    const deferredInit = () => {
+      initPopupLogoMotion();
+      setupDrawModeButton();
+      requestTrackedHoverLauncherReshow();
+    };
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(deferredInit);
+    } else {
+      deferredInit();
+    }
   }
   if (typeof document !== "undefined" && typeof globalThis.process === "undefined") {
     if (document.readyState === "loading") {

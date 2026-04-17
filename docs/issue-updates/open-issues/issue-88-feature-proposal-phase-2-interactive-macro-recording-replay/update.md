@@ -1,12 +1,12 @@
 # Product Update: Issue #88
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/88
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/88
 - Title: [Feature Proposal] Phase 2: Interactive Macro Recording (Replay)
 - Last Updated: 2026-02-16T14:50:09Z
 
 ## Change Summary
-This update resolves or advances Issue #88 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #88 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 [Feature Proposal] Phase 2: Interactive Macro Recording (Replay)

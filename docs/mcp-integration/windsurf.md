@@ -1,6 +1,6 @@
 ---
-title: "Gasoline + Windsurf"
-description: "Configure Gasoline as an MCP server for Windsurf (Codeium). Give Windsurf's AI access to browser console logs, network errors, and page state."
+title: "Kaboom + Windsurf"
+description: "Configure Kaboom as an MCP server for Windsurf (Codeium). Give Windsurf's AI access to browser console logs, network errors, and page state."
 keywords: "Windsurf MCP server, Windsurf browser debugging, Codeium MCP, Windsurf AI browser logs"
 permalink: /mcp-integration/windsurf/
 header:
@@ -10,7 +10,7 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-28
 ---
 
 ## <i class="fas fa-file-code"></i> Configuration
@@ -20,9 +20,9 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": "npx",
-      "args": ["gasoline-mcp"]
+      "args": ["kaboom-agentic-browser"]
     }
   }
 }

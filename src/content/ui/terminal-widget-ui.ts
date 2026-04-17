@@ -230,7 +230,7 @@ export function createWidget(token: string): HTMLDivElement {
 
   // Connection status dot
   const statusDot = document.createElement('span')
-  statusDot.className = 'gasoline-terminal-status-dot'
+  statusDot.className = 'kaboom-terminal-status-dot'
   Object.assign(statusDot.style, {
     width: '8px',
     height: '8px',
@@ -241,7 +241,7 @@ export function createWidget(token: string): HTMLDivElement {
   })
 
   const titleSpan = document.createElement('span')
-  titleSpan.textContent = 'Gasoline Terminal'
+  titleSpan.textContent = 'KaBOOM! Terminal'
   Object.assign(titleSpan.style, {
     color: '#787c99',
     fontSize: '12px',
@@ -435,8 +435,8 @@ export function createWidget(token: string): HTMLDivElement {
 // Status dot
 // ---------------------------------------------------------------------------
 
-export function updateStatusDot(dotState: 'connected' | 'disconnected' | 'exited'): void {
-  const dot = state.widgetEl?.querySelector('.gasoline-terminal-status-dot') as HTMLElement | null
+function updateStatusDot(dotState: 'connected' | 'disconnected' | 'exited'): void {
+  const dot = state.widgetEl?.querySelector('.kaboom-terminal-status-dot') as HTMLElement | null
   if (!dot) return
   switch (dotState) {
     case 'connected':
@@ -456,7 +456,7 @@ export function updateStatusDot(dotState: 'connected' | 'disconnected' | 'exited
 // ---------------------------------------------------------------------------
 
 export function handleIframeMessage(event: MessageEvent): void {
-  if (!event.data || event.data.source !== 'gasoline-terminal') return
+  if (!event.data || event.data.source !== 'kaboom-terminal') return
   // Only accept messages from the terminal server's origin (localhost:port+1)
   try {
     const termOrigin = getTerminalServerUrl(state.serverUrl)
@@ -546,7 +546,7 @@ function setupResize(handle: HTMLElement, widget: HTMLElement): void {
 // Redraw / Minimize / Notify
 // ---------------------------------------------------------------------------
 
-export function redrawTerminal(widget: HTMLElement, header: HTMLElement, minimizeButton: HTMLButtonElement): void {
+function redrawTerminal(widget: HTMLElement, header: HTMLElement, minimizeButton: HTMLButtonElement): void {
   if (state.minimized) {
     toggleMinimize(widget, minimizeButton, header)
   }
@@ -619,7 +619,7 @@ export function notifyIframe(command: string, data?: Record<string, unknown>): v
   let origin = '*'
   try { origin = getTerminalServerUrl(state.serverUrl) } catch { /* fall back to wildcard */ }
   state.iframeEl.contentWindow.postMessage({
-    target: 'gasoline-terminal',
+    target: 'kaboom-terminal',
     command,
     ...data
   }, origin)

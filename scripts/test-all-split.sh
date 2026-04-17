@@ -11,10 +11,10 @@ ENABLE_GO_UAT_COVERAGE="${UAT_GO_COVERAGE:-0}"
 GO_UAT_COVERAGE_MIN="${UAT_GO_COVERAGE_MIN:-}"
 GO_UAT_COVERAGE_DIR="${UAT_GO_COVERAGE_DIR:-$PROJECT_ROOT/coverage/uat-go}"
 GO_UAT_COVERAGE_RAW_DIR="$GO_UAT_COVERAGE_DIR/raw"
-GO_UAT_BINARY="${UAT_GO_COVERAGE_BINARY:-$PROJECT_ROOT/gasoline-mcp-uat-cover}"
+GO_UAT_BINARY="${UAT_GO_COVERAGE_BINARY:-$PROJECT_ROOT/kaboom-agentic-browser-uat-cover}"
 
-PHASE1_SUMMARY_FILE="$(mktemp /tmp/gasoline-uat-phase1-summary-XXXXXX)"
-PHASE2_SUMMARY_FILE="$(mktemp /tmp/gasoline-uat-phase2-summary-XXXXXX)"
+PHASE1_SUMMARY_FILE="$(mktemp /tmp/kaboom-uat-phase1-summary-XXXXXX)"
+PHASE2_SUMMARY_FILE="$(mktemp /tmp/kaboom-uat-phase2-summary-XXXXXX)"
 
 # shellcheck disable=SC2329 # called via trap
 cleanup() {
@@ -80,7 +80,7 @@ load_phase_summary() {
 print_header() {
     echo ""
     echo "╔════════════════════════════════════════════════════════════════════════════════╗"
-    echo "║                      GASOLINE UAT TEST SUITE (SPLIT)                           ║"
+    echo "║                       KABOOM UAT TEST SUITE (SPLIT)                            ║"
     echo "║                                                                                ║"
     echo "║ Phase 1: ORIGINAL TESTS (54 tests, 20 categories) — Known Stable              ║"
     echo "║ Phase 2: NEW TESTS (98 tests, 14 categories) — Newly Built                    ║"
@@ -99,11 +99,11 @@ setup_go_uat_coverage() {
     echo "Preparing coverage-instrumented UAT daemon binary..."
     (
         cd "$PROJECT_ROOT"
-        go build -cover -coverpkg=./... -o "$GO_UAT_BINARY" ./cmd/dev-console
+        go build -cover -coverpkg=./... -o "$GO_UAT_BINARY" ./cmd/browser-agent
     )
 
-    export GASOLINE_UAT_WRAPPER="$GO_UAT_BINARY"
-    export GASOLINE_UAT_GOCOVERDIR="$GO_UAT_COVERAGE_RAW_DIR"
+    export KABOOM_UAT_WRAPPER="$GO_UAT_BINARY"
+    export KABOOM_UAT_GOCOVERDIR="$GO_UAT_COVERAGE_RAW_DIR"
 
     echo "  Coverage binary: $GO_UAT_BINARY"
     echo "  Coverage output: $GO_UAT_COVERAGE_RAW_DIR"
@@ -164,7 +164,7 @@ setup_go_uat_coverage
 echo "PHASE 1: Running Original UAT Tests..."
 echo "────────────────────────────────────────────────────────────────────────────────"
 
-if GASOLINE_UAT_SUMMARY_FILE="$PHASE1_SUMMARY_FILE" bash "$SCRIPT_DIR/test-original-uat.sh"; then
+if KABOOM_UAT_SUMMARY_FILE="$PHASE1_SUMMARY_FILE" bash "$SCRIPT_DIR/test-original-uat.sh"; then
     echo ""
     echo "✅ PHASE 1 COMPLETE: Original tests passed"
     PHASE1_PASS=true
@@ -183,7 +183,7 @@ echo "PHASE 2: Running New UAT Tests..."
 echo "────────────────────────────────────────────────────────────────────────────────"
 
 PHASE2_HARD_FAILED=false
-if GASOLINE_UAT_SUMMARY_FILE="$PHASE2_SUMMARY_FILE" bash "$SCRIPT_DIR/test-new-uat.sh"; then
+if KABOOM_UAT_SUMMARY_FILE="$PHASE2_SUMMARY_FILE" bash "$SCRIPT_DIR/test-new-uat.sh"; then
     echo ""
     echo "✅ PHASE 2 COMPLETE: New tests passed"
     PHASE2_PASS=true

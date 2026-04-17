@@ -234,7 +234,7 @@ describe('Source Maps Toggle', () => {
     const sourceMapToggle = FEATURE_TOGGLES.find((t) => t.id === 'toggle-source-maps')
     assert.ok(sourceMapToggle, 'Source maps toggle should exist')
     assert.strictEqual(sourceMapToggle.storageKey, 'sourceMapEnabled')
-    assert.strictEqual(sourceMapToggle.messageType, 'setSourceMapEnabled')
+    assert.strictEqual(sourceMapToggle.messageType, 'set_source_map_enabled')
     assert.strictEqual(sourceMapToggle.default, true)
   })
 
@@ -254,7 +254,7 @@ describe('Source Maps Toggle', () => {
     const sendResponse = mock.fn()
 
     // Disable source maps
-    bgHandler({ type: 'setSourceMapEnabled', enabled: false }, { id: mockChrome.runtime.id }, sendResponse)
+    bgHandler({ type: 'set_source_map_enabled', enabled: false }, { id: mockChrome.runtime.id }, sendResponse)
 
     assert.ok(
       mockDeps.setSourceMapEnabled.mock.calls.some((c) => c.arguments[0] === false),
@@ -283,7 +283,7 @@ describe('Source Maps Toggle', () => {
     const sendResponse = mock.fn()
 
     // Enable source maps
-    bgHandler({ type: 'setSourceMapEnabled', enabled: true }, { id: mockChrome.runtime.id }, sendResponse)
+    bgHandler({ type: 'set_source_map_enabled', enabled: true }, { id: mockChrome.runtime.id }, sendResponse)
 
     assert.ok(
       mockDeps.setSourceMapEnabled.mock.calls.some((c) => c.arguments[0] === true),
@@ -406,15 +406,15 @@ describe('Content Script Toggle Forwarding', () => {
     const { TOGGLE_MESSAGES } = await import('../../extension/content/message-handlers.js')
 
     const expected = [
-      'setNetworkWaterfallEnabled',
-      'setPerformanceMarksEnabled',
-      'setActionReplayEnabled',
-      'setWebSocketCaptureEnabled',
-      'setWebSocketCaptureMode',
-      'setPerformanceSnapshotEnabled',
-      'setDeferralEnabled',
-      'setNetworkBodyCaptureEnabled',
-      'setServerUrl'
+      'set_network_waterfall_enabled',
+      'set_performance_marks_enabled',
+      'set_action_replay_enabled',
+      'set_web_socket_capture_enabled',
+      'set_web_socket_capture_mode',
+      'set_performance_snapshot_enabled',
+      'set_deferral_enabled',
+      'set_network_body_capture_enabled',
+      'set_server_url'
     ]
 
     for (const msgType of expected) {
@@ -425,14 +425,14 @@ describe('Content Script Toggle Forwarding', () => {
   test('handleToggleMessage forwards boolean setting via postMessage', async () => {
     const { handleToggleMessage } = await import('../../extension/content/message-handlers.js')
 
-    handleToggleMessage({ type: 'setNetworkWaterfallEnabled', enabled: false })
+    handleToggleMessage({ type: 'set_network_waterfall_enabled', enabled: false })
 
     const postCalls = globalThis.window.postMessage.mock.calls
     assert.ok(postCalls.length > 0, 'Should call window.postMessage')
 
     const payload = postCalls[0].arguments[0]
-    assert.strictEqual(payload.type, 'GASOLINE_SETTING')
-    assert.strictEqual(payload.setting, 'setNetworkWaterfallEnabled')
+    assert.strictEqual(payload.type, 'kaboom_setting')
+    assert.strictEqual(payload.setting, 'set_network_waterfall_enabled')
     assert.strictEqual(payload.enabled, false)
 
     // Verify targetOrigin is set (not wildcard)
@@ -443,22 +443,22 @@ describe('Content Script Toggle Forwarding', () => {
   test('handleToggleMessage forwards mode for WebSocket capture mode', async () => {
     const { handleToggleMessage } = await import('../../extension/content/message-handlers.js')
 
-    handleToggleMessage({ type: 'setWebSocketCaptureMode', mode: 'high' })
+    handleToggleMessage({ type: 'set_web_socket_capture_mode', mode: 'high' })
 
     const postCalls = globalThis.window.postMessage.mock.calls
     const payload = postCalls[0].arguments[0]
-    assert.strictEqual(payload.setting, 'setWebSocketCaptureMode')
+    assert.strictEqual(payload.setting, 'set_web_socket_capture_mode')
     assert.strictEqual(payload.mode, 'high')
   })
 
   test('handleToggleMessage forwards URL for server URL setting', async () => {
     const { handleToggleMessage } = await import('../../extension/content/message-handlers.js')
 
-    handleToggleMessage({ type: 'setServerUrl', url: 'http://localhost:9999' })
+    handleToggleMessage({ type: 'set_server_url', url: 'http://localhost:9999' })
 
     const postCalls = globalThis.window.postMessage.mock.calls
     const payload = postCalls[0].arguments[0]
-    assert.strictEqual(payload.setting, 'setServerUrl')
+    assert.strictEqual(payload.setting, 'set_server_url')
     assert.strictEqual(payload.url, 'http://localhost:9999')
   })
 
@@ -474,11 +474,11 @@ describe('Content Script Toggle Forwarding', () => {
     const { TOGGLE_MESSAGES } = await import('../../extension/content/message-handlers.js')
 
     assert.ok(
-      !TOGGLE_MESSAGES.has('setActionToastsEnabled'),
+      !TOGGLE_MESSAGES.has('set_action_toasts_enabled'),
       'Action toasts should NOT be forwarded to inject (handled in content script)'
     )
     assert.ok(
-      !TOGGLE_MESSAGES.has('setSubtitlesEnabled'),
+      !TOGGLE_MESSAGES.has('set_subtitles_enabled'),
       'Subtitles should NOT be forwarded to inject (handled in content script)'
     )
   })
@@ -540,22 +540,22 @@ describe('Background Toggle Routing', () => {
     bgHandler = await installAndGetHandler()
 
     const forwardedTypes = [
-      'setNetworkWaterfallEnabled',
-      'setPerformanceMarksEnabled',
-      'setActionReplayEnabled',
-      'setWebSocketCaptureEnabled',
-      'setWebSocketCaptureMode',
-      'setPerformanceSnapshotEnabled',
-      'setDeferralEnabled',
-      'setNetworkBodyCaptureEnabled',
-      'setActionToastsEnabled',
-      'setSubtitlesEnabled'
+      'set_network_waterfall_enabled',
+      'set_performance_marks_enabled',
+      'set_action_replay_enabled',
+      'set_web_socket_capture_enabled',
+      'set_web_socket_capture_mode',
+      'set_performance_snapshot_enabled',
+      'set_deferral_enabled',
+      'set_network_body_capture_enabled',
+      'set_action_toasts_enabled',
+      'set_subtitles_enabled'
     ]
 
     for (const type of forwardedTypes) {
       mockDeps.forwardToAllContentScripts.mock.resetCalls()
       const sendResponse = mock.fn()
-      const msg = type === 'setWebSocketCaptureMode' ? { type, mode: 'high' } : { type, enabled: true }
+      const msg = type === 'set_web_socket_capture_mode' ? { type, mode: 'high' } : { type, enabled: true }
 
       bgHandler(msg, { id: mockChrome.runtime.id }, sendResponse)
 
@@ -574,7 +574,7 @@ describe('Background Toggle Routing', () => {
     bgHandler = await installAndGetHandler()
     const sendResponse = mock.fn()
 
-    bgHandler({ type: 'setScreenshotOnError', enabled: false }, { id: mockChrome.runtime.id }, sendResponse)
+    bgHandler({ type: 'set_screenshot_on_error', enabled: false }, { id: mockChrome.runtime.id }, sendResponse)
 
     assert.ok(
       mockDeps.setScreenshotOnError.mock.calls.some((c) => c.arguments[0] === false),
@@ -590,7 +590,7 @@ describe('Background Toggle Routing', () => {
     bgHandler = await installAndGetHandler()
     const sendResponse = mock.fn()
 
-    bgHandler({ type: 'setDebugMode', enabled: true }, { id: mockChrome.runtime.id }, sendResponse)
+    bgHandler({ type: 'set_debug_mode', enabled: true }, { id: mockChrome.runtime.id }, sendResponse)
 
     assert.ok(
       mockDeps.setDebugMode.mock.calls.some((c) => c.arguments[0] === true),
@@ -606,7 +606,7 @@ describe('Background Toggle Routing', () => {
     bgHandler = await installAndGetHandler()
     const sendResponse = mock.fn()
 
-    bgHandler({ type: 'setDebugMode', enabled: true }, { id: 'different-extension' }, sendResponse)
+    bgHandler({ type: 'set_debug_mode', enabled: true }, { id: 'different-extension' }, sendResponse)
 
     assert.strictEqual(mockDeps.setDebugMode.mock.calls.length, 0, 'Should NOT process message from untrusted sender')
   })
@@ -689,12 +689,12 @@ describe('Rapid Toggle Switching', () => {
 
     // Rapidly toggle 20 times
     for (let i = 0; i < 20; i++) {
-      handleFeatureToggle('networkWaterfallEnabled', 'setNetworkWaterfallEnabled', i % 2 === 0)
+      handleFeatureToggle('networkWaterfallEnabled', 'set_network_waterfall_enabled', i % 2 === 0)
     }
 
     // Should have exactly 20 sends (one per toggle)
     const calls = mockChrome.runtime.sendMessage.mock.calls.filter(
-      (c) => c.arguments[0]?.type === 'setNetworkWaterfallEnabled'
+      (c) => c.arguments[0]?.type === 'set_network_waterfall_enabled'
     )
     assert.strictEqual(calls.length, 20, 'Should send exactly one message per toggle action')
   })

@@ -11,7 +11,7 @@ last_verified_date: 2026-03-05
 
 ## Architecture
 - Content-side detection logic: `src/lib/transient-capture.ts`
-- Daemon-side async wiring and retrieval: `cmd/dev-console/tools_async_transient.go`
+- Daemon-side async wiring and retrieval: `cmd/browser-agent/tools_async_transient.go`
 - Observe integration tests: `internal/tools/observe/handlers_transients_test.go`
 
 ## Constraints

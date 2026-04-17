@@ -8,7 +8,7 @@ last_reviewed: 2026-02-16
 
 ## Problem
 
-Multiple gasoline daemon processes can accumulate from:
+Multiple kaboom daemon processes can accumulate from:
 - Multiple installation sources (npm, npx, dev builds)
 - Testing and development spawning many instances
 - Port conflicts causing silent failures
@@ -21,8 +21,8 @@ Multiple gasoline daemon processes can accumulate from:
 **package.json scripts:**
 ```json
 {
-  "preinstall": "npm uninstall -g gasoline-mcp (kills old version)",
-  "preuninstall": "pkill -9 gasoline (kills all running servers)"
+  "preinstall": "npm uninstall -g kaboom-mcp (kills old version)",
+  "preuninstall": "pkill -9 kaboom (kills all running servers)"
 }
 ```
 
@@ -113,8 +113,8 @@ rm -rf ~/.npm/_npx
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "/path/to/dev/gasoline/dist/gasoline-darwin-arm64"
+    "kaboom-browser-devtools": {
+      "command": "/path/to/dev/kaboom/dist/kaboom-darwin-arm64"
     }
   }
 }
@@ -124,8 +124,8 @@ rm -rf ~/.npm/_npx
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
-      "command": "gasoline-mcp"
+    "kaboom-browser-devtools": {
+      "command": "kaboom-mcp"
     }
   }
 }
@@ -133,8 +133,8 @@ rm -rf ~/.npm/_npx
 
 **Before switching contexts:**
 ```bash
-# Kill all gasoline processes
-pkill -9 gasoline
+# Kill all kaboom processes
+pkill -9 kaboom
 
 # Verify port is free
 lsof -ti :7890 || echo "Port free"
@@ -143,29 +143,29 @@ lsof -ti :7890 || echo "Port free"
 ## Manual Cleanup Commands
 
 ```bash
-# Kill all gasoline processes
-pkill -9 gasoline
+# Kill all kaboom processes
+pkill -9 kaboom
 
 # Remove PID files
-rm -f /tmp/gasoline-*.pid
+rm -f /tmp/kaboom-*.pid
 
 # Clear npx cache
 rm -rf ~/.npm/_npx
 
 # Uninstall npm global
-npm uninstall -g gasoline-mcp
+npm uninstall -g kaboom-mcp
 
 # Check for remaining processes
-ps aux | grep gasoline | grep -v grep
+ps aux | grep kaboom | grep -v grep
 ```
 
 ## Monitoring
 
 Check for zombie processes:
 ```bash
-# Count gasoline processes
-ps aux | grep -c gasoline | grep -v grep
+# Count kaboom processes
+ps aux | grep -c kaboom | grep -v grep
 
 # List all with ports
-lsof -nP -iTCP -sTCP:LISTEN | grep gasoline
+lsof -nP -iTCP -sTCP:LISTEN | grep kaboom
 ```

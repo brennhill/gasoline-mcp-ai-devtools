@@ -47,7 +47,7 @@ test.describe('Popup Connection Status', () => {
     await triggerPage.goto(`chrome-extension://${extensionId}/options.html`)
     await triggerPage.evaluate((port) => {
       return new Promise((resolve) => {
-        chrome.runtime.sendMessage({ type: 'setServerUrl', url: `http://127.0.0.1:${port}` }, () => resolve())
+        chrome.runtime.sendMessage({ type: 'set_server_url', url: `http://127.0.0.1:${port}` }, () => resolve())
       })
     }, serverPort)
     // Wait for the health check to complete (and fail)

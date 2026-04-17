@@ -165,24 +165,24 @@ describe('Favicon Replacer', () => {
       const behavior = {
         savesOriginal: true,
         restoresOnStop: true,
-        removesGasolineFavicon: true
+        removesKaboomFavicon: true
       }
 
       assert.strictEqual(behavior.savesOriginal, true, 'Should save original favicon href')
       assert.strictEqual(behavior.restoresOnStop, true, 'Should restore original when tracking stops')
-      assert.strictEqual(behavior.removesGasolineFavicon, true, 'Should remove Gasoline favicon element')
+      assert.strictEqual(behavior.removesKaboomFavicon, true, 'Should remove Kaboom favicon element')
     })
   })
 
   describe('Message Handling', () => {
     it('should listen for trackingStateChanged', () => {
-      const messageType = 'trackingStateChanged'
-      assert.strictEqual(messageType, 'trackingStateChanged')
+      const messageType = 'tracking_state_changed'
+      assert.strictEqual(messageType, 'tracking_state_changed')
     })
 
     it('should request initial state with getTrackingState', () => {
-      const messageType = 'getTrackingState'
-      assert.strictEqual(messageType, 'getTrackingState')
+      const messageType = 'get_tracking_state'
+      assert.strictEqual(messageType, 'get_tracking_state')
     })
 
     it('should receive state with isTracked and aiPilotEnabled', () => {

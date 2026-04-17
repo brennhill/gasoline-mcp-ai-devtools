@@ -270,7 +270,7 @@ interact({
 })
 → {
     export_id: "export-20260131-101600-001",
-    file_path: ".gasoline/exports/export-*.json",
+    file_path: ".kaboom/exports/export-*.json",
     size_bytes: 125000,
     events_count: 47,
     timestamp: "2026-01-31T10:16:00Z"

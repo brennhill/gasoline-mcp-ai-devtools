@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Gasoline's redaction engine scrubs sensitive data from MCP tool responses before they reach AI clients. Currently, redaction uses a fixed set of built-in patterns loaded at startup. This feature adds user-defined regex patterns via an MCP tool, supporting custom patterns for domain-specific sensitive data (internal account numbers, proprietary tokens, PII formats), with configurable replacement strategies (mask, hash, remove) and per-field targeting.
+Kaboom's redaction engine scrubs sensitive data from MCP tool responses before they reach AI clients. Currently, redaction uses a fixed set of built-in patterns loaded at startup. This feature adds user-defined regex patterns via an MCP tool, supporting custom patterns for domain-specific sensitive data (internal account numbers, proprietary tokens, PII formats), with configurable replacement strategies (mask, hash, remove) and per-field targeting.
 
 ---
 
@@ -939,11 +939,11 @@ func (c *RedactionCache) Invalidate() {
 
 | File | Purpose |
 |------|---------|
-| `cmd/dev-console/redaction.go` | Existing redaction engine (extend) |
-| `cmd/dev-console/redaction_config.go` | New: Pattern configuration management |
-| `cmd/dev-console/redaction_test.go` | Existing tests (extend) |
-| `cmd/dev-console/redaction_config_test.go` | New: Configuration tests |
-| `cmd/dev-console/tools_core.go` | Add `configure_redaction` tool registration |
+| `cmd/browser-agent/redaction.go` | Existing redaction engine (extend) |
+| `cmd/browser-agent/redaction_config.go` | New: Pattern configuration management |
+| `cmd/browser-agent/redaction_test.go` | Existing tests (extend) |
+| `cmd/browser-agent/redaction_config_test.go` | New: Configuration tests |
+| `cmd/browser-agent/tools_core.go` | Add `configure_redaction` tool registration |
 
 ---
 

@@ -1,7 +1,7 @@
 # QA Plan: Issue #60
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/60
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/60
 - Title: Expose machine-readable capabilities endpoint with semantic versioning and deprecation metadata
 
 ## QA Goal

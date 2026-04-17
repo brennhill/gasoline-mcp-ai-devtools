@@ -47,13 +47,13 @@ last_reviewed: 2026-02-16
 
 **Tests:**
 
-- cmd/dev-console/tools_test.go (22 tests covering all tools)
+- cmd/browser-agent/tools_test.go (22 tests covering all tools)
 
 **Protected by:** Pre-commit hook, stub detection
 
 ---
 
-### cmd/dev-console/tools_*.go
+### cmd/browser-agent/tools_*.go
 
 **What it does:** MCP tool implementations (split into 7 focused files)
 
@@ -78,7 +78,7 @@ last_reviewed: 2026-02-16
 - [Observe Tool](../features/feature/observe/)
 
 **Tests:**
-- cmd/dev-console/tools_test.go (comprehensive coverage)
+- cmd/browser-agent/tools_test.go (comprehensive coverage)
 
 **Protected by:** Pre-commit hook, GitHub Actions, architecture validation
 
@@ -101,7 +101,7 @@ last_reviewed: 2026-02-16
 
 ---
 
-### cmd/dev-console/bridge.go
+### cmd/browser-agent/bridge.go
 **What it does:** MCP stdio ↔ HTTP bridge
 
 **Affects:**
@@ -214,7 +214,7 @@ last_reviewed: 2026-02-16
 **Code:**
 - internal/capture/queries.go (303 lines)
 - internal/capture/handlers.go (polling endpoints)
-- cmd/dev-console/tools_core.go (MCP handlers)
+- cmd/browser-agent/tools_core.go (MCP handlers)
 - internal/queries/types.go (type definitions)
 
 **Docs:**
@@ -231,7 +231,7 @@ last_reviewed: 2026-02-16
 ### Correlation ID Tracking
 **Code:**
 - internal/capture/queries.go (RegisterCommand, CompleteCommand, ExpireCommand)
-- cmd/dev-console/tools_core.go (toolObserveCommandResult, toolObservePendingCommands)
+- cmd/browser-agent/tools_core.go (toolObserveCommandResult, toolObservePendingCommands)
 
 **Docs:**
 - async-queue-correlation-tracking.md
@@ -296,8 +296,8 @@ Each internal package now has `doc.go` with comprehensive package overview:
 ### "I want to add a new MCP tool"
 **Check:**
 1. docs/features/ - See existing tool patterns
-2. cmd/dev-console/tools_core.go - Add handler
-3. cmd/dev-console/handler.go - Register in tool list
+2. cmd/browser-agent/tools_core.go - Add handler
+3. cmd/browser-agent/handler.go - Register in tool list
 4. docs/features/feature/{tool-name}/ - Create spec
 
 ---

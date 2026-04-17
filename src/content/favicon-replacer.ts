@@ -1,11 +1,11 @@
 /**
- * Purpose: Replaces the page favicon with the Gasoline flame icon when tab tracking is enabled and adds flickering animation when AI Pilot is active.
+ * Purpose: Replaces the page favicon with the Kaboom flame icon when tab tracking is enabled and adds flickering animation when AI Pilot is active.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
 
 /**
  * @fileoverview Favicon Replacer - Visual indicator for tracked tabs
- * Replaces the page's favicon with the Gasoline flame icon when tab tracking is enabled.
+ * Replaces the page's favicon with the Kaboom flame icon when tab tracking is enabled.
  * Adds flickering animation when AI Pilot is active.
  */
 
@@ -32,7 +32,7 @@ export function initFaviconReplacer(): void {
   chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
     // Only accept messages from the extension itself (background script)
     if (sender.id !== chrome.runtime.id) return false
-    if (message.type === 'trackingStateChanged') {
+    if (message.type === 'tracking_state_changed') {
       const newState: TrackingState = message.state
       updateFavicon(newState)
     }
@@ -42,7 +42,7 @@ export function initFaviconReplacer(): void {
   })
 
   // Request initial tracking state
-  chrome.runtime.sendMessage({ type: 'getTrackingState' }, (response: { state?: TrackingState }) => {
+  chrome.runtime.sendMessage({ type: 'get_tracking_state' }, (response: { state?: TrackingState }) => {
     if (response && response.state) {
       updateFavicon(response.state)
     }
@@ -72,7 +72,7 @@ function updateFavicon(state: TrackingState): void {
 }
 
 /**
- * Save original favicon and replace with Gasoline flame.
+ * Save original favicon and replace with Kaboom flame.
  */
 function replaceFaviconWithFlame(withGlow: boolean): void {
   // Save original favicon (only once)
@@ -85,11 +85,11 @@ function replaceFaviconWithFlame(withGlow: boolean): void {
   const existingIcons = document.querySelectorAll('link[rel*="icon"]')
   existingIcons.forEach((icon) => icon.remove())
 
-  // Add Gasoline flame favicon
+  // Add Kaboom flame favicon
   const link = document.createElement('link')
   link.rel = 'icon'
   link.type = 'image/svg+xml'
-  link.id = 'gasoline-favicon'
+  link.id = 'kaboom-favicon'
 
   // Use glow icon if tracking, regular icon if not
   const iconPath = withGlow ? 'icons/icon-glow.svg' : 'icons/icon.svg'
@@ -102,10 +102,10 @@ function replaceFaviconWithFlame(withGlow: boolean): void {
  * Restore the original page favicon.
  */
 function restoreOriginalFavicon(): void {
-  // Remove Gasoline favicon
-  const gasolineIcon = document.getElementById('gasoline-favicon')
-  if (gasolineIcon) {
-    gasolineIcon.remove()
+  // Remove Kaboom favicon
+  const kaboomIcon = document.getElementById('kaboom-favicon')
+  if (kaboomIcon) {
+    kaboomIcon.remove()
   }
 
   // Restore original
@@ -152,10 +152,10 @@ function startFlicker(): void {
     currentFrameIndex = (currentFrameIndex + 1) % flameFrames.length
 
     // Update favicon
-    const gasolineIcon = document.getElementById('gasoline-favicon') as HTMLLinkElement | null
-    if (gasolineIcon) {
+    const kaboomIcon = document.getElementById('kaboom-favicon') as HTMLLinkElement | null
+    if (kaboomIcon) {
       const iconPath = `icons/${flameFrames[currentFrameIndex]}`
-      gasolineIcon.href = chrome.runtime.getURL(iconPath)
+      kaboomIcon.href = chrome.runtime.getURL(iconPath)
     }
   }, 150) // 150ms per frame = 1.2s full cycle (browser-limited, but visible)
 }

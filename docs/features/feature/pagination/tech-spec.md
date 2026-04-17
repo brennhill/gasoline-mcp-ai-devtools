@@ -33,7 +33,7 @@ Add `offset` and `limit` parameters to existing observe() modes that return arra
 
 ### Phase 1: Schema Updates (30 min)
 
-**File:** `cmd/dev-console/tools_core.go`
+**File:** `cmd/browser-agent/tools_core.go`
 
 Add offset/limit parameters to observe tool schema:
 
@@ -56,7 +56,7 @@ Description: "Read current browser state with pagination support. Use offset and
 
 ### Phase 2: Helper Function (30 min)
 
-**File:** `cmd/dev-console/pagination.go` (NEW)
+**File:** `cmd/browser-agent/pagination.go` (NEW)
 
 ```go
 package main
@@ -162,7 +162,7 @@ Apply pagination to 6 modes: `network_waterfall`, `network_bodies`, `logs`, `web
 
 #### Example: network_waterfall
 
-**File:** `cmd/dev-console/network.go`
+**File:** `cmd/browser-agent/network.go`
 
 ##### Before:
 ```go
@@ -220,27 +220,27 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 
 #### Apply Same Pattern To:
 
-1. **network_bodies** (`cmd/dev-console/network.go:185`)
+1. **network_bodies** (`cmd/browser-agent/network.go:185`)
    - Parse offset/limit from args
    - Apply pagination after filtering
    - Add metadata to response
 
-2. **logs** (`cmd/dev-console/tools_core.go` - toolGetLogs)
+2. **logs** (`cmd/browser-agent/tools_core.go` - toolGetLogs)
    - Parse offset/limit from args
    - Apply pagination after filtering
    - Add metadata to response
 
-3. **websocket_events** (`cmd/dev-console/websocket.go` - toolGetWSEvents)
+3. **websocket_events** (`cmd/browser-agent/websocket.go` - toolGetWSEvents)
    - Parse offset/limit from args
    - Apply pagination after filtering
    - Add metadata to response
 
-4. **actions** (`cmd/dev-console/actions.go` - toolGetActions)
+4. **actions** (`cmd/browser-agent/actions.go` - toolGetActions)
    - Parse offset/limit from args
    - Apply pagination after filtering
    - Add metadata to response
 
-5. **extension_logs** (`cmd/dev-console/tools_core.go` - toolGetExtensionLogs)
+5. **extension_logs** (`cmd/browser-agent/tools_core.go` - toolGetExtensionLogs)
    - Parse offset/limit from args
    - Apply pagination after filtering
    - Add metadata to response
@@ -251,7 +251,7 @@ func (h *ToolHandler) toolGetNetworkWaterfall(req JSONRPCRequest, args json.RawM
 
 ### Unit Tests
 
-**File:** `cmd/dev-console/pagination_test.go` (NEW)
+**File:** `cmd/browser-agent/pagination_test.go` (NEW)
 
 ```go
 func TestApplyPagination_Basic(t *testing.T) {
@@ -306,7 +306,7 @@ func TestApplyPagination_ZeroLimit(t *testing.T) {
 
 ### Integration Tests
 
-**File:** `cmd/dev-console/network_test.go`
+**File:** `cmd/browser-agent/network_test.go`
 
 ```go
 func TestNetworkWaterfallPagination(t *testing.T) {
@@ -353,8 +353,8 @@ func TestNetworkWaterfallPagination(t *testing.T) {
 ### Manual UAT
 
 ```bash
-# 1. Start Gasoline
-./gasoline --port 7890
+# 1. Start Kaboom
+./kaboom --port 7890
 
 # 2. In Claude Code, test pagination
 observe({what: "network_waterfall", limit: 10})
@@ -493,7 +493,7 @@ observe({what: "network_waterfall", limit: 50})
 ### Quality Gates
 
 - [ ] `make compile-ts` passes
-- [ ] `go vet ./cmd/dev-console/` passes
+- [ ] `go vet ./cmd/browser-agent/` passes
 - [ ] `make test` passes (all unit tests)
 - [ ] Manual UAT checklist completed
 - [ ] No performance regression
@@ -504,12 +504,12 @@ observe({what: "network_waterfall", limit: 50})
 
 | File | Lines Changed | Description |
 |------|---------------|-------------|
-| `cmd/dev-console/pagination.go` | +150 | NEW: Pagination helper |
-| `cmd/dev-console/pagination_test.go` | +200 | NEW: Unit tests |
-| `cmd/dev-console/tools_core.go` | +10 | Add offset/limit to schema |
-| `cmd/dev-console/network.go` | +30 | Apply pagination to network_waterfall, network_bodies |
-| `cmd/dev-console/websocket.go` | +20 | Apply pagination to websocket_events |
-| `cmd/dev-console/actions.go` | +20 | Apply pagination to actions |
+| `cmd/browser-agent/pagination.go` | +150 | NEW: Pagination helper |
+| `cmd/browser-agent/pagination_test.go` | +200 | NEW: Unit tests |
+| `cmd/browser-agent/tools_core.go` | +10 | Add offset/limit to schema |
+| `cmd/browser-agent/network.go` | +30 | Apply pagination to network_waterfall, network_bodies |
+| `cmd/browser-agent/websocket.go` | +20 | Apply pagination to websocket_events |
+| `cmd/browser-agent/actions.go` | +20 | Apply pagination to actions |
 | **Total** | **~430 lines** | **2-4 hours** |
 
 ---
@@ -520,7 +520,7 @@ observe({what: "network_waterfall", limit: 50})
 2. **Run full test suite**
 3. **Manual UAT testing**
 4. **Update documentation**
-5. **Merge to `main` for v5.3 release**
+5. **Merge to `stable` for v5.3 release**
 
 ---
 

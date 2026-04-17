@@ -42,11 +42,11 @@ describe('Edge Cases: WebSocket Reconnection', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
     const closeEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'close'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'close'
     })
 
     assert.strictEqual(openEvents.length, 10, 'Expected 10 open events')
@@ -77,11 +77,11 @@ describe('Edge Cases: WebSocket Reconnection', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const errorEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'error'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'error'
     })
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
 
     assert.strictEqual(errorEvents.length, 1, 'Expected 1 error event')
@@ -102,7 +102,7 @@ describe('Edge Cases: WebSocket Reconnection', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.ok(msgEvents.length >= 1, 'Expected at least 1 message event')
@@ -121,7 +121,7 @@ describe('Edge Cases: WebSocket Reconnection', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const _wsEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS'
+      return msg.type === 'kaboom_ws'
     })
 
     // Even without open/close events, the WebSocket constructor interception should be tracked
@@ -152,7 +152,7 @@ describe('Edge Cases: WebSocket Reconnection', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
 
     assert.strictEqual(openEvents.length, 3, 'Expected 3 open events')
@@ -216,7 +216,7 @@ describe('Edge Cases: Service Worker Restart', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
 
     assert.ok(openEvents.length >= 1, 'Expected open event even during early initialization')
@@ -242,7 +242,7 @@ describe('Edge Cases: Service Worker Restart', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
 
     // 5 opens from the loop + 1 from the final verification
@@ -287,11 +287,11 @@ describe('Edge Cases: Concurrent Operations', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
     const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.strictEqual(openEvents.length, 20, 'Expected 20 open events')
@@ -317,7 +317,7 @@ describe('Edge Cases: Concurrent Operations', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.ok(msgEvents.length >= 100, 'Expected at least 100 message events')
@@ -345,15 +345,15 @@ describe('Edge Cases: Concurrent Operations', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
     const closeEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'close'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'close'
     })
     const errorEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'error'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'error'
     })
 
     assert.strictEqual(openEvents.length, 1, 'Expected 1 open event')
@@ -416,7 +416,7 @@ describe('Edge Cases: Memory Pressure Scenarios', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const openEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'open'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'open'
     })
 
     assert.strictEqual(openEvents.length, 50, 'All 50 connections should post open events under memory pressure')
@@ -438,7 +438,7 @@ describe('Edge Cases: Memory Pressure Scenarios', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const closeEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'close'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'close'
     })
 
     assert.strictEqual(closeEvents.length, 100, 'Expected 100 close events')
@@ -471,7 +471,7 @@ describe('Edge Cases: Message Edge Cases', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.ok(msgEvents.length >= 1, 'Should handle empty messages')
@@ -496,7 +496,7 @@ describe('Edge Cases: Message Edge Cases', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.ok(msgEvents.length >= 1, 'Should handle messages with special characters')
@@ -519,7 +519,7 @@ describe('Edge Cases: Message Edge Cases', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.ok(msgEvents.length >= 3, 'Should handle malformed JSON without crashing')
@@ -541,7 +541,7 @@ describe('Edge Cases: Message Edge Cases', () => {
     const calls = globalThis.window.postMessage.mock.calls
     const msgEvents = calls.filter((c) => {
       const msg = c.arguments[0]
-      return msg.type === 'GASOLINE_WS' && msg.payload.event === 'message'
+      return msg.type === 'kaboom_ws' && msg.payload.event === 'message'
     })
 
     assert.ok(msgEvents.length >= 1, 'Should handle large messages')

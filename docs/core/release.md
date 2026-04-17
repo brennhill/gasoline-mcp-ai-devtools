@@ -10,7 +10,7 @@ canonical: true
 
 # Release Process
 
-Gasoline MCP uses a `UNSTABLE` → `main` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
+Kaboom MCP uses a `UNSTABLE` → `stable` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
 
 ## Branch Model
 
@@ -26,13 +26,13 @@ feature/b ──────●        │
 feature/c ───────────────●
 ```
 
-- **`main`** — Published releases. What's on npm and the Chrome Web Store.
+- **`stable`** — Published releases. What's on npm and the Chrome Web Store.
 - **`UNSTABLE`** — Integration branch. All features merge here first.
 - **Feature branches** — Branch from `UNSTABLE`, merge back to `UNSTABLE`.
 
 ## Quality Gates
 
-Every feature must pass all gates before merging to `UNSTABLE`. All gates must be green before `UNSTABLE` merges to `main`.
+Every feature must pass all gates before merging to `UNSTABLE`. All gates must be green before `UNSTABLE` merges to `stable`.
 
 ### Gate 1: Tests Pass
 
@@ -62,7 +62,7 @@ Every requirement in the specification has corresponding tests:
 ### Gate 4: Static Analysis
 
 ```bash
-go vet ./cmd/dev-console/    # No warnings
+go vet ./cmd/browser-agent/    # No warnings
 make build                   # Cross-platform build succeeds
 ```
 
@@ -86,7 +86,7 @@ All platforms must build: darwin-arm64, darwin-x64, linux-arm64, linux-x64, wind
 | Per-file (statements) | 90% |
 
 ```bash
-go test -coverprofile=coverage.out ./cmd/dev-console/
+go test -coverprofile=coverage.out ./cmd/browser-agent/
 go tool cover -func=coverage.out | grep total
 ```
 
@@ -128,13 +128,13 @@ git push origin HEAD --follow-tags
 
 ```bash
 # Review all MCP tool definitions
-grep -r "tools\|inputSchema" cmd/dev-console/tools_*.go
+grep -r "tools\|inputSchema" cmd/browser-agent/tools_*.go
 
 # Ensure no stub implementations
-grep -rn "TODO\|FIXME\|not implemented" cmd/dev-console/tools_*.go
+grep -rn "TODO\|FIXME\|not implemented" cmd/browser-agent/tools_*.go
 
 # Cross-reference with test coverage
-go test -v ./cmd/dev-console/ | grep -E "^--- (PASS|FAIL)"
+go test -v ./cmd/browser-agent/ | grep -E "^--- (PASS|FAIL)"
 ```
 
 **Why this matters:** Clients (Claude Code, IDEs, automation) rely on MCP tool schemas to understand capabilities. Advertising unimplemented commands breaks client expectations and causes confusing errors.
@@ -148,8 +148,8 @@ go test -v ./cmd/dev-console/ | grep -E "^--- (PASS|FAIL)"
 The server MUST NOT output anything to stdio except JSON-RPC messages. Any non-JSON-RPC output breaks LLM communication.
 
 ```bash
-go test ./cmd/dev-console -run "TestToolHandler.*Stdout" -v
-go test ./cmd/dev-console -run "TestStdioSilence" -v
+go test ./cmd/browser-agent -run "TestToolHandler.*Stdout" -v
+go test ./cmd/browser-agent -run "TestStdioSilence" -v
 ```
 
 See: `.claude/refs/mcp-stdio-invariant.md`
@@ -159,7 +159,7 @@ See: `.claude/refs/mcp-stdio-invariant.md`
 The HTTP server MUST stay alive as long as stdin remains open. This ensures browser extension connectivity throughout the MCP session.
 
 ```bash
-go test ./cmd/dev-console -run "TestServerPersistence" -v
+go test ./cmd/browser-agent -run "TestServerPersistence" -v
 ```
 
 **Key invariants tested:**
@@ -176,7 +176,7 @@ See: `.claude/refs/mcp-stdio-invariant.md#server-persistence-invariant---critica
 All MCP tools must have comprehensive behavioral tests verifying actual functionality, not just "doesn't crash".
 
 ```bash
-go test ./cmd/dev-console -run "Test.*Audit" -v
+go test ./cmd/browser-agent -run "Test.*Audit" -v
 ```
 
 **Test coverage required:**
@@ -200,13 +200,13 @@ make test
 node --test tests/extension/*.test.js
 
 # Static analysis
-go vet ./cmd/dev-console/
+go vet ./cmd/browser-agent/
 
 # Cross-platform build
 make build
 
 # Coverage check
-go test -coverprofile=coverage.out ./cmd/dev-console/
+go test -coverprofile=coverage.out ./cmd/browser-agent/
 go tool cover -func=coverage.out | grep total
 ```
 
@@ -223,7 +223,7 @@ This validates all 17+ version locations match, including:
 - Go main.go version constant
 - MCP golden test file
 - README badge
-- **optionalDependencies in npm/gasoline-mcp/package.json** (CRITICAL - must match main version)
+- **optionalDependencies in npm/kaboom-mcp/package.json** (CRITICAL - must match main version)
 
 **If validation fails, STOP. Do not proceed with release.**
 
@@ -232,28 +232,28 @@ All locations updated by bump-version:
 | File | Field |
 |------|-------|
 | `Makefile` | `VERSION :=` |
-| `cmd/dev-console/main.go` | `version` constant |
+| `cmd/browser-agent/main.go` | `version` constant |
 | `extension/manifest.json` | `"version"` |
 | `extension/package.json` | `"version"` |
 | `server/package.json` | `"version"` |
 | `server/scripts/install.js` | `VERSION` constant |
-| `npm/gasoline-mcp/package.json` | `"version"` + `optionalDependencies` ⚠️ |
+| `npm/kaboom-mcp/package.json` | `"version"` + `optionalDependencies` ⚠️ |
 | `npm/darwin-arm64/package.json` | `"version"` |
 | `npm/darwin-x64/package.json` | `"version"` |
 | `npm/linux-arm64/package.json` | `"version"` |
 | `npm/linux-x64/package.json` | `"version"` |
 | `npm/win32-x64/package.json` | `"version"` |
-| `cmd/dev-console/testdata/mcp-initialize.golden.json` | `"version"` |
+| `cmd/browser-agent/testdata/mcp-initialize.golden.json` | `"version"` |
 | `README.md` | Version badge |
 | `tests/extension/background.test.js` | Test assertions (2 locations) |
 | `extension/background/index.test.js` | Mock manifest version |
 
-**⚠️ CRITICAL:** `optionalDependencies` in `npm/gasoline-mcp/package.json` MUST point to the same version as the wrapper package itself. If these are mismatched, npx will install old binaries.
+**⚠️ CRITICAL:** `optionalDependencies` in `npm/kaboom-mcp/package.json` MUST point to the same version as the wrapper package itself. If these are mismatched, npx will install old binaries.
 
-### 3. Merge to `main`
+### 3. Merge to `stable`
 
 ```bash
-git checkout main
+git checkout stable
 git merge UNSTABLE
 ```
 
@@ -261,7 +261,7 @@ git merge UNSTABLE
 
 ```bash
 git tag v{version}
-git push origin main --follow-tags
+git push origin stable --follow-tags
 ```
 
 ### 5. Build & Publish
@@ -299,13 +299,13 @@ See `docs/pypi-distribution.md` for detailed PyPI publishing instructions.
 
 ```bash
 git checkout UNSTABLE
-git merge main
+git merge stable
 git push origin UNSTABLE
 ```
 
 ### 7. Update Marketing Site
 
-The marketing site is a separate repo at `~/dev/gasoline-site` (Astro).
+The marketing site is a separate repo at `~/dev/kaboom-site` (Astro).
 Blog posts go in `src/content/docs/blog/`. Update version numbers and
 add release blog post there after tagging.
 
@@ -316,9 +316,9 @@ For critical fixes that can't wait for the next release:
 ```bash
 git checkout -b hotfix/fix-name main
 # Fix, test, commit
-git checkout main && git merge hotfix/fix-name
+git checkout stable && git merge hotfix/fix-name
 git tag v{version}
-git push origin main --follow-tags
+git push origin stable --follow-tags
 
 # Sync back
 git checkout UNSTABLE && git merge hotfix/fix-name

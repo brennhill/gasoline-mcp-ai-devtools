@@ -175,7 +175,7 @@ The bundling code normalizes all to `time.Time` for comparison, then serializes 
 
 ### Files Changed (3 modified, 1 new)
 
-#### 1. `cmd/dev-console/tools_observe_bundling.go` (NEW, ~150 lines)
+#### 1. `cmd/browser-agent/tools_observe_bundling.go` (NEW, ~150 lines)
 
 ```go
 func (h *ToolHandler) toolGetErrorBundles(req JSONRPCRequest, args json.RawMessage) JSONRPCResponse
@@ -187,7 +187,7 @@ func (h *ToolHandler) toolGetErrorBundles(req JSONRPCRequest, args json.RawMessa
 - For each error, window-join by timestamp
 - Return assembled bundles
 
-#### 2. `cmd/dev-console/tools_observe.go` (~3 lines)
+#### 2. `cmd/browser-agent/tools_observe.go` (~3 lines)
 
 Add case to dispatcher:
 ```go
@@ -197,15 +197,15 @@ case "error_bundles":
 
 Update the valid modes hint string to include `error_bundles`.
 
-#### 3. `cmd/dev-console/tools_schema.go` (~2 lines)
+#### 3. `cmd/browser-agent/tools_schema.go` (~2 lines)
 
 Add `"error_bundles"` to the `what` enum and description.
 
-#### 4. `cmd/dev-console/testdata/mcp-tools-list.golden.json`
+#### 4. `cmd/browser-agent/testdata/mcp-tools-list.golden.json`
 
 Regenerate (includes new enum value).
 
-### Tests: `cmd/dev-console/tools_observe_bundling_test.go` (NEW, ~120 lines)
+### Tests: `cmd/browser-agent/tools_observe_bundling_test.go` (NEW, ~120 lines)
 
 Following existing patterns in `tools_observe_test.go`:
 

@@ -12,7 +12,7 @@ var observeModeSpecs = map[string]modeParamSpec{
 		Optional: []string{"min_level", "source", "include_internal", "include_extension_logs", "extension_limit", "limit", "scope", "summary"},
 	},
 	"extension_logs": {
-		Hint:     "Gasoline extension internal debug logs",
+		Hint:     "Kaboom extension internal debug logs",
 		Optional: []string{"limit"},
 	},
 	"network_waterfall": {
@@ -117,5 +117,9 @@ var observeModeSpecs = map[string]modeParamSpec{
 	},
 	"inbox": {
 		Hint: "Drain pending push events queued for MCP clients",
+	},
+	"site_menus": {
+		Hint:     "Discover page menus using 3-layer heuristic: semantic landmarks, axis alignment, border proximity. Returns {main, sidebar, footer, other, ungrouped}",
+		Optional: []string{"summary"},
 	},
 }

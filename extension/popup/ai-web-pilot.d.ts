@@ -4,8 +4,13 @@
  * Docs: docs/features/feature/ai-web-pilot/index.md
  */
 /**
- * Initialize the AI Web Pilot toggle.
- * Read the current state from chrome.storage.local.
+ * Apply pre-loaded AI Web Pilot value to the toggle and wire up change handler.
+ * Called from the orchestrator after a single batched storage read.
+ */
+export declare function applyAiWebPilotToggle(value: unknown): void;
+/**
+ * Initialize the AI Web Pilot toggle (self-contained async version for backward compat).
+ * Read the current state from local storage via the storage facade.
  */
 export declare function initAiWebPilotToggle(): Promise<void>;
 /**

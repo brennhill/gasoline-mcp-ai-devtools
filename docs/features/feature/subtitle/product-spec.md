@@ -77,7 +77,7 @@ interact({ action: "navigate", url: "/users", subtitle: "User management — 3 p
 ### Demo Video Recording
 User records their screen while AI drives the browser with narration:
 ```json
-interact({ action: "subtitle", text: "Gasoline captures every browser event in real time" })
+interact({ action: "subtitle", text: "Kaboom captures every browser event in real time" })
 interact({ action: "navigate", url: "https://example.com", subtitle: "Watch — we'll trigger an error and see it immediately" })
 interact({ action: "execute_js", script: "fetch('/api/broken')", subtitle: "Calling a broken API endpoint..." })
 ```
@@ -96,14 +96,14 @@ Combined with human-narrated UAT — the AI adds its own captions as the user wa
 
 ### Extension side (content script)
 - Reuses the existing toast infrastructure pattern from `runtime-message-listener.ts`
-- New message type: `GASOLINE_SUBTITLE`
-- Creates/updates a persistent overlay div (`#gasoline-subtitle`)
+- New message type: `KABOOM_SUBTITLE`
+- Creates/updates a persistent overlay div (`#kaboom-subtitle`)
 - Positioned at bottom of viewport with `position: fixed`
 - Same injection pattern as `showActionToast()` but different styling and persistence
 
 ### Server side (Go)
 - Extract `subtitle` param in the common interact handler (before the action switch)
-- If present, send `GASOLINE_SUBTITLE` message to extension alongside the action
+- If present, send `KABOOM_SUBTITLE` message to extension alongside the action
 - New case `"subtitle"` in switch for standalone text-only updates
 - Empty `text` / empty `subtitle` = clear
 
@@ -137,8 +137,8 @@ Two independent toggles in the extension popup, under the existing Advanced Capt
 
 | Toggle        | Storage Key            | Default | Scope                                      |
 | ------------- | ---------------------- | ------- | ------------------------------------------ |
-| Action Toasts | `actionToastsEnabled`  | `true`  | Controls `GASOLINE_ACTION_TOAST` rendering |
-| Subtitles     | `subtitlesEnabled`     | `true`  | Controls `GASOLINE_SUBTITLE` rendering     |
+| Action Toasts | `actionToastsEnabled`  | `true`  | Controls `KABOOM_ACTION_TOAST` rendering |
+| Subtitles     | `subtitlesEnabled`     | `true`  | Controls `KABOOM_SUBTITLE` rendering     |
 
 ### Behavior when off
 
@@ -160,11 +160,11 @@ Two independent toggles in the extension popup, under the existing Advanced Capt
 4. **content script runtime-message-listener.ts**: Guard the existing `showActionToast()` and new `showSubtitle()` with a storage check:
 
    ```typescript
-   case 'GASOLINE_ACTION_TOAST':
+   case 'KABOOM_ACTION_TOAST':
      if (!actionToastsEnabled) return  // silently ignore
      showActionToast(message)
      break
-   case 'GASOLINE_SUBTITLE':
+   case 'KABOOM_SUBTITLE':
      if (!subtitlesEnabled) return  // silently ignore
      showSubtitle(message)
      break

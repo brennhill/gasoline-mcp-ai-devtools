@@ -3,7 +3,7 @@
 
 package schema
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 
 // ObserveToolSchema returns the MCP tool definition for the observe tool.
 func ObserveToolSchema() mcp.MCPTool {
@@ -16,7 +16,7 @@ func ObserveToolSchema() mcp.MCPTool {
 				"what": map[string]any{
 					"type":        "string",
 					"description": "Data mode to read from extension buffers",
-					"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory", "transients", "inbox"},
+					"enum":        []string{"errors", "logs", "extension_logs", "network_waterfall", "network_bodies", "websocket_events", "websocket_status", "actions", "vitals", "page", "tabs", "history", "pilot", "timeline", "error_bundles", "screenshot", "storage", "indexeddb", "command_result", "pending_commands", "failed_commands", "saved_videos", "recordings", "recording_actions", "playback_results", "log_diff_report", "summarized_logs", "page_inventory", "transients", "inbox", "site_menus"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",

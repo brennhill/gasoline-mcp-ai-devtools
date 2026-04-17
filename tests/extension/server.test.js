@@ -39,8 +39,8 @@ describe('getRequestHeaders', () => {
   test('returns standard headers with version', () => {
     const headers = getRequestHeaders()
     assert.strictEqual(headers['Content-Type'], 'application/json')
-    assert.ok(headers['X-Gasoline-Client'].startsWith('gasoline-extension/'))
-    assert.strictEqual(headers['X-Gasoline-Extension-Version'], MANIFEST_VERSION)
+    assert.ok(headers['X-Kaboom-Client'].startsWith('kaboom-extension/'))
+    assert.strictEqual(headers['X-Kaboom-Extension-Version'], MANIFEST_VERSION)
   })
 
   test('merges additional headers without overwriting', () => {
@@ -217,7 +217,11 @@ describe('checkServerHealth', () => {
     mockFetch.mock.mockImplementation(() =>
       Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ status: 'ok', uptime: 120 })
+        json: () => Promise.resolve({
+          status: 'ok',
+          uptime: 120,
+          capture: { extension_connected: true }
+        })
       })
     )
 
@@ -225,6 +229,29 @@ describe('checkServerHealth', () => {
     assert.strictEqual(result.connected, true)
     assert.strictEqual(result.status, 'ok')
     assert.strictEqual(result.uptime, 120)
+  })
+
+  test('returns connected false when daemon is reachable but heartbeat is missing', async () => {
+    mockFetch.mock.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            status: 'ok',
+            version: '0.8.2',
+            capture: {
+              extension_connected: false,
+              extension_last_seen: ''
+            }
+          })
+      })
+    )
+
+    const result = await checkServerHealth('http://localhost:9222')
+    assert.strictEqual(result.connected, false)
+    assert.strictEqual(result.status, 'ok')
+    assert.strictEqual(result.version, '0.8.2')
+    assert.ok(result.error.includes('heartbeat'))
   })
 
   test('returns connected false on fetch error', async () => {

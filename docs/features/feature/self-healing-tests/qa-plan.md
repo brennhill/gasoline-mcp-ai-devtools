@@ -83,7 +83,7 @@ last_verified_date: 2026-03-05
 | Diagnose a test failure | 1 step: `observe({what: "test_diagnosis", failure: {...}})` | No — already a single call |
 | Generate a fix proposal | 1 step: `generate({format: "test_fix", diagnosis: {...}})` | No — already a single call |
 | Full self-healing workflow | 2 steps: diagnose, then fix | Could combine into 1 call, but separation allows AI to review diagnosis first (intentional) |
-| Diagnose + fix + verify | 4 steps: diagnose, fix, apply code change, re-run test | Steps 3-4 are outside Gasoline; cannot simplify |
+| Diagnose + fix + verify | 4 steps: diagnose, fix, apply code change, re-run test | Steps 3-4 are outside Kaboom; cannot simplify |
 | Handle "unknown" diagnosis | 3 steps: check observe(page), verify extension connected, retry with broader time window | Could add automatic fallback, but explicit control is better for AI agents |
 
 ### Default Behavior Verification
@@ -170,7 +170,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web application running with known elements (e.g., a button with `data-testid="submit-button"`)
 - [ ] Browser DevTools open to verify DOM state

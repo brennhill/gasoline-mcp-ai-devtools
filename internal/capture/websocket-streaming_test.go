@@ -315,7 +315,7 @@ func TestRecordingWebSocketReconnectBackoff(t *testing.T) {
 // Test Case 2.1: Create Recording Metadata
 // GIVEN: User calls configure({action: 'event_recording_start', name: 'checkout', url: 'https://...'})
 // WHEN: Recording created
-// THEN: metadata.json saved to ~/.gasoline/recordings/{id}/metadata.json
+// THEN: metadata.json saved to ~/.kaboom/recordings/{id}/metadata.json
 // AND: File contains: id, name, created_at, duration, action_count, start_url, viewport, sensitive_data_enabled
 // AND: Response: {status: "ok", recording_id: "checkout-20260130T143022Z"}
 func TestRecordingCreateMetadata(t *testing.T) {
@@ -784,7 +784,7 @@ func TestRecordingQueryActions(t *testing.T) {
 // ============================================================================
 
 // Test Case 3.1: Load Recording
-// GIVEN: Recording stored at ~/.gasoline/recordings/checkout-123/metadata.json
+// GIVEN: Recording stored at ~/.kaboom/recordings/checkout-123/metadata.json
 // WHEN: playback.LoadRecording("checkout-123")
 // THEN: Recording loaded successfully
 // AND: All 8 actions in memory

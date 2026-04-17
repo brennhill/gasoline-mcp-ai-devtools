@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the feature does NOT expose data it shouldn't. Gasoline runs on localhost and data must never leave the machine. Pay particular attention to API keys appearing in logs, error responses, or MCP tool outputs.
+**Goal:** Verify the feature does NOT expose data it shouldn't. Kaboom runs on localhost and data must never leave the machine. Pay particular attention to API keys appearing in logs, error responses, or MCP tool outputs.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
@@ -33,7 +33,7 @@ last_verified_date: 2026-03-05
 | DL-7 | Extension stores key in accessible location | Chrome extension must store key in `chrome.storage.local` only, not in plaintext DOM or logs | high |
 | DL-8 | Key transmitted over non-localhost HTTP | Extension must only send API key to configured server URL (default localhost) | critical |
 | DL-9 | Key appears in `configure` tool output | When querying server configuration via MCP, key values must be masked or absent | high |
-| DL-10 | Bearer token in Authorization header captured by network observer | Gasoline's own auth header from extension requests should be stripped from captured network data | high |
+| DL-10 | Bearer token in Authorization header captured by network observer | Kaboom's own auth header from extension requests should be stripped from captured network data | high |
 
 ### Negative Tests (must NOT leak)
 - [ ] 401 error response body does not contain the submitted key value
@@ -41,7 +41,7 @@ last_verified_date: 2026-03-05
 - [ ] `get_audit_log` with `type: "auth_attempt"` returns entries without key material
 - [ ] Server startup output with `--api-key=secret123` does not print `secret123`
 - [ ] Extension options page masks the key field (password input type)
-- [ ] Network body captures of requests TO the Gasoline server strip the `X-API-Key` and `Authorization` headers
+- [ ] Network body captures of requests TO the Kaboom server strip the `X-API-Key` and `Authorization` headers
 - [ ] `configure({action:"health"})` tool response contains no key values, only a boolean `auth_enabled` indicator
 
 ---
@@ -59,7 +59,7 @@ last_verified_date: 2026-03-05
 | CL-5 | Localhost exemption is observable | When exempted, audit log clearly shows exemption reason rather than appearing as unauthenticated | [ ] |
 | CL-6 | Auth disabled state is clear | When no keys configured, health/status clearly indicates auth is not active, not "auth failed" | [ ] |
 | CL-7 | Multi-key rotation state is observable | Health or audit data indicates how many valid keys are configured (count, not values) | [ ] |
-| CL-8 | WWW-Authenticate header present on 401 | Standard `Bearer realm="gasoline"` header helps LLM understand it is a Bearer auth scheme | [ ] |
+| CL-8 | WWW-Authenticate header present on 401 | Standard `Bearer realm="kaboom"` header helps LLM understand it is a Bearer auth scheme | [ ] |
 
 ### Common LLM Misinterpretation Risks
 - [ ] Risk: LLM interprets "no auth configured" as "auth failed" -- verify health endpoint distinguishes these states
@@ -79,7 +79,7 @@ last_verified_date: 2026-03-05
 | Workflow | Steps Required | Can Be Simplified? |
 |----------|---------------|-------------------|
 | Enable auth (CLI flag) | 1 step: `--api-key=<key>` | No -- already minimal |
-| Enable auth (env var) | 1 step: `export GASOLINE_API_KEY=<key>` | No -- already minimal |
+| Enable auth (env var) | 1 step: `export KABOOM_API_KEY=<key>` | No -- already minimal |
 | Enable auth (key file) | 2 steps: create file + `--api-key-file=<path>` | No -- file creation is inherent |
 | Configure extension | 2 steps: open options, paste key | No -- standard UX |
 | Key rotation | 4 steps: generate new key, add to server, update clients, remove old key | Could add `--api-key-rotate` CLI but manual is clearer |
@@ -112,7 +112,7 @@ last_verified_date: 2026-03-05
 | UT-9 | `extractAPIKey` with both headers (X-API-Key wins) | Both headers set | X-API-Key value returned | must |
 | UT-10 | `extractAPIKey` with Basic auth (not Bearer) | `Authorization: Basic dXNlcjpwYXNz` | `("", "")` | must |
 | UT-11 | `extractAPIKey` with no headers | Empty request | `("", "")` | must |
-| UT-12 | `extractAPIKey` with deprecated X-Gasoline-Key | `X-Gasoline-Key: oldkey` | `("oldkey", "X-Gasoline-Key")` | should |
+| UT-12 | `extractAPIKey` with deprecated X-Kaboom-Key | `X-Kaboom-Key: oldkey` | `("oldkey", "X-Kaboom-Key")` | should |
 | UT-13 | `isLocalhost` with 127.0.0.1:port | "127.0.0.1:54321" | `true` | must |
 | UT-14 | `isLocalhost` with ::1:port | "[::1]:54321" | `true` | must |
 | UT-15 | `isLocalhost` with "localhost" | "localhost:54321" | `true` | must |
@@ -174,7 +174,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890 --api-key=test-secret-123`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890 --api-key=test-secret-123`
 - [ ] Chrome extension installed and connected
 - [ ] Extension API key NOT yet configured (to test rejection first)
 
@@ -226,8 +226,8 @@ last_verified_date: 2026-03-05
 - [ ] Existing functionality works when auth is NOT configured (server started without `--api-key`)
 - [ ] Extension without API key setting works against server without auth
 - [ ] MCP tools all function normally when auth is enabled (stdio bypasses auth)
-- [ ] `X-Gasoline-Key` header still works for backward compatibility
-- [ ] Network body capture does not include Gasoline's own auth headers in captured data
+- [ ] `X-Kaboom-Key` header still works for backward compatibility
+- [ ] Network body capture does not include Kaboom's own auth headers in captured data
 
 ---
 

@@ -13,8 +13,8 @@ const thisFile = fileURLToPath(import.meta.url)
 const smokeDir = path.dirname(thisFile)
 const projectRoot = path.resolve(smokeDir, '..', '..')
 const sourceDir = path.join(smokeDir, 'framework-fixtures')
-const harnessRootDir = path.join(projectRoot, 'cmd', 'dev-console', 'testpages')
-const outputDir = path.join(projectRoot, 'cmd', 'dev-console', 'testpages', 'frameworks')
+const harnessRootDir = path.join(projectRoot, 'cmd', 'browser-agent', 'testpages')
+const outputDir = path.join(projectRoot, 'cmd', 'browser-agent', 'testpages', 'frameworks')
 const tempDir = path.join(projectRoot, '.tmp-framework-fixtures')
 const nextFixtureAppDir = path.join(sourceDir, 'next-app')
 
@@ -27,28 +27,28 @@ function pageTemplate({ title, mountId, scriptName }) {
   <title>${title}</title>
   <style>
     :root {
-      --gasoline-ink: #17171d;
-      --gasoline-muted: #4b5563;
-      --gasoline-warm-100: #fff7ed;
-      --gasoline-warm-200: #ffedd5;
-      --gasoline-warm-300: #fed7aa;
-      --gasoline-warm-500: #f97316;
-      --gasoline-warm-600: #ea580c;
-      --gasoline-panel: #ffffff;
-      --gasoline-border: #fdba74;
-      --gasoline-shadow: rgba(234, 88, 12, 0.18);
+      --kaboom-ink: #17171d;
+      --kaboom-muted: #4b5563;
+      --kaboom-warm-100: #fff7ed;
+      --kaboom-warm-200: #ffedd5;
+      --kaboom-warm-300: #fed7aa;
+      --kaboom-warm-500: #f97316;
+      --kaboom-warm-600: #ea580c;
+      --kaboom-panel: #ffffff;
+      --kaboom-border: #fdba74;
+      --kaboom-shadow: rgba(234, 88, 12, 0.18);
     }
     body {
       margin: 0;
       font-family: "Avenir Next", "Inter", "Segoe UI", sans-serif;
       background:
         radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 38%),
-        linear-gradient(140deg, var(--gasoline-warm-100), #fff);
-      color: var(--gasoline-ink);
+        linear-gradient(140deg, var(--kaboom-warm-100), #fff);
+      color: var(--kaboom-ink);
       min-height: 100vh;
       padding: 1.6rem 1.2rem 2.4rem;
     }
-    .gasoline-brand {
+    .kaboom-brand {
       width: min(100%, 760px);
       margin: 0 auto 0.9rem;
       display: flex;
@@ -59,13 +59,13 @@ function pageTemplate({ title, mountId, scriptName }) {
       font-weight: 700;
       letter-spacing: 0.02em;
     }
-    .gasoline-brand-mark {
+    .kaboom-brand-mark {
       width: 22px;
       height: 22px;
       flex: 0 0 22px;
     }
-    .gasoline-brand small {
-      color: var(--gasoline-muted);
+    .kaboom-brand small {
+      color: var(--kaboom-muted);
       font-weight: 600;
     }
     .fixture-shell {
@@ -73,10 +73,10 @@ function pageTemplate({ title, mountId, scriptName }) {
       max-width: 760px;
       margin: 0 auto;
       padding: 1.25rem 1.25rem 1.3rem;
-      border: 1px solid var(--gasoline-border);
+      border: 1px solid var(--kaboom-border);
       border-radius: 14px;
-      background: var(--gasoline-panel);
-      box-shadow: 0 14px 32px -24px var(--gasoline-shadow);
+      background: var(--kaboom-panel);
+      box-shadow: 0 14px 32px -24px var(--kaboom-shadow);
     }
     .fixture-shell h1 {
       margin-top: 0;
@@ -86,7 +86,7 @@ function pageTemplate({ title, mountId, scriptName }) {
       letter-spacing: -0.01em;
     }
     .fixture-shell p {
-      color: var(--gasoline-muted);
+      color: var(--kaboom-muted);
     }
     .fixture-shell label {
       display: block;
@@ -101,7 +101,7 @@ function pageTemplate({ title, mountId, scriptName }) {
       border: 1px solid #fdba74;
       border-radius: 6px;
       background: #fffefc;
-      color: var(--gasoline-ink);
+      color: var(--kaboom-ink);
     }
     .fixture-shell button {
       display: inline-block;
@@ -109,7 +109,7 @@ function pageTemplate({ title, mountId, scriptName }) {
       padding: 0.55rem 1rem;
       border: none;
       border-radius: 6px;
-      background: linear-gradient(180deg, var(--gasoline-warm-500), var(--gasoline-warm-600));
+      background: linear-gradient(180deg, var(--kaboom-warm-500), var(--kaboom-warm-600));
       color: #fff;
       cursor: pointer;
       font-weight: 700;
@@ -153,14 +153,14 @@ function pageTemplate({ title, mountId, scriptName }) {
       text-align: center;
     }
     #consent-modal button {
-      background: linear-gradient(180deg, var(--gasoline-warm-500), var(--gasoline-warm-600));
+      background: linear-gradient(180deg, var(--kaboom-warm-500), var(--kaboom-warm-600));
       margin-top: 0;
     }
   </style>
 </head>
 <body>
-  <header class="gasoline-brand">
-    <svg class="gasoline-brand-mark" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+  <header class="kaboom-brand">
+    <svg class="kaboom-brand-mark" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
       <defs>
         <linearGradient id="brandFlame" x1="0%" y1="100%" x2="0%" y2="0%">
           <stop offset="0%" stop-color="#f97316"></stop>
@@ -176,7 +176,7 @@ function pageTemplate({ title, mountId, scriptName }) {
       <path d="M64 16 C40 40, 28 60, 28 80 C28 100, 44 116, 64 116 C84 116, 100 100, 100 80 C100 60, 88 40, 64 16 Z" fill="url(#brandFlame)"></path>
       <path d="M64 48 C52 60, 44 72, 44 84 C44 96, 52 104, 64 104 C76 104, 84 96, 84 84 C84 72, 76 60, 64 48 Z" fill="url(#brandInnerFlame)"></path>
     </svg>
-    <span>Gasoline Framework Smoke</span>
+    <span>Kaboom Framework Smoke</span>
     <small>${title}</small>
   </header>
   <div id="${mountId}"></div>
@@ -303,34 +303,34 @@ async function writeHtmlFixtures() {
   <title>Framework Fixture Index</title>
   <style>
     :root {
-      --gasoline-ink: #17171d;
-      --gasoline-muted: #4b5563;
-      --gasoline-warm-100: #fff7ed;
-      --gasoline-warm-500: #f97316;
-      --gasoline-warm-600: #ea580c;
-      --gasoline-border: #fdba74;
-      --gasoline-shadow: rgba(234, 88, 12, 0.18);
+      --kaboom-ink: #17171d;
+      --kaboom-muted: #4b5563;
+      --kaboom-warm-100: #fff7ed;
+      --kaboom-warm-500: #f97316;
+      --kaboom-warm-600: #ea580c;
+      --kaboom-border: #fdba74;
+      --kaboom-shadow: rgba(234, 88, 12, 0.18);
     }
     body {
       margin: 0;
       font-family: "Avenir Next", "Inter", "Segoe UI", sans-serif;
       background:
         radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 38%),
-        linear-gradient(140deg, var(--gasoline-warm-100), #fff);
-      color: var(--gasoline-ink);
+        linear-gradient(140deg, var(--kaboom-warm-100), #fff);
+      color: var(--kaboom-ink);
       min-height: 100vh;
       padding: 1.8rem 1.2rem 2.5rem;
     }
     .index-shell {
       width: min(100%, 760px);
       margin: 0 auto;
-      border: 1px solid var(--gasoline-border);
+      border: 1px solid var(--kaboom-border);
       border-radius: 14px;
       background: #fff;
-      box-shadow: 0 14px 32px -24px var(--gasoline-shadow);
+      box-shadow: 0 14px 32px -24px var(--kaboom-shadow);
       padding: 1.25rem;
     }
-    .gasoline-brand {
+    .kaboom-brand {
       display: flex;
       align-items: center;
       gap: 0.65rem;
@@ -340,7 +340,7 @@ async function writeHtmlFixtures() {
       font-weight: 700;
       letter-spacing: 0.02em;
     }
-    .gasoline-brand-mark {
+    .kaboom-brand-mark {
       width: 22px;
       height: 22px;
       flex: 0 0 22px;
@@ -353,7 +353,7 @@ async function writeHtmlFixtures() {
     }
     p {
       margin-top: 0;
-      color: var(--gasoline-muted);
+      color: var(--kaboom-muted);
     }
     ul {
       margin: 0;
@@ -363,7 +363,7 @@ async function writeHtmlFixtures() {
       margin-top: 0.5rem;
     }
     a {
-      color: var(--gasoline-warm-600);
+      color: var(--kaboom-warm-600);
       font-weight: 700;
       text-decoration: none;
     }
@@ -374,8 +374,8 @@ async function writeHtmlFixtures() {
 </head>
 <body>
   <main class="index-shell">
-    <header class="gasoline-brand">
-      <svg class="gasoline-brand-mark" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
+    <header class="kaboom-brand">
+      <svg class="kaboom-brand-mark" viewBox="0 0 128 128" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id="indexBrandFlame" x1="0%" y1="100%" x2="0%" y2="0%">
             <stop offset="0%" stop-color="#f97316"></stop>
@@ -391,10 +391,10 @@ async function writeHtmlFixtures() {
         <path d="M64 16 C40 40, 28 60, 28 80 C28 100, 44 116, 64 116 C84 116, 100 100, 100 80 C100 60, 88 40, 64 16 Z" fill="url(#indexBrandFlame)"></path>
         <path d="M64 48 C52 60, 44 72, 44 84 C44 96, 52 104, 64 104 C76 104, 84 96, 84 84 C84 72, 76 60, 64 48 Z" fill="url(#indexBrandInnerFlame)"></path>
       </svg>
-      <span>Gasoline Framework Smoke</span>
+      <span>Kaboom Framework Smoke</span>
     </header>
     <h1>Framework Fixture Index</h1>
-    <p>Selector resilience fixtures with unified Gasoline branding.</p>
+    <p>Selector resilience fixtures with unified Kaboom branding.</p>
     <ul>
       <li><a href="./react.html">React fixture</a></li>
       <li><a href="./vue.html">Vue fixture</a></li>

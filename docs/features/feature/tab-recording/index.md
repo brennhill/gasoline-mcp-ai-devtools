@@ -6,10 +6,10 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/tools_interact_dispatch.go
+  - cmd/browser-agent/tools_interact_dispatch.go
   - internal/schema/interact_actions.go
-  - cmd/dev-console/tools_recording_video.go
-  - cmd/dev-console/tools_recording_video_handlers.go
+  - cmd/browser-agent/tools_recording_video.go
+  - cmd/browser-agent/tools_recording_video_handlers.go
   - src/background/event-listeners.ts
   - src/background/init.ts
   - src/background/context-menus.ts
@@ -24,8 +24,8 @@ code_paths:
   - extension/popup.html
   - extension/popup.css
 test_paths:
-  - cmd/dev-console/tools_interact_handler_test.go
-  - cmd/dev-console/tools_recording_video_test.go
+  - cmd/browser-agent/tools_interact_handler_test.go
+  - cmd/browser-agent/tools_recording_video_test.go
   - tests/extension/recording-shortcut-command.test.js
   - tests/extension/context-menus-labels.test.js
   - tests/extension/recording-listeners-target-tab.test.js

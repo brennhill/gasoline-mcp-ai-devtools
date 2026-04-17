@@ -1,7 +1,7 @@
 {
-  "name": "@brennhill/gasoline-agentic-browser-win32-x64",
-  "version": "0.8.1",
-  "description": "Gasoline binary for Windows x64",
+  "name": "@brennhill/kaboom-agentic-browser-win32-x64",
+  "version": "0.8.2",
+  "description": "Kaboom binary for Windows x64",
   "license": "AGPL-3.0-only",
   "os": [
     "win32"
@@ -10,6 +10,7 @@
     "x64"
   ],
   "files": [
-    "bin/gasoline.exe"
+    "bin/kaboom-agentic-browser.exe",
+    "bin/kaboom-hooks.exe"
   ]
 }

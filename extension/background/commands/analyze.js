@@ -7,6 +7,7 @@
 // Includes frame routing helpers used by dom and a11y.
 import { registerCommand } from './registry.js';
 import { isContentScriptUnreachableError, requireAiWebPilot } from './helpers.js';
+import { KABOOM_LOG_PREFIX } from '../../lib/brand.js';
 import { errorMessage } from '../../lib/error-utils.js';
 import { domFrameProbe } from '../dom-frame-probe.js';
 import { normalizeFrameArg, resolveMatchedFrameIds } from '../frame-targeting.js';
@@ -263,7 +264,7 @@ async function executeDOMQueryFallbackViaScripting(tabId, params, fallbackReason
 async function runMainDOMAnalyzeQuery(ctx) {
     try {
         return (await chrome.tabs.sendMessage(ctx.tabId, {
-            type: 'DOM_QUERY',
+            type: 'dom_query',
             params: ctx.query.params
         }));
     }
@@ -306,7 +307,7 @@ async function runFrameAwareAnalyzeQuery(ctx, config) {
 registerCommand('dom', async (ctx) => {
     try {
         const result = await runFrameAwareAnalyzeQuery(ctx, {
-            messageType: 'DOM_QUERY',
+            messageType: 'dom_query',
             singleFrameErrorCode: 'dom_query_failed',
             aggregate: aggregateDOMFrameResults,
             mainQuery: runMainDOMAnalyzeQuery
@@ -315,7 +316,7 @@ registerCommand('dom', async (ctx) => {
     }
     catch (err) {
         const message = errorMessage(err, 'Failed to execute DOM query');
-        console.error('[Gasoline][DOM] Command failed:', message, err.stack || err);
+        console.error(`${KABOOM_LOG_PREFIX}[DOM] Command failed:`, message, err.stack || err);
         const routingError = isFrameRoutingError(message);
         ctx.sendResult({
             error: routingError ? message : 'dom_query_failed',
@@ -329,7 +330,7 @@ registerCommand('dom', async (ctx) => {
 registerCommand('a11y', async (ctx) => {
     try {
         const result = await runFrameAwareAnalyzeQuery(ctx, {
-            messageType: 'A11Y_QUERY',
+            messageType: 'a11y_query',
             singleFrameErrorCode: 'a11y_audit_failed',
             aggregate: aggregateA11yFrameResults
         });
@@ -337,7 +338,7 @@ registerCommand('a11y', async (ctx) => {
     }
     catch (err) {
         const message = errorMessage(err, 'Failed to execute accessibility audit');
-        console.error('[Gasoline][A11Y] Command failed:', message, err.stack || err);
+        console.error(`${KABOOM_LOG_PREFIX}[A11Y] Command failed:`, message, err.stack || err);
         const routingError = isFrameRoutingError(message);
         ctx.sendResult({
             error: routingError ? message : 'a11y_audit_failed',
@@ -366,11 +367,11 @@ function registerPassthrough(command, messageType, fallbackMessage) {
         }
     });
 }
-registerPassthrough('link_health', 'LINK_HEALTH_QUERY', 'Link health check failed');
-registerPassthrough('computed_styles', 'COMPUTED_STYLES_QUERY', 'Computed styles query failed');
-registerPassthrough('form_discovery', 'FORM_DISCOVERY_QUERY', 'Form discovery failed');
-registerPassthrough('form_state', 'FORM_STATE_QUERY', 'Form state extraction failed');
-registerPassthrough('data_table', 'DATA_TABLE_QUERY', 'Data table extraction failed');
+registerPassthrough('link_health', 'link_health_query', 'Link health check failed');
+registerPassthrough('computed_styles', 'computed_styles_query', 'Computed styles query failed');
+registerPassthrough('form_discovery', 'form_discovery_query', 'Form discovery failed');
+registerPassthrough('form_state', 'form_state_query', 'Form state extraction failed');
+registerPassthrough('data_table', 'data_table_query', 'Data table extraction failed');
 // =============================================================================
 // DRAW MODE
 // =============================================================================
@@ -381,7 +382,7 @@ registerCommand('draw_mode', async (ctx) => {
     if (params.action === 'start') {
         try {
             const result = await chrome.tabs.sendMessage(ctx.tabId, {
-                type: 'GASOLINE_DRAW_MODE_START',
+                type: 'kaboom_draw_mode_start',
                 started_by: 'llm',
                 annot_session_name: params.annot_session || '',
                 correlation_id: ctx.query.correlation_id || ctx.query.id || ''

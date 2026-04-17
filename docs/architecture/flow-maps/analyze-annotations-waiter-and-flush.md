@@ -23,10 +23,10 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
 
 ## Entrypoints
 
-- `toolAnalyze` dispatch: `cmd/dev-console/tools_analyze_dispatch.go`
-- Annotation handler: `cmd/dev-console/tools_analyze_annotations_handlers.go`
-- Draw completion HTTP path: `cmd/dev-console/server_routes_media_draw_mode.go`
-- Command-result polling: `cmd/dev-console/tools_async_observe_commands.go`
+- `toolAnalyze` dispatch: `cmd/browser-agent/tools_analyze_dispatch.go`
+- Annotation handler: `cmd/browser-agent/tools_analyze_annotations_handlers.go`
+- Draw completion HTTP path: `cmd/browser-agent/server_routes_media_draw_mode.go`
+- Command-result polling: `cmd/browser-agent/tools_async_observe_commands.go`
 
 ## Primary Flow
 
@@ -94,10 +94,10 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
 
 ## Code Paths
 
-- `cmd/dev-console/tools_analyze_dispatch.go`
-- `cmd/dev-console/tools_analyze_annotations_handlers.go`
-- `cmd/dev-console/tools_async_observe_commands.go`
-- `cmd/dev-console/tools_async_formatting.go`
+- `cmd/browser-agent/tools_analyze_dispatch.go`
+- `cmd/browser-agent/tools_analyze_annotations_handlers.go`
+- `cmd/browser-agent/tools_async_observe_commands.go`
+- `cmd/browser-agent/tools_async_formatting.go`
 - `internal/schema/analyze.go`
 - `internal/tools/configure/mode_specs_analyze.go`
 - `internal/annotation/store.go`
@@ -110,8 +110,8 @@ This map covers annotation retrieval through `analyze(what:"annotations")`, incl
 
 ## Test Paths
 
-- `cmd/dev-console/tools_analyze_annotations_test.go`
-- `cmd/dev-console/tools_analyze_handler_test.go`
+- `cmd/browser-agent/tools_analyze_annotations_test.go`
+- `cmd/browser-agent/tools_analyze_handler_test.go`
 - `internal/annotation/store_test.go`
 - `internal/annotation/named_test.go`
 

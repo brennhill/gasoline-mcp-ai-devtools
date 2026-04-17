@@ -20,9 +20,9 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Gasoline captures network request and response bodies, timing data, and headers during development. Today this data is only accessible through MCP tools — the AI reads it, the AI acts on it. But sometimes the human needs to inspect the raw network traffic: replaying a failed API call, sharing a bug report with a backend team, profiling waterfall timing in Charles Proxy, or importing into Postman for manual testing.
+Kaboom captures network request and response bodies, timing data, and headers during development. Today this data is only accessible through MCP tools — the AI reads it, the AI acts on it. But sometimes the human needs to inspect the raw network traffic: replaying a failed API call, sharing a bug report with a backend team, profiling waterfall timing in Charles Proxy, or importing into Postman for manual testing.
 
-HAR (HTTP Archive) is the universal interchange format for HTTP traffic. Every browser DevTools panel exports it, every proxy tool imports it, and every performance analysis tool understands it. By exporting Gasoline's captured network data as HAR, the human gets a portable artifact they can open in any tool they already know.
+HAR (HTTP Archive) is the universal interchange format for HTTP traffic. Every browser DevTools panel exports it, every proxy tool imports it, and every performance analysis tool understands it. By exporting Kaboom's captured network data as HAR, the human gets a portable artifact they can open in any tool they already know.
 
 This is the bridge between "AI observed something" and "human can verify it independently."
 
@@ -32,7 +32,7 @@ This is the bridge between "AI observed something" and "human can verify it inde
 
 **Universal tool compatibility**: HAR is supported by Chrome DevTools (import/export), Firefox DevTools, Safari Web Inspector, Charles Proxy, Fiddler, mitmproxy, Postman, Insomnia, k6 (load testing), WebPageTest, Lighthouse, GTmetrix, and dozens more. One format, every tool.
 
-**Bug reproduction across teams**: When the AI identifies a backend issue ("API /users returns 500 intermittently"), exporting a HAR file lets the backend team see exactly what was sent and received — headers, body, timing — without needing Gasoline or the frontend running. Attach the HAR to a Jira ticket and the backend engineer opens it in their preferred tool.
+**Bug reproduction across teams**: When the AI identifies a backend issue ("API /users returns 500 intermittently"), exporting a HAR file lets the backend team see exactly what was sent and received — headers, body, timing — without needing Kaboom or the frontend running. Attach the HAR to a Jira ticket and the backend engineer opens it in their preferred tool.
 
 **Performance profiling handoff**: The AI detects "load time regressed by 800ms" and the causal diff shows a slow API response. The developer exports a HAR covering the slow page load, opens it in WebPageTest or Charles Proxy, and sees the exact waterfall with server-side timing breakdown. The AI's abstract finding becomes a concrete, inspectable artifact.
 
@@ -59,9 +59,9 @@ The HAR 1.2 specification defines a JSON format with:
   - `time`: Total elapsed time in ms
   - `pageref`: Optional page reference for grouping
 
-### Mapping Gasoline Data to HAR
+### Mapping Kaboom Data to HAR
 
-Gasoline's network body capture stores:
+Kaboom's network body capture stores:
 - Request URL, method, headers (sanitized)
 - Request body (for POST/PUT/PATCH)
 - Response status, headers
@@ -71,7 +71,7 @@ Gasoline's network body capture stores:
 
 The HAR export maps these directly:
 
-| Gasoline Field | HAR Field |
+| Kaboom Field | HAR Field |
 |---------------|-----------|
 | URL | `request.url` |
 | Method | `request.method` |
@@ -86,7 +86,7 @@ The HAR export maps these directly:
 
 ### Timing Distribution
 
-Gasoline's network capture provides total duration from the Performance API's `resource timing`. The HAR format expects granular timing breakdown (DNS, connect, SSL, etc.). Two approaches:
+Kaboom's network capture provides total duration from the Performance API's `resource timing`. The HAR format expects granular timing breakdown (DNS, connect, SSL, etc.). Two approaches:
 
 1. **If resource timing entries are available** (captured in the performance snapshot): Use `domainLookupEnd - domainLookupStart` for DNS, `connectEnd - connectStart` for connect, `responseStart - requestStart` for wait, etc.
 
@@ -108,7 +108,7 @@ The extension enhances the network body POST to include resource timing fields w
 **Response** (when output_path specified):
 ```
 {
-  "file_path": "/path/to/project/.gasoline/reports/capture-2026-01-24.har",
+  "file_path": "/path/to/project/.kaboom/reports/capture-2026-01-24.har",
   "entry_count": 47,
   "total_size_bytes": 284000,
   "time_range": { "start": "2026-01-24T10:28:00Z", "end": "2026-01-24T10:35:22Z" },
@@ -118,7 +118,7 @@ The extension enhances the network body POST to include resource timing fields w
 
 ### Privacy & Security
 
-HAR files contain sensitive data by nature (request bodies, cookies, auth tokens). Gasoline's export applies the same sanitization used for in-memory storage:
+HAR files contain sensitive data by nature (request bodies, cookies, auth tokens). Kaboom's export applies the same sanitization used for in-memory storage:
 
 1. **Authorization headers**: Replaced with `[REDACTED]` in the HAR output
 2. **Cookie values**: Replaced with `[REDACTED]` (cookie names preserved for debugging)
@@ -133,7 +133,7 @@ A warning is included in the MCP response if the HAR might contain sensitive dat
 
 ### HAR Entry Construction
 
-Each network body in Gasoline's buffer becomes one HAR entry. The construction:
+Each network body in Kaboom's buffer becomes one HAR entry. The construction:
 
 1. Parse the stored request/response data
 2. Build the `request` object with method, URL, headers, cookies, query params, body
@@ -205,6 +205,6 @@ Entries reference their page via `pageref`. This allows HAR viewers to display p
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/export_har.go` (HAR generation, MCP tool handler).
+Server implementation: `cmd/browser-agent/export_har.go` (HAR generation, MCP tool handler).
 
-Tests: `cmd/dev-console/export_har_test.go`.
+Tests: `cmd/browser-agent/export_har_test.go`.

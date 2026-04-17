@@ -16,7 +16,7 @@ last_verified_date: 2026-03-05
 
 # Agentic E2E Repair
 
-> AI agents automatically detect, diagnose, and fix broken end-to-end tests by observing browser state through Gasoline, identifying root causes, and generating targeted repairs.
+> AI agents automatically detect, diagnose, and fix broken end-to-end tests by observing browser state through Kaboom, identifying root causes, and generating targeted repairs.
 
 ## Problem
 
@@ -39,21 +39,21 @@ Today, when an E2E test fails, a human developer must:
 - Determine whether the test, the application, or both need updating
 - Make the fix and re-run
 
-This is exactly the kind of diagnostic work an AI agent excels at -- if it has visibility into browser state. Gasoline provides that visibility. Agentic E2E Repair defines the workflow for an AI agent to use Gasoline's observation, generation, and interaction capabilities to close the loop from "test failed" to "test fixed."
+This is exactly the kind of diagnostic work an AI agent excels at -- if it has visibility into browser state. Kaboom provides that visibility. Agentic E2E Repair defines the workflow for an AI agent to use Kaboom's observation, generation, and interaction capabilities to close the loop from "test failed" to "test fixed."
 
 ## Solution
 
-Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Gasoline MCP tools, not a new MCP tool itself. The AI agent follows a structured diagnosis-and-repair loop:
+Agentic E2E Repair is an **agent workflow pattern** that orchestrates existing Kaboom MCP tools, not a new MCP tool itself. The AI agent follows a structured diagnosis-and-repair loop:
 
 1. **Detect** -- The agent learns that an E2E test failed (from test runner output, CI notification, or developer instruction).
-2. **Re-run with capture** -- The agent re-runs the failing test with Gasoline capturing browser telemetry (console logs, network requests, DOM state, errors).
-3. **Observe** -- The agent uses Gasoline's `observe` tool to inspect what the browser saw: errors, network responses, DOM state, API schemas, error clusters.
+2. **Re-run with capture** -- The agent re-runs the failing test with Kaboom capturing browser telemetry (console logs, network requests, DOM state, errors).
+3. **Observe** -- The agent uses Kaboom's `observe` tool to inspect what the browser saw: errors, network responses, DOM state, API schemas, error clusters.
 4. **Diagnose** -- The agent correlates the test's expected behavior with the observed browser state to identify the root cause category (selector drift, API change, timing issue, mock staleness, or true regression).
-5. **Generate fix** -- The agent uses Gasoline's `generate` tool to produce a targeted repair (updated selector, corrected assertion, added wait condition, refreshed mock data).
+5. **Generate fix** -- The agent uses Kaboom's `generate` tool to produce a targeted repair (updated selector, corrected assertion, added wait condition, refreshed mock data).
 6. **Verify** -- The agent re-runs the test to confirm the fix resolves the failure without introducing new failures.
 7. **Report** -- The agent provides a structured explanation of what broke, why, and what was changed.
 
-Gasoline's role is to provide the **observation primitives** that make steps 3 and 4 possible. Without Gasoline, the agent sees only "test failed with exit code 1." With Gasoline, the agent sees the actual DOM, the actual API responses, the actual console errors -- the same evidence a human developer would use in DevTools.
+Kaboom's role is to provide the **observation primitives** that make steps 3 and 4 possible. Without Kaboom, the agent sees only "test failed with exit code 1." With Kaboom, the agent sees the actual DOM, the actual API responses, the actual console errors -- the same evidence a human developer would use in DevTools.
 
 ## User Stories
 
@@ -68,7 +68,7 @@ Gasoline's role is to provide the **observation primitives** that make steps 3 a
 
 ## MCP Interface
 
-Agentic E2E Repair does not introduce new MCP tools or modes. It composes existing tools in a specific sequence. The following table maps each step of the repair workflow to the Gasoline tools involved.
+Agentic E2E Repair does not introduce new MCP tools or modes. It composes existing tools in a specific sequence. The following table maps each step of the repair workflow to the Kaboom tools involved.
 
 ### Workflow-to-Tool Mapping
 
@@ -89,7 +89,7 @@ Agentic E2E Repair does not introduce new MCP tools or modes. It composes existi
 | Execute verification | `interact` | `execute_js` | Run JavaScript in page to verify DOM state |
 | Navigate for re-run | `interact` | `navigate`, `refresh` | Re-run test scenario |
 | Save/load state | `interact` | `save_state`, `load_state` | Snapshot browser state before/after fix |
-| Clear for re-run | `configure` | `clear` | Reset Gasoline buffers between test runs |
+| Clear for re-run | `configure` | `clear` | Reset Kaboom buffers between test runs |
 
 ### Example Diagnosis Sequence
 
@@ -122,7 +122,7 @@ generate({format: "test", include_fixtures: true })
 
 | # | Requirement | Priority |
 |---|---|---|
-| R1 | The agent must be able to observe console errors, network traffic, and DOM state during a failing E2E test run via existing Gasoline tools. | must |
+| R1 | The agent must be able to observe console errors, network traffic, and DOM state during a failing E2E test run via existing Kaboom tools. | must |
 | R2 | The agent must be able to classify the failure into a root cause category: selector drift, API contract drift, timing fragility, mock staleness, or true regression. | must |
 | R3 | The agent must be able to generate a corrected test file using the `generate` tool with `format: "test"`. | must |
 | R4 | The agent must verify the fix by re-running the test and confirming it passes. | must |
@@ -137,10 +137,10 @@ generate({format: "test", include_fixtures: true })
 
 ## Non-Goals
 
-- This feature does NOT modify the Gasoline MCP server or extension. It is a workflow pattern using existing tools.
+- This feature does NOT modify the Kaboom MCP server or extension. It is a workflow pattern using existing tools.
 - This feature does NOT create a new MCP tool. The 5-tool maximum is strictly preserved.
 - This feature does NOT auto-commit fixes without human review. The agent proposes fixes; a human (or a CI approval gate) decides to merge.
-- This feature does NOT handle non-browser tests (unit tests, API tests, integration tests without a browser). It requires Gasoline's browser observation layer.
+- This feature does NOT handle non-browser tests (unit tests, API tests, integration tests without a browser). It requires Kaboom's browser observation layer.
 - This feature does NOT replace CI infrastructure. It assumes a test runner (Playwright, Cypress, Selenium) already exists and can be invoked by the agent.
 - This feature does NOT perform proactive test maintenance. It is reactive: it activates when a test fails. Proactive maintenance belongs to the Self-Healing Tests feature.
 - Out of scope: fixing application code. If the root cause is a true regression in the application (not a stale test), the agent reports the regression but does not attempt to fix production code.
@@ -220,7 +220,7 @@ The agent classifies each failure into one of five root cause categories. Each c
 
 When multiple E2E tests fail simultaneously, the agent should avoid fixing each independently. Instead:
 
-1. Run all failing tests with Gasoline capture.
+1. Run all failing tests with Kaboom capture.
 2. Collect error clusters across all test runs.
 3. Group failures by root cause (same API change, same selector rename, same timing issue).
 4. Fix the root cause once (update the shared mock, update the shared selector pattern).
@@ -238,7 +238,7 @@ They are complementary. Self-Healing Tests reduces the frequency of failures. Ag
 
 ### vs. Self-Testing
 
-Self-Testing enables AI to run Gasoline's own test suite (UAT) against itself. Agentic E2E Repair applies to the user's application tests, not Gasoline's. However, both use the same underlying MCP tools for observation and verification.
+Self-Testing enables AI to run Kaboom's own test suite (UAT) against itself. Agentic E2E Repair applies to the user's application tests, not Kaboom's. However, both use the same underlying MCP tools for observation and verification.
 
 ### vs. Reproduction Enhancements
 
@@ -262,11 +262,11 @@ API Schema Inference and validate_api are dependencies. The agent uses the infer
 |---|---|
 | Diagnosis time per failing test | < 30 seconds (observation + analysis) |
 | Fix generation time | < 10 seconds (generate tool call) |
-| Verification time | Determined by test runner (outside Gasoline's control) |
+| Verification time | Determined by test runner (outside Kaboom's control) |
 | Server memory impact | Zero additional (uses existing buffers) |
 | Token efficiency | Batch repair should use < 2x tokens of single repair for N related failures |
 
-Note: Diagnosis and fix generation times refer to the Gasoline tool calls, not the AI's reasoning time. The AI's reasoning is outside Gasoline's control.
+Note: Diagnosis and fix generation times refer to the Kaboom tool calls, not the AI's reasoning time. The AI's reasoning is outside Kaboom's control.
 
 ## Security Considerations
 
@@ -275,11 +275,11 @@ Note: Diagnosis and fix generation times refer to the Gasoline tool calls, not t
 - **Human review gate.** The agent proposes fixes (via commit, PR, or direct output) but does not auto-merge. A human or CI gate must approve changes.
 - **Credential safety.** Test fixtures generated from observed API traffic must not include authentication tokens, session cookies, or API keys. The existing header stripping and redaction patterns apply.
 - **Circuit breaker.** The agent stops after 3 failed fix attempts to prevent infinite fix-break loops.
-- **Audit trail.** All Gasoline tool calls are logged via the enterprise audit feature. The agent's diagnostic reasoning should be included in the commit message or PR description for traceability.
+- **Audit trail.** All Kaboom tool calls are logged via the enterprise audit feature. The agent's diagnostic reasoning should be included in the commit message or PR description for traceability.
 
 ## Edge Cases
 
-- **No Gasoline data captured during test run.** Expected behavior: The agent cannot diagnose without observations. It reports "insufficient data" and suggests re-running with Gasoline capture enabled. Precondition: Gasoline server must be running and the extension must be tracking the test browser tab.
+- **No Kaboom data captured during test run.** Expected behavior: The agent cannot diagnose without observations. It reports "insufficient data" and suggests re-running with Kaboom capture enabled. Precondition: Kaboom server must be running and the extension must be tracking the test browser tab.
 
 - **Test fails with no browser errors and no network failures.** Expected behavior: The agent queries the DOM to check selector validity. If selectors are valid and API responses are correct, the agent classifies this as a potential timing issue and examines the test's wait conditions.
 
@@ -287,9 +287,9 @@ Note: Diagnosis and fix generation times refer to the Gasoline tool calls, not t
 
 - **Test framework not recognized.** Expected behavior: The agent can still observe browser state but generates generic JavaScript fixes rather than framework-specific ones (Playwright vs. Cypress vs. Selenium). The `generate({format: "test" })` tool handles framework detection.
 
-- **Gasoline extension disconnected during test run.** Expected behavior: Observation data is partial or missing. The agent falls back to test runner output only and reports that Gasoline capture was incomplete.
+- **Kaboom extension disconnected during test run.** Expected behavior: Observation data is partial or missing. The agent falls back to test runner output only and reports that Kaboom capture was incomplete.
 
-- **Buffer overflow during long test suite.** Expected behavior: Gasoline's ring buffers evict oldest entries. The agent should clear buffers between test runs using `configure({ action: "clear" })` to ensure relevant data is available.
+- **Buffer overflow during long test suite.** Expected behavior: Kaboom's ring buffers evict oldest entries. The agent should clear buffers between test runs using `configure({ action: "clear" })` to ensure relevant data is available.
 
 - **Test was already flaky before the agent's change.** Expected behavior: The agent should run the test at least twice after fixing. If it passes intermittently, classify as a flake and report rather than claiming a fix.
 
@@ -309,20 +309,20 @@ Note: Diagnosis and fix generation times refer to the Gasoline tool calls, not t
   - API Schema Inference feature -- shipped
   - Reproduction Enhancements feature -- shipped
   - DOM Fingerprinting feature -- in-progress (enhances selector drift detection but not strictly required)
-  - A test runner (Playwright, Cypress, Selenium) -- external dependency, not Gasoline's responsibility
+  - A test runner (Playwright, Cypress, Selenium) -- external dependency, not Kaboom's responsibility
 
 - **Depended on by:**
-  - Gasoline CI integration (runs this workflow in CI pipelines)
+  - Kaboom CI integration (runs this workflow in CI pipelines)
   - Self-Healing Tests (may invoke E2E Repair as a sub-workflow for individual test fixes)
 
 ## Assumptions
 
-- A1: The Gasoline server is running and the browser extension is tracking the tab where the E2E test executes.
+- A1: The Kaboom server is running and the browser extension is tracking the tab where the E2E test executes.
 - A2: The test runner produces machine-readable output that the agent can parse to identify which test failed and with what error message.
 - A3: Network body capture is enabled for the test run (required for API contract drift detection).
 - A4: The test repository is accessible to the agent for reading test source code and writing fixes.
 - A5: The agent has context on the project's test framework (Playwright, Cypress, etc.) to generate framework-appropriate fixes.
-- A6: The application under test runs on localhost or a URL accessible from the Gasoline-instrumented browser.
+- A6: The application under test runs on localhost or a URL accessible from the Kaboom-instrumented browser.
 
 ## Open Items
 
@@ -332,7 +332,7 @@ Note: Diagnosis and fix generation times refer to the Gasoline tool calls, not t
 | OI-2 | Should the agent attempt to fix tests in frameworks it does not recognize? | open | Risk of generating syntactically invalid test code. May be safer to only generate fixes for recognized frameworks (Playwright, Cypress, Selenium) and report-only for others. |
 | OI-3 | What is the maximum number of files the agent should modify in a single repair? | open | The principal engineer review flagged unbounded codebase search. A threshold of 10 files before requiring human approval is proposed but not finalized. |
 | OI-4 | How does the agent decide between "update test" vs. "update application code" when an API contract change is detected? | open | Default: always update the test. If the API change was unintentional (error responses, missing data), escalate rather than fix. Decision tree needs refinement based on real-world usage. |
-| OI-5 | Should the agent track fix success rates over time to improve its diagnosis heuristics? | open | Useful for learning which fix strategies work for a given codebase, but introduces statefulness beyond the session-scoped model. Could use Gasoline's persistent memory (configure store/load). |
-| OI-6 | How does the agent handle tests that require a specific database state or third-party service? | open | Gasoline observes the browser, not the database. The agent can infer data dependencies from API responses but cannot directly provision test data. May depend on Reproduction Enhancements' fixture generation. |
+| OI-5 | Should the agent track fix success rates over time to improve its diagnosis heuristics? | open | Useful for learning which fix strategies work for a given codebase, but introduces statefulness beyond the session-scoped model. Could use Kaboom's persistent memory (configure store/load). |
+| OI-6 | How does the agent handle tests that require a specific database state or third-party service? | open | Kaboom observes the browser, not the database. The agent can infer data dependencies from API responses but cannot directly provision test data. May depend on Reproduction Enhancements' fixture generation. |
 | OI-7 | Should this workflow be packaged as a Claude Code skill file? | open | The legacy spec proposed a `.claude/skills/self-heal.yaml` format. Whether this becomes a formal skill or remains a documented workflow pattern depends on Claude Code's skill system maturity. |
-| OI-8 | How does the agent handle parallel test runners (multiple Playwright workers)? | open | Multiple workers POSTing to the same Gasoline server could cause cross-contamination of telemetry. The principal engineer review recommended scoping contract tracking to test_id. This requires the test runner to tag each request with a test identifier. |
+| OI-8 | How does the agent handle parallel test runners (multiple Playwright workers)? | open | Multiple workers POSTing to the same Kaboom server could cause cross-contamination of telemetry. The principal engineer review recommended scoping contract tracking to test_id. This requires the test runner to tag each request with a test identifier. |

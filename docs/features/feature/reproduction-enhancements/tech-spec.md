@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Gasoline's existing `get_reproduction_script` and `generate_test` tools produce basic Playwright scripts: they replay user actions (clicks, inputs, navigations) and optionally assert on network responses. This is useful for bug reproduction but limited in three ways:
+Kaboom's existing `get_reproduction_script` and `generate_test` tools produce basic Playwright scripts: they replay user actions (clicks, inputs, navigations) and optionally assert on network responses. This is useful for bug reproduction but limited in three ways:
 
 1. **No visual verification**: The script clicks buttons and types text, but can't verify that the page LOOKS correct. A visual regression (broken layout, missing element, wrong color) passes the test because the assertions only check network responses.
 
@@ -169,7 +169,7 @@ Unhandled TypeError thrown. Export button becomes unresponsive.
 ### Environment
 - URL: http://localhost:3000/dashboard
 - Browser: Chrome 120
-- Gasoline capture session: 2026-01-24
+- Kaboom capture session: 2026-01-24
 
 ### Reproduction Script
 \`\`\`javascript
@@ -291,8 +291,8 @@ By default, only `on_error` is true (screenshots on errors are the highest-value
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/codegen.go` (enhanced script generation, fixture derivation, bug report).
+Server implementation: `cmd/browser-agent/codegen.go` (enhanced script generation, fixture derivation, bug report).
 
 Extension implementation: `extension/background.js` (screenshot capture, auto-capture configuration).
 
-Tests: `cmd/dev-console/codegen_test.go` (server-side), `extension-tests/screenshot.test.js` (extension-side).
+Tests: `cmd/browser-agent/codegen_test.go` (server-side), `extension-tests/screenshot.test.js` (extension-side).

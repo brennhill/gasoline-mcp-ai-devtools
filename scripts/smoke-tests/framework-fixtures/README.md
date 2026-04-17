@@ -5,7 +5,7 @@ This directory contains source fixtures used by smoke module `29-framework-selec
 Goals:
 - Use real framework runtimes (React, Vue, Svelte, Next.js), not hand-faked DOM pages.
 - Regenerate selector ids/classes on each page load to stress selector resilience.
-- Keep fixture visual styling on-brand with Gasoline (including the flame mark) while preserving stable test semantics.
+- Keep fixture visual styling on-brand with Kaboom (including the flame mark) while preserving stable test semantics.
 - Model hard automation failure modes:
   - delayed hydration and event binding
   - overlay interception (`Accept Cookies`)
@@ -46,8 +46,8 @@ FRAMEWORK_RESILIENCE_FULL_REPEATS=3 FRAMEWORK_SELECTOR_REFRESH_CYCLES=3 bash scr
 
 Generated output is written to:
 
-- `cmd/dev-console/testpages/frameworks/react.html`
-- `cmd/dev-console/testpages/frameworks/vue.html`
-- `cmd/dev-console/testpages/frameworks/svelte.html`
-- `cmd/dev-console/testpages/frameworks/next/`
+- `cmd/browser-agent/testpages/frameworks/react.html`
+- `cmd/browser-agent/testpages/frameworks/vue.html`
+- `cmd/browser-agent/testpages/frameworks/svelte.html`
+- `cmd/browser-agent/testpages/frameworks/next/`
 - corresponding `*.bundle.js` assets

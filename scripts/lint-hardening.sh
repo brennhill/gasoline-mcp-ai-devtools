@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# lint-hardening.sh — Custom linters for Gasoline codebase hardening.
+# lint-hardening.sh — Custom linters for Kaboom codebase hardening.
 # Catches patterns that standard linters miss: unprotected goroutines,
 # missing Content-Type headers, unchecked JSON encodes, route mismatches.
 #
@@ -25,7 +25,7 @@ pass() { green "  PASS: $1"; }
 # ─────────────────────────────────────────────
 bold "1. Checking for bare go func() (should use util.SafeGo)..."
 
-BARE_GO=$(grep -rn 'go func()' cmd/dev-console/ internal/ \
+BARE_GO=$(grep -rn 'go func()' cmd/browser-agent/ internal/ \
   --include='*.go' \
   | grep -v '_test.go' \
   | grep -v 'SafeGo' \
@@ -46,7 +46,7 @@ fi
 bold "2. Checking for unchecked json.NewEncoder(w).Encode()..."
 
 # Match json.NewEncoder(w).Encode( NOT preceded by _ = or err =
-UNCHECKED_ENCODE=$(grep -rn 'json\.NewEncoder(w)\.Encode(' cmd/dev-console/ internal/ \
+UNCHECKED_ENCODE=$(grep -rn 'json\.NewEncoder(w)\.Encode(' cmd/browser-agent/ internal/ \
   --include='*.go' \
   | grep -v '_test.go' \
   | grep -v '_ = json\.NewEncoder' \
@@ -69,7 +69,7 @@ bold "3. Checking for WriteHeader before Content-Type..."
 # This is a heuristic: look for w.WriteHeader followed by json.NewEncoder
 # without Content-Type set between them. We check individual files.
 HEADER_ORDER_ISSUES=""
-for f in $(find cmd/dev-console/ internal/ -name '*.go' ! -name '*_test.go'); do
+for f in $(find cmd/browser-agent/ internal/ -name '*.go' ! -name '*_test.go'); do
   # Find lines where WriteHeader is called with an error status, then check
   # if Content-Type was set before it (within 3 lines above)
   while IFS= read -r line_info; do
@@ -99,7 +99,7 @@ fi
 bold "4. Checking route ↔ OpenAPI sync..."
 
 # Route registration is intentionally split across server_routes*.go modules.
-SERVER_ROUTE_FILES=$(find cmd/dev-console -maxdepth 1 -type f -name 'server_routes*.go' ! -name '*_test.go' | sort)
+SERVER_ROUTE_FILES=$(find cmd/browser-agent -maxdepth 1 -type f -name 'server_routes*.go' ! -name '*_test.go' | sort)
 
 # Extract registered routes from Go source
 GO_ROUTES=$(grep -h -o 'HandleFunc("[^"]*"' $SERVER_ROUTE_FILES \
@@ -109,7 +109,7 @@ GO_ROUTES=$(grep -h -o 'HandleFunc("[^"]*"' $SERVER_ROUTE_FILES \
 # Extract paths from openapi.json
 OPENAPI_PATHS=$(python3 -c "
 import json, sys
-with open('cmd/dev-console/openapi.json') as f:
+with open('cmd/browser-agent/openapi.json') as f:
     spec = json.load(f)
 for p in sorted(spec.get('paths', {}).keys()):
     print(p)
@@ -198,7 +198,7 @@ fi
 bold "6. Checking for empty error responses..."
 
 # Find WriteHeader with error status that's immediately followed by return
-EMPTY_ERRORS=$(grep -rn -A1 'w\.WriteHeader(http\.Status' cmd/dev-console/ internal/ \
+EMPTY_ERRORS=$(grep -rn -A1 'w\.WriteHeader(http\.Status' cmd/browser-agent/ internal/ \
   --include='*.go' \
   | grep -v '_test.go' \
   | grep -B1 'return$' \
@@ -219,7 +219,7 @@ fi
 bold "7. Checking SafeGo closures for struct field capture..."
 
 SAFEGO_CAPTURES=""
-for f in $(find cmd/dev-console/ internal/ -name '*.go' ! -name '*_test.go'); do
+for f in $(find cmd/browser-agent/ internal/ -name '*.go' ! -name '*_test.go'); do
   while IFS= read -r line_info; do
     lineno=$(echo "$line_info" | cut -d: -f1)
     # Check next 10 lines for struct field references without local capture
@@ -245,7 +245,7 @@ fi
 # ─────────────────────────────────────────────
 bold "8. Checking queue overflow logging..."
 
-OVERFLOW_DROPS=$(grep -rn 'pendingQueries\[1:\]' cmd/dev-console/ internal/ \
+OVERFLOW_DROPS=$(grep -rn 'pendingQueries\[1:\]' cmd/browser-agent/ internal/ \
   --include='*.go' \
   | grep -v '_test.go' \
   || true)
@@ -276,7 +276,7 @@ fi
 bold "9. Checking for Lock() without defer Unlock()..."
 
 MANUAL_UNLOCK=""
-for f in $(find cmd/dev-console/ internal/ -name '*.go' ! -name '*_test.go'); do
+for f in $(find cmd/browser-agent/ internal/ -name '*.go' ! -name '*_test.go'); do
   while IFS= read -r line_info; do
     lineno=$(echo "$line_info" | cut -d: -f1)
     # Check next 3 lines for defer Unlock
@@ -304,7 +304,7 @@ bold "10. Checking for resp.Body.Close() without defer..."
 
 # Check each Body.Close() and look at the line above for 'defer func()'
 BODY_CLOSE_NO_DEFER=""
-for f in $(find cmd/dev-console/ internal/ -name '*.go' ! -name '*_test.go'); do
+for f in $(find cmd/browser-agent/ internal/ -name '*.go' ! -name '*_test.go'); do
   while IFS= read -r line_info; do
     lineno=$(echo "$line_info" | cut -d: -f1)
     line_text=$(echo "$line_info" | cut -d: -f2-)
@@ -332,7 +332,7 @@ fi
 # ─────────────────────────────────────────────
 bold "11. Checking for http.Error() in handler files..."
 
-HTTP_ERROR_CALLS=$(grep -rn 'http\.Error(' cmd/dev-console/ \
+HTTP_ERROR_CALLS=$(grep -rn 'http\.Error(' cmd/browser-agent/ \
   --include='*.go' \
   | grep -v '_test.go' \
   | grep -v 'server_middleware.go' \
@@ -351,7 +351,7 @@ fi
 # ─────────────────────────────────────────────
 bold "12. Checking bridge dispatch signal() coverage..."
 
-BRIDGE_FILE="cmd/dev-console/bridge_forward.go"
+BRIDGE_FILE="cmd/browser-agent/bridge_forward.go"
 if [ -f "$BRIDGE_FILE" ]; then
   BRIDGE_SIGNAL_ISSUES=""
   FUNC_START=$(grep -n 'func bridgeForwardRequest' "$BRIDGE_FILE" | head -1 | cut -d: -f1)
@@ -387,7 +387,7 @@ fi
 bold "13. Checking for nil map write after conditional init..."
 
 NIL_MAP_ISSUES=""
-for f in $(find cmd/dev-console/ internal/ -name '*.go' ! -name '*_test.go'); do
+for f in $(find cmd/browser-agent/ internal/ -name '*.go' ! -name '*_test.go'); do
   # Find 'var XXX map[' declarations and check if they're always initialized before use
   while IFS= read -r line_info; do
     lineno=$(echo "$line_info" | cut -d: -f1)
@@ -433,7 +433,7 @@ STDOUT_ALLOWLIST="mcp_stdout.go|connect_mode.go|bridge_io_isolation|cli\.go|cli_
 
 # Pattern: fmt.Print/Println/Printf (writes to stdout), or direct os.Stdout usage
 # Excludes: fmt.Fprintf(os.Stderr, ...) which is safe, and fmt.Sprintf which returns a string
-STDOUT_VIOLATIONS=$(grep -rn -E 'fmt\.(Print|Println|Printf)\(' cmd/dev-console/ \
+STDOUT_VIOLATIONS=$(grep -rn -E 'fmt\.(Print|Println|Printf)\(' cmd/browser-agent/ \
   --include='*.go' \
   | grep -v '_test.go' \
   | grep -v "// lint:stdout-ok" \
@@ -466,7 +466,7 @@ DAEMON_FILES=(
 
 STDERR_VIOLATIONS=""
 for fname in "${DAEMON_FILES[@]}"; do
-  fpath="cmd/dev-console/$fname"
+  fpath="cmd/browser-agent/$fname"
   if [ ! -f "$fpath" ]; then continue; fi
   HITS=$(grep -n 'fmt\.Fprintf(os\.Stderr' "$fpath" \
     | grep -v '// lint:stderr-ok' \
@@ -483,6 +483,24 @@ if [ -n "$STDERR_VIOLATIONS" ]; then
   printf "%b" "$STDERR_VIOLATIONS"
 else
   pass "All daemon-mode files use stderrf() for stderr output"
+fi
+
+# ─────────────────────────────────────────────
+# 16. Eval packages must not be imported by production binaries
+# ─────────────────────────────────────────────
+bold "16. Checking eval packages are not imported by production code..."
+
+EVAL_IMPORTS=$(grep -rn 'hook/eval' cmd/ internal/ \
+  --include='*.go' \
+  | grep -v '_test.go' \
+  | grep -v 'internal/hook/eval/' \
+  || true)
+
+if [ -n "$EVAL_IMPORTS" ]; then
+  fail "Production code imports eval package (eval must stay test-only):"
+  echo "$EVAL_IMPORTS" | while IFS= read -r line; do echo "    $line"; done
+else
+  pass "Eval packages are test-only — not imported by any production binary"
 fi
 
 # ─────────────────────────────────────────────

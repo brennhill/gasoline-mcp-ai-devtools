@@ -86,13 +86,13 @@ Server returns response to AI with tree text, uidMap, metadata
 
 **Modified extension files**:
 - `extension/background.js`: Add handler for `A11Y_TREE_QUERY` message type, dispatch to content script
-- `extension/content.js`: Add postMessage listener for `GASOLINE_A11Y_TREE_QUERY`, forward to inject.js
+- `extension/content.js`: Add postMessage listener for `KABOOM_A11Y_TREE_QUERY`, forward to inject.js
 - `extension/inject.js`: Import a11y-tree.js module, handle tree query message
 
 **Server files**:
-- `cmd/dev-console/queries.go`: Add `toolObserveA11yTree()` handler, creates pending query, waits for result
-- `cmd/dev-console/types.go`: Add `A11yTreeResult` struct
-- `cmd/dev-console/tools_core.go`: Wire up `observe({what: "a11y_tree"})` to `toolObserveA11yTree()`
+- `cmd/browser-agent/queries.go`: Add `toolObserveA11yTree()` handler, creates pending query, waits for result
+- `cmd/browser-agent/types.go`: Add `A11yTreeResult` struct
+- `cmd/browser-agent/tools_core.go`: Wire up `observe({what: "a11y_tree"})` to `toolObserveA11yTree()`
 
 **Trade-offs**:
 - Text format vs JSON: Text is 3-5x more token-efficient but harder to parse programmatically. Chosen because token efficiency is core value proposition.
@@ -126,7 +126,7 @@ Server returns response to AI with tree text, uidMap, metadata
 - A1: Extension connected and tracking tab (standard precondition for all on-demand queries).
 - A2: Page has meaningful DOM loaded (not browser internal page like `chrome://extensions`).
 - A3: ARIA roles and labels reasonably well-authored. Poorly-labeled pages produce less useful tree but feature still functions (falls back to tag-based implicit roles).
-- A4: `TreeWalker` API available in all Chromium-based browsers Gasoline targets (Chrome 90+). Well-supported, stable API.
+- A4: `TreeWalker` API available in all Chromium-based browsers Kaboom targets (Chrome 90+). Well-supported, stable API.
 - A5: Integer UIDs sufficient. Don't need UUIDs or globally unique identifiers since UIDs only meaningful within single snapshot, regenerated on each call.
 
 ## Risks & Mitigations

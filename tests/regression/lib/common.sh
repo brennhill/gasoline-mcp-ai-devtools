@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 # Configuration
 export GASOLINE_PORT="${GASOLINE_PORT:-17890}"
 export GASOLINE_URL="http://127.0.0.1:${GASOLINE_PORT}"
-export GASOLINE_BINARY="${GASOLINE_BINARY:-./dist/gasoline}"
+export GASOLINE_BINARY="${GASOLINE_BINARY:-./dist/kaboom-agentic-browser}"
 export TEST_TIMEOUT="${TEST_TIMEOUT:-30}"
 
 # Track server PID and temp log file for cleanup
@@ -42,12 +42,12 @@ start_server() {
     # Check if binary exists
     if [[ ! -x "$GASOLINE_BINARY" ]]; then
         echo -e "${RED}ERROR: Binary not found at $GASOLINE_BINARY${NC}" >&2
-        echo "Run: go build -o dist/gasoline ./cmd/dev-console" >&2
+        echo "Run: go build -o dist/kaboom-agentic-browser ./cmd/browser-agent" >&2
         return 1
     fi
 
     # Use a temporary log file to ensure clean state for each test
-    GASOLINE_TEST_LOG="/tmp/gasoline-test-$$.jsonl"
+    GASOLINE_TEST_LOG="/tmp/kaboom-test-$$.jsonl"
 
     # Start server in background
     # Note: We must NOT redirect stdin to /dev/null as that triggers MCP client mode

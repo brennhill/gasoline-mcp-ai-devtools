@@ -30,7 +30,7 @@ Each cycle costs 30-60 seconds of browser automation and 4-8 tool calls. During 
 
 ### What exists today
 
-Gasoline already has two relevant but incomplete primitives:
+Kaboom already has two relevant but incomplete primitives:
 
 - **`configure(action="recording_start/recording_stop")` + `configure(action="playback")`** -- Records raw browser events (clicks, keypresses) with timestamps and replays them. Designed for regression testing, not for quick state recovery. Recordings capture low-level DOM events, are tied to exact page state, and have no concept of named reusable sequences.
 
@@ -383,7 +383,7 @@ Deletes a saved sequence.
 
 Sequences are stored using the existing `configure(action="store")` persistence layer (`internal/persistence/persistence_store.go`). The session store supports namespaced key-value storage with Save/Load/List/Delete operations. Sequences use a dedicated namespace `"sequences"` to avoid collisions with other stored data.
 
-**Storage format on disk:** `~/.gasoline/store/sequences/{name}.json`
+**Storage format on disk:** `~/.kaboom/store/sequences/{name}.json`
 
 ### Interact tool (execution)
 
@@ -539,7 +539,7 @@ Sequences are limited to 50 steps to prevent runaway macros. The JSON payload fo
 
 ## Privacy Considerations
 
-- **All data stays local.** Sequences are stored on disk at `~/.gasoline/store/sequences/` and never transmitted externally.
+- **All data stays local.** Sequences are stored on disk at `~/.kaboom/store/sequences/` and never transmitted externally.
 - **Credentials in steps.** If a sequence includes `fill_form_and_submit` with password fields, those values are stored in plaintext in the sequence JSON. This is the same security model as `configure(action="store")`. The LLM should use test credentials only, not production secrets.
 - **Redaction support.** The existing server-side redaction engine (`RedactionEngine`) is applied to sequence data before persistence, consistent with `save_state` behavior. Sensitive field patterns (password, token, secret) are redacted unless the agent explicitly opts in.
 - **No network transmission.** Sequences are never sent to the extension or to any external service. They are server-side only.
@@ -550,7 +550,7 @@ Sequences are limited to 50 steps to prevent runaway macros. The JSON payload fo
 
 ### Go server changes
 
-#### New file: `cmd/dev-console/tools_configure_sequence.go` (~200 LOC)
+#### New file: `cmd/browser-agent/tools_configure_sequence.go` (~200 LOC)
 
 Handlers for all sequence actions:
 - `toolConfigureSaveSequence()` -- validates input, serializes to JSON, persists via session store
@@ -559,7 +559,7 @@ Handlers for all sequence actions:
 - `toolConfigureListSequences()` -- lists all sequences in namespace with metadata
 - `toolConfigureDeleteSequence()` -- removes sequence from store
 
-#### Modified file: `cmd/dev-console/tools_configure.go` (~20 LOC)
+#### Modified file: `cmd/browser-agent/tools_configure.go` (~20 LOC)
 
 Add cases to the configure action switch for: `save_sequence`, `replay_sequence`, `get_sequence`, `list_sequences`, `delete_sequence`.
 
@@ -567,7 +567,7 @@ Add cases to the configure action switch for: `save_sequence`, `replay_sequence`
 
 Add new actions to the configure tool schema enum and add parameter definitions for sequence-related fields.
 
-#### Modified file: `cmd/dev-console/tools_registry.go` (~5 LOC)
+#### Modified file: `cmd/browser-agent/tools_registry.go` (~5 LOC)
 
 No changes needed -- configure tool is already registered.
 
@@ -585,7 +585,7 @@ No changes needed -- configure tool is already registered.
 replay_sequence("admin-settings-advanced")
   |
   v
-Load sequence from store: ~/.gasoline/store/sequences/admin-settings-advanced.json
+Load sequence from store: ~/.kaboom/store/sequences/admin-settings-advanced.json
   |
   v
 For each step[i] in sequence.steps:
@@ -603,7 +603,7 @@ Return aggregate result: {status, steps_executed, steps_failed, results, duratio
 ### Persistence model
 
 ```
-~/.gasoline/store/
+~/.kaboom/store/
   sequences/
     admin-settings-advanced.json
     login-as-viewer.json

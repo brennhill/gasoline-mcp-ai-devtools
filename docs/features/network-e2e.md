@@ -9,7 +9,7 @@ last_verified_date: 2026-03-05
 # Agent Assignment: Network Body E2E Tests
 
 **Branch:** `feature/network-e2e`
-**Worktree:** `../gasoline-network-e2e`
+**Worktree:** `../kaboom-network-e2e`
 **Priority:** P5 (nice-to-have, parallel)
 
 ---

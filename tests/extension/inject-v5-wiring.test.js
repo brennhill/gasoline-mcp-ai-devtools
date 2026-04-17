@@ -10,7 +10,7 @@ import assert from 'node:assert'
 import { createMockWindow, createMockDocument } from './helpers.js'
 
 // Define esbuild constant not available in Node test env
-globalThis.__GASOLINE_VERSION__ = 'test'
+globalThis.__KABOOM_VERSION__ = 'test'
 
 // Store original
 let originalWindow
@@ -51,7 +51,7 @@ describe('V5 Wiring: Exception handler enrichment', () => {
 
     const lastCall = calls[calls.length - 1]
     const message = lastCall.arguments[0]
-    assert.strictEqual(message.type, 'GASOLINE_LOG')
+    assert.strictEqual(message.type, 'kaboom_log')
     assert.strictEqual(message.payload.type, 'exception')
     assert.ok(message.payload._aiContext, 'Should have _aiContext field')
     assert.ok(message.payload._aiContext.summary, 'Should have summary in _aiContext')
@@ -108,6 +108,17 @@ describe('V5 Wiring: Exception handler enrichment', () => {
 
     uninstallExceptionCapture()
     setAiContextEnabled(true)
+  })
+})
+
+describe('V5 Wiring: Kaboom API exports', () => {
+  test('inject bundle should export Kaboom API installers only', async () => {
+    const injectModule = await import('../../extension/inject.js')
+
+    assert.strictEqual(typeof injectModule.installKaboomAPI, 'function')
+    assert.strictEqual(typeof injectModule.uninstallKaboomAPI, 'function')
+    assert.strictEqual(injectModule.installKaboomAPI, undefined)
+    assert.strictEqual(injectModule.uninstallKaboomAPI, undefined)
   })
 })
 
@@ -469,8 +480,8 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
     recordEnhancedAction('click', mockElement)
 
     const postCalls = globalThis.window.postMessage.mock.calls
-    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
-    assert.ok(enhancedCall, 'Expected GASOLINE_ENHANCED_ACTION message')
+    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'kaboom_enhanced_action')
+    assert.ok(enhancedCall, 'Expected kaboom_enhanced_action message')
     const payload = enhancedCall.arguments[0].payload
 
     // Base shape: type, timestamp, url, selectors
@@ -486,7 +497,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
     clearEnhancedActionBuffer()
   })
 
-  test('recordEnhancedAction should emit GASOLINE_ENHANCED_ACTION via postMessage', async () => {
+  test('recordEnhancedAction should emit kaboom_enhanced_action via postMessage', async () => {
     const { recordEnhancedAction, clearEnhancedActionBuffer, setActionCaptureEnabled } =
       await import('../../extension/inject.js')
 
@@ -511,10 +522,10 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
 
     recordEnhancedAction('click', mockElement)
 
-    // Should have posted GASOLINE_ENHANCED_ACTION message
+    // Should have posted kaboom_enhanced_action message
     const postCalls = globalThis.window.postMessage.mock.calls
-    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
-    assert.ok(enhancedCall, 'recordEnhancedAction should emit GASOLINE_ENHANCED_ACTION')
+    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'kaboom_enhanced_action')
+    assert.ok(enhancedCall, 'recordEnhancedAction should emit kaboom_enhanced_action')
     assert.strictEqual(enhancedCall.arguments[0].payload.type, 'click')
     assert.ok(enhancedCall.arguments[0].payload.selectors, 'Payload should include selectors')
     assert.ok(enhancedCall.arguments[0].payload.timestamp, 'Payload should include timestamp')
@@ -549,7 +560,7 @@ describe('V5 Wiring: Enhanced action postMessage emission', () => {
     recordEnhancedAction('input', mockElement, { value: 'test@example.com' })
 
     const postCalls = globalThis.window.postMessage.mock.calls
-    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'GASOLINE_ENHANCED_ACTION')
+    const enhancedCall = postCalls.find((c) => c.arguments[0]?.type === 'kaboom_enhanced_action')
     assert.ok(enhancedCall)
     assert.strictEqual(enhancedCall.arguments[0].payload.input_type, 'email')
     assert.strictEqual(enhancedCall.arguments[0].payload.value, 'test@example.com')

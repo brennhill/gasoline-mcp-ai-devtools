@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 
 ## Problem
 
-Gasoline exposes 5 tools with 140 modes and 100+ parameters. When an LLM calls `describe_capabilities` without filters, it receives a 42KB payload with every parameter dumped into every mode. The LLM cannot tell which parameters are relevant to a given mode — e.g., `observe/errors` returns 36 params including 18 that belong to screenshot, indexeddb, logs, etc.
+Kaboom exposes 5 tools with 140 modes and 100+ parameters. When an LLM calls `describe_capabilities` without filters, it receives a 42KB payload with every parameter dumped into every mode. The LLM cannot tell which parameters are relevant to a given mode — e.g., `observe/errors` returns 36 params including 18 that belong to screenshot, indexeddb, logs, etc.
 
 This wastes tokens and causes LLMs to send irrelevant parameters, producing confusing error responses.
 
@@ -90,8 +90,8 @@ Returns a flat structure:
 
 An LLM connecting for the first time follows this path:
 
-1. **Initialize** → `serverInstructions` mentions `gasoline://capabilities` resource
-2. **`gasoline://capabilities`** → "Runtime Discovery" section points to `describe_capabilities` with examples
+1. **Initialize** → `serverInstructions` mentions `kaboom://capabilities` resource
+2. **`kaboom://capabilities`** → "Runtime Discovery" section points to `describe_capabilities` with examples
 3. **`describe_capabilities(summary=true)`** → mode index with one-line hints per mode
 4. **`describe_capabilities(tool=X, mode=Y)`** → exact params for the intended operation
 
@@ -118,11 +118,11 @@ Tutorial snippets (`configure(what:"examples")`) include a filtering example.
 | `internal/tools/configure/mode_specs.go` | `toolModeSpecs` — per-mode `{Hint, Required, Optional}` for all 5 tools |
 | `internal/tools/configure/capabilities.go` | `BuildCapabilitiesSummary`, `BuildCapabilitiesMap`, `BuildCapabilitiesForTool`, `FilterToolByMode` |
 | `internal/tools/configure/mode_specs_test.go` | Validates specs match schemas, all modes have hints, no unknown params |
-| `cmd/dev-console/tools_configure.go` | `handleDescribeCapabilities` handler |
-| `cmd/dev-console/tools_configure_capabilities_test.go` | Handler integration tests |
-| `cmd/dev-console/playbooks.go` + `cmd/dev-console/playbooks_*.go` | `capabilityIndex` plus capability-specific playbook content |
-| `cmd/dev-console/playbooks_resolver.go` | Canonical playbook URI resolution + alias normalization |
-| `cmd/dev-console/tools_configure_tutorial.go` | Tutorial snippet with filtering example |
+| `cmd/browser-agent/tools_configure.go` | `handleDescribeCapabilities` handler |
+| `cmd/browser-agent/tools_configure_capabilities_test.go` | Handler integration tests |
+| `cmd/browser-agent/playbooks.go` + `cmd/browser-agent/playbooks_*.go` | `capabilityIndex` plus capability-specific playbook content |
+| `cmd/browser-agent/playbooks_resolver.go` | Canonical playbook URI resolution + alias normalization |
+| `cmd/browser-agent/tools_configure_tutorial.go` | Tutorial snippet with filtering example |
 
 ### Data flow
 

@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Noise Factory — Kaboom Test Harness</title>
+  <link rel="stylesheet" href="kaboom.css">
+</head>
+<body>
+
+<header class="gh-header">
+  <a href="index.html" class="gh-logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
+      <defs>
+        <linearGradient id="fl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#f97316"/>
+          <stop offset="50%"  style="stop-color:#fb923c"/>
+          <stop offset="100%" style="stop-color:#fbbf24"/>
+        </linearGradient>
+        <linearGradient id="ifl" x1="0%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%"   style="stop-color:#fbbf24"/>
+          <stop offset="100%" style="stop-color:#fef3c7"/>
+        </linearGradient>
+      </defs>
+      <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+      <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#fl)"/>
+      <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#ifl)"/>
+    </svg>
+    <span class="gh-wordmark">Kaboom</span>
+  </a>
+  <span class="gh-badge gh-badge-red">Noise Factory</span>
+  <nav class="gh-nav">
+    <a href="index.html">Hub</a>
+    <a href="interact.html">Interact</a>
+    <a href="telemetry.html" class="active">Telemetry</a>
+    <a href="performance.html">Performance</a>
+    <a href="a11y.html">A11y</a>
+    <a href="recording.html">Recording</a>
+  </nav>
+</header>
+
+<main class="gh-main">
+  <div class="gh-hero">
+    <h1>📡 Noise Factory</h1>
+    <p>
+      Fires 100+ console messages on load, fetches /404 /500 and a CORS-blocked URL,
+      opens a WebSocket echo connection, and exposes one-click error bombs.
+      Tests observe(logs), observe(errors), observe(network_waterfall),
+      observe(websocket_status), and analyze(error_clusters).
+    </p>
+  </div>
+
+  <!-- Status row -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+    <div style="background:var(--bg-section);border:1px solid var(--border);border-radius:6px;padding:10px 14px;flex:1;min-width:160px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Console messages</div>
+      <div style="font-size:20px;font-weight:700;color:var(--text-bright);" id="console-count">0</div>
+    </div>
+    <div style="background:var(--bg-section);border:1px solid var(--border);border-radius:6px;padding:10px 14px;flex:1;min-width:160px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Network errors</div>
+      <div style="font-size:20px;font-weight:700;color:var(--red);" id="net-error-count">0</div>
+    </div>
+    <div style="background:var(--bg-section);border:1px solid var(--border);border-radius:6px;padding:10px 14px;flex:1;min-width:160px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">WebSocket</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+        <span class="dot" id="ws-dot" style="background:var(--text-dim)"></span>
+        <span id="ws-status" style="font-size:13px;font-weight:600;color:var(--text-dim);">Connecting</span>
+      </div>
+    </div>
+    <div style="background:var(--bg-section);border:1px solid var(--border);border-radius:6px;padding:10px 14px;flex:1;min-width:160px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">JS errors</div>
+      <div style="font-size:20px;font-weight:700;color:var(--red);" id="error-count">0</div>
+    </div>
+  </div>
+
+  <!-- ── §1: Console Factory ─────────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Console Factory</h2>
+      <span class="section-meta">Tests 2.1 · observe(logs) · observe(errors)</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+        100 messages fired on load (log / warn / error mix). Kaboom's console
+        monkey-patch captures them all for <code>observe(logs)</code> and
+        <code>observe(errors)</code>.
+      </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fireConsoleSpam(50)">+50 logs</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fireConsoleErrors(10)">+10 errors</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fireSmokeMarker()">Fire SMOKE_MARKER</button>
+      </div>
+      <div class="gh-log" id="console-log"></div>
+    </div>
+  </div>
+
+  <!-- ── §2: Network Chaos ──────────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-red"></span>
+      <h2>Network Chaos</h2>
+      <span class="section-meta">Test 4.2 · observe(network_waterfall) · observe(network_bodies)</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+        On load: fetches <code>/404</code>, <code>/500</code>, and
+        <code>https://api.example.com/cors-blocked</code> (guaranteed CORS block).
+        All appear in <code>observe(network_waterfall)</code>.
+      </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fetch404()">Fetch /404</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fetch500()">Fetch /500</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fetchCors()">Fetch CORS-blocked</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="fetchSlow()">Fetch /slow (3 s)</button>
+      </div>
+      <div class="gh-log" id="net-log"></div>
+    </div>
+  </div>
+
+  <!-- ── §3: WebSocket Arena ───────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot" id="ws-section-dot" style="background:var(--amber);animation:pulse 1.2s infinite"></span>
+      <h2>WebSocket Arena</h2>
+      <span class="section-meta">observe(websocket_status) · observe(websocket_events)</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+        Auto-connects to <code>ws://{host}/tests/ws</code> on load.
+        Kaboom's early-patch intercepts the <code>WebSocket</code> constructor.
+        Connection state and messages are visible in <code>observe(websocket_status)</code>.
+      </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost btn-sm" id="ws-send-btn" onclick="wsSend()">Send message</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="wsSendBinary()">Send binary</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="wsAbnormalClose()">Abnormal close (1001)</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="wsReconnect()">Reconnect</button>
+      </div>
+      <div class="gh-log" id="ws-log"></div>
+    </div>
+  </div>
+
+  <!-- ── §4: Error Bombs ──────────────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-red"></span>
+      <h2>Error Bombs</h2>
+      <span class="section-meta">Tests 2.5 · analyze(error_clusters)</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">
+        One-click triggers for common JS error types. Fire multiple times to build
+        clusters for <code>analyze(error_clusters)</code>.
+      </p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-danger btn-sm" onclick="throwTypeError()">TypeError</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="throwReferenceError()">ReferenceError</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="throwUnhandledPromise()">UnhandledPromise</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="throwDeepStack()">Deep stack error</button>
+      </div>
+      <div class="gh-status" id="error-result">No error fired yet.</div>
+    </div>
+  </div>
+
+  <!-- ── §5: Action Capture Form ─────────────────────────────────────── -->
+  <div class="gh-section">
+    <div class="gh-section-header">
+      <span class="dot dot-green"></span>
+      <h2>Action Capture Lab</h2>
+      <span class="section-meta">Tests 2.2 / 2.3 · observe(actions)</span>
+    </div>
+    <div class="gh-section-body">
+      <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+        Fill these fields and click buttons — all interactions appear in
+        <code>observe(actions)</code>.
+      </p>
+      <div class="gh-form-grid">
+        <div class="gh-form-row">
+          <label>Text input <span class="tag tag-id">#action-text</span></label>
+          <input type="text" id="action-text" placeholder="Type to capture…">
+        </div>
+        <div class="gh-form-row">
+          <label>Select <span class="tag tag-id">#action-select</span></label>
+          <select id="action-select">
+            <option value="a">Option A</option>
+            <option value="b">Option B</option>
+            <option value="c">Option C</option>
+          </select>
+        </div>
+      </div>
+      <div class="gh-form-row">
+        <div class="gh-form-inline">
+          <label><input type="checkbox" id="action-check"> Checkbox</label>
+          <label style="margin-left:16px;"><input type="radio" name="action-radio" value="x"> Radio X</label>
+          <label style="margin-left:8px;"><input type="radio" name="action-radio" value="y"> Radio Y</label>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="action-btn-primary" type="button" class="btn btn-primary">Primary Action</button>
+        <button id="action-btn-secondary" type="button" class="btn btn-ghost">Secondary Action</button>
+      </div>
+      <div class="gh-status" id="action-result">Interact above to see captured actions…</div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Global counters ──────────────────────────────────────────────────────────
+var consoleCount = 0;
+var netErrorCount = 0;
+var errorCount = 0;
+
+function incConsole() { document.getElementById('console-count').textContent = ++consoleCount; }
+function incNetError() { document.getElementById('net-error-count').textContent = ++netErrorCount; }
+function incError()    { document.getElementById('error-count').textContent = ++errorCount; }
+
+// ── Log helpers ──────────────────────────────────────────────────────────────
+function appendLog(el, msg, cls) {
+  var d = document.createElement('div');
+  d.className = 'log-line ' + (cls || 'log');
+  d.textContent = msg;
+  el.appendChild(d);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── §1: Console Factory ──────────────────────────────────────────────────────
+var clog = document.getElementById('console-log');
+
+function fireConsoleSpam(n) {
+  for (var i = 0; i < n; i++) {
+    var level = ['log','warn','info'][i % 3];
+    var msg   = '[HMR] update #' + (consoleCount + i) + ' — module chunk reloaded';
+    console[level](msg);
+    appendLog(clog, '[' + level + '] ' + msg, level === 'warn' ? 'warn' : 'log');
+  }
+  consoleCount += n;
+  document.getElementById('console-count').textContent = consoleCount;
+}
+
+function fireConsoleErrors(n) {
+  for (var i = 0; i < n; i++) {
+    var msg = 'SMOKE_ERROR_' + Date.now() + '_' + i;
+    console.error(msg);
+    appendLog(clog, '[error] ' + msg, 'error');
+    incError();
+  }
+}
+
+function fireSmokeMarker() {
+  var marker = 'SMOKE_' + Date.now();
+  console.log(marker + '_LOG');
+  console.error(marker + '_ERROR');
+  appendLog(clog, '[log]   ' + marker + '_LOG', 'log');
+  appendLog(clog, '[error] ' + marker + '_ERROR', 'error');
+  incError();
+  var el = document.getElementById('console-count');
+  consoleCount += 2;
+  el.textContent = consoleCount;
+}
+
+// Auto-fire on load: 100 messages to seed observe(logs) buffer
+window.addEventListener('load', function() {
+  // Stagger slightly to avoid blocking
+  setTimeout(function() { fireConsoleSpam(70); }, 100);
+  setTimeout(function() { fireConsoleErrors(30); }, 200);
+});
+
+// ── §2: Network Chaos ────────────────────────────────────────────────────────
+var nlog = document.getElementById('net-log');
+
+function doFetch(url, label) {
+  appendLog(nlog, 'fetching ' + label + '…', 'system');
+  return fetch(url)
+    .then(function(r) {
+      appendLog(nlog, '[' + r.status + '] ' + label, r.ok ? 'log' : 'error');
+      if (!r.ok) incNetError();
+    })
+    .catch(function(e) {
+      appendLog(nlog, '[error] ' + label + ': ' + e.message, 'error');
+      incNetError();
+    });
+}
+
+function fetch404() { doFetch('/tests/404', '/404'); }
+function fetch500() { doFetch('/tests/500', '/500'); }
+function fetchCors() { doFetch('https://api.example.com/cors-blocked', 'CORS external'); }
+function fetchSlow() { doFetch('/tests/slow', '/slow (3s)'); }
+
+// Auto-fire on load
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    fetch404();
+    fetch500();
+    fetchCors();
+  }, 300);
+});
+
+// ── §3: WebSocket ─────────────────────────────────────────────────────────────
+var ws    = null;
+var wslog = document.getElementById('ws-log');
+
+function setWsStatus(state, color) {
+  var dot    = document.getElementById('ws-dot');
+  var sdot   = document.getElementById('ws-section-dot');
+  var status = document.getElementById('ws-status');
+  status.textContent = state;
+  status.style.color = color;
+  dot.style.background  = color;
+  sdot.style.background = color;
+  sdot.style.animation  = state === 'Connecting' ? 'pulse 1.2s infinite' : '';
+  if (color === 'var(--green)') {
+    dot.className = 'dot dot-green';
+  }
+}
+
+function wsConnect() {
+  var host = window.location.host || 'localhost:8080';
+  setWsStatus('Connecting', 'var(--amber)');
+  appendLog(wslog, 'Connecting to ws://' + host + '/tests/ws…', 'system');
+  ws = new WebSocket('ws://' + host + '/tests/ws');
+
+  ws.onopen = function() {
+    setWsStatus('Connected', 'var(--green)');
+    appendLog(wslog, 'Connected — ws://' + host + '/tests/ws', 'ws');
+    ws.send(JSON.stringify({ hello: 'kaboom-harness', ts: Date.now() }));
+  };
+  ws.onmessage = function(e) {
+    appendLog(wslog, 'recv: ' + e.data.slice(0, 120), 'ws');
+  };
+  ws.onclose = function(e) {
+    setWsStatus('Closed (' + e.code + ')', 'var(--text-dim)');
+    appendLog(wslog, 'Closed — code=' + e.code + ' reason=' + (e.reason || '(none)'), 'system');
+  };
+  ws.onerror = function() {
+    setWsStatus('Error', 'var(--red)');
+    appendLog(wslog, 'WebSocket error — is the Kaboom daemon running on ' + host + '?', 'error');
+  };
+}
+
+function wsSend() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) { wsConnect(); return; }
+  var msg = JSON.stringify({ ping: 'smoke', ts: Date.now() });
+  ws.send(msg);
+  appendLog(wslog, 'sent: ' + msg, 'log');
+}
+function wsSendBinary() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) { wsConnect(); return; }
+  var buf = new Uint8Array([0xDE,0xAD,0xBE,0xEF,0x00,0x01,0x02,0x03]);
+  ws.send(buf.buffer);
+  appendLog(wslog, 'sent binary: 8 bytes', 'log');
+}
+function wsAbnormalClose() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    appendLog(wslog, 'Not connected', 'warn'); return;
+  }
+  ws.close(1001, 'abnormal-test-close');
+  appendLog(wslog, 'Closing with code 1001…', 'warn');
+}
+function wsReconnect() {
+  if (ws) ws.close(1000);
+  setTimeout(wsConnect, 300);
+}
+
+window.addEventListener('load', function() {
+  setTimeout(wsConnect, 500);
+});
+
+// Close the WebSocket cleanly on navigation so the server receives a proper
+// close frame rather than an abrupt TCP FIN.
+window.addEventListener('pagehide', function() {
+  if (ws && ws.readyState === WebSocket.OPEN) { ws.close(1000, 'page unload'); }
+});
+
+// ── §4: Error Bombs ──────────────────────────────────────────────────────────
+var errResult = document.getElementById('error-result');
+
+function setErrResult(msg) {
+  errResult.textContent = msg;
+  errResult.className = 'gh-status err';
+  incError();
+}
+
+function throwTypeError() {
+  try {
+    var x = null;
+    x.foo.bar.baz;
+  } catch(e) {
+    console.error('TypeError:', e.message, e.stack);
+    setErrResult('TypeError: ' + e.message);
+  }
+}
+function throwReferenceError() {
+  try {
+    (function deep1() {
+      (function deep2() {
+        undeclaredVariable.access; // eslint-disable-line
+      })();
+    })();
+  } catch(e) {
+    console.error('ReferenceError:', e.message, e.stack);
+    setErrResult('ReferenceError: ' + e.message);
+  }
+}
+function throwUnhandledPromise() {
+  Promise.reject(new Error('SMOKE_UNHANDLED_REJECTION_' + Date.now()));
+  // setErrResult already calls incError() — no extra call needed here.
+  setErrResult('UnhandledPromiseRejection fired — check observe(errors)');
+}
+function throwDeepStack() {
+  function a() { b(); }
+  function b() { c(); }
+  function c() { throw new Error('SMOKE_DEEP_STACK_' + Date.now()); }
+  try { a(); } catch(e) {
+    console.error('DeepStack:', e.message, e.stack);
+    setErrResult('DeepStack: ' + e.message);
+  }
+}
+
+// ── §5: Action Capture feedback ──────────────────────────────────────────────
+var actionResult = document.getElementById('action-result');
+function showAction(msg) {
+  actionResult.textContent = msg;
+  actionResult.className = 'gh-status ok';
+}
+document.getElementById('action-text').addEventListener('input', function(e) {
+  showAction('input event on #action-text — value="' + e.target.value + '"');
+});
+document.getElementById('action-select').addEventListener('change', function(e) {
+  showAction('change event on #action-select — value="' + e.target.value + '"');
+});
+document.getElementById('action-btn-primary').addEventListener('click', function() {
+  showAction('click on #action-btn-primary');
+});
+document.getElementById('action-btn-secondary').addEventListener('click', function() {
+  showAction('click on #action-btn-secondary');
+});
+</script>
+
+</body>
+</html>

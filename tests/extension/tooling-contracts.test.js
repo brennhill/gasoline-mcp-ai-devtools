@@ -94,4 +94,36 @@ describe('Tooling contracts', () => {
       'validate-versions should special-case build-time injected version vars'
     )
   })
+
+  test('ts runtime contracts should use kaboom headers and storage keys', () => {
+    const daemonHttp = readFileSync('src/lib/daemon-http.ts', 'utf8')
+    const constants = readFileSync('src/lib/constants.ts', 'utf8')
+    const options = readFileSync('src/options.ts', 'utf8')
+    const tabState = readFileSync('src/background/tab-state.ts', 'utf8')
+    const storageUtils = readFileSync('src/lib/storage-utils.ts', 'utf8')
+
+    assert.match(daemonHttp, /const DEFAULT_CLIENT_NAME = 'kaboom-extension'/)
+    assert.match(daemonHttp, /'X-Kaboom-Client'/)
+    assert.match(daemonHttp, /'X-Kaboom-Extension-Version'/)
+    assert.doesNotMatch(daemonHttp, /X-Gasoline|X-STRUM/)
+
+    assert.match(constants, /SHOW_TRACKED_HOVER_LAUNCHER: 'kaboom_show_tracked_hover_launcher'/)
+    assert.match(constants, /TERMINAL_AI_COMMAND: 'kaboom_terminal_ai_command'/)
+    assert.match(constants, /TERMINAL_WORKSPACE_GROUP_ID: 'kaboom_terminal_workspace_group_id'/)
+    assert.doesNotMatch(constants, /gasoline_show_tracked_hover_launcher/)
+    assert.doesNotMatch(constants, /gasoline_terminal_ai_command/)
+
+    assert.match(options, /kaboom_terminal_ai_command\?: string/)
+    assert.match(options, /kaboom_terminal_dev_root\?: string/)
+    assert.match(options, /kaboom-debug-\$\{timestamp\}\.json/)
+    assert.doesNotMatch(options, /gasoline_terminal_ai_command/)
+    assert.doesNotMatch(options, /gasoline_terminal_dev_root/)
+
+    assert.match(tabState, /kaboom_terminal_workspace_group_id\?: number/)
+    assert.match(tabState, /kaboom_terminal_workspace_main_tab_id\?: number/)
+    assert.doesNotMatch(tabState, /gasoline_terminal_workspace_group_id/)
+
+    assert.match(storageUtils, /const STATE_VERSION_KEY = 'kaboom_state_version'/)
+    assert.doesNotMatch(storageUtils, /gasoline_state_version/)
+  })
 })

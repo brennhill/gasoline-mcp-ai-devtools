@@ -3,10 +3,10 @@
 
 package schema
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 
-// AnalyzeToolSchema returns the MCP tool definition for the analyze tool.
-func AnalyzeToolSchema() mcp.MCPTool {
+// analyzeToolSchema returns the MCP tool definition for the analyze tool.
+func analyzeToolSchema() mcp.MCPTool {
 	return mcp.MCPTool{
 		Name:        "analyze",
 		Description: "Trigger active analysis. Creates async queries the extension executes.\n\nSynchronous Mode (Default): Tools block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id, then poll with observe(what='command_result', correlation_id=...).\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.\n\nUse summary:true on supported modes for compact token-efficient responses.",
@@ -16,7 +16,7 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				"what": map[string]any{
 					"type":        "string",
 					"description": "Analysis mode to run against the page",
-					"enum":        []string{"dom", "performance", "accessibility", "error_clusters", "navigation_patterns", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_state", "form_validation", "data_table", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates"},
+					"enum":        []string{"dom", "performance", "accessibility", "error_clusters", "navigation_patterns", "security_audit", "third_party_audit", "link_health", "link_validation", "page_summary", "annotations", "annotation_detail", "api_validation", "draw_history", "draw_session", "computed_styles", "forms", "form_state", "form_validation", "data_table", "visual_baseline", "visual_diff", "visual_baselines", "navigation", "page_structure", "audit", "feature_gates", "page_issues"},
 				},
 				"telemetry_mode": map[string]any{
 					"type":        "string",
@@ -152,12 +152,16 @@ func AnalyzeToolSchema() mcp.MCPTool {
 				},
 				"summary": map[string]any{
 					"type":        "boolean",
-					"description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit)",
+					"description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit, page_issues)",
 				},
 				"categories": map[string]any{
 					"type":        "array",
-					"description": "Audit categories to include (audit). Valid: performance, accessibility, security, best_practices",
+					"description": "Categories to include (audit: performance, accessibility, security, best_practices; page_issues: console_errors, network_failures, accessibility, security)",
 					"items":       map[string]any{"type": "string"},
+				},
+				"limit": map[string]any{
+					"type":        "number",
+					"description": "Max issues per section (page_issues, default 50)",
 				},
 			},
 			"required": []string{"what"},

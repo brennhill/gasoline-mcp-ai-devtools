@@ -123,14 +123,14 @@ last_verified_date: 2026-03-05
 
 **Framework:** Bash scripts
 
-**File:** `/Users/brenn/dev/gasoline/scripts/tests/cat-17-reproduction.sh`
+**File:** `/Users/brenn/dev/kaboom/scripts/tests/cat-17-reproduction.sh`
 
 #### 6 Tests Implemented:
 
 | Cat | Test | Line | Scenario |
 |-----|------|------|----------|
 | 17.1 | seed actions via HTTP POST | 89-110 | 5 actions seeded (navigate, click, input, select, keypress) |
-| 17.2 | export gasoline format with all action types | 112-157 | All 5 action types in natural language |
+| 17.2 | export kaboom format with all action types | 112-157 | All 5 action types in natural language |
 | 17.3 | (Not yet shown in truncated output) | TBD | Playwright export |
 | 17.4 | (Not yet shown in truncated output) | TBD | Vitest export |
 | 17.5 | (Not yet shown in truncated output) | TBD | Round-trip: export → parse → replay |
@@ -138,7 +138,7 @@ last_verified_date: 2026-03-05
 
 #### Coverage:
 - Action seeding (HTTP POST)
-- Gasoline format export (natural language)
+- Kaboom format export (natural language)
 - Multiple framework exports (playwright, vitest, jest)
 - Round-trip validation
 

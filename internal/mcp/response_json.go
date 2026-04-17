@@ -13,7 +13,7 @@ func SafeMarshal(v any, fallback string) json.RawMessage {
 	resultJSON, err := json.Marshal(v)
 	if err != nil {
 		// This should never happen with simple structs, but handle it defensively
-		fmt.Fprintf(os.Stderr, "[gasoline] JSON marshal error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] JSON marshal error: %v\n", err)
 		return json.RawMessage(fallback)
 	}
 	return json.RawMessage(resultJSON)
@@ -27,7 +27,7 @@ func LenientUnmarshal(args json.RawMessage, v any) {
 		return
 	}
 	if err := json.Unmarshal(args, v); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] optional param parse: %v (args: %.100s)\n", err, string(args))
+		fmt.Fprintf(os.Stderr, "[Kaboom] optional param parse: %v (args: %.100s)\n", err, string(args))
 	}
 }
 
@@ -41,8 +41,8 @@ func TextResponse(text string) json.RawMessage {
 	return SafeMarshal(result, `{"content":[{"type":"text","text":"Internal error: failed to marshal result"}]}`)
 }
 
-// ErrorResponse constructs an MCP tool error result containing a single text content block.
-func ErrorResponse(text string) json.RawMessage {
+// errorResponse constructs an MCP tool error result containing a single text content block.
+func errorResponse(text string) json.RawMessage {
 	result := MCPToolResult{
 		Content: []MCPContentBlock{
 			{Type: "text", Text: text},
@@ -66,7 +66,7 @@ func marshalSummaryData(summary string, data any) (string, error) {
 func jsonResultWithSummary(summary string, data any, isError bool) json.RawMessage {
 	text, err := marshalSummaryData(summary, data)
 	if err != nil {
-		return ErrorResponse("Failed to serialize response: " + err.Error())
+		return errorResponse("Failed to serialize response: " + err.Error())
 	}
 	result := MCPToolResult{
 		Content: []MCPContentBlock{{Type: "text", Text: text}},

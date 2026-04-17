@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 ### System Diagram
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Gasoline MCP Server (Go)                           │
+│  Kaboom MCP Server (Go)                           │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Control Command Router                        │  │
 │  │ - Parse operation requests                    │  │
@@ -44,7 +44,7 @@ last_verified_date: 2026-03-05
 │  ↓                                                   │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Service Discovery & Health Check              │  │
-│  │ - Discover /.gasoline/control endpoints       │  │
+│  │ - Discover /.kaboom/control endpoints       │  │
 │  │ - Monitor service availability                │  │
 │  │ - Fail-fast on unreachable services           │  │
 │  └───────────────────────────────────────────────┘  │
@@ -53,7 +53,7 @@ last_verified_date: 2026-03-05
 ┌─────────────────────────────────────────────────────┐
 │ Backend Service (Node.js/Python/Go/etc.)           │
 │ ┌───────────────────────────────────────────────┐  │
-│ │ /.gasoline/control Handler                    │  │
+│ │ /.kaboom/control Handler                    │  │
 │ │ - Operations: reset_db, create_user, etc.     │  │
 │ │ - Journaled transactions                      │  │
 │ │ - Returns operation results & checksums       │  │
@@ -70,11 +70,11 @@ last_verified_date: 2026-03-05
 ### Data Flow: Reset Database
 ```
 1. AI calls: interact({action: "backend_control", operation: "reset_database"})
-2. Gasoline MCP creates BEFORE snapshot: snap-20260131-101500
-3. Gasoline MCP sends HTTP POST /.gasoline/control/reset_database
+2. Kaboom MCP creates BEFORE snapshot: snap-20260131-101500
+3. Kaboom MCP sends HTTP POST /.kaboom/control/reset_database
 4. Backend service resets DB, returns {rows_deleted: 1250, duration_ms: 350}
-5. Gasoline MCP creates AFTER snapshot: snap-20260131-101503
-6. Gasoline MCP logs operation with correlation_id, timestamps, before/after hashes
+5. Kaboom MCP creates AFTER snapshot: snap-20260131-101503
+6. Kaboom MCP logs operation with correlation_id, timestamps, before/after hashes
 7. AI observes backend-logs and sees "DATABASE_RESET" event
 8. Next test runs on clean state
 ```
@@ -82,7 +82,7 @@ last_verified_date: 2026-03-05
 ## Implementation Plan
 
 ### Phase 1: Core Control Infrastructure (Week 1)
-1. **Define Control Protocol** — Standardize /.gasoline/control endpoint across Go/Node.js/Python
+1. **Define Control Protocol** — Standardize /.kaboom/control endpoint across Go/Node.js/Python
    - Request format: `{operation, params, correlation_id, request_id}`
    - Response format: `{status, result, duration_ms, checksum}`
    - Error handling: descriptive error codes, rollback support
@@ -94,17 +94,17 @@ last_verified_date: 2026-03-05
 
 3. **Snapshot Manager**
    - Implement create/restore/list/delete snapshots
-   - Store in `.gasoline/snapshots/` with compression
+   - Store in `.kaboom/snapshots/` with compression
    - Track parent snapshots for restore chains
 
 4. **Audit Logger**
-   - Log all operations to `.gasoline/audit.jsonl`
+   - Log all operations to `.kaboom/audit.jsonl`
    - Index by correlation_id for fast lookup
    - Expose via `observe({what: 'audit_log'})`
 
 ### Phase 2: Service Integration (Week 2)
 1. **Service Discovery**
-   - Detect /.gasoline/control endpoint via OPTIONS request
+   - Detect /.kaboom/control endpoint via OPTIONS request
    - Cache discovered services with TTL
    - Health check every 30s
 
@@ -298,7 +298,7 @@ observe({
 4. Test error handling and rollback
 
 ### Integration Tests
-1. Start test backend with /.gasoline/control endpoint
+1. Start test backend with /.kaboom/control endpoint
 2. Execute reset_database, verify DB state
 3. Execute create_test_user, verify user exists
 4. Simulate failure, verify error path
@@ -317,10 +317,10 @@ observe({
 
 ## Backend Service Implementation Requirements
 
-Services must implement `GET|POST /.gasoline/control` handler:
+Services must implement `GET|POST /.kaboom/control` handler:
 
 ```go
-// GET /.gasoline/control — Discover available operations
+// GET /.kaboom/control — Discover available operations
 type ControlOperation struct {
   Name      string
   Category  string // "state_management", "data_injection", etc.
@@ -330,7 +330,7 @@ type ControlOperation struct {
   Examples  []string
 }
 
-// POST /.gasoline/control — Execute operation
+// POST /.kaboom/control — Execute operation
 type ControlRequest struct {
   Operation   string
   Params      map[string]interface{}

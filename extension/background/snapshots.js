@@ -93,7 +93,7 @@ export function resetContextWarning() {
 /**
  * Decode a VLQ-encoded string into an array of integers
  */
-export function decodeVLQ(str) {
+function decodeVLQ(str) {
     const result = [];
     let shift = 0;
     let value = 0;
@@ -120,7 +120,7 @@ export function decodeVLQ(str) {
 /**
  * Parse a source map's mappings string into a structured format
  */
-export function parseMappings(mappingsStr) {
+function parseMappings(mappingsStr) {
     const lines = mappingsStr.split(';');
     const parsed = [];
     for (const line of lines) {
@@ -140,7 +140,7 @@ export function parseMappings(mappingsStr) {
 /**
  * Parse a stack trace line into components
  */
-export function parseStackFrame(line) {
+function parseStackFrame(line) {
     const match = line.match(STACK_FRAME_REGEX);
     if (match) {
         const [, functionName, file1, line1, col1, file2, line2] = match;
@@ -167,7 +167,7 @@ export function parseStackFrame(line) {
 /**
  * Extract sourceMappingURL from script content
  */
-export function extractSourceMapUrl(content) {
+function extractSourceMapUrl(content) {
     const regex = /\/\/[#@]\s*sourceMappingURL=(.+?)(?:\s|$)/;
     const match = content.match(regex);
     return match && match[1] ? match[1].trim() : null;
@@ -175,7 +175,7 @@ export function extractSourceMapUrl(content) {
 /**
  * Parse source map data into a usable format
  */
-export function parseSourceMapData(sourceMap) {
+function parseSourceMapData(sourceMap) {
     const mappings = parseMappings(sourceMap.mappings || '');
     return {
         sources: sourceMap.sources || [],
@@ -189,7 +189,7 @@ export function parseSourceMapData(sourceMap) {
  * Find original location from source map
  */
 // #lizard forgives
-export function findOriginalLocation(sourceMap, line, column) {
+function findOriginalLocation(sourceMap, line, column) {
     if (!sourceMap || !sourceMap.mappings)
         return null;
     const lineIndex = line - 1;
@@ -284,7 +284,7 @@ async function fetchExternalSourceMap(sourceMapUrl, scriptUrl, debugLogFn) {
     setSourceMapCacheEntry(scriptUrl, parsed);
     return parsed;
 }
-export async function fetchSourceMap(scriptUrl, debugLogFn) {
+async function fetchSourceMap(scriptUrl, debugLogFn) {
     if (getSourceMapCacheEntry(scriptUrl)) {
         return getSourceMapCacheEntry(scriptUrl) || null;
     }
@@ -314,7 +314,7 @@ export async function fetchSourceMap(scriptUrl, debugLogFn) {
 /**
  * Resolve a single stack frame to original location
  */
-export async function resolveStackFrame(frame, debugLogFn) {
+async function resolveStackFrame(frame, debugLogFn) {
     if (!frame.fileName || !frame.fileName.startsWith('http')) {
         return frame;
     }

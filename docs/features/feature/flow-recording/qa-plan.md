@@ -36,7 +36,7 @@ last_verified_date: 2026-03-05
 make test
 
 # Go tests only
-go test ./cmd/dev-console/...
+go test ./cmd/browser-agent/...
 
 # Extension tests only
 node --test tests/extension/recording.test.js
@@ -51,7 +51,7 @@ make ci-local
 
 ### Module 1: WebSocket Migration
 
-**File:** `cmd/dev-console/websocket_test.go` (new)
+**File:** `cmd/browser-agent/websocket_test.go` (new)
 
 #### Test Case 1.1: WebSocket Connection Established
 ```
@@ -128,13 +128,13 @@ AND: Resumes streaming (no polling after reconnect)
 
 ### Module 2: Recording Storage (Server)
 
-**File:** `cmd/dev-console/recording_test.go` (new)
+**File:** `cmd/browser-agent/recording_test.go` (new)
 
 #### Test Case 2.1: Create Recording Metadata
 ```
 GIVEN: User calls configure({action: 'recording_start', name: 'checkout', url: 'https://...'})
 WHEN: Recording created
-THEN: metadata.json saved to ~/.gasoline/recordings/{id}/metadata.json
+THEN: metadata.json saved to ~/.kaboom/recordings/{id}/metadata.json
 AND: File contains: id, name, created_at, duration, action_count, start_url, viewport, sensitive_data_enabled
 AND: Response: {status: "ok", recording_id: "checkout-20260130T143022Z"}
 ```
@@ -264,11 +264,11 @@ AND: Timestamps in order
 
 ### Module 3: Playback Engine
 
-**File:** `cmd/dev-console/playback_test.go` (new)
+**File:** `cmd/browser-agent/playback_test.go` (new)
 
 #### Test Case 3.1: Load Recording
 ```
-GIVEN: Recording stored at ~/.gasoline/recordings/checkout-123/metadata.json
+GIVEN: Recording stored at ~/.kaboom/recordings/checkout-123/metadata.json
 WHEN: playback.LoadRecording("checkout-123")
 THEN: Recording loaded successfully
 AND: All 8 actions in memory
@@ -373,7 +373,7 @@ AND: Recommendation: "Add data-testid=... or update selector"
 GIVEN: Playback execution fails on action 3 (selector not found)
 WHEN: Error captured
 THEN: Screenshot taken automatically
-AND: Stored at: ~/.gasoline/recordings/{id}/screenshots/{timestamp}-{index}-error.jpg
+AND: Stored at: ~/.kaboom/recordings/{id}/screenshots/{timestamp}-{index}-error.jpg
 AND: Screenshot included in error response
 ```
 
@@ -423,7 +423,7 @@ AND: Playback completes successfully
 
 ### Module 4: Log Diffing Engine
 
-**File:** `cmd/dev-console/log_diff_test.go` (new)
+**File:** `cmd/browser-agent/log_diff_test.go` (new)
 
 #### Test Case 4.1: Compare Identical Logs
 ```
@@ -651,7 +651,7 @@ GIVEN: Recording active
 AND: Recording: {when_captured: ["page-load"]}
 WHEN: Page finishes loading (network idle detected)
 THEN: Screenshot taken automatically
-AND: Stored at: ~/.gasoline/recordings/{id}/screenshots/{ts}-page-load.jpg
+AND: Stored at: ~/.kaboom/recordings/{id}/screenshots/{ts}-page-load.jpg
 AND: Reference stored in action metadata
 ```
 
@@ -678,7 +678,7 @@ AND: ID matches generated name
 
 ## Integration Tests (End-to-End)
 
-**File:** `cmd/dev-console/integration_test.go` (new)
+**File:** `cmd/browser-agent/integration_test.go` (new)
 
 ### Integration Test 1: Full Recording → Playback → Diff Workflow
 
@@ -687,7 +687,7 @@ SCENARIO: Record a shopping flow, simulate fix, replay, and verify regression is
 
 GIVEN:
   - Test server running with sample shopping app
-  - Gasoline server running on localhost:3001
+  - Kaboom server running on localhost:3001
   - WebSocket connected
 
 WHEN:
@@ -812,12 +812,12 @@ THEN:
 
 ## UAT Steps (Manual Testing)
 
-**Executor:** QA engineer or developer with Gasoline extension
+**Executor:** QA engineer or developer with Kaboom extension
 
 ### Environment Setup:
 ```bash
 # Start server
-go run ./cmd/dev-console/main.go
+go run ./cmd/browser-agent/main.go
 
 # Load extension in Chrome
 - chrome://extensions → Load unpacked → extension/ directory
@@ -839,7 +839,7 @@ go run ./cmd/dev-console/main.go
 #### Expected Result:
 - ✓ Extension shows "Recording saved"
 - ✓ Recording visible in extension popup (with timestamp, action count)
-- ✓ Recording metadata file exists: `~/.gasoline/recordings/real-flow-test-*/metadata.json`
+- ✓ Recording metadata file exists: `~/.kaboom/recordings/real-flow-test-*/metadata.json`
 - ✓ All 4 actions captured: click, type, click, wait
 - ✓ Screenshot files created in screenshots/ subdirectory
 - ✓ Timestamps make sense (ascending, reasonable intervals)
@@ -847,10 +847,10 @@ go run ./cmd/dev-console/main.go
 #### Validation:
 ```bash
 # Check recording exists
-ls -lh ~/.gasoline/recordings/real-flow-test-*/metadata.json
+ls -lh ~/.kaboom/recordings/real-flow-test-*/metadata.json
 
 # Inspect metadata (verify JSON is valid)
-jq . ~/.gasoline/recordings/real-flow-test-*/metadata.json
+jq . ~/.kaboom/recordings/real-flow-test-*/metadata.json
 ```
 
 ---
@@ -945,7 +945,7 @@ observe({what: 'logs', test_id: 'replay-test'})
 - ✓ Metadata contains: `{type: "type", text: "test_password_123", ...}`
 - ✓ Full password captured
 - ✓ Metadata flag: `sensitive_data_enabled: true`
-- ✓ File location: `~/.gasoline/recordings/`
+- ✓ File location: `~/.kaboom/recordings/`
 
 ---
 
@@ -956,7 +956,7 @@ observe({what: 'logs', test_id: 'replay-test'})
 #### Steps (Prep):
 ```bash
 # Create dummy recordings to reach 800MB
-cd ~/.gasoline/recordings
+cd ~/.kaboom/recordings
 dd if=/dev/zero of=dummy1.bin bs=1M count=800
 cd -
 ```
@@ -1023,7 +1023,7 @@ dd if=/dev/zero of=dummy2.bin bs=1M count=200
 ```
 1. QA reports: "Checkout button broken in Safari, works in Chrome"
 2. Engineer wants to reproduce and verify fix
-3. Gasoline captures reproduction
+3. Kaboom captures reproduction
 4. Engineer fixes bug
 5. Engineer re-runs to verify fix
 ```

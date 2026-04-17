@@ -6,25 +6,25 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/tools_generate.go:handleGenerate
-  - cmd/dev-console/testgen.go:testGenHandler.handleGenerateTestFromContext
-  - cmd/dev-console/testgen_heal.go:testGenHandler.handleGenerateTestHeal
-  - cmd/dev-console/testgen_classify.go:testGenHandler.handleGenerateTestClassify
+  - cmd/browser-agent/tools_generate.go:handleGenerate
+  - cmd/browser-agent/testgen.go:testGenHandler.handleGenerateTestFromContext
+  - cmd/browser-agent/testgen_heal.go:testGenHandler.handleGenerateTestHeal
+  - cmd/browser-agent/testgen_classify.go:testGenHandler.handleGenerateTestClassify
 code_paths:
-  - cmd/dev-console/tools_generate.go
-  - cmd/dev-console/tools_generate_testgen_handler.go
-  - cmd/dev-console/testgen.go
-  - cmd/dev-console/testgen_aliases.go
-  - cmd/dev-console/testgen_provider_adapter.go
-  - cmd/dev-console/testgen_heal.go
-  - cmd/dev-console/testgen_classify.go
+  - cmd/browser-agent/tools_generate.go
+  - cmd/browser-agent/tools_generate_testgen_handler.go
+  - cmd/browser-agent/testgen.go
+  - cmd/browser-agent/testgen_aliases.go
+  - cmd/browser-agent/testgen_provider_adapter.go
+  - cmd/browser-agent/testgen_heal.go
+  - cmd/browser-agent/testgen_classify.go
   - internal/testgen/generate.go
   - internal/testgen/helpers.go
 test_paths:
-  - cmd/dev-console/testgen_context_test.go
-  - cmd/dev-console/testgen_generate_test.go
-  - cmd/dev-console/testgen_heal_test.go
-  - cmd/dev-console/testgen_classify_dispatch_test.go
+  - cmd/browser-agent/testgen_context_test.go
+  - cmd/browser-agent/testgen_generate_test.go
+  - cmd/browser-agent/testgen_heal_test.go
+  - cmd/browser-agent/testgen_classify_dispatch_test.go
   - internal/testgen/generate_test.go
   - internal/testgen/helpers_test.go
 last_verified_version: 0.7.12
@@ -71,21 +71,21 @@ Covers MCP `generate` test-related modes: `test_from_context`, `test_heal`, and 
 
 ## Code Paths
 
-- `cmd/dev-console/tools_generate_testgen_handler.go`
-- `cmd/dev-console/testgen.go`
-- `cmd/dev-console/testgen_aliases.go`
-- `cmd/dev-console/testgen_provider_adapter.go`
-- `cmd/dev-console/testgen_heal.go`
-- `cmd/dev-console/testgen_classify.go`
+- `cmd/browser-agent/tools_generate_testgen_handler.go`
+- `cmd/browser-agent/testgen.go`
+- `cmd/browser-agent/testgen_aliases.go`
+- `cmd/browser-agent/testgen_provider_adapter.go`
+- `cmd/browser-agent/testgen_heal.go`
+- `cmd/browser-agent/testgen_classify.go`
 - `internal/testgen/generate.go`
 - `internal/testgen/helpers.go`
 
 ## Test Paths
 
-- `cmd/dev-console/testgen_context_test.go`
-- `cmd/dev-console/testgen_generate_test.go`
-- `cmd/dev-console/testgen_heal_test.go`
-- `cmd/dev-console/testgen_classify_dispatch_test.go`
+- `cmd/browser-agent/testgen_context_test.go`
+- `cmd/browser-agent/testgen_generate_test.go`
+- `cmd/browser-agent/testgen_heal_test.go`
+- `cmd/browser-agent/testgen_classify_dispatch_test.go`
 - `internal/testgen/generate_test.go`
 - `internal/testgen/helpers_test.go`
 

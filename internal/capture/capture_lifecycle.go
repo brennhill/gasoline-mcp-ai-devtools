@@ -23,6 +23,14 @@ func (c *Capture) SetNavigationCallback(cb func()) {
 	c.navigationCallback = cb
 }
 
+// SetFeaturesCallback sets a callback for extension feature usage reports.
+// Called from HandleSync when features_used is present. Invoked outside Capture lock.
+func (c *Capture) SetFeaturesCallback(cb func(map[string]bool)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.featuresCallback = cb
+}
+
 // SubscribeLifecycle registers a typed lifecycle event listener and returns a
 // subscription ID for later removal via UnsubscribeLifecycle.
 // Thread-safe; the observer has its own lock independent of Capture.mu.

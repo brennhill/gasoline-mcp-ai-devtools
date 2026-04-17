@@ -25,7 +25,6 @@ export type BrowserActionResult = {
 };
 /** Get the CSP status from the most recent navigation (for sync layer) */
 export declare function getLastCSPStatus(): CSPProbeResult;
-export declare function handleNavigateAction(tabId: number, url: string, actionToast: ActionToastFn, reason?: string): Promise<BrowserActionResult>;
 export declare function handleBrowserAction(tabId: number, params: {
     action?: string;
     what?: string;

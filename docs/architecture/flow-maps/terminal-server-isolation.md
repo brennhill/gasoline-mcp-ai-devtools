@@ -131,13 +131,13 @@ Iframe support in `terminal.html`:
 
 | File | Purpose |
 |------|---------|
-| `cmd/dev-console/terminal_server.go` | `setupTerminalMux()`, `startTerminalServer()` |
-| `cmd/dev-console/terminal_handlers.go` | All terminal route handlers |
-| `cmd/dev-console/terminal_handlers_test.go` | Terminal handler + frame writer serialization tests |
-| `cmd/dev-console/main_connection_mcp.go` | Terminal server startup wiring |
-| `cmd/dev-console/main_connection_mcp_shutdown.go` | Terminal server graceful shutdown |
-| `cmd/dev-console/server_routes_health_diagnostics.go` | `terminal_port` in health response |
-| `cmd/dev-console/terminal_assets/terminal.html` | xterm.js page, WS reconnect, postMessage bridge, focus/typing events, soft redraw command |
+| `cmd/browser-agent/terminal_server.go` | `setupTerminalMux()`, `startTerminalServer()` |
+| `cmd/browser-agent/terminal_handlers.go` | All terminal route handlers |
+| `cmd/browser-agent/terminal_handlers_test.go` | Terminal handler + frame writer serialization tests |
+| `cmd/browser-agent/main_connection_mcp.go` | Terminal server startup wiring |
+| `cmd/browser-agent/main_connection_mcp_shutdown.go` | Terminal server graceful shutdown |
+| `cmd/browser-agent/server_routes_health_diagnostics.go` | `terminal_port` in health response |
+| `cmd/browser-agent/terminal_assets/terminal.html` | xterm.js page, WS reconnect, postMessage bridge, focus/typing events, soft redraw command |
 | `src/content/ui/terminal-widget.ts` | `getTerminalServerUrl()`, terminal widget state machine, redraw recovery control, queued typing guard |
 | `extension/content/ui/terminal-widget.js` | Runtime copy consumed by extension tests and packaged content script |
 | `tests/extension/terminal-widget.test.js` | Regression coverage for header controls and typing-aware queued write guard behavior |

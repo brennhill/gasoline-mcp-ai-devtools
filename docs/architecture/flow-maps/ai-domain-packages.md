@@ -21,10 +21,10 @@ Refactor the former `internal/ai` mixed domain into focused packages:
 
 ## Entrypoints
 
-1. `cmd/dev-console/tools_core_constructor.go:NewToolHandler`
-2. `cmd/dev-console/tools_configure_noise_actions.go`
-3. `cmd/dev-console/tools_configure_state_impl.go`
-4. `cmd/dev-console/tools_analyze_visual.go`
+1. `cmd/browser-agent/tools_core_constructor.go:NewToolHandler`
+2. `cmd/browser-agent/tools_configure_noise_actions.go`
+3. `cmd/browser-agent/tools_configure_state_impl.go`
+4. `cmd/browser-agent/tools_analyze_visual.go`
 
 ## Primary Flow
 
@@ -55,20 +55,20 @@ Refactor the former `internal/ai` mixed domain into focused packages:
 - `internal/noise/*.go`
 - `internal/persistence/*.go`
 - `internal/ai/aliases.go`
-- `cmd/dev-console/tools_core_constructor.go`
-- `cmd/dev-console/tools_core.go`
-- `cmd/dev-console/tools_configure_noise_actions.go`
-- `cmd/dev-console/tools_configure_state_impl.go`
-- `cmd/dev-console/tools_analyze_visual.go`
-- `cmd/dev-console/noise_autorun.go`
+- `cmd/browser-agent/tools_core_constructor.go`
+- `cmd/browser-agent/tools_core.go`
+- `cmd/browser-agent/tools_configure_noise_actions.go`
+- `cmd/browser-agent/tools_configure_state_impl.go`
+- `cmd/browser-agent/tools_analyze_visual.go`
+- `cmd/browser-agent/noise_autorun.go`
 
 ## Test Paths
 
 - `internal/checkpoint/*_test.go`
 - `internal/noise/*_test.go`
 - `internal/persistence/*_test.go`
-- `cmd/dev-console/tools_configure_noise_actions_test.go`
-- `cmd/dev-console/tools_configure_sequence_test.go`
+- `cmd/browser-agent/tools_configure_noise_actions_test.go`
+- `cmd/browser-agent/tools_configure_sequence_test.go`
 
 ## Edit Guardrails
 

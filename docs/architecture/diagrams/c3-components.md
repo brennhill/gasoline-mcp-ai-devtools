@@ -105,7 +105,7 @@ graph TB
         Capture --> Buffers
     end
 
-    subgraph Tools["🔧 Layer 3: MCP Tools (cmd/dev-console/tools_*.go)"]
+    subgraph Tools["🔧 Layer 3: MCP Tools (cmd/browser-agent/tools_*.go)"]
         direction LR
         Observe["tools_observe.go<br/>observe(what)"]
         Generate["tools_generate.go<br/>generate(format)"]
@@ -124,7 +124,7 @@ graph TB
         Generate --> Security
     end
 
-    subgraph HTTPServer["🌐 Layer 4: HTTP Server (cmd/dev-console/)"]
+    subgraph HTTPServer["🌐 Layer 4: HTTP Server (cmd/browser-agent/)"]
         direction LR
         Main["main.go<br/>Entry point<br/>Lifecycle"]
         Handler["handler.go<br/>JSON-RPC routing"]
@@ -279,7 +279,7 @@ graph TB
 
 ---
 
-### Layer 3: MCP Tools (`cmd/dev-console/tools_*.go`)
+### Layer 3: MCP Tools (`cmd/browser-agent/tools_*.go`)
 
 **4 Tool Implementations:**
 
@@ -294,7 +294,7 @@ graph TB
 
 ---
 
-### Layer 4: HTTP Server (`cmd/dev-console/`)
+### Layer 4: HTTP Server (`cmd/browser-agent/`)
 
 | Component | Purpose |
 |-----------|---------|
@@ -408,8 +408,8 @@ AI calls configure({action: 'store', data: {...}})
 - **Session:** `internal/session/*.go` (6 files)
 - **Analysis:** `internal/analysis/*.go` (7 files)
 - **Security:** `internal/security/*.go` (8 files)
-- **Tools:** `cmd/dev-console/tools_*.go` (8 files)
-- **HTTP Server:** `cmd/dev-console/{main,handler,server,middleware,routes,health}.go`
+- **Tools:** `cmd/browser-agent/tools_*.go` (8 files)
+- **HTTP Server:** `cmd/browser-agent/{main,handler,server,middleware,routes,health}.go`
 - **Utilities:** `internal/{rate_limit,circuit_breaker,redaction,export}` + `internal/util/`
 
 ### Related Diagrams

@@ -87,7 +87,7 @@ async function enrichWithCSP(tabId: number, result: BrowserActionResult): Promis
 }
 
 // #lizard forgives
-export async function handleNavigateAction(
+async function handleNavigateAction(
   tabId: number,
   url: string,
   actionToast: ActionToastFn,

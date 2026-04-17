@@ -1,44 +1,90 @@
-# Gasoline Codex Ways Of Working
+# Kaboom MCP — Core Rules
 
-Use this with `CLAUDE.md` and `.claude/instructions.md`. If rules conflict, choose the stricter rule.
+Browser extension + MCP server for real-time browser telemetry.
+**Stack:** Go (zero deps) | Chrome Extension (MV3) | MCP (JSON-RPC 2.0)
 
-## GitNexus Policy (Non-Blocking)
+---
 
-- Use GitNexus when it helps with architecture/context, but treat it as optional.
-- If GitNexus is unavailable, stale, slow, or errors, continue immediately using local repo inspection and tests.
-- Never pause task execution waiting for GitNexus index refresh.
+## 🔴 Mandatory Rules
 
-## Worktree Isolation (Required)
+1. **TDD** — Write tests first, then implementation
+2. **No `any`** — TypeScript strict mode, no implicit any
+3. **Zero Deps** — No production dependencies in Go or extension
+4. **Compile TS** — Run `make compile-ts` after ANY src/ change
+5. **5 Tools** — observe, generate, configure, interact, analyze
+6. **Performance** — WebSocket < 0.1ms, HTTP < 0.5ms
+7. **Privacy** — All data stays local, no external transmission
+8. **Wire Types** — `wire_*.go` and `wire-*.ts` are the source of truth for HTTP payloads. Changes to either side MUST update the counterpart. Run `make check-wire-drift`
+9. **Docs Cross-Ref (Required)** — EVERY feature and EVERY refactor MUST ship with cross-referenced docs updates (flow map + feature pointers + code/test paths)
 
-Before writing code:
-- Confirm context with `pwd`.
-- Confirm repo root with `git rev-parse --show-toplevel`.
-- Confirm target branch with `git branch --show-current`.
-- Stop and fix context if any check does not match the intended PR/task.
+## Git Workflow
 
-Before commit or push:
-- Run `git status --short --branch` and verify only intended files are changed.
-- Re-check branch/worktree context before `git commit` and `git push`.
-- Do not push from the repo root when the task is assigned to a dedicated worktree.
+- Branch from `UNSTABLE`, PR to `UNSTABLE`
+- Never push directly to `stable`
+- Squash commits before merge
 
-When switching tasks/PRs:
-- Explicitly switch to the target worktree path first.
-- Repeat the full preflight checks before running any edit, commit, cherry-pick, or push command.
+---
+
+## Commands
+
+```bash
+make compile-ts    # REQUIRED after src/ changes
+make test          # All tests
+make ci-local      # Full CI locally
+npm run typecheck  # TypeScript check
+npm run lint       # ESLint
+```
+
+## Testing
+
+**Primary UAT Script:** [`scripts/test-all-tools-comprehensive.sh`](scripts/test-all-tools-comprehensive.sh)
+
+Tests: cold start, tool calls, concurrent clients, stdout purity, persistence, graceful shutdown.
+
+```bash
+./scripts/test-all-tools-comprehensive.sh  # Run full UAT
+```
+
+**UAT Rules:**
+
+- **NEVER modify tests during UAT** — run tests as-is, report results
+- If tests have issues, note them and propose changes AFTER UAT completes
+- UAT validates the npm-installed version (`kaboom-mcp` from PATH)
+- Extension must be connected for data flow tests to pass
+
+## Code Standards
+
+**JSON API fields:** ALL JSON fields use `snake_case`. No exceptions. External spec fields (MCP protocol, SARIF) are tagged with `// SPEC:<name>` comments.
+
+**TypeScript:**
+
+- No dynamic imports in service worker (background/)
+- No circular dependencies
+- Content scripts must be bundled (MV3 limitation)
+- All fetch() needs try/catch + response.ok check
+
+**Go:**
+
+- Append-only I/O on hot paths
+- Single-pass eviction (never loop-remove-recheck)
+- File headers required: `// filename.go — Purpose summary.`
+
+**File size:** Max 800 LOC. Refactor if larger.
 
 ## Documentation Cross-Reference Contract (Required)
 
-For EVERY feature and EVERY refactor, documentation updates are required in the same change:
+For every feature and every refactor, update docs in the same change:
 
 1. Add or update the canonical flow map in `docs/architecture/flow-maps/`.
-2. Add or update the feature-local `flow-map.md` pointer in `docs/features/feature/<feature>/` when a feature folder exists.
+2. Add or update the feature-local `flow-map.md` pointer under `docs/features/feature/<feature>/` when a feature folder exists.
 3. Update the feature `index.md`:
    - `last_reviewed`
    - `code_paths` and `test_paths`
    - link to `flow-map.md`
 4. Update `docs/architecture/flow-maps/README.md` when adding a new canonical flow map.
-5. Keep links bidirectional (feature -> canonical flow map, and canonical flow map -> concrete code/test paths).
+5. Keep cross-links bidirectional (feature -> canonical map, and canonical map lists code/test anchors).
 
-No code-only refactor is complete until this documentation contract is satisfied.
+No code-only refactor is considered complete until this documentation contract is satisfied.
 
 ## Engineering Best Practices Contract (Required)
 
@@ -58,3 +104,110 @@ No code-only refactor is complete until this documentation contract is satisfied
 14. New dependencies require explicit justification; remove unused dependencies promptly.
 15. Reviews and handoffs must cover correctness, modularity, performance, testability, docs quality, and DRY adherence.
 16. CI must block merges on broken docs links, missing required docs, or failing quality gates.
+17. ToolHandler naming convention is strict: `tool*` for top-level MCP mode/action entry points, `handle*` for sub-action handlers/helpers.
+18. Shared extension storage keys (`TRACKED_TAB_*`, recording state, pending intents) must be accessed through feature helpers/modules; avoid new ad-hoc read/write/remove call sites.
+19. Multi-entry-point actions (keyboard, context menu, popup, MCP) must use one shared toggle/start-stop helper so behavior stays identical.
+20. Cross-context message contracts must be declared in `src/types/runtime-messages.ts` (and corresponding wire/schema files when applicable) before adding new runtime message types.
+21. User-facing recording labels/toasts/badge text must come from shared helpers to keep wording and truncation consistent across entry points.
+22. Duplicate code checks are required for refactors touching `src/background` or `src/popup` (`npx jscpd src/background src/popup --min-lines 8 --min-tokens 60`), and each non-trivial clone must be either extracted or documented as intentional.
+23. Behavior-replacing refactors must update or delete obsolete tests in the same change (for example, replacing watermark behavior with badge behavior).
+24. See `docs/core/common-patterns.md` for the canonical patterns and review checklist.
+
+## Finding Things
+
+| Need                  | Location                                         |
+| --------------------- | ------------------------------------------------ |
+| Feature specs         | `docs/features/<name>/`                          |
+| Test plans            | `docs/features/<name>/{name}-test-plan.md`       |
+| Test plan template    | `docs/features/_template/template-test-plan.md`  |
+| Architecture          | `.claude/refs/architecture.md`                   |
+| Known issues          | `docs/core/known-issues.md`                      |
+| All features          | `docs/features/feature-navigation.md`            |
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **kaboom** (16927 symbols, 20322 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## When Debugging
+
+1. `gitnexus_query({query: "<error or symptom>"})` — find execution flows related to the issue
+2. `gitnexus_context({name: "<suspect function>"})` — see all callers, callees, and process participation
+3. `READ gitnexus://repo/kaboom/process/{processName}` — trace the full execution flow step by step
+4. For regressions: `gitnexus_detect_changes({scope: "compare", base_ref: "stable"})` — see what your branch changed
+
+## When Refactoring
+
+- **Renaming**: MUST use `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` first. Review the preview — graph edits are safe, text_search edits need manual review. Then run with `dry_run: false`.
+- **Extracting/Splitting**: MUST run `gitnexus_context({name: "target"})` to see all incoming/outgoing refs, then `gitnexus_impact({target: "target", direction: "upstream"})` to find all external callers before moving code.
+- After any refactor: run `gitnexus_detect_changes({scope: "all"})` to verify only expected files changed.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## Tools Quick Reference
+
+| Tool | When to use | Command |
+|------|-------------|---------|
+| `query` | Find code by concept | `gitnexus_query({query: "auth validation"})` |
+| `context` | 360-degree view of one symbol | `gitnexus_context({name: "validateUser"})` |
+| `impact` | Blast radius before editing | `gitnexus_impact({target: "X", direction: "upstream"})` |
+| `detect_changes` | Pre-commit scope check | `gitnexus_detect_changes({scope: "staged"})` |
+| `rename` | Safe multi-file rename | `gitnexus_rename({symbol_name: "old", new_name: "new", dry_run: true})` |
+| `cypher` | Custom graph queries | `gitnexus_cypher({query: "MATCH ..."})` |
+
+## Impact Risk Levels
+
+| Depth | Meaning | Action |
+|-------|---------|--------|
+| d=1 | WILL BREAK — direct callers/importers | MUST update these |
+| d=2 | LIKELY AFFECTED — indirect deps | Should test |
+| d=3 | MAY NEED TESTING — transitive | Test if critical path |
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/kaboom/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/kaboom/clusters` | All functional areas |
+| `gitnexus://repo/kaboom/processes` | All execution flows |
+| `gitnexus://repo/kaboom/process/{name}` | Step-by-step execution trace |
+
+## Self-Check Before Finishing
+
+Before completing any code modification task, verify:
+1. `gitnexus_impact` was run for all modified symbols
+2. No HIGH/CRITICAL risk warnings were ignored
+3. `gitnexus_detect_changes()` confirms changes match expected scope
+4. All d=1 (WILL BREAK) dependents were updated
+
+## CLI
+
+- Re-index: `npx gitnexus analyze`
+- Check freshness: `npx gitnexus status`
+- Generate docs: `npx gitnexus wiki`
+
+<!-- gitnexus:end -->
+
+## Pre-Commit Checklist
+
+Before presenting code as complete:
+
+- Grep for existing patterns before introducing new ones (http.Client, handler maps, error format)
+- No duplicated types/constants across packages — export from source of truth
+- 3+ similar functions → extract helper before continuing
+- Data structs must not do I/O — keep I/O at the call site

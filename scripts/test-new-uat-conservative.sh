@@ -19,7 +19,7 @@ echo "╚═══════════════════════�
 echo ""
 
 # Create results directory
-RESULTS_DIR="/tmp/gasoline-uat-new-conservative-$(date +%s)"
+RESULTS_DIR="/tmp/kaboom-uat-new-conservative-$(date +%s)"
 mkdir -p "$RESULTS_DIR"
 
 echo "📊 Results will be saved to: $RESULTS_DIR"

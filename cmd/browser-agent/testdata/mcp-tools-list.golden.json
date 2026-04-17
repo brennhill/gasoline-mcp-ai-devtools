@@ -1,0 +1,1557 @@
+[
+  {
+    "name": "observe",
+    "description": "Read captured browser state from extension buffers.\n\nnetwork_bodies captures fetch() only; use network_waterfall for all requests. extension_logs = internal debug logs (use logs for console). error_bundles = pre-assembled debug context per error. Use body_path to extract JSON subtrees from network_bodies.\n\nPagination: pass after_cursor/before_cursor/since_cursor from response metadata. restart_on_eviction=true if cursor expired.",
+    "inputSchema": {
+      "properties": {
+        "after_cursor": {
+          "description": "Cursor for older entries (from response metadata)",
+          "type": "string"
+        },
+        "before_cursor": {
+          "description": "Cursor for newer entries (from response metadata)",
+          "type": "string"
+        },
+        "body_path": {
+          "description": "Extract JSON value from response_body using path, e.g. data.items[0].id (network_bodies)",
+          "type": "string"
+        },
+        "classification": {
+          "description": "Transient element classification filter (transients)",
+          "enum": [
+            "alert",
+            "toast",
+            "snackbar",
+            "notification",
+            "tooltip",
+            "banner",
+            "flash"
+          ],
+          "type": "string"
+        },
+        "connection_id": {
+          "description": "WebSocket connection ID filter (websocket_events, websocket_status)",
+          "type": "string"
+        },
+        "correlation_id": {
+          "description": "Async command correlation ID (command_result)",
+          "type": "string"
+        },
+        "database": {
+          "description": "IndexedDB database name (indexeddb)",
+          "type": "string"
+        },
+        "direction": {
+          "description": "WebSocket message direction filter (websocket_events)",
+          "enum": [
+            "incoming",
+            "outgoing"
+          ],
+          "type": "string"
+        },
+        "extension_limit": {
+          "description": "Max extension logs when include_extension_logs=true (logs)",
+          "type": "number"
+        },
+        "format": {
+          "description": "Screenshot format (screenshot)",
+          "enum": [
+            "png",
+            "jpeg"
+          ],
+          "type": "string"
+        },
+        "full_page": {
+          "description": "Capture full scrollable page (screenshot)",
+          "type": "boolean"
+        },
+        "include": {
+          "description": "Categories to include (timeline)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include_extension_logs": {
+          "description": "Include extension debug logs alongside logs output (logs)",
+          "type": "boolean"
+        },
+        "include_internal": {
+          "description": "Include daemon lifecycle/transport diagnostics in logs output (logs)",
+          "type": "boolean"
+        },
+        "key": {
+          "description": "Filter by specific storage key or cookie name (storage)",
+          "type": "string"
+        },
+        "last_n": {
+          "description": "Return last N items only (actions)",
+          "type": "number"
+        },
+        "limit": {
+          "description": "Max entries to return (default 100, max 1000)",
+          "type": "number"
+        },
+        "method": {
+          "description": "HTTP method filter (network_bodies)",
+          "type": "string"
+        },
+        "min_group_size": {
+          "description": "Minimum occurrences to form a group (summarized_logs, default 2)",
+          "type": "number"
+        },
+        "min_level": {
+          "description": "Min log level (logs)",
+          "enum": [
+            "debug",
+            "log",
+            "info",
+            "warn",
+            "error"
+          ],
+          "type": "string"
+        },
+        "original_id": {
+          "description": "Original recording ID (log_diff_report)",
+          "type": "string"
+        },
+        "quality": {
+          "description": "Screenshot JPEG quality 1-100, default 80 (screenshot). Only applies when format is jpeg.",
+          "type": "number"
+        },
+        "recording_id": {
+          "description": "Recording ID (recording_actions, playback_results)",
+          "type": "string"
+        },
+        "replay_id": {
+          "description": "Replay recording ID (log_diff_report)",
+          "type": "string"
+        },
+        "restart_on_eviction": {
+          "description": "Auto-restart if cursor expired",
+          "type": "boolean"
+        },
+        "save_to": {
+          "description": "File path to save screenshot to disk (screenshot)",
+          "type": "string"
+        },
+        "scope": {
+          "description": "Filter scope: current_page (default) filters by tracked tab, all returns everything (errors, logs, error_bundles)",
+          "enum": [
+            "current_page",
+            "all"
+          ],
+          "type": "string"
+        },
+        "selector": {
+          "description": "Capture specific element by CSS selector (screenshot)",
+          "type": "string"
+        },
+        "since_cursor": {
+          "description": "Return all entries newer than cursor (no limit)",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact source filter (logs)",
+          "type": "string"
+        },
+        "status_max": {
+          "description": "Max HTTP status code (network_bodies)",
+          "type": "number"
+        },
+        "status_min": {
+          "description": "Min HTTP status code (network_bodies)",
+          "type": "number"
+        },
+        "storage_type": {
+          "description": "Storage type filter: local, session, or cookies (storage)",
+          "enum": [
+            "local",
+            "session",
+            "cookies"
+          ],
+          "type": "string"
+        },
+        "store": {
+          "description": "IndexedDB object store name (indexeddb)",
+          "type": "string"
+        },
+        "summary": {
+          "description": "Return compact summary instead of full entries (errors, logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, error_bundles, timeline, history, transients, storage)",
+          "type": "boolean"
+        },
+        "telemetry_mode": {
+          "description": "Telemetry metadata mode for this call: off, auto, full",
+          "enum": [
+            "off",
+            "auto",
+            "full"
+          ],
+          "type": "string"
+        },
+        "url": {
+          "description": "Filter by URL substring (errors, logs, network_waterfall, network_bodies, websocket_events, actions, transients, error_bundles)",
+          "type": "string"
+        },
+        "visible_only": {
+          "description": "Only return visible elements (page_inventory)",
+          "type": "boolean"
+        },
+        "wait_for_stable": {
+          "description": "Wait for layout to stabilize before capture (screenshot)",
+          "type": "boolean"
+        },
+        "what": {
+          "description": "Data mode to read from extension buffers",
+          "enum": [
+            "errors",
+            "logs",
+            "extension_logs",
+            "network_waterfall",
+            "network_bodies",
+            "websocket_events",
+            "websocket_status",
+            "actions",
+            "vitals",
+            "page",
+            "tabs",
+            "history",
+            "pilot",
+            "timeline",
+            "error_bundles",
+            "screenshot",
+            "storage",
+            "indexeddb",
+            "command_result",
+            "pending_commands",
+            "failed_commands",
+            "saved_videos",
+            "recordings",
+            "recording_actions",
+            "playback_results",
+            "log_diff_report",
+            "summarized_logs",
+            "page_inventory",
+            "transients",
+            "inbox",
+            "site_menus"
+          ],
+          "type": "string"
+        },
+        "window_seconds": {
+          "description": "error_bundles lookback seconds (default 3, max 10)",
+          "type": "number"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "analyze",
+    "description": "Trigger active analysis. Creates async queries the extension executes.\n\nSynchronous Mode (Default): Tools block until the extension returns a result (up to 15s). Set background:true to return immediately with a correlation_id, then poll with observe(what='command_result', correlation_id=...).\n\nDraw Mode: Use annotations to get all annotations from the last draw mode session. Use annotation_detail with correlation_id to get full computed styles and DOM detail for a specific annotation.\n\nUse summary:true on supported modes for compact token-efficient responses.",
+    "inputSchema": {
+      "properties": {
+        "annot_session": {
+          "description": "Named session for multi-page annotation review (applies to annotations). Accumulates annotations across pages.",
+          "type": "string"
+        },
+        "background": {
+          "description": "Return immediately with correlation_id instead of waiting for result (default: false). For annotations, wait blocks up to timeout_ms before falling back to correlation polling.",
+          "type": "boolean"
+        },
+        "baseline": {
+          "description": "Baseline name to compare against (visual_diff)",
+          "type": "string"
+        },
+        "categories": {
+          "description": "Categories to include (audit: performance, accessibility, security, best_practices; page_issues: console_errors, network_failures, accessibility, security)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "checks": {
+          "description": "Checks to run (security_audit)",
+          "items": {
+            "enum": [
+              "credentials",
+              "pii",
+              "headers",
+              "cookies",
+              "transport",
+              "auth"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "correlation_id": {
+          "description": "Correlation ID for fetching annotation detail (applies to annotation_detail)",
+          "type": "string"
+        },
+        "custom_lists": {
+          "description": "Custom domain allow/block lists (third_party_audit)",
+          "type": "object"
+        },
+        "domain": {
+          "description": "Domain to check (link_health)",
+          "type": "string"
+        },
+        "file": {
+          "description": "Session filename from draw_history results (draw_session)",
+          "type": "string"
+        },
+        "first_party_origins": {
+          "description": "First-party origins (third_party_audit)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "force_refresh": {
+          "description": "Bypass cache (accessibility)",
+          "type": "boolean"
+        },
+        "frame": {
+          "description": "Target iframe: CSS selector, 0-based index, or \"all\" (dom, accessibility)",
+          "type": "string"
+        },
+        "ignore_endpoints": {
+          "description": "URL substrings to exclude (api_validation)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include_static": {
+          "description": "Include static-only origins (third_party_audit)",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Max issues per section (page_issues, default 50)",
+          "type": "number"
+        },
+        "max_cols": {
+          "description": "Max columns to return per table (data_table)",
+          "type": "number"
+        },
+        "max_rows": {
+          "description": "Max rows to return per table (data_table)",
+          "type": "number"
+        },
+        "max_workers": {
+          "description": "Max concurrent workers (link_health)",
+          "type": "number"
+        },
+        "name": {
+          "description": "Baseline name (visual_baseline, visual_diff)",
+          "type": "string"
+        },
+        "operation": {
+          "description": "Operation selector (api_validation: analyze/report/clear; annotations: flush)",
+          "enum": [
+            "analyze",
+            "report",
+            "clear",
+            "flush"
+          ],
+          "type": "string"
+        },
+        "scope": {
+          "description": "CSS selector scope (accessibility)",
+          "type": "string"
+        },
+        "selector": {
+          "description": "CSS selector (dom, accessibility, computed_styles, forms, form_state, data_table)",
+          "type": "string"
+        },
+        "severity_min": {
+          "description": "Min severity (security_audit)",
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ],
+          "type": "string"
+        },
+        "summary": {
+          "description": "Return compact summary instead of full details (accessibility, security_audit, third_party_audit, form_validation, audit, page_issues)",
+          "type": "boolean"
+        },
+        "tab_id": {
+          "description": "Target tab ID (dom, page_summary)",
+          "type": "number"
+        },
+        "tags": {
+          "description": "WCAG tags (accessibility)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "telemetry_mode": {
+          "description": "Telemetry metadata mode for this call: off, auto, full",
+          "enum": [
+            "off",
+            "auto",
+            "full"
+          ],
+          "type": "string"
+        },
+        "threshold": {
+          "description": "Pixel diff threshold 0-255 (visual_diff, default 30)",
+          "type": "number"
+        },
+        "timeout_ms": {
+          "description": "Timeout in milliseconds. Applies to: link_health (default 10000), page_summary (default 5000), annotations (default 15000, max 600000).",
+          "type": "number"
+        },
+        "url": {
+          "description": "Annotation URL scope filter (annotations). Supports exact URL, project base URL, or wildcard patterns such as http://localhost:3000/*.",
+          "type": "string"
+        },
+        "url_pattern": {
+          "description": "Alias for annotation URL scope filter (annotations). Use either url or url_pattern.",
+          "type": "string"
+        },
+        "urls": {
+          "description": "URLs to validate (link_validation)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "what": {
+          "description": "Analysis mode to run against the page",
+          "enum": [
+            "dom",
+            "performance",
+            "accessibility",
+            "error_clusters",
+            "navigation_patterns",
+            "security_audit",
+            "third_party_audit",
+            "link_health",
+            "link_validation",
+            "page_summary",
+            "annotations",
+            "annotation_detail",
+            "api_validation",
+            "draw_history",
+            "draw_session",
+            "computed_styles",
+            "forms",
+            "form_state",
+            "form_validation",
+            "data_table",
+            "visual_baseline",
+            "visual_diff",
+            "visual_baselines",
+            "navigation",
+            "page_structure",
+            "audit",
+            "feature_gates",
+            "page_issues"
+          ],
+          "type": "string"
+        },
+        "world": {
+          "description": "Execution world for page_summary script",
+          "enum": [
+            "auto",
+            "main",
+            "isolated"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "generate",
+    "description": "Generate artifacts from captured data: reproduction (bug script), csp (Content Security Policy), sarif (static analysis results). Test generation: test_from_context, test_heal, test_classify. Annotation formats: visual_test, annotation_report, annotation_issues.\n\nPrerequisites: Most modes require captured data first — use observe to verify data exists before generating. reproduction needs captured actions (observe what='actions'). har needs network bodies (observe what='network_bodies'). Use save_to param to write output directly to a file path.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Action type (test_heal: analyze/repair/batch, test_classify: failure/batch)",
+          "type": "string"
+        },
+        "annot_session": {
+          "description": "Named annotation session (applies to visual_test, annotation_report, annotation_issues)",
+          "type": "string"
+        },
+        "assert_network": {
+          "description": "Assert network responses (test)",
+          "type": "boolean"
+        },
+        "assert_no_errors": {
+          "description": "Assert no console errors (test)",
+          "type": "boolean"
+        },
+        "assert_response_shape": {
+          "description": "Assert response shape (test)",
+          "type": "boolean"
+        },
+        "auto_apply": {
+          "description": "Auto-apply high-confidence fixes (test_heal repair)",
+          "type": "boolean"
+        },
+        "base_url": {
+          "description": "Replace origin in URLs",
+          "type": "string"
+        },
+        "broken_selectors": {
+          "description": "Broken selectors (test_heal repair)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "context": {
+          "description": "Test context (test_from_context)",
+          "enum": [
+            "error",
+            "interaction",
+            "regression"
+          ],
+          "type": "string"
+        },
+        "error_id": {
+          "description": "Specific error ID (test_from_context error)",
+          "type": "string"
+        },
+        "error_message": {
+          "description": "Error context (reproduction)",
+          "type": "string"
+        },
+        "exclude_origins": {
+          "description": "Origins to exclude (csp)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "failure": {
+          "description": "Single test failure (test_classify failure)",
+          "properties": {
+            "duration_ms": {
+              "description": "Test duration in milliseconds",
+              "type": "number"
+            },
+            "error": {
+              "description": "Error message",
+              "type": "string"
+            },
+            "screenshot": {
+              "description": "Base64-encoded screenshot (optional)",
+              "type": "string"
+            },
+            "test_name": {
+              "description": "Name of the failing test",
+              "type": "string"
+            },
+            "trace": {
+              "description": "Stack trace",
+              "type": "string"
+            }
+          },
+          "required": [
+            "error"
+          ],
+          "type": "object"
+        },
+        "failures": {
+          "description": "Multiple test failures (test_classify batch)",
+          "items": {
+            "properties": {
+              "duration_ms": {
+                "description": "Test duration in milliseconds",
+                "type": "number"
+              },
+              "error": {
+                "description": "Error message",
+                "type": "string"
+              },
+              "screenshot": {
+                "description": "Base64-encoded screenshot (optional)",
+                "type": "string"
+              },
+              "test_name": {
+                "description": "Name of the failing test",
+                "type": "string"
+              },
+              "trace": {
+                "description": "Stack trace",
+                "type": "string"
+              }
+            },
+            "required": [
+              "error"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "format": {
+          "description": "Deprecated alias for 'what'. Prefer 'what'.",
+          "type": "string"
+        },
+        "generate_fixtures": {
+          "description": "Generate network fixtures (reproduction)",
+          "type": "boolean"
+        },
+        "include_mocks": {
+          "description": "Include network mocks (test_from_context)",
+          "type": "boolean"
+        },
+        "include_passes": {
+          "description": "Include passing rules (sarif)",
+          "type": "boolean"
+        },
+        "include_report_uri": {
+          "description": "Include report-uri (csp)",
+          "type": "boolean"
+        },
+        "include_screenshots": {
+          "description": "Add screenshot calls (reproduction)",
+          "type": "boolean"
+        },
+        "last_n": {
+          "description": "Use last N actions (reproduction)",
+          "type": "number"
+        },
+        "method": {
+          "description": "HTTP method filter (har)",
+          "type": "string"
+        },
+        "mode": {
+          "description": "CSP strictness: strict (default), moderate, or report_only (csp)",
+          "enum": [
+            "strict",
+            "moderate",
+            "report_only"
+          ],
+          "type": "string"
+        },
+        "origins": {
+          "description": "Filter origins (sri)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "output_format": {
+          "description": "Output format. reproduction: 'kaboom-agentic-browser' or 'playwright'. test_from_context: 'file' or 'inline'.",
+          "type": "string"
+        },
+        "resource_types": {
+          "description": "Resource types: script, stylesheet (sri)",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "save_to": {
+          "description": "File path to save output",
+          "type": "string"
+        },
+        "scope": {
+          "description": "CSS selector scope (sarif)",
+          "type": "string"
+        },
+        "status_max": {
+          "description": "Max status code (har)",
+          "type": "number"
+        },
+        "status_min": {
+          "description": "Min status code (har)",
+          "type": "number"
+        },
+        "telemetry_mode": {
+          "description": "Telemetry metadata mode for this call: off, auto, full",
+          "enum": [
+            "off",
+            "auto",
+            "full"
+          ],
+          "type": "string"
+        },
+        "test_dir": {
+          "description": "Test directory (test_heal batch)",
+          "type": "string"
+        },
+        "test_file": {
+          "description": "Test file path (test_heal analyze)",
+          "type": "string"
+        },
+        "test_name": {
+          "description": "Test name (test, visual_test)",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL filter (har)",
+          "type": "string"
+        },
+        "visual_assertions": {
+          "description": "Add visual assertions (reproduction)",
+          "type": "boolean"
+        },
+        "what": {
+          "description": "Artifact type to generate from captured data",
+          "enum": [
+            "reproduction",
+            "test",
+            "pr_summary",
+            "har",
+            "csp",
+            "sri",
+            "sarif",
+            "visual_test",
+            "annotation_report",
+            "annotation_issues",
+            "test_from_context",
+            "test_heal",
+            "test_classify"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "configure",
+    "description": "Session settings and utilities.\n\nSession: store, load, clear, telemetry, security_mode.\nDiagnostics: health, doctor, restart, audit_log, describe_capabilities, report_issue.\nRecording: event_recording_start/stop, playback, log_diff, network_recording.\nSequences: save/get/list/delete/replay_sequence.\nNoise \u0026 streaming: noise_rule, streaming, action_jitter.\nTesting: test_boundary_start/end.\nQuality: setup_quality_gates.\nHelp: tutorial, examples, diff_sessions.\n\nDiscovery: describe_capabilities — list available modes and per-mode parameters for any tool. Filter with tool and mode params, e.g. configure(what:'describe_capabilities', tool:'observe', mode:'errors') returns only the params relevant to that mode.",
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "Deprecated alias for 'what'. Prefer 'what'.",
+          "type": "string"
+        },
+        "action_jitter_ms": {
+          "description": "Max random delay (ms) before each interact action, 0 to disable (action_jitter)",
+          "type": "number"
+        },
+        "audit_session_id": {
+          "description": "Filter by audit session ID",
+          "type": "string"
+        },
+        "buffer": {
+          "description": "Buffer to clear (clear). Use 'all' to reset everything",
+          "enum": [
+            "network",
+            "websocket",
+            "actions",
+            "logs",
+            "inbox",
+            "all"
+          ],
+          "type": "string"
+        },
+        "category": {
+          "default": "console",
+          "description": "Noise category (default: console for flattened add)",
+          "enum": [
+            "console",
+            "network",
+            "websocket"
+          ],
+          "type": "string"
+        },
+        "classification": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "compare_a": {
+          "description": "First snapshot to compare",
+          "type": "string"
+        },
+        "compare_b": {
+          "description": "Second snapshot to compare",
+          "type": "string"
+        },
+        "confirm": {
+          "description": "Required true when enabling insecure_proxy mode.",
+          "type": "boolean"
+        },
+        "continue_on_error": {
+          "description": "Continue replay if a step fails (default true)",
+          "type": "boolean"
+        },
+        "data": {
+          "description": "JSON data to persist",
+          "type": "object"
+        },
+        "description": {
+          "description": "Human-readable description for saved sequence",
+          "type": "string"
+        },
+        "domain": {
+          "description": "Domain filter for network_recording",
+          "type": "string"
+        },
+        "events": {
+          "description": "Event categories to stream",
+          "items": {
+            "enum": [
+              "errors",
+              "network_errors",
+              "performance",
+              "user_frustration",
+              "security",
+              "regression",
+              "anomaly",
+              "ci",
+              "all"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "key": {
+          "description": "Storage key",
+          "type": "string"
+        },
+        "label": {
+          "description": "Test boundary label",
+          "type": "string"
+        },
+        "level": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max entries to return (default 100, max 1000)",
+          "type": "number"
+        },
+        "message_regex": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "method": {
+          "description": "HTTP method filter (noise_action=add, network_recording)",
+          "type": "string"
+        },
+        "mode": {
+          "description": "For security_mode: 'normal' or 'insecure_proxy'. For describe_capabilities: tool mode name to filter (e.g. 'errors', 'click').",
+          "type": "string"
+        },
+        "name": {
+          "description": "Name for recording, snapshot, or sequence (event_recording_start, diff_sessions, save/get/delete/replay_sequence)",
+          "type": "string"
+        },
+        "namespace": {
+          "default": "session",
+          "description": "Store grouping (default: session)",
+          "type": "string"
+        },
+        "noise_action": {
+          "default": "list",
+          "description": "Noise operation (default: list)",
+          "enum": [
+            "add",
+            "remove",
+            "list",
+            "reset",
+            "auto_detect"
+          ],
+          "type": "string"
+        },
+        "operation": {
+          "description": "Sub-operation: audit_log (analyze/report/clear), network_recording (start/stop/status), report_issue (list_templates/preview/submit)",
+          "enum": [
+            "analyze",
+            "report",
+            "clear",
+            "start",
+            "stop",
+            "status",
+            "list_templates",
+            "preview",
+            "submit"
+          ],
+          "type": "string"
+        },
+        "original_id": {
+          "description": "Original recording ID (log_diff)",
+          "type": "string"
+        },
+        "override_steps": {
+          "description": "Sparse array of step overrides for replay (null = use saved)",
+          "items": {},
+          "type": "array"
+        },
+        "pattern": {
+          "description": "Regex pattern (single-rule flattening helper for noise_action=add)",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why this is noise",
+          "type": "string"
+        },
+        "recording_id": {
+          "description": "Recording ID (event_recording_stop, playback)",
+          "type": "string"
+        },
+        "replay_id": {
+          "description": "Replay recording ID (log_diff)",
+          "type": "string"
+        },
+        "rule_id": {
+          "description": "Rule ID to remove",
+          "type": "string"
+        },
+        "rules": {
+          "description": "Noise rules to add",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "sensitive_data_enabled": {
+          "description": "Include sensitive data in recording capture",
+          "type": "boolean"
+        },
+        "severity_min": {
+          "description": "Min event severity for streaming notifications (streaming)",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "type": "string"
+        },
+        "since": {
+          "description": "Entries after ISO 8601 timestamp",
+          "type": "string"
+        },
+        "source_regex": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "status_max": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "integer"
+        },
+        "status_min": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "integer"
+        },
+        "step_timeout_ms": {
+          "description": "Timeout per step during replay (default 10000)",
+          "type": "number"
+        },
+        "steps": {
+          "description": "Ordered list of interact action objects (save_sequence, replay_sequence override)",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "stop_after_step": {
+          "description": "Stop replay after executing this many steps",
+          "type": "number"
+        },
+        "store_action": {
+          "default": "list",
+          "description": "Store operation (default: list)",
+          "enum": [
+            "save",
+            "load",
+            "list",
+            "delete",
+            "stats"
+          ],
+          "type": "string"
+        },
+        "streaming_action": {
+          "description": "Push notification operation (streaming). Default: status",
+          "enum": [
+            "enable",
+            "disable",
+            "status"
+          ],
+          "type": "string"
+        },
+        "tab_id": {
+          "description": "Target tab ID",
+          "type": "number"
+        },
+        "tags": {
+          "description": "Labels for sequence categorization",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "target_dir": {
+          "description": "Directory to write .kaboom.json (setup_quality_gates). Must be within the project directory. Defaults to active codebase root.",
+          "type": "string"
+        },
+        "telemetry_mode": {
+          "description": "Telemetry metadata mode: off, auto, full. configure(what='telemetry') sets global default. Any tools/call may override per request with telemetry_mode.",
+          "enum": [
+            "off",
+            "auto",
+            "full"
+          ],
+          "type": "string"
+        },
+        "template": {
+          "description": "Issue template name (report_issue)",
+          "type": "string"
+        },
+        "test_id": {
+          "description": "Test boundary ID",
+          "type": "string"
+        },
+        "throttle_seconds": {
+          "description": "Min seconds between notifications",
+          "maximum": 60,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "title": {
+          "description": "Issue title (report_issue submit)",
+          "type": "string"
+        },
+        "tool": {
+          "description": "Filter describe_capabilities to a single tool by name (e.g. 'observe', 'interact')",
+          "type": "string"
+        },
+        "tool_name": {
+          "description": "Filter by tool name",
+          "type": "string"
+        },
+        "url": {
+          "description": "URL filter for snapshot capture (diff_sessions)",
+          "type": "string"
+        },
+        "url_regex": {
+          "description": "Single-rule flattening helper for noise_action=add",
+          "type": "string"
+        },
+        "user_context": {
+          "description": "User description of the issue (report_issue)",
+          "type": "string"
+        },
+        "value": {
+          "description": "Flat value alias for save action; treated as data when provided",
+          "type": "string"
+        },
+        "verif_session_action": {
+          "description": "Session verification operation (diff_sessions)",
+          "enum": [
+            "capture",
+            "compare",
+            "list",
+            "delete"
+          ],
+          "type": "string"
+        },
+        "what": {
+          "description": "Setting or utility to configure",
+          "enum": [
+            "store",
+            "load",
+            "noise_rule",
+            "clear",
+            "health",
+            "tutorial",
+            "examples",
+            "streaming",
+            "test_boundary_start",
+            "test_boundary_end",
+            "event_recording_start",
+            "event_recording_stop",
+            "playback",
+            "log_diff",
+            "telemetry",
+            "describe_capabilities",
+            "diff_sessions",
+            "audit_log",
+            "restart",
+            "save_sequence",
+            "get_sequence",
+            "list_sequences",
+            "delete_sequence",
+            "replay_sequence",
+            "doctor",
+            "security_mode",
+            "network_recording",
+            "action_jitter",
+            "report_issue",
+            "setup_quality_gates"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "interact",
+    "description": "Browser actions. Requires AI Web Pilot. Dispatch key: 'what'.\n\nGetting started: Use explore_page for a complete page snapshot (screenshot, interactive elements, readable text, navigation links) in one call. Use list_interactive for element discovery. Use click/type/select for interaction.\n\nElement targeting: Prefer element_id (from list_interactive/explore_page) for reliability, selector for flexibility, or index (legacy). Add scope_selector/scope_rect to constrain to a page region. Targeting precedence: element_id \u003e selector \u003e index \u003e x/y. Do not combine.\n\nEnrichments: Add include_screenshot:true for visual feedback, observe_mutations:true for DOM change tracking, action_diff:true for structured mutation summary, wait_for_stable:true to wait for DOM to settle.\n\nPage understanding: explore_page (full snapshot), list_interactive, get_readable, get_markdown.\nInteraction: click, type, select, check, hover, focus, scroll_to, key_press, paste.\nNavigation: navigate, back, forward, refresh, new_tab, switch_tab, close_tab.\nWorkflows: navigate_and_wait_for, navigate_and_document, fill_form, fill_form_and_submit.\nAdvanced: execute_js, batch, upload, draw_mode_start.\n\nSynchronous Mode (Default): Tools block until result (up to 15s). Set background:true to return immediately.\n\nSelectors: CSS or semantic (text=Submit, role=button, placeholder=Email, label=Name, aria-label=Close).\n\nCall configure({what:'describe_capabilities', tool:'interact', mode:'click'}) for per-action param details.",
+    "inputSchema": {
+      "properties": {
+        "absent": {
+          "description": "Wait for element to disappear (wait_for)",
+          "type": "boolean"
+        },
+        "action": {
+          "description": "Deprecated alias for 'what'. Prefer 'what'.",
+          "type": "string"
+        },
+        "action_diff": {
+          "description": "After the action completes, capture a structured mutation summary (overlays opened/closed, toasts, form errors, text changes). Composable with click, type, select, and other DOM-mutating actions.",
+          "type": "boolean"
+        },
+        "analyze": {
+          "description": "Enable perf profiling (captures perf_diff)",
+          "type": "boolean"
+        },
+        "annot_session": {
+          "description": "Named session for multi-page annotation review (applies to draw_mode_start). Accumulates annotations across pages under a shared session name.",
+          "type": "string"
+        },
+        "api_endpoint": {
+          "description": "API endpoint for direct upload mode",
+          "type": "string"
+        },
+        "attribute_names": {
+          "description": "Attribute names to read for query_type='attributes' (e.g., ['href', 'data-id'])",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "audio": {
+          "description": "Recording audio: tab, mic, both. Omit for video-only.",
+          "enum": [
+            "tab",
+            "mic",
+            "both"
+          ],
+          "type": "string"
+        },
+        "auto_dismiss": {
+          "description": "After navigation completes, automatically dismiss cookie consent banners and overlays",
+          "type": "boolean"
+        },
+        "background": {
+          "description": "Return immediately with correlation_id instead of waiting for result (default: false).",
+          "type": "boolean"
+        },
+        "checked": {
+          "description": "Check/uncheck (default true)",
+          "type": "boolean"
+        },
+        "clear": {
+          "description": "Clear before typing",
+          "type": "boolean"
+        },
+        "continue_on_error": {
+          "description": "Continue executing remaining steps after a failure (default true)",
+          "type": "boolean"
+        },
+        "correlation_id": {
+          "description": "Link to error/investigation",
+          "type": "string"
+        },
+        "direction": {
+          "description": "Scroll direction for scroll_to: top, bottom, up, or down (preferred over value)",
+          "enum": [
+            "top",
+            "bottom",
+            "up",
+            "down"
+          ],
+          "type": "string"
+        },
+        "domain": {
+          "description": "Cookie domain (set_cookie/delete_cookie)",
+          "type": "string"
+        },
+        "duration_ms": {
+          "description": "Highlight duration ms (default 5000)",
+          "type": "number"
+        },
+        "element_id": {
+          "description": "Stable element handle from list_interactive (preferred for deterministic follow-up actions)",
+          "type": "string"
+        },
+        "escalation_timeout_ms": {
+          "description": "Upload escalation timeout in ms",
+          "type": "number"
+        },
+        "evidence": {
+          "description": "Optional visual evidence capture mode: off (default), on_mutation, always.",
+          "enum": [
+            "off",
+            "on_mutation",
+            "always"
+          ],
+          "type": "string"
+        },
+        "exclude_nav": {
+          "description": "Exclude elements inside navigation containers — nav, header, or role=navigation (list_interactive)",
+          "type": "boolean"
+        },
+        "fields": {
+          "description": "Form fields to fill (fill_form, fill_form_and_submit)",
+          "items": {
+            "properties": {
+              "index": {
+                "description": "Element index from list_interactive (alternative to selector)",
+                "type": "number"
+              },
+              "selector": {
+                "description": "CSS selector for the field",
+                "type": "string"
+              },
+              "value": {
+                "description": "Value to type into the field",
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "file_path": {
+          "description": "Absolute file path for upload action",
+          "type": "string"
+        },
+        "fps": {
+          "description": "Recording FPS (5-60, default 15)",
+          "type": "number"
+        },
+        "frame": {
+          "description": "Target iframe: CSS selector, 0-based index, or \"all\"",
+          "type": "string"
+        },
+        "include_content": {
+          "description": "Return page content with navigate response (url, title, text_content, vitals)",
+          "type": "boolean"
+        },
+        "include_interactive": {
+          "description": "Run list_interactive after the action and include results in the response",
+          "type": "boolean"
+        },
+        "include_screenshot": {
+          "description": "Capture a screenshot after the action completes and return it inline as an image content block",
+          "type": "boolean"
+        },
+        "include_url": {
+          "description": "Restore URL with state",
+          "type": "boolean"
+        },
+        "index": {
+          "description": "Element index from list_interactive results (legacy alternative to selector/element_id)",
+          "type": "number"
+        },
+        "index_generation": {
+          "description": "Generation token from list_interactive to ensure index resolves against the same element snapshot",
+          "type": "string"
+        },
+        "key": {
+          "description": "Storage key for set_storage/delete_storage",
+          "type": "string"
+        },
+        "limit": {
+          "description": "Max elements to return (list_interactive, default all)",
+          "type": "number"
+        },
+        "name": {
+          "description": "Attribute, recording, or cookie name",
+          "type": "string"
+        },
+        "new_tab": {
+          "description": "Open navigation URL in a background tab instead of replacing current tab (navigate)",
+          "type": "boolean"
+        },
+        "nth": {
+          "description": "Select the Nth matching element when a selector matches multiple. 0 = first visible match, 1 = second, etc. Negative values count from end (-1 = last). Prefers visible elements when available.",
+          "type": "integer"
+        },
+        "observe_mutations": {
+          "description": "Track element-level DOM mutations during action execution",
+          "type": "boolean"
+        },
+        "path": {
+          "description": "Cookie path (set_cookie/delete_cookie, default /)",
+          "type": "string"
+        },
+        "query_type": {
+          "description": "Query operation type for interact(what='query'): exists, count, text, text_all, attributes",
+          "enum": [
+            "exists",
+            "count",
+            "text",
+            "text_all",
+            "attributes"
+          ],
+          "type": "string"
+        },
+        "reason": {
+          "description": "Action reason (shown as toast)",
+          "type": "string"
+        },
+        "role": {
+          "description": "Filter list_interactive elements by element type or ARIA role (e.g., 'button', 'link', 'input', 'tab')",
+          "type": "string"
+        },
+        "save_to": {
+          "description": "File path to save output (run_a11y_and_export_sarif)",
+          "type": "string"
+        },
+        "scope_rect": {
+          "description": "Optional viewport rectangle to constrain DOM actions by geometry (x/y/width/height)",
+          "properties": {
+            "height": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "scope_selector": {
+          "description": "Optional container selector to constrain DOM actions to a specific region",
+          "type": "string"
+        },
+        "script": {
+          "description": "JS code (execute_js)",
+          "type": "string"
+        },
+        "selector": {
+          "description": "CSS or semantic selector for target element",
+          "type": "string"
+        },
+        "set_tracked": {
+          "description": "Controls whether switch_tab updates the tracked tab to the newly activated tab (default: true). Set to false to switch focus without changing which tab the server targets for subsequent commands.",
+          "type": "boolean"
+        },
+        "snapshot_name": {
+          "description": "State snapshot name",
+          "type": "string"
+        },
+        "stability_ms": {
+          "description": "Milliseconds of DOM quiet time required for wait_for_stable (default 500)",
+          "type": "number"
+        },
+        "step_timeout_ms": {
+          "description": "Timeout per step during batch execution (default 10000)",
+          "type": "number"
+        },
+        "steps": {
+          "description": "Ordered list of interact actions to execute sequentially (batch)",
+          "items": {
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "stop_after_step": {
+          "description": "Stop batch execution after this many steps",
+          "type": "number"
+        },
+        "storage_type": {
+          "description": "Storage target for state mutation actions",
+          "enum": [
+            "localStorage",
+            "sessionStorage"
+          ],
+          "type": "string"
+        },
+        "structured": {
+          "description": "Return nested/hierarchical text extraction (get_text)",
+          "type": "boolean"
+        },
+        "submit": {
+          "description": "Submit form after upload",
+          "type": "boolean"
+        },
+        "submit_index": {
+          "description": "Submit button index from list_interactive (fill_form_and_submit)",
+          "type": "number"
+        },
+        "submit_selector": {
+          "description": "Submit button selector (fill_form_and_submit)",
+          "type": "string"
+        },
+        "subtitle": {
+          "description": "Narration text, composable with any action. Empty clears.",
+          "type": "string"
+        },
+        "tab_id": {
+          "description": "Tab ID (default: active)",
+          "type": "number"
+        },
+        "tab_index": {
+          "description": "Tab index in current window ordering (switch_tab)",
+          "type": "number"
+        },
+        "telemetry_mode": {
+          "description": "Telemetry metadata mode for this call: off, auto, full",
+          "enum": [
+            "off",
+            "auto",
+            "full"
+          ],
+          "type": "string"
+        },
+        "text": {
+          "description": "Text for type/subtitle. key_press keys: Enter, Tab, Escape, Backspace, ArrowDown, ArrowUp, Space.",
+          "type": "string"
+        },
+        "text_contains": {
+          "description": "Filter list_interactive elements whose label contains this substring (case-insensitive)",
+          "type": "string"
+        },
+        "timeout_ms": {
+          "description": "Timeout in milliseconds (default 5000, max 60000). Applies to: click, type, execute_js, wait_for, navigate, auto_dismiss_overlays, wait_for_stable, draw_mode_start.",
+          "type": "number"
+        },
+        "url": {
+          "description": "URL (navigate, new_tab)",
+          "type": "string"
+        },
+        "url_contains": {
+          "description": "Wait for URL to contain this substring (wait_for)",
+          "type": "string"
+        },
+        "value": {
+          "description": "Value for select/set_attribute. Also accepted by scroll_to as a legacy direction alias.",
+          "type": "string"
+        },
+        "visible_only": {
+          "description": "Only return visible elements (list_interactive)",
+          "type": "boolean"
+        },
+        "wait_for": {
+          "description": "CSS selector to wait for after navigation (navigate_and_wait_for)",
+          "type": "string"
+        },
+        "wait_for_stable": {
+          "description": "Wait for DOM stability (no mutations) before returning. Composable with navigate and click.",
+          "type": "boolean"
+        },
+        "wait_for_url_change": {
+          "description": "For navigate_and_document: wait until tracked URL differs from the pre-click URL before returning.",
+          "type": "boolean"
+        },
+        "what": {
+          "description": "Browser action to perform",
+          "enum": [
+            "highlight",
+            "subtitle",
+            "save_state",
+            "load_state",
+            "list_states",
+            "delete_state",
+            "set_storage",
+            "delete_storage",
+            "clear_storage",
+            "set_cookie",
+            "delete_cookie",
+            "execute_js",
+            "navigate",
+            "refresh",
+            "back",
+            "forward",
+            "new_tab",
+            "switch_tab",
+            "close_tab",
+            "screenshot",
+            "click",
+            "type",
+            "select",
+            "check",
+            "get_text",
+            "get_value",
+            "get_attribute",
+            "query",
+            "set_attribute",
+            "focus",
+            "scroll_to",
+            "wait_for",
+            "key_press",
+            "paste",
+            "open_composer",
+            "submit_active_composer",
+            "confirm_top_dialog",
+            "dismiss_top_overlay",
+            "hover",
+            "auto_dismiss_overlays",
+            "wait_for_stable",
+            "list_interactive",
+            "get_readable",
+            "get_markdown",
+            "navigate_and_wait_for",
+            "navigate_and_document",
+            "fill_form_and_submit",
+            "fill_form",
+            "run_a11y_and_export_sarif",
+            "screen_recording_start",
+            "screen_recording_stop",
+            "upload",
+            "draw_mode_start",
+            "hardware_click",
+            "activate_tab",
+            "explore_page",
+            "batch",
+            "clipboard_read",
+            "clipboard_write"
+          ],
+          "type": "string"
+        },
+        "world": {
+          "description": "JS world: auto (default), main (page globals), isolated (bypass CSP).",
+          "enum": [
+            "auto",
+            "main",
+            "isolated"
+          ],
+          "type": "string"
+        },
+        "x": {
+          "description": "X coordinate in pixels from left edge (click, hardware_click)",
+          "type": "number"
+        },
+        "y": {
+          "description": "Y coordinate in pixels from top edge (click, hardware_click)",
+          "type": "number"
+        }
+      },
+      "required": [
+        "what"
+      ],
+      "type": "object"
+    }
+  }
+]

@@ -2,12 +2,14 @@
  * Purpose: Installs Chrome extension event listeners (alarms, tab lifecycle, storage changes, runtime startup) and re-exports keyboard shortcuts, context menus, and tab-state accessors.
  * Docs: docs/features/feature/tab-tracking-ux/index.md
  */
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { StorageKey } from '../lib/constants.js';
+import { getLocal, setLocal, setLocals, onStorageChanged } from '../lib/storage-utils.js';
 import { clearTrackedTab as clearTrackedTabState } from './tab-state.js';
 // Re-export split modules so existing consumers keep working
 export { installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener } from './keyboard-shortcuts.js';
 export { installContextMenus } from './context-menus.js';
-export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, setTrackedTab, clearTrackedTab, getAllConfigSettings, getActiveTab, sendTabToast } from './tab-state.js';
+export { pingContentScript, waitForTabLoad, forwardToAllContentScripts, loadSavedSettings, loadAiWebPilotState, loadDebugModeState, saveSetting, getTrackedTabInfo, clearTrackedTab, getActiveTab, sendTabToast } from './tab-state.js';
 // =============================================================================
 // CONSTANTS - Rate Limiting & DoS Protection
 // =============================================================================
@@ -41,7 +43,7 @@ const ERROR_GROUP_CLEANUP_INTERVAL_MINUTES = 10;
 // =============================================================================
 // ALARM NAMES
 // =============================================================================
-export const ALARM_NAMES = {
+const ALARM_NAMES = {
     RECONNECT: 'reconnect',
     ERROR_GROUP_FLUSH: 'errorGroupFlush',
     MEMORY_CHECK: 'memoryCheck',
@@ -126,24 +128,22 @@ export function installTabUpdatedListener(onTabUpdated) {
  * Updates the stored URL and title when the tracked tab navigates
  */
 export async function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
-    if (typeof chrome === 'undefined' || !chrome.storage)
-        return;
-    const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]));
-    if (result.trackedTabId === updatedTabId) {
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
+    if (trackedTabId === updatedTabId) {
         // Update URL immediately, then refresh title from the tab
         try {
             const tab = await chrome.tabs.get(updatedTabId);
             const updates = { [StorageKey.TRACKED_TAB_URL]: newUrl };
             if (tab?.title)
                 updates[StorageKey.TRACKED_TAB_TITLE] = tab.title;
-            await chrome.storage.local.set(updates);
+            await setLocals(updates);
             if (logFn) {
-                logFn('[Gasoline] Tracked tab updated: ' + newUrl);
+                logFn(`${KABOOM_LOG_PREFIX} Tracked tab updated: ${newUrl}`);
             }
         }
         catch {
             // Tab may have been closed -- update URL only
-            chrome.storage.local.set({ [StorageKey.TRACKED_TAB_URL]: newUrl });
+            setLocal(StorageKey.TRACKED_TAB_URL, newUrl);
         }
     }
 }
@@ -153,12 +153,10 @@ export async function handleTrackedTabUrlChange(updatedTabId, newUrl, logFn) {
  * Uses session storage for ephemeral tab tracking data
  */
 export async function handleTrackedTabClosed(closedTabId, logFn) {
-    if (typeof chrome === 'undefined' || !chrome.storage)
-        return;
-    const result = (await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]));
-    if (result.trackedTabId === closedTabId) {
+    const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
+    if (trackedTabId === closedTabId) {
         if (logFn)
-            logFn('[Gasoline] Tracked tab closed (id:', closedTabId);
+            logFn(`${KABOOM_LOG_PREFIX} Tracked tab closed (id:`, closedTabId);
         clearTrackedTabState();
     }
 }
@@ -169,9 +167,7 @@ export async function handleTrackedTabClosed(closedTabId, logFn) {
  * Install storage change listener
  */
 export function installStorageChangeListener(handlers) {
-    if (typeof chrome === 'undefined' || !chrome.storage)
-        return;
-    chrome.storage.onChanged.addListener((changes, areaName) => {
+    onStorageChanged((changes, areaName) => {
         if (areaName === 'local') {
             if (changes[StorageKey.AI_WEB_PILOT_ENABLED] && handlers.onAiWebPilotChanged) {
                 handlers.onAiWebPilotChanged(changes[StorageKey.AI_WEB_PILOT_ENABLED].newValue === true);
@@ -195,17 +191,16 @@ export function installStartupListener(logFn) {
         return;
     chrome.runtime.onStartup.addListener(async () => {
         try {
-            const result = await chrome.storage.local.get([StorageKey.TRACKED_TAB_ID]);
-            const trackedTabId = result[StorageKey.TRACKED_TAB_ID];
+            const trackedTabId = (await getLocal(StorageKey.TRACKED_TAB_ID));
             if (trackedTabId) {
                 try {
                     await chrome.tabs.get(trackedTabId);
                     if (logFn)
-                        logFn('[Gasoline] Browser restarted - tracked tab still exists, keeping tracking');
+                        logFn(`${KABOOM_LOG_PREFIX} Browser restarted - tracked tab still exists, keeping tracking`);
                 }
                 catch {
                     if (logFn)
-                        logFn('[Gasoline] Browser restarted - tracked tab gone, clearing tracking state');
+                        logFn(`${KABOOM_LOG_PREFIX} Browser restarted - tracked tab gone, clearing tracking state`);
                     clearTrackedTabState();
                 }
             }

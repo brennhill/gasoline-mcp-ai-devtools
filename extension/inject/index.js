@@ -23,14 +23,14 @@ export { mapInitiatorType, aggregateResourceTiming, capturePerformanceSnapshot, 
 // Re-export constants that tests import from inject.js
 export { MAX_WATERFALL_ENTRIES, MAX_PERFORMANCE_ENTRIES, SENSITIVE_HEADERS } from '../lib/constants.js';
 // Export API module
-export { installGasolineAPI, uninstallGasolineAPI } from './api.js';
+export { installKaboomAPI, uninstallKaboomAPI } from './api.js';
 // Export observer module
 export { install, uninstall, wrapFetch, installFetchCapture, uninstallFetchCapture, installXHRCapture, uninstallXHRCapture, installPhase1, installPhase2, getDeferralState, setDeferralEnabled, shouldDeferIntercepts, checkMemoryPressure } from './observers.js';
 // Export message handlers module
 export { installMessageListener, executeJavaScript, safeSerializeForExecute } from './message-handlers.js';
 // Export state management functions
 export { captureState, restoreState, highlightElement, clearHighlight } from './state.js';
-import { installGasolineAPI } from './api.js';
+import { installKaboomAPI } from './api.js';
 import { installPhase1 } from './observers.js';
 import { installMessageListener } from './message-handlers.js';
 import { captureState, restoreState } from './state.js';
@@ -45,8 +45,8 @@ if (typeof window !== 'undefined' &&
     installPhase1();
     // Install message listener with state functions
     installMessageListener(captureState, restoreState);
-    // Install Gasoline API
-    installGasolineAPI();
+    // Install Kaboom API
+    installKaboomAPI();
     // Send performance snapshot after page load + 2s settling time
     window.addEventListener('load', () => {
         setTimeout(() => {

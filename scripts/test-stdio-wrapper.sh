@@ -5,7 +5,7 @@ set -euo pipefail
 
 PORT="${1:-7890}"
 NUM_CLIENTS=10
-CMD_PKG="${GASOLINE_CMD_PKG:-./cmd/dev-console}"
+CMD_PKG="${KABOOM_CMD_PKG:-./cmd/browser-agent}"
 
 echo "════════════════════════════════════════════════════════════"
 echo "  MCP Wrapper Stdio Test - Connection Lifecycle Validation"
@@ -17,7 +17,7 @@ echo "   Concurrent clients: $NUM_CLIENTS"
 echo ""
 
 # Find binary
-BINARY="${GASOLINE_STDIO_TEST_BINARY:-./gasoline-mcp}"
+BINARY="${KABOOM_STDIO_TEST_BINARY:-./kaboom-agentic-browser}"
 if [ ! -f "$BINARY" ]; then
     echo "Building binary..."
     go build -o "$BINARY" "$CMD_PKG"
@@ -30,8 +30,8 @@ send_mcp_request() {
     
     local start_time
     start_time="$(date +%s%N)"
-    local tmpfile="/tmp/gasoline-test-client-${client_id}-$$.out"
-    local errfile="/tmp/gasoline-test-client-${client_id}-$$.err"
+    local tmpfile="/tmp/kaboom-test-client-${client_id}-$$.out"
+    local errfile="/tmp/kaboom-test-client-${client_id}-$$.err"
     
     # Run wrapper via stdio (simulates how LLM calls it)
     # Use perl for timeout (works on macOS)
@@ -263,5 +263,5 @@ else
 fi
 
 echo ""
-echo "💡 Logs: tail -50 ~/gasoline-logs.jsonl | jq -r '.event'"
+echo "💡 Logs: tail -50 ~/kaboom-logs.jsonl | jq -r '.event'"
 echo ""

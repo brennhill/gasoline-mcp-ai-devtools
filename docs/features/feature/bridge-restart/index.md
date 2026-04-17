@@ -6,21 +6,21 @@ feature_type: feature
 owners: []
 last_reviewed: 2026-03-05
 code_paths:
-  - cmd/dev-console/bridge.go
-  - cmd/dev-console/bridge_startup.go
-  - cmd/dev-console/bridge_startup_orchestration.go
-  - cmd/dev-console/bridge_startup_lock.go
-  - cmd/dev-console/bridge_startup_state.go
-  - cmd/dev-console/bridge_startup_status.go
-  - cmd/dev-console/tools_configure.go
-  - cmd/dev-console/tools_schema.go
+  - cmd/browser-agent/bridge.go
+  - cmd/browser-agent/bridge_startup.go
+  - cmd/browser-agent/bridge_startup_orchestration.go
+  - cmd/browser-agent/bridge_startup_lock.go
+  - cmd/browser-agent/bridge_startup_state.go
+  - cmd/browser-agent/bridge_startup_status.go
+  - cmd/browser-agent/tools_configure.go
+  - cmd/browser-agent/tools_schema.go
 test_paths:
-  - cmd/dev-console/bridge_test.go
-  - cmd/dev-console/bridge_spawn_race_test.go
-  - cmd/dev-console/bridge_startup_lock_test.go
-  - cmd/dev-console/bridge_startup_contention_test.go
-  - cmd/dev-console/bridge_faststart_extended_test.go
-  - cmd/dev-console/bridge_fastpath_unit_test.go
+  - cmd/browser-agent/bridge_test.go
+  - cmd/browser-agent/bridge_spawn_race_test.go
+  - cmd/browser-agent/bridge_startup_lock_test.go
+  - cmd/browser-agent/bridge_startup_contention_test.go
+  - cmd/browser-agent/bridge_faststart_extended_test.go
+  - cmd/browser-agent/bridge_fastpath_unit_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -52,12 +52,12 @@ last_verified_date: 2026-03-05
 
 | File | Purpose |
 |------|---------|
-| `cmd/dev-console/bridge.go` | Startup-aware forwarding for `tools/call` during daemon warm-up |
-| `cmd/dev-console/bridge_startup_orchestration.go` | Startup coordinator: leader election, follower wait, stale-lock takeover |
-| `cmd/dev-console/bridge_startup_lock.go` | Lock-file startup leadership (`bridge-startup-<port>.lock.json`) |
-| `cmd/dev-console/bridge_startup_state.go` | Daemon readiness/failed signaling, bounded respawn peer-wait, and stale-wait leadership reclaim |
-| `cmd/dev-console/tools_configure.go` | `toolConfigureRestart()` daemon-side handler |
-| `cmd/dev-console/tools_schema.go` | Schema: `restart` in configure action enum + oneOf |
-| `cmd/dev-console/bridge_test.go` | Unit tests for `extractToolAction()` |
-| `cmd/dev-console/bridge_startup_contention_test.go` | Multi-client startup convergence integration test |
-| `cmd/dev-console/bridge_fastpath_unit_test.go` | Fast-path + startup fallback regression tests (no indefinite wait on startup state drift) |
+| `cmd/browser-agent/bridge.go` | Startup-aware forwarding for `tools/call` during daemon warm-up |
+| `cmd/browser-agent/bridge_startup_orchestration.go` | Startup coordinator: leader election, follower wait, stale-lock takeover |
+| `cmd/browser-agent/bridge_startup_lock.go` | Lock-file startup leadership (`bridge-startup-<port>.lock.json`) |
+| `cmd/browser-agent/bridge_startup_state.go` | Daemon readiness/failed signaling, bounded respawn peer-wait, and stale-wait leadership reclaim |
+| `cmd/browser-agent/tools_configure.go` | `toolConfigureRestart()` daemon-side handler |
+| `cmd/browser-agent/tools_schema.go` | Schema: `restart` in configure action enum + oneOf |
+| `cmd/browser-agent/bridge_test.go` | Unit tests for `extractToolAction()` |
+| `cmd/browser-agent/bridge_startup_contention_test.go` | Multi-client startup convergence integration test |
+| `cmd/browser-agent/bridge_fastpath_unit_test.go` | Fast-path + startup fallback regression tests (no indefinite wait on startup state drift) |

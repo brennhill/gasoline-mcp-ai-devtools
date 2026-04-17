@@ -60,7 +60,7 @@ last_verified_date: 2026-03-05
 
 ### Unit Tests
 
-**Test File:** `cmd/dev-console/bridge_test.go`
+**Test File:** `cmd/browser-agent/bridge_test.go`
 
 | Test | Status |
 |------|--------|
@@ -82,5 +82,5 @@ last_verified_date: 2026-03-05
 
 ### Manual Tests
 
-1. **Happy path:** Start gasoline, call `configure(action="restart")`, verify daemon PID changes
+1. **Happy path:** Start kaboom, call `configure(action="restart")`, verify daemon PID changes
 2. **Hung daemon:** `kill -STOP <daemon_pid>`, call restart, verify recovery with new PID

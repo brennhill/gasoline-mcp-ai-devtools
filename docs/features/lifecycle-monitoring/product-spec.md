@@ -57,7 +57,7 @@ When debugging production issues, operators need to understand:
 
 ### Non-Functional
 
-- All events logged to `~/gasoline-logs.jsonl` (JSON Lines format)
+- All events logged to `~/kaboom-logs.jsonl` (JSON Lines format)
 - Events emitted asynchronously (via goroutine) to avoid blocking
 - Lifecycle callback pattern allows cross-package event emission
 - SIGKILL detection via heuristic: startup→startup with no shutdown entry

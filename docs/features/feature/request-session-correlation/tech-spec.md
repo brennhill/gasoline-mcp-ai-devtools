@@ -28,7 +28,7 @@ Backend Services
     ↓ Extract and log IDs
 Backend Logs + Custom Events
     ↓ Indexed by session_id, request_id
-Gasoline Event Store
+Kaboom Event Store
     ↓ on observe('session-trace', session_id)
 Unified Timeline
 ```
@@ -36,7 +36,7 @@ Unified Timeline
 ### Components
 1. **Session ID Manager** (`extension/session-manager.js`)
    - Generate session ID on first page load
-   - Store in localStorage with key `gasoline:session-id`
+   - Store in localStorage with key `kaboom:session-id`
    - Persist across page reloads, cleared on browser close or manual logout
    - Include in all XHR/fetch requests
 
@@ -92,7 +92,7 @@ X-Session-ID: session-a7f8e3d9c1b2e4f6
 ### Request ID / Trace Context
 ```
 traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
-trace-state: gasoline-session-xyz
+trace-state: kaboom-session-xyz
 ```
 
 ### Session Index Structure
@@ -157,11 +157,11 @@ type RequestTraceResponse struct {
 ```
 
 ## Code References
-- **Session manager:** `/Users/brenn/dev/gasoline/extension/session-manager.js` (new)
-- **Request manager:** `/Users/brenn/dev/gasoline/extension/request-manager.js` (new)
-- **Session indexer:** `/Users/brenn/dev/gasoline/server/index/sessions.go` (new)
-- **MCP handlers:** `/Users/brenn/dev/gasoline/server/handlers.go` (modified)
-- **Tests:** `/Users/brenn/dev/gasoline/server/index/sessions_test.go` (new)
+- **Session manager:** `/Users/brenn/dev/kaboom/extension/session-manager.js` (new)
+- **Request manager:** `/Users/brenn/dev/kaboom/extension/request-manager.js` (new)
+- **Session indexer:** `/Users/brenn/dev/kaboom/server/index/sessions.go` (new)
+- **MCP handlers:** `/Users/brenn/dev/kaboom/server/handlers.go` (modified)
+- **Tests:** `/Users/brenn/dev/kaboom/server/index/sessions_test.go` (new)
 
 ## Performance Requirements
 - **Session query:** <100ms for 10K events per session

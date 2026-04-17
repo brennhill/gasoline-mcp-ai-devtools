@@ -6,11 +6,15 @@ import { domFrameProbe } from './dom-frame-probe.js';
 import { domPrimitive } from './dom-primitives.js';
 import { domPrimitiveListInteractive } from './dom-primitives-list-interactive.js';
 import { domPrimitiveQuery } from './dom-primitives-query.js';
+import { domPrimitiveWaitForStable, domPrimitiveActionDiff } from './dom-primitives-stability.js';
+import { domPrimitiveOverlay } from './dom-primitives-overlay.js';
+import { domPrimitiveIntent } from './dom-primitives-intent.js';
 import { isCDPEscalatable, tryCDPEscalation } from './cdp-dispatch.js';
-import { isReadOnlyAction, isMutatingAction } from './action-metadata.js';
+import { isReadOnlyAction } from './action-metadata.js';
 import { errorMessage } from '../lib/error-utils.js';
 import { delay } from '../lib/timeout-utils.js';
 import { normalizeFrameArg, resolveMatchedFrameIds } from './frame-targeting.js';
+import { toDOMResult, pickFrameResult, mergeListInteractive, deriveAsyncStatusFromDOMResult, enrichWithEffectiveContext, sendToastForResult } from './dom-result-reconcile.js';
 function parseDOMParams(query) {
     try {
         return typeof query.params === 'string' ? JSON.parse(query.params) : query.params;
@@ -18,17 +22,6 @@ function parseDOMParams(query) {
     catch {
         return null;
     }
-}
-function hasMatchedTargetEvidence(result) {
-    const matched = result.matched;
-    if (!matched || typeof matched !== 'object' || Array.isArray(matched))
-        return false;
-    return (typeof matched.selector === 'string' ||
-        typeof matched.tag === 'string' ||
-        typeof matched.element_id === 'string' ||
-        typeof matched.aria_label === 'string' ||
-        typeof matched.role === 'string' ||
-        typeof matched.text_preview === 'string');
 }
 async function resolveExecutionTarget(tabId, frame) {
     const normalized = normalizeFrameArg(frame);
@@ -38,66 +31,7 @@ async function resolveExecutionTarget(tabId, frame) {
     const frameIds = await resolveMatchedFrameIds(tabId, normalized, domFrameProbe);
     return { tabId, frameIds };
 }
-/** Pick the best result from multi-frame executeScript. Prefers main frame, falls back to first success. */
-function pickFrameResult(results) {
-    const mainFrame = results.find((r) => r.frameId === 0);
-    if (mainFrame?.result && mainFrame.result.success) {
-        return { result: mainFrame.result, frameId: 0 };
-    }
-    for (const r of results) {
-        if (r.result && r.result.success) {
-            return { result: r.result, frameId: r.frameId };
-        }
-    }
-    if (mainFrame?.result)
-        return { result: mainFrame.result, frameId: 0 };
-    return results[0] ? { result: results[0].result, frameId: results[0].frameId } : null;
-}
-/** Merge list_interactive results from all frames (up to 100 elements). */
-function mergeListInteractive(results) {
-    const elements = [];
-    let firstError = null;
-    let firstScopeRectUsed;
-    for (const r of results) {
-        const res = r.result;
-        if (res?.success === false) {
-            if (!firstError)
-                firstError = { error: res.error, message: res.message };
-            continue;
-        }
-        if (firstScopeRectUsed === undefined && res?.scope_rect_used !== undefined) {
-            firstScopeRectUsed = res.scope_rect_used;
-        }
-        if (res?.elements)
-            elements.push(...res.elements);
-        if (elements.length >= 100)
-            break;
-    }
-    if (elements.length === 0 && firstError?.error) {
-        return { success: false, elements: [], error: firstError.error, message: firstError.message };
-    }
-    const cappedElements = elements.slice(0, 100);
-    const merged = {
-        success: true,
-        elements: cappedElements,
-        candidate_count: cappedElements.length
-    };
-    if (firstScopeRectUsed !== undefined) {
-        merged.scope_rect_used = firstScopeRectUsed;
-    }
-    return merged;
-}
 const WAIT_FOR_POLL_INTERVAL_MS = 80;
-function toDOMResult(value) {
-    if (!value || typeof value !== 'object')
-        return null;
-    const candidate = value;
-    if (typeof candidate.success !== 'boolean')
-        return null;
-    if (typeof candidate.action !== 'string' || typeof candidate.selector !== 'string')
-        return null;
-    return candidate;
-}
 /** Resolve which DOM action name to dispatch for wait_for based on params.
  *  Callers must validate mutual exclusivity before calling this. */
 function resolveWaitForAction(params) {
@@ -255,87 +189,51 @@ async function executeQuery(target, params) {
         args: [params.selector || '', Object.keys(opts).length > 0 ? opts : undefined]
     });
 }
-function sendToastForResult(tabId, readOnly, result, actionToast, toastLabel, toastDetail) {
-    if (readOnly)
-        return;
-    if (result.success) {
-        actionToast(tabId, toastLabel, toastDetail, 'success');
+// #502: Execute stability actions (wait_for_stable, action_diff) via extracted self-contained functions
+async function executeStabilityAction(target, params) {
+    if (params.action === 'wait_for_stable') {
+        return chrome.scripting.executeScript({
+            target,
+            world: 'MAIN',
+            func: domPrimitiveWaitForStable,
+            args: [{ stability_ms: params.stability_ms, timeout_ms: params.timeout_ms }]
+        });
     }
-    else {
-        actionToast(tabId, toastLabel, result.error || 'failed', 'error');
-    }
+    // action_diff
+    return chrome.scripting.executeScript({
+        target,
+        world: 'MAIN',
+        func: domPrimitiveActionDiff,
+        args: [{ timeout_ms: params.timeout_ms }]
+    });
 }
-function reconcileDOMLifecycle(action, selector, result) {
-    const domResult = toDOMResult(result);
-    if (!domResult) {
-        if (!isMutatingAction(action))
-            return { result, status: 'complete' };
-        const coerced = {
-            success: false,
-            action,
-            selector,
-            error: 'status_mismatch',
-            message: `Mutating action returned non-DOM payload: ${action}`
-        };
-        return { result: coerced, status: 'error', error: 'status_mismatch' };
-    }
-    if (!domResult.success) {
-        return {
-            result: domResult,
-            status: 'error',
-            error: domResult.error || domResult.message || 'dom_action_failed'
-        };
-    }
-    if (domResult.error) {
-        const coerced = {
-            ...domResult,
-            success: false,
-            error: 'status_mismatch',
-            message: `Payload marked success but includes error: ${domResult.error}`
-        };
-        return { result: coerced, status: 'error', error: 'status_mismatch' };
-    }
-    if (isMutatingAction(action) && !hasMatchedTargetEvidence(domResult)) {
-        const coerced = {
-            ...domResult,
-            success: false,
-            error: 'missing_match_evidence',
-            message: `Mutating action completed without matched target evidence: ${action}`
-        };
-        return { result: coerced, status: 'error', error: 'missing_match_evidence' };
-    }
-    return { result: domResult, status: 'complete' };
+// #502: Execute overlay actions (dismiss_top_overlay, auto_dismiss_overlays) via extracted self-contained function
+async function executeOverlayAction(target, params) {
+    return chrome.scripting.executeScript({
+        target,
+        world: 'MAIN',
+        func: domPrimitiveOverlay,
+        args: [
+            params.action,
+            { scope_selector: params.scope_selector, timeout_ms: params.timeout_ms }
+        ]
+    });
 }
-function deriveAsyncStatusFromDOMResult(action, selector, result) {
-    const reconciled = reconcileDOMLifecycle(action, selector, result);
-    if (reconciled.status === 'complete') {
-        return reconciled;
-    }
-    return {
-        status: 'error',
-        error: reconciled.error || 'dom_action_failed',
-        result: reconciled.result
-    };
+// #502: Execute intent actions (open_composer, submit_active_composer, confirm_top_dialog) via extracted self-contained function
+async function executeIntentAction(target, params) {
+    return chrome.scripting.executeScript({
+        target,
+        world: 'MAIN',
+        func: domPrimitiveIntent,
+        args: [
+            params.action,
+            { scope_selector: params.scope_selector }
+        ]
+    });
 }
-// Enrich results with effective tab context (post-execution URL).
-// Agents compare resolved_url (dispatch time) vs effective_url (execution time) to detect drift.
-async function enrichWithEffectiveContext(tabId, result) {
-    try {
-        const tab = await chrome.tabs.get(tabId);
-        if (result && typeof result === 'object' && !Array.isArray(result)) {
-            return {
-                ...result,
-                effective_tab_id: tabId,
-                effective_url: tab.url,
-                effective_title: tab.title
-            };
-        }
-        return result;
-    }
-    catch {
-        return result;
-    }
-}
+const STABILITY_ACTIONS = new Set(['wait_for_stable', 'action_diff']);
+const OVERLAY_ACTIONS = new Set(['dismiss_top_overlay', 'auto_dismiss_overlays']);
+const INTENT_ACTIONS = new Set(['open_composer', 'submit_active_composer', 'confirm_top_dialog']);
 // #lizard forgives
 export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult, actionToast) {
     const params = parseDOMParams(query);
@@ -415,7 +313,13 @@ export async function executeDOMAction(query, tabId, syncClient, sendAsyncResult
                 ? await executeQuery(executionTarget, params)
                 : action === 'wait_for'
                     ? await executeWaitFor(executionTarget, params)
-                    : await executeStandardAction(executionTarget, params);
+                    : STABILITY_ACTIONS.has(action)
+                        ? await executeStabilityAction(executionTarget, params)
+                        : OVERLAY_ACTIONS.has(action)
+                            ? await executeOverlayAction(executionTarget, params)
+                            : INTENT_ACTIONS.has(action)
+                                ? await executeIntentAction(executionTarget, params)
+                                : await executeStandardAction(executionTarget, params);
         // wait_for quick-check can return a DOMResult directly
         if (!Array.isArray(rawResult)) {
             if (rawResult === null || rawResult === undefined) {

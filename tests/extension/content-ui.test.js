@@ -85,15 +85,15 @@ describe('showActionToast', () => {
   test('creates a toast element with correct ID', () => {
     showActionToast('Hello')
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.ok(toast, 'toast element should be appended to body')
-    assert.strictEqual(toast.id, 'gasoline-action-toast')
+    assert.strictEqual(toast.id, 'kaboom-action-toast')
   })
 
   test('applies trying theme by default', () => {
     showActionToast('Clicking')
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.ok(toast)
     assert.ok(toast.style.background.includes('#3b82f6'), 'should use trying gradient')
   })
@@ -101,7 +101,7 @@ describe('showActionToast', () => {
   test('applies error theme when state=error', () => {
     showActionToast('Failed', undefined, 'error')
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.ok(toast)
     assert.ok(toast.style.background.includes('#ef4444'), 'should use error gradient')
   })
@@ -109,7 +109,7 @@ describe('showActionToast', () => {
   test('applies success theme when state=success', () => {
     showActionToast('Done', undefined, 'success')
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.ok(toast)
     assert.ok(toast.style.background.includes('#22c55e'), 'should use success gradient')
   })
@@ -119,7 +119,7 @@ describe('showActionToast', () => {
     showActionToast(longText)
 
     // The label span is the first child appended to the toast
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.ok(toast)
     // Find the label span among children appended to toast
     const label = toast.appendChild.mock.calls
@@ -134,7 +134,7 @@ describe('showActionToast', () => {
     const longDetail = 'B'.repeat(55)
     showActionToast('Short', longDetail)
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.ok(toast)
     // Detail span has fontWeight '400' and opacity '0.9'
     const detail = toast.appendChild.mock.calls
@@ -148,7 +148,7 @@ describe('showActionToast', () => {
   test('does not truncate short text', () => {
     showActionToast('Click', 'Submit')
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     const label = toast.appendChild.mock.calls
       .map((c) => c.arguments[0])
       .find((child) => child.tag === 'span' && child.style.fontWeight === '700')
@@ -157,8 +157,8 @@ describe('showActionToast', () => {
 
   test('removes existing toast before creating new one', () => {
     const existingToast = createMockElement('div')
-    existingToast.id = 'gasoline-action-toast'
-    elements['gasoline-action-toast'] = existingToast
+    existingToast.id = 'kaboom-action-toast'
+    elements['kaboom-action-toast'] = existingToast
 
     showActionToast('New toast')
 
@@ -169,11 +169,11 @@ describe('showActionToast', () => {
     showActionToast('First')
 
     // After first call, the style element should be appended to head
-    const styleEl = appendedToHead.find((el) => el.id === 'gasoline-toast-animations')
+    const styleEl = appendedToHead.find((el) => el.id === 'kaboom-toast-animations')
     assert.ok(styleEl, 'animation style should be injected')
 
     // Now simulate that the style element exists
-    elements['gasoline-toast-animations'] = styleEl
+    elements['kaboom-toast-animations'] = styleEl
     const headCallsBefore = appendedToHead.length
 
     showActionToast('Second')
@@ -184,9 +184,9 @@ describe('showActionToast', () => {
   test('audio state adds pulse class and icon', () => {
     showActionToast('Recording', undefined, 'audio')
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.ok(toast)
-    assert.strictEqual(toast.className, 'gasoline-toast-pulse')
+    assert.strictEqual(toast.className, 'kaboom-toast-pulse')
 
     // Should have created an img element for the icon
     const imgChild = toast.appendChild.mock.calls
@@ -199,7 +199,7 @@ describe('showActionToast', () => {
   test('non-audio state does not add pulse class', () => {
     showActionToast('Click', undefined, 'trying')
 
-    const toast = appendedToBody.find((el) => el.id === 'gasoline-action-toast')
+    const toast = appendedToBody.find((el) => el.id === 'kaboom-action-toast')
     assert.strictEqual(toast.className, '', 'non-audio toast should not have pulse class')
   })
 
@@ -239,23 +239,23 @@ describe('showSubtitle', () => {
   test('creates subtitle element and appends to body', () => {
     showSubtitle('Opening page')
 
-    const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+    const bar = appendedToBody.find((el) => el.id === 'kaboom-subtitle')
     assert.ok(bar, 'subtitle bar should be appended to body')
   })
 
   test('sets text content on the subtitle bar', () => {
     showSubtitle('Navigating to settings')
 
-    const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+    const bar = appendedToBody.find((el) => el.id === 'kaboom-subtitle')
     assert.ok(bar)
     assert.strictEqual(bar.textContent, 'Navigating to settings')
   })
 
   test('reuses existing subtitle element', () => {
     const existingBar = createMockElement('div')
-    existingBar.id = 'gasoline-subtitle'
+    existingBar.id = 'kaboom-subtitle'
     existingBar.style = { opacity: '0' }
-    elements['gasoline-subtitle'] = existingBar
+    elements['kaboom-subtitle'] = existingBar
 
     showSubtitle('Updated text')
 
@@ -267,9 +267,9 @@ describe('showSubtitle', () => {
   test('empty text clears subtitle', () => {
     // Set up an existing subtitle element
     const bar = createMockElement('div')
-    bar.id = 'gasoline-subtitle'
+    bar.id = 'kaboom-subtitle'
     bar.style = { opacity: '1' }
-    elements['gasoline-subtitle'] = bar
+    elements['kaboom-subtitle'] = bar
 
     showSubtitle('')
 
@@ -287,13 +287,13 @@ describe('showSubtitle', () => {
   test('fades in by setting opacity to 1', () => {
     showSubtitle('Hello')
 
-    const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+    const bar = appendedToBody.find((el) => el.id === 'kaboom-subtitle')
     assert.ok(bar)
     assert.strictEqual(bar.style.opacity, '1', 'should set opacity to 1 for fade-in')
   })
 })
 
-describe('clearSubtitle', () => {
+describe('clear_subtitle', () => {
   let clearSubtitle, showSubtitle
 
   beforeEach(async () => {
@@ -304,9 +304,9 @@ describe('clearSubtitle', () => {
 
   test('sets opacity to 0 on existing subtitle element', () => {
     const bar = createMockElement('div')
-    bar.id = 'gasoline-subtitle'
+    bar.id = 'kaboom-subtitle'
     bar.style = { opacity: '1' }
-    elements['gasoline-subtitle'] = bar
+    elements['kaboom-subtitle'] = bar
 
     clearSubtitle()
 
@@ -374,9 +374,9 @@ describe('subtitle auto-timeout', () => {
       showSubtitle('Will auto-clear')
 
       // Set up the subtitle element so clearSubtitle can find it
-      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
+      const bar = appendedToBody.find((el) => el.id === 'kaboom-subtitle')
       assert.ok(bar, 'subtitle should exist')
-      elements['gasoline-subtitle'] = bar
+      elements['kaboom-subtitle'] = bar
 
       assert.ok(timerCallback, 'auto-clear timer should have been registered')
       timerCallback()
@@ -401,8 +401,8 @@ describe('subtitle auto-timeout', () => {
     try {
       showSubtitle('First')
 
-      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
-      elements['gasoline-subtitle'] = bar
+      const bar = appendedToBody.find((el) => el.id === 'kaboom-subtitle')
+      elements['kaboom-subtitle'] = bar
 
       showSubtitle('Second')
 
@@ -424,8 +424,8 @@ describe('subtitle auto-timeout', () => {
     try {
       showSubtitle('To be cleared')
 
-      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
-      elements['gasoline-subtitle'] = bar
+      const bar = appendedToBody.find((el) => el.id === 'kaboom-subtitle')
+      elements['kaboom-subtitle'] = bar
 
       clearSubtitle()
 
@@ -446,8 +446,8 @@ describe('subtitle auto-timeout', () => {
     try {
       showSubtitle('Has timer')
 
-      const bar = appendedToBody.find((el) => el.id === 'gasoline-subtitle')
-      if (bar) elements['gasoline-subtitle'] = bar
+      const bar = appendedToBody.find((el) => el.id === 'kaboom-subtitle')
+      if (bar) elements['kaboom-subtitle'] = bar
 
       showSubtitle('')
 
@@ -472,14 +472,14 @@ describe('toggleRecordingWatermark', () => {
   test('creates watermark element when visible=true', () => {
     toggleRecordingWatermark(true)
 
-    const watermark = appendedToBody.find((el) => el.id === 'gasoline-recording-watermark')
+    const watermark = appendedToBody.find((el) => el.id === 'kaboom-recording-watermark')
     assert.ok(watermark, 'watermark should be appended to body')
   })
 
   test('watermark contains an img with icon.svg', () => {
     toggleRecordingWatermark(true)
 
-    const watermark = appendedToBody.find((el) => el.id === 'gasoline-recording-watermark')
+    const watermark = appendedToBody.find((el) => el.id === 'kaboom-recording-watermark')
     assert.ok(watermark)
     const img = watermark.appendChild.mock.calls
       .map((c) => c.arguments[0])
@@ -490,8 +490,8 @@ describe('toggleRecordingWatermark', () => {
 
   test('does not create duplicate watermark', () => {
     const existing = createMockElement('div')
-    existing.id = 'gasoline-recording-watermark'
-    elements['gasoline-recording-watermark'] = existing
+    existing.id = 'kaboom-recording-watermark'
+    elements['kaboom-recording-watermark'] = existing
 
     toggleRecordingWatermark(true)
 
@@ -500,9 +500,9 @@ describe('toggleRecordingWatermark', () => {
 
   test('fades out and removes watermark when visible=false', () => {
     const existing = createMockElement('div')
-    existing.id = 'gasoline-recording-watermark'
+    existing.id = 'kaboom-recording-watermark'
     existing.style = { opacity: '1' }
-    elements['gasoline-recording-watermark'] = existing
+    elements['kaboom-recording-watermark'] = existing
 
     toggleRecordingWatermark(false)
 

@@ -405,22 +405,126 @@ func TestV4PostWebSocketEventsInvalidJSON(t *testing.T) {
 
 func TestMCPGetWebSocketEvents(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	// Seed events that the MCP observe(websocket_events) layer would return.
+	cap.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://chat.example.com/ws", Timestamp: "2024-01-15T10:30:00.000Z"},
+		{ID: "ws-1", Event: "message", Direction: "incoming", Data: `{"msg":"hello"}`, Size: 15, URL: "wss://chat.example.com/ws", Timestamp: "2024-01-15T10:30:01.000Z"},
+		{ID: "ws-1", Event: "message", Direction: "outgoing", Data: `{"msg":"world"}`, Size: 15, URL: "wss://chat.example.com/ws", Timestamp: "2024-01-15T10:30:02.000Z"},
+	})
+
+	// GetAllWebSocketEvents is the accessor the MCP layer calls.
+	all := cap.GetAllWebSocketEvents()
+	if len(all) != 3 {
+		t.Fatalf("expected 3 events, got %d", len(all))
+	}
+
+	// Verify events retain all fields the MCP response includes.
+	if all[0].Event != "open" {
+		t.Errorf("expected first event to be 'open', got %s", all[0].Event)
+	}
+	if all[2].Direction != "outgoing" {
+		t.Errorf("expected last event direction 'outgoing', got %s", all[2].Direction)
+	}
 }
 
 func TestMCPGetWebSocketEventsWithFilter(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	cap.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://chat.example.com/ws"},
+		{ID: "ws-2", Event: "open", URL: "wss://feed.example.com/prices"},
+		{ID: "ws-1", Event: "message", Direction: "incoming", URL: "wss://chat.example.com/ws"},
+		{ID: "ws-2", Event: "message", Direction: "outgoing", URL: "wss://feed.example.com/prices"},
+	})
+
+	// Filter by connection_id (mirrors MCP args.connection_id).
+	filtered := cap.GetWebSocketEvents(WebSocketEventFilter{ConnectionID: "ws-1"})
+	if len(filtered) != 2 {
+		t.Errorf("connection_id filter: expected 2 events, got %d", len(filtered))
+	}
+
+	// Filter by URL substring (mirrors MCP args.url).
+	filtered = cap.GetWebSocketEvents(WebSocketEventFilter{URLFilter: "feed"})
+	if len(filtered) != 2 {
+		t.Errorf("url filter: expected 2 events, got %d", len(filtered))
+	}
+
+	// Filter by direction (mirrors MCP args.direction).
+	filtered = cap.GetWebSocketEvents(WebSocketEventFilter{Direction: "outgoing"})
+	if len(filtered) != 1 {
+		t.Errorf("direction filter: expected 1 event, got %d", len(filtered))
+	}
+
+	// Combined filters: connection_id + direction.
+	filtered = cap.GetWebSocketEvents(WebSocketEventFilter{ConnectionID: "ws-1", Direction: "incoming"})
+	if len(filtered) != 1 {
+		t.Errorf("combined filter: expected 1 event, got %d", len(filtered))
+	}
 }
 
 func TestMCPGetWebSocketStatus(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	cap.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://chat.example.com/ws", Timestamp: "2024-01-15T10:30:00.000Z"},
+		{ID: "ws-2", Event: "open", URL: "wss://feed.example.com/prices", Timestamp: "2024-01-15T10:30:01.000Z"},
+		{ID: "ws-1", Event: "message", Direction: "incoming", Size: 100, Timestamp: "2024-01-15T10:30:02.000Z"},
+	})
+
+	// GetWebSocketStatus is the accessor the MCP observe(websocket_status) layer calls.
+	status := cap.GetWebSocketStatus(WebSocketStatusFilter{})
+
+	if len(status.Connections) != 2 {
+		t.Fatalf("expected 2 active connections, got %d", len(status.Connections))
+	}
+	if len(status.Closed) != 0 {
+		t.Errorf("expected 0 closed connections, got %d", len(status.Closed))
+	}
+
+	// Verify connection details match MCP response shape.
+	found := false
+	for _, conn := range status.Connections {
+		if conn.ID == "ws-1" {
+			found = true
+			if conn.URL != "wss://chat.example.com/ws" {
+				t.Errorf("expected URL wss://chat.example.com/ws, got %s", conn.URL)
+			}
+			if conn.MessageRate.Incoming.Total != 1 {
+				t.Errorf("expected 1 incoming message, got %d", conn.MessageRate.Incoming.Total)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected to find connection ws-1")
+	}
 }
 
 func TestMCPGetWebSocketEventsEmpty(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	// No events added — mirrors MCP observe(websocket_events) on fresh capture.
+	all := cap.GetAllWebSocketEvents()
+	if len(all) != 0 {
+		t.Errorf("expected 0 events on fresh capture, got %d", len(all))
+	}
+
+	filtered := cap.GetWebSocketEvents(WebSocketEventFilter{})
+	if len(filtered) != 0 {
+		t.Errorf("expected 0 filtered events on fresh capture, got %d", len(filtered))
+	}
+
+	status := cap.GetWebSocketStatus(WebSocketStatusFilter{})
+	if len(status.Connections) != 0 {
+		t.Errorf("expected 0 connections on fresh capture, got %d", len(status.Connections))
+	}
+	if len(status.Closed) != 0 {
+		t.Errorf("expected 0 closed on fresh capture, got %d", len(status.Closed))
+	}
 }
 
 func TestV4ConnectionDurationFormatted(t *testing.T) {
@@ -769,7 +873,9 @@ func TestV4HandleWebSocketStatus_WithClosedConnections(t *testing.T) {
 	capture.HandleWebSocketStatus(rec, req)
 
 	var status WebSocketStatusResponse
-	json.Unmarshal(rec.Body.Bytes(), &status)
+	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
 
 	if len(status.Connections) != 0 {
 		t.Errorf("expected 0 open connections, got %d", len(status.Connections))
@@ -873,19 +979,70 @@ func TestV4FormatDuration_Zero(t *testing.T) {
 // Test: toolGetWSStatus with connection_id filter.
 func TestV4ToolGetWSStatus_ConnectionIDFilter(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	cap.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-a", Event: "open", URL: "wss://a.example.com/ws"},
+		{ID: "ws-b", Event: "open", URL: "wss://b.example.com/ws"},
+		{ID: "ws-c", Event: "open", URL: "wss://c.example.com/ws"},
+	})
+
+	status := cap.GetWebSocketStatus(WebSocketStatusFilter{ConnectionID: "ws-b"})
+
+	if len(status.Connections) != 1 {
+		t.Fatalf("expected 1 connection with connection_id filter, got %d", len(status.Connections))
+	}
+	if status.Connections[0].ID != "ws-b" {
+		t.Errorf("expected connection ws-b, got %s", status.Connections[0].ID)
+	}
 }
 
 // Test: toolGetWSStatus with url filter.
 func TestV4ToolGetWSStatus_URLFilter(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	cap.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://chat.example.com/ws"},
+		{ID: "ws-2", Event: "open", URL: "wss://feed.example.com/prices"},
+		{ID: "ws-3", Event: "open", URL: "wss://chat.example.com/live"},
+	})
+
+	status := cap.GetWebSocketStatus(WebSocketStatusFilter{URLFilter: "chat"})
+
+	if len(status.Connections) != 2 {
+		t.Fatalf("expected 2 connections matching 'chat', got %d", len(status.Connections))
+	}
+	for _, conn := range status.Connections {
+		if !strings.Contains(conn.URL, "chat") {
+			t.Errorf("expected URL containing 'chat', got %s", conn.URL)
+		}
+	}
 }
 
 // Test: toolGetWSStatus with both connection_id and url filter (connection_id takes precedence).
 func TestV4ToolGetWSStatus_BothFilters(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	cap.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://chat.example.com/ws"},
+		{ID: "ws-2", Event: "open", URL: "wss://chat.example.com/live"},
+		{ID: "ws-3", Event: "open", URL: "wss://feed.example.com/prices"},
+	})
+
+	// When both filters are set, both should apply (connection_id narrows first).
+	status := cap.GetWebSocketStatus(WebSocketStatusFilter{
+		ConnectionID: "ws-1",
+		URLFilter:    "chat",
+	})
+
+	if len(status.Connections) != 1 {
+		t.Fatalf("expected 1 connection with both filters, got %d", len(status.Connections))
+	}
+	if status.Connections[0].ID != "ws-1" {
+		t.Errorf("expected connection ws-1, got %s", status.Connections[0].ID)
+	}
 }
 
 // ============================================
@@ -1029,8 +1186,33 @@ func TestV4FormatDuration_ExactHours(t *testing.T) {
 // Additional coverage: toolGetWSStatus parse error
 // ============================================
 
-// Test: toolGetWSStatus with invalid arguments JSON returns error message.
+// Test: toolGetWSStatus with invalid arguments — GetWebSocketStatus gracefully
+// handles empty/default filters (the MCP layer handles JSON parse errors itself,
+// so at the capture level we verify that zero-value filters return valid results).
 func TestV4ToolGetWSStatus_InvalidArgs(t *testing.T) {
 	t.Parallel()
-	t.Skip("MCPHandler not available in internal packages - requires cmd/dev-console refactoring")
+	cap := setupTestCapture(t)
+
+	// Seed a connection so we can verify default filter returns it.
+	cap.AddWebSocketEvents([]WebSocketEvent{
+		{ID: "ws-1", Event: "open", URL: "wss://example.com/ws"},
+	})
+
+	// Zero-value filter (what the MCP layer falls back to on parse error).
+	status := cap.GetWebSocketStatus(WebSocketStatusFilter{})
+	if len(status.Connections) != 1 {
+		t.Fatalf("expected 1 connection with zero-value filter, got %d", len(status.Connections))
+	}
+
+	// Filter with non-matching connection_id returns empty (not an error).
+	status = cap.GetWebSocketStatus(WebSocketStatusFilter{ConnectionID: "nonexistent"})
+	if len(status.Connections) != 0 {
+		t.Errorf("expected 0 connections for non-matching ID, got %d", len(status.Connections))
+	}
+
+	// Filter with non-matching URL returns empty (not an error).
+	status = cap.GetWebSocketStatus(WebSocketStatusFilter{URLFilter: "nonexistent"})
+	if len(status.Connections) != 0 {
+		t.Errorf("expected 0 connections for non-matching URL, got %d", len(status.Connections))
+	}
 }

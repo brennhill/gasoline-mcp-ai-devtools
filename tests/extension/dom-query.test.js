@@ -45,7 +45,7 @@ describe('DOM Query Production Paths', () => {
     globalThis.setTimeout = originalSetTimeout
   })
 
-  test('handleDomQuery forwards parsed params via GASOLINE_DOM_QUERY', () => {
+  test('handleDomQuery forwards parsed params via kaboom_dom_query', () => {
     const sendResponse = mock.fn()
 
     const keepOpen = handleDomQuery('{"selector":"#submit"}', sendResponse)
@@ -54,7 +54,7 @@ describe('DOM Query Production Paths', () => {
     assert.strictEqual(globalThis.window.postMessage.mock.calls.length, 1)
 
     const [posted, origin] = globalThis.window.postMessage.mock.calls[0].arguments
-    assert.strictEqual(posted.type, 'GASOLINE_DOM_QUERY')
+    assert.strictEqual(posted.type, 'kaboom_dom_query')
     assert.strictEqual(posted.params.selector, '#submit')
     assert.ok(typeof posted.requestId === 'number')
     assert.strictEqual(origin, 'http://localhost:3000')

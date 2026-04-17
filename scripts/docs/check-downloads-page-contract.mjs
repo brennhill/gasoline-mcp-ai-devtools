@@ -4,8 +4,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 const repoRoot = process.cwd();
-const downloadsPath = 'cookwithgasoline.com/src/content/docs/downloads.md';
-const stylesPath = 'cookwithgasoline.com/src/styles/custom.css';
+const downloadsPath = 'gokaboom.dev/src/content/docs/downloads.md';
+const stylesPath = 'gokaboom.dev/src/styles/custom.css';
 
 async function read(relativePath) {
   return fs.readFile(path.join(repoRoot, relativePath), 'utf8');

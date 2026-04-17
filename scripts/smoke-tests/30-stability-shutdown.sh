@@ -88,10 +88,10 @@ run_test_30_3() {
     fi
 
     # Check both new and legacy PID file paths
-    local pid_file_legacy="$HOME/.gasoline-${PORT}.pid"
-    # New path: ~/.local/share/gasoline/run/gasoline-PORT.pid (macOS/Linux)
-    local state_dir="${XDG_DATA_HOME:-$HOME/.local/share}/gasoline/run"
-    local pid_file_new="$state_dir/gasoline-${PORT}.pid"
+    local pid_file_legacy="$HOME/.kaboom-${PORT}.pid"
+    # New path: ~/.local/share/kaboom/run/kaboom-PORT.pid (macOS/Linux)
+    local state_dir="${XDG_DATA_HOME:-$HOME/.local/share}/kaboom/run"
+    local pid_file_new="$state_dir/kaboom-${PORT}.pid"
 
     local leaked_pid=""
     if [ -f "$pid_file_legacy" ]; then

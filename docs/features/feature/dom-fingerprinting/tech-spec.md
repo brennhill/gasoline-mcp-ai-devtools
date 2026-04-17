@@ -274,7 +274,7 @@ A performance guard warns (console.warn) if extraction exceeds the 30ms budget.
 
 ## File Locations
 
-- Server implementation: `cmd/dev-console/ai_fingerprint.go`
-- Server tests: `cmd/dev-console/ai_fingerprint_test.go`
+- Server implementation: `cmd/browser-agent/ai_fingerprint.go`
+- Server tests: `cmd/browser-agent/ai_fingerprint_test.go`
 - Extension extraction logic: additions to `extension/inject.js`
 - Extension tests: `extension-tests/fingerprint.test.js`

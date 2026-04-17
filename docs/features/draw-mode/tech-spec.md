@@ -25,7 +25,7 @@ AI (MCP Client)
     v
 +---------------------+
 |   Go Server         |  <- Receives draw_mode_start via interact
-|  (cmd/dev-console)  |     Serves annotations via analyze
+|  (cmd/browser-agent)  |     Serves annotations via analyze
 +---------+-----------+
           | WebSocket + HTTP (localhost only)
           v
@@ -66,7 +66,7 @@ sequenceDiagram
 
     BG->>Server: Poll /pending-queries
     Server-->>BG: {type: "draw_mode", action: "start"}
-    BG->>CS: chrome.tabs.sendMessage<br/>(GASOLINE_DRAW_MODE_START)
+    BG->>CS: chrome.tabs.sendMessage<br/>(KABOOM_DRAW_MODE_START)
     CS->>CS: Create canvas overlay<br/>Register mouse handlers
 
     Note over User: User draws rectangles<br/>and types annotations
@@ -217,7 +217,7 @@ Returned when draw mode completes or `analyze({what: "annotations"})` is called.
   status: "success",
   count: 2,
   annotations: [ /* array of Annotation objects */ ],
-  screenshot_path: "/tmp/gasoline-draw-mode-1707580860000.png",
+  screenshot_path: "/tmp/kaboom-draw-mode-1707580860000.png",
   page_url: "https://example.com/checkout",
   duration_ms: 45000  // time draw mode was active
 }
@@ -226,7 +226,7 @@ Returned when draw mode completes or `analyze({what: "annotations"})` is called.
 ### Internal Storage Format (chrome.storage.session)
 
 ```js
-// Key: "gasoline_draw_annotations"
+// Key: "kaboom_draw_annotations"
 {
   active: false,
   tab_id: 123,
@@ -369,7 +369,7 @@ Returned when draw mode completes or `analyze({what: "annotations"})` is called.
 
 | Message | Direction | Transport | Payload |
 |---------|-----------|-----------|---------|
-| `GASOLINE_DRAW_MODE_START` | Server -> Extension | PendingQuery (polled via WebSocket/HTTP) | `{action: "draw_mode_start", correlation_id: "dm_abc"}` |
+| `KABOOM_DRAW_MODE_START` | Server -> Extension | PendingQuery (polled via WebSocket/HTTP) | `{action: "draw_mode_start", correlation_id: "dm_abc"}` |
 | `DRAW_MODE_COMPLETED` | Extension -> Server | HTTP POST `/draw-mode-result` | `{correlation_id, annotations[], screenshot_base64, page_url}` |
 | `ANNOTATION_DETAIL_REQUEST` | Server -> Extension | PendingQuery | `{action: "annotation_detail", correlation_id: "ann_detail_abc", selector: "..."}` |
 | `ANNOTATION_DETAIL_RESULT` | Extension -> Server | HTTP POST `/annotation-detail-result` | `{correlation_id, selector, computed_styles, ...}` |
@@ -409,23 +409,23 @@ When `analyze({what: "annotations", wait: true})` is called:
 | `extension/content/draw-mode.js` | Canvas overlay, rectangle drawing, text input, DOM capture, annotation CRUD, persistence | ~500 |
 | `extension/content/draw-mode-export.js` | Screenshot capture with annotations, base64 encoding, result packaging | ~150 |
 | `extension/background/draw-mode-handler.js` | Message routing between content script and server, PendingQuery polling, result POST | ~100 |
-| `cmd/dev-console/tools_interact_draw.go` | `draw_mode_start` action handler in interact tool, PendingQuery creation | ~100 |
-| `cmd/dev-console/tools_analyze_annotations.go` | `annotations` and `annotation_detail` handlers in analyze tool, blocking wait logic | ~80 |
-| `cmd/dev-console/annotation_store.go` | In-memory annotation storage with TTL, correlation_id lookup, cleanup | ~100 |
+| `cmd/browser-agent/tools_interact_draw.go` | `draw_mode_start` action handler in interact tool, PendingQuery creation | ~100 |
+| `cmd/browser-agent/tools_analyze_annotations.go` | `annotations` and `annotation_detail` handlers in analyze tool, blocking wait logic | ~80 |
+| `cmd/browser-agent/annotation_store.go` | In-memory annotation storage with TTL, correlation_id lookup, cleanup | ~100 |
 
 ### Modified Files
 
 | File | Changes | LOC Added |
 |------|---------|-----------|
-| `cmd/dev-console/tools_interact.go` | Add `draw_mode_start` case to action switch | ~10 |
-| `cmd/dev-console/tools_analyze.go` | Add `annotations` and `annotation_detail` cases to what switch | ~15 |
-| `cmd/dev-console/tools_schema.go` | Register draw mode parameters in interact and analyze schemas | ~20 |
-| `cmd/dev-console/queries.go` | Add `/draw-mode-result` and `/annotation-detail-result` HTTP handlers | ~30 |
+| `cmd/browser-agent/tools_interact.go` | Add `draw_mode_start` case to action switch | ~10 |
+| `cmd/browser-agent/tools_analyze.go` | Add `annotations` and `annotation_detail` cases to what switch | ~15 |
+| `cmd/browser-agent/tools_schema.go` | Register draw mode parameters in interact and analyze schemas | ~20 |
+| `cmd/browser-agent/queries.go` | Add `/draw-mode-result` and `/annotation-detail-result` HTTP handlers | ~30 |
 | `extension/background/index.js` | Initialize draw-mode-handler, register message listeners | ~10 |
 | `extension/manifest.json` | No new permissions needed (uses existing activeTab + scripting) | ~5 |
 | `extension/popup/popup.js` | Add Draw Mode toggle button and state sync | ~20 |
 | `extension/popup/popup.html` | Add Draw Mode toggle UI element | ~6 |
-| `cmd/dev-console/testdata/mcp-tools-list.golden.json` | Update golden test data with new parameters | ~10 |
+| `cmd/browser-agent/testdata/mcp-tools-list.golden.json` | Update golden test data with new parameters | ~10 |
 
 ### Total
 
@@ -477,7 +477,7 @@ When `analyze({what: "annotations", wait: true})` is called:
 
 ### Required
 
-- Existing Gasoline infrastructure (Go server, extension, MCP, PendingQuery system)
+- Existing Kaboom infrastructure (Go server, extension, MCP, PendingQuery system)
 - `chrome.tabs.captureVisibleTab` permission (already granted via `activeTab`)
 - `chrome.storage.session` API (already used by extension)
 

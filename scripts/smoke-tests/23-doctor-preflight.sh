@@ -7,7 +7,7 @@ begin_category "23" "Doctor Preflight" "3"
 
 # ── Test 23.1: --doctor exits with structured output ─────
 begin_test "23.1" "[DAEMON ONLY] Doctor mode produces structured output" \
-    "gasoline-mcp --doctor should run diagnostics and exit" \
+    "kaboom-agentic-browser --doctor should run diagnostics and exit" \
     "Tests: doctor preflight runs and produces readable output"
 
 run_test_23_1() {
@@ -22,7 +22,7 @@ run_test_23_1() {
     log_diagnostic "23.1" "doctor" "$output"
 
     # Doctor output should mention version and port
-    if echo "$output" | grep -qi "version\|port\|gasoline"; then
+    if echo "$output" | grep -qi "version\|port\|kaboom"; then
         pass "Doctor mode produced structured output (${#output} chars). Exit code: ${exit_code:-0}"
     else
         fail "Doctor output missing expected fields. Output: $(truncate "$output" 300)"
@@ -32,7 +32,7 @@ run_test_23_1
 
 # ── Test 23.2: --check is an alias of --doctor ──────────
 begin_test "23.2" "[DAEMON ONLY] Check mode is a working alias of doctor" \
-    "gasoline-mcp --check should produce similar output to --doctor" \
+    "kaboom-agentic-browser --check should produce similar output to --doctor" \
     "Tests: --check flag works"
 
 run_test_23_2() {
@@ -44,7 +44,7 @@ run_test_23_2() {
         return
     fi
 
-    if echo "$output" | grep -qi "version\|port\|gasoline"; then
+    if echo "$output" | grep -qi "version\|port\|kaboom"; then
         pass "Check mode produced structured output. (${#output} chars)"
     else
         fail "Check output missing expected fields. Output: $(truncate "$output" 300)"

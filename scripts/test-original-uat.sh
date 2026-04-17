@@ -15,7 +15,7 @@ echo "════════════════════════�
 echo ""
 
 # Create results directory
-RESULTS_DIR="/tmp/gasoline-uat-original-$(date +%s)"
+RESULTS_DIR="/tmp/kaboom-uat-original-$(date +%s)"
 mkdir -p "$RESULTS_DIR"
 
 echo "📊 Results will be saved to: $RESULTS_DIR"
@@ -142,7 +142,7 @@ TOTAL_ASSERTIONS=$((TOTAL_PASS + TOTAL_FAIL + TOTAL_SKIP))
 INTEGRITY_ERRORS=$((MISSING_CATEGORIES + CORRUPT_CATEGORIES + INVALID_COUNTER_CATEGORIES))
 CATEGORY_TOTAL="${#TESTS[@]}"
 CATEGORY_COVERAGE_PCT="$(awk "BEGIN { if ($CATEGORY_TOTAL == 0) { print \"0.0\" } else { printf \"%.1f\", ($REPORTED_CATEGORIES*100)/$CATEGORY_TOTAL } }")"
-FAIL_ON_RESULT_INTEGRITY="${GASOLINE_UAT_FAIL_ON_RESULT_INTEGRITY:-1}"
+FAIL_ON_RESULT_INTEGRITY="${KABOOM_UAT_FAIL_ON_RESULT_INTEGRITY:-1}"
 
 if [ "$TOTAL_ASSERTIONS" -eq 0 ]; then
     INTEGRITY_ERRORS=$((INTEGRITY_ERRORS + 1))
@@ -156,8 +156,8 @@ else
     RESULT_INTEGRITY_FAILED=false
 fi
 
-if [ -n "${GASOLINE_UAT_SUMMARY_FILE:-}" ]; then
-    cat > "$GASOLINE_UAT_SUMMARY_FILE" <<EOF
+if [ -n "${KABOOM_UAT_SUMMARY_FILE:-}" ]; then
+    cat > "$KABOOM_UAT_SUMMARY_FILE" <<EOF
 RESULTS_DIR=$RESULTS_DIR
 TOTAL_PASS=$TOTAL_PASS
 TOTAL_FAIL=$TOTAL_FAIL

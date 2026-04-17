@@ -44,7 +44,7 @@ last_verified_date: 2026-03-05
 - [ ] Body clone fails → capture skipped, app still works
 - [ ] Very large body (1MB) → truncated correctly
 - [ ] Concurrent requests (50+) → all bodies captured without race conditions
-- [ ] Self-capture prevention: requests to Gasoline server not captured
+- [ ] Self-capture prevention: requests to Kaboom server not captured
 
 ### Security/Compliance Testing
 
@@ -64,7 +64,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 1: Enable Body Capture and Verify Data
 1. Setup:
-   - Start Gasoline server: `./dist/gasoline`
+   - Start Kaboom server: `./dist/kaboom`
    - Load Chrome with extension
    - Enable body capture via: `configure({action: "network_body_capture", enabled: true})` (or default ON if changed)
    - Navigate to <https://jsonplaceholder.typicode.com/users>
@@ -93,7 +93,7 @@ last_verified_date: 2026-03-05
 
 ### Scenario 2: Body Capture Disabled (Default)
 1. Setup:
-   - Start Gasoline server
+   - Start Kaboom server
    - Load Chrome with extension
    - DO NOT enable body capture (should default to OFF)
    - Navigate to https://jsonplaceholder.typicode.com/users

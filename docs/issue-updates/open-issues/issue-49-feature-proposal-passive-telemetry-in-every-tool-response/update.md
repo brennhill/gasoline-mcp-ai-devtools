@@ -1,12 +1,12 @@
 # Product Update: Issue #49
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/49
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/49
 - Title: [Feature Proposal] Passive Telemetry in every Tool Response
 - Last Updated: 2026-02-16T13:16:55Z
 
 ## Change Summary
-This update resolves or advances Issue #49 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #49 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 [Feature Proposal] Passive Telemetry in every Tool Response

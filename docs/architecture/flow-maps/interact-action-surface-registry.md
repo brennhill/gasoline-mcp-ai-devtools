@@ -12,13 +12,13 @@ code_paths:
   - internal/schema/interact_actions.go
   - internal/schema/interact_properties_dispatch.go
   - internal/tools/configure/mode_specs_interact.go
-  - cmd/dev-console/tools_schema_parity_test.go
+  - cmd/browser-agent/tools_schema_parity_test.go
   - scripts/docs/check-reference-schema-sync.mjs
 test_paths:
   - internal/schema/interact_test.go
   - internal/tools/configure/mode_specs_test.go
-  - cmd/dev-console/tools_schema_parity_test.go
-  - cmd/dev-console/tools_interact_navigate_document_test.go
+  - cmd/browser-agent/tools_schema_parity_test.go
+  - cmd/browser-agent/tools_interact_navigate_document_test.go
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
 ---
@@ -45,7 +45,7 @@ Defines the canonical interact action surface once, then derives schema enums an
 ## Error and Recovery Paths
 
 - Missing registry hint/duplicate name is caught by `internal/schema/interact_test.go`.
-- Schema enum vs runtime dispatch drift is caught by `cmd/dev-console/tools_schema_parity_test.go`.
+- Schema enum vs runtime dispatch drift is caught by `cmd/browser-agent/tools_schema_parity_test.go`.
 - Docs reference drift is caught by `scripts/docs/check-reference-schema-sync.mjs`.
 
 ## State and Contracts
@@ -61,20 +61,20 @@ Defines the canonical interact action surface once, then derives schema enums an
 - `internal/schema/interact_actions.go`
 - `internal/schema/interact_properties_dispatch.go`
 - `internal/tools/configure/mode_specs_interact.go`
-- `cmd/dev-console/tools_schema_parity_test.go`
+- `cmd/browser-agent/tools_schema_parity_test.go`
 - `scripts/docs/check-reference-schema-sync.mjs`
 
 ## Test Paths
 
 - `internal/schema/interact_test.go`
 - `internal/tools/configure/mode_specs_test.go`
-- `cmd/dev-console/tools_schema_parity_test.go`
-- `cmd/dev-console/tools_interact_navigate_document_test.go`
+- `cmd/browser-agent/tools_schema_parity_test.go`
+- `cmd/browser-agent/tools_interact_navigate_document_test.go`
 
 ## Edit Guardrails
 
 - Add a new interact action by editing `interactActionSpecs` first.
-- Implement runtime behavior in `cmd/dev-console` after schema/metadata registration.
+- Implement runtime behavior in `cmd/browser-agent` after schema/metadata registration.
 - Keep parity tests green before merging.
 - Update feature docs pointer/index and this flow map whenever action surface changes.
 - Cross-reference: `docs/features/feature/interact-explore/index.md` and `docs/features/feature/interact-explore/flow-map.md`.

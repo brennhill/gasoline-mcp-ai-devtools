@@ -16,7 +16,7 @@
 
     <!-- Header with embedded flame icon -->
     <g transform="translate(36, 36) scale(0.3)">
-      <!-- Embedded Gasoline flame -->
+      <!-- Embedded Kaboom flame -->
       <defs>
         <linearGradient id="flame-header" x1="0%" y1="100%" x2="0%" y2="0%">
           <stop offset="0%" style="stop-color:#f97316"/>
@@ -27,7 +27,7 @@
       <circle cx="0" cy="0" r="24" fill="#1a1a1a"/>
       <path d="M 0 -20 C -10 -10, -14 -4, -14 2 C -14 10, -6 18, 0 18 C 6 18, 14 10, 14 2 C 14 -4, 10 -10, 0 -20 Z" fill="url(#flame-header)"/>
     </g>
-    <text x="60" y="43" font-family="system-ui" font-size="18" fill="#e0e0e0" font-weight="600">Gasoline</text>
+    <text x="60" y="43" font-family="system-ui" font-size="18" fill="#e0e0e0" font-weight="600">KaBOOM!</text>
 
     <!-- Connection status -->
     <rect x="20" y="70" width="360" height="60" fill="#161b22" rx="4"/>

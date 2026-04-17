@@ -1,7 +1,7 @@
 # QA Plan: Issue #77
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/77
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/77
 - Title: Add storage inspection (localStorage, sessionStorage, cookies, IndexedDB)
 
 ## QA Goal

@@ -18,7 +18,7 @@ const CAPABILITIES_CACHE_TTL_MS = 10_000; // 10s cache
  * Fetch push capabilities from the daemon.
  * Caches for 10s to avoid hammering the endpoint.
  */
-export async function fetchPushCapabilities() {
+async function fetchPushCapabilities() {
     const now = Date.now();
     if (cachedCapabilities && now - capabilitiesFetchedAt < CAPABILITIES_CACHE_TTL_MS) {
         return cachedCapabilities;
@@ -36,7 +36,7 @@ export async function fetchPushCapabilities() {
     }
 }
 /** Clear the capabilities cache (e.g., on reconnect). */
-export function clearPushCapabilitiesCache() {
+function clearPushCapabilitiesCache() {
     cachedCapabilities = null;
     capabilitiesFetchedAt = 0;
 }
@@ -63,7 +63,7 @@ export function installPushCommandListener(logFn) {
             // Show "trying" toast for visual loading state
             try {
                 await chrome.tabs.sendMessage(tab.id, {
-                    type: 'GASOLINE_ACTION_TOAST',
+                    type: 'kaboom_action_toast',
                     text: 'Capturing screenshot...',
                     state: 'trying',
                     duration_ms: 3000
@@ -79,7 +79,7 @@ export function installPushCommandListener(logFn) {
             try {
                 if (result) {
                     await chrome.tabs.sendMessage(tab.id, {
-                        type: 'GASOLINE_ACTION_TOAST',
+                        type: 'kaboom_action_toast',
                         text: 'Screenshot pushed',
                         detail: result.status === 'delivered' ? 'Sent via sampling' : 'Queued in inbox',
                         state: 'success',
@@ -88,9 +88,9 @@ export function installPushCommandListener(logFn) {
                 }
                 else {
                     await chrome.tabs.sendMessage(tab.id, {
-                        type: 'GASOLINE_ACTION_TOAST',
+                        type: 'kaboom_action_toast',
                         text: 'Screenshot push failed',
-                        detail: 'Could not reach Gasoline daemon',
+                        detail: 'Could not reach KaBOOM! daemon',
                         state: 'error',
                         duration_ms: 3000
                     });
@@ -127,7 +127,7 @@ export function installChatCommandListener(logFn) {
             if (!tab?.id)
                 return;
             await chrome.tabs.sendMessage(tab.id, {
-                type: 'GASOLINE_TOGGLE_CHAT',
+                type: 'kaboom_toggle_chat',
                 client_name: caps.client_name || 'AI'
             });
         }
@@ -140,7 +140,7 @@ export function installChatCommandListener(logFn) {
 /**
  * Push a screenshot to the daemon's push pipeline.
  */
-export async function pushScreenshot(screenshotDataUrl, note, pageUrl, tabId) {
+async function pushScreenshot(screenshotDataUrl, note, pageUrl, tabId) {
     try {
         const response = await fetchWithTimeout(`${getServerUrl()}/push/screenshot`, {
             method: 'POST',
@@ -189,7 +189,7 @@ async function showPushUnavailableToast(detail) {
         if (!tab?.id)
             return;
         await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_ACTION_TOAST',
+            type: 'kaboom_action_toast',
             text: 'Push unavailable',
             detail,
             state: 'error',

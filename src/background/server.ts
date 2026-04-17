@@ -1,11 +1,11 @@
 /**
- * Purpose: HTTP functions for sending telemetry data (logs, WebSocket events, network bodies, actions, performance) to the Gasoline MCP server.
+ * Purpose: HTTP functions for sending telemetry data (logs, WebSocket events, network bodies, actions, performance) to the Kaboom MCP server.
  * Docs: docs/features/feature/backend-log-streaming/index.md
  */
 
 /**
  * @fileoverview Server Communication - HTTP functions for sending data to
- * the Gasoline server.
+ * the Kaboom server.
  */
 
 import type {
@@ -16,6 +16,7 @@ import type {
   PerformanceSnapshot,
   ConnectionStatus
 } from '../types/index.js'
+import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { getExtensionVersion } from './version-check.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { buildDaemonHeaders } from '../lib/daemon-http.js'
@@ -28,12 +29,33 @@ export interface ServerHealthResponse {
   error?: string
   version?: string
   availableVersion?: string
+  capture?: {
+    available?: boolean
+    pilot_enabled?: boolean
+    pilot_state?: string
+    extension_connected?: boolean
+    extension_last_seen?: string
+    extension_client_id?: string
+    security_mode?: string
+    production_parity?: boolean
+    insecure_rewrites?: number
+  }
   logs?: {
     logFile?: string
     logFileSize?: number
     entries?: number
     maxEntries?: number
   }
+}
+
+function buildHeartbeatStatusError(capture: ServerHealthResponse['capture']): string {
+  if (!capture || typeof capture.extension_connected !== 'boolean') {
+    return 'Server reachable, but extension heartbeat status is unavailable. Update the server and extension, then reopen the popup.'
+  }
+  if (capture.extension_last_seen && capture.extension_last_seen.trim().length > 0) {
+    return `Server reachable, but extension heartbeat is stale (last seen ${capture.extension_last_seen}). Reopen the KaBOOM! popup and click "Track This Tab".`
+  }
+  return 'Server reachable, but extension heartbeat is missing. Open the KaBOOM! popup and click "Track This Tab".'
 }
 
 /**
@@ -156,6 +178,13 @@ export async function checkServerHealth(serverUrl: string): Promise<ServerHealth
         error: 'Server returned invalid response - check Server URL in options'
       }
     }
+    if (data.capture?.extension_connected !== true) {
+      return {
+        ...data,
+        connected: false,
+        error: buildHeartbeatStatusError(data.capture)
+      }
+    }
     return {
       ...data,
       connected: true
@@ -225,12 +254,12 @@ export async function sendStatusPing(
     })
 
     if (!response.ok) {
-      console.error(`[Gasoline] Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
+      console.error(`${KABOOM_LOG_PREFIX} Failed to send status ping: HTTP ${response.status}`, { type: statusMessage.type }) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.log with internal server state, not user-controlled format string
     }
   } catch (err) {
-    console.error('[Gasoline] Error sending status ping:', { type: statusMessage.type, error: errorMessage(err) })
+    console.error(`${KABOOM_LOG_PREFIX} Error sending status ping:`, { type: statusMessage.type, error: errorMessage(err) })
     if (diagnosticLogFn) {
-      diagnosticLogFn('[Gasoline] Status ping error: ' + errorMessage(err))
+      diagnosticLogFn(`${KABOOM_LOG_PREFIX} Status ping error: ${errorMessage(err)}`)
     }
   }
 }

@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #37
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/37
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/37
 - Title: generate(sri) returns 0 resources despite seeded network bodies
 
 ## Objective

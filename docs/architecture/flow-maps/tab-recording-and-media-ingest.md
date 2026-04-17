@@ -6,23 +6,23 @@ last_reviewed: 2026-03-05
 owners:
   - Brenn
 entrypoints:
-  - cmd/dev-console/tools_interact_dispatch.go (screen_recording_start|screen_recording_stop + record_start|record_stop aliases)
+  - cmd/browser-agent/tools_interact_dispatch.go (screen_recording_start|screen_recording_stop + record_start|record_stop aliases)
   - extension/manifest.json (toggle_action_sequence_recording)
   - src/background/event-listeners.ts (installRecordingShortcutCommandListener)
   - src/popup/recording.ts (setupRecordingUI)
-  - cmd/dev-console/server_routes.go (/screenshots|/draw-mode/complete)
-  - cmd/dev-console/tools_observe.go (saved_videos)
+  - cmd/browser-agent/server_routes.go (/screenshots|/draw-mode/complete)
+  - cmd/browser-agent/tools_observe.go (saved_videos)
 code_paths:
-  - cmd/dev-console/tools_interact_dispatch.go
+  - cmd/browser-agent/tools_interact_dispatch.go
   - internal/schema/interact_actions.go
-  - cmd/dev-console/tools_recording_video.go
-  - cmd/dev-console/tools_recording_interact_handler.go
-  - cmd/dev-console/tools_recording_video_paths.go
-  - cmd/dev-console/tools_recording_video_state.go
-  - cmd/dev-console/tools_recording_video_handlers.go
-  - cmd/dev-console/tools_recording_video_save.go
-  - cmd/dev-console/tools_recording_video_reveal.go
-  - cmd/dev-console/tools_recording_video_observe.go
+  - cmd/browser-agent/tools_recording_video.go
+  - cmd/browser-agent/tools_recording_interact_handler.go
+  - cmd/browser-agent/tools_recording_video_paths.go
+  - cmd/browser-agent/tools_recording_video_state.go
+  - cmd/browser-agent/tools_recording_video_handlers.go
+  - cmd/browser-agent/tools_recording_video_save.go
+  - cmd/browser-agent/tools_recording_video_reveal.go
+  - cmd/browser-agent/tools_recording_video_observe.go
   - src/background/event-listeners.ts
   - src/background/init.ts
   - src/background/context-menus.ts
@@ -34,15 +34,15 @@ code_paths:
   - extension/manifest.json
   - extension/popup.html
   - extension/popup.css
-  - cmd/dev-console/server_routes_media_common.go
-  - cmd/dev-console/server_routes_media_screenshots.go
-  - cmd/dev-console/server_routes_media_draw_mode.go
+  - cmd/browser-agent/server_routes_media_common.go
+  - cmd/browser-agent/server_routes_media_screenshots.go
+  - cmd/browser-agent/server_routes_media_draw_mode.go
 test_paths:
-  - cmd/dev-console/tools_interact_handler_test.go
-  - cmd/dev-console/tools_recording_video_test.go
-  - cmd/dev-console/server_routes_unit_test.go
-  - cmd/dev-console/tools_draw_mode_http_test.go
-  - cmd/dev-console/annotation_store_test.go
+  - cmd/browser-agent/tools_interact_handler_test.go
+  - cmd/browser-agent/tools_recording_video_test.go
+  - cmd/browser-agent/server_routes_unit_test.go
+  - cmd/browser-agent/tools_draw_mode_http_test.go
+  - cmd/browser-agent/annotation_store_test.go
   - tests/extension/recording-shortcut-command.test.js
 last_verified_version: 0.7.12
 last_verified_date: 2026-03-05
@@ -68,7 +68,7 @@ Covers interact screen recording lifecycle (`screen_recording_start`/`screen_rec
 1. `recordingInteractHandler.handleRecordStart` validates extension readiness, clamps FPS/audio, resolves path, and queues extension command.
 2. Recording state transitions are derived from command results in `recordingInteractHandler.resolveInteractRecordingState`.
 3. `recordingInteractHandler.handleRecordStop` enforces valid state before queueing stop command.
-4. MCP-initiated start writes `gasoline_pending_recording`; popup renders an approval card and sends `RECORDING_GESTURE_GRANTED` / `RECORDING_GESTURE_DENIED`.
+4. MCP-initiated start writes `kaboom_pending_recording`; popup renders an approval card and sends `RECORDING_GESTURE_GRANTED` / `RECORDING_GESTURE_DENIED`.
 5. Popup row and recording shortcut call extension `startRecording(..., fromPopup=true, targetTabId=trackedOrActiveTab)` so manual record follows tracked-tab intent.
 6. Shortcut toggle checks current recording state: active -> `stopRecording`; idle -> `startRecording`.
 7. Context-menu labels are refreshed on `contextMenus.onShown` to reflect live state (`Control/Release`, `Record/Stop`, `Annotate/Stop`, action recording start/stop).
@@ -94,16 +94,16 @@ Covers interact screen recording lifecycle (`screen_recording_start`/`screen_rec
 
 ## Code Paths
 
-- `cmd/dev-console/tools_interact_dispatch.go`
+- `cmd/browser-agent/tools_interact_dispatch.go`
 - `internal/schema/interact_actions.go`
-- `cmd/dev-console/tools_recording_video.go`
-- `cmd/dev-console/tools_recording_interact_handler.go`
-- `cmd/dev-console/tools_recording_video_paths.go`
-- `cmd/dev-console/tools_recording_video_state.go`
-- `cmd/dev-console/tools_recording_video_handlers.go`
-- `cmd/dev-console/tools_recording_video_save.go`
-- `cmd/dev-console/tools_recording_video_reveal.go`
-- `cmd/dev-console/tools_recording_video_observe.go`
+- `cmd/browser-agent/tools_recording_video.go`
+- `cmd/browser-agent/tools_recording_interact_handler.go`
+- `cmd/browser-agent/tools_recording_video_paths.go`
+- `cmd/browser-agent/tools_recording_video_state.go`
+- `cmd/browser-agent/tools_recording_video_handlers.go`
+- `cmd/browser-agent/tools_recording_video_save.go`
+- `cmd/browser-agent/tools_recording_video_reveal.go`
+- `cmd/browser-agent/tools_recording_video_observe.go`
 - `src/background/event-listeners.ts`
 - `src/background/init.ts`
 - `src/background/context-menus.ts`
@@ -115,17 +115,17 @@ Covers interact screen recording lifecycle (`screen_recording_start`/`screen_rec
 - `extension/manifest.json`
 - `extension/popup.html`
 - `extension/popup.css`
-- `cmd/dev-console/server_routes_media_common.go`
-- `cmd/dev-console/server_routes_media_screenshots.go`
-- `cmd/dev-console/server_routes_media_draw_mode.go`
+- `cmd/browser-agent/server_routes_media_common.go`
+- `cmd/browser-agent/server_routes_media_screenshots.go`
+- `cmd/browser-agent/server_routes_media_draw_mode.go`
 
 ## Test Paths
 
-- `cmd/dev-console/tools_interact_handler_test.go`
-- `cmd/dev-console/tools_recording_video_test.go`
-- `cmd/dev-console/server_routes_unit_test.go`
-- `cmd/dev-console/tools_draw_mode_http_test.go`
-- `cmd/dev-console/annotation_store_test.go`
+- `cmd/browser-agent/tools_interact_handler_test.go`
+- `cmd/browser-agent/tools_recording_video_test.go`
+- `cmd/browser-agent/server_routes_unit_test.go`
+- `cmd/browser-agent/tools_draw_mode_http_test.go`
+- `cmd/browser-agent/annotation_store_test.go`
 - `tests/extension/recording-shortcut-command.test.js`
 - `tests/extension/context-menus-labels.test.js`
 - `tests/extension/recording-listeners-target-tab.test.js`

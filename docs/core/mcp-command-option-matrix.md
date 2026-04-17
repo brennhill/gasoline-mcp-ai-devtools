@@ -14,7 +14,7 @@ canonical: true
 ## Source of Truth
 
 - Schemas: `internal/schema/*.go` (one file per tool)
-- Dispatchers: `cmd/dev-console/tools_*_registry.go` and `tools_*_dispatch.go`
+- Dispatchers: `cmd/browser-agent/tools_*_registry.go` and `tools_*_dispatch.go`
 - Extension execution: `src/background/pending-queries.ts`
 
 ## Dispatch Key
@@ -356,7 +356,7 @@ All 5 tools use `what` as the primary dispatch parameter. `action`, `mode`, and 
 ## End-to-End Processing Layers
 
 1. Schema exposure (`tools/list`) from `internal/schema/*.go`.
-2. Tool dispatch and option parsing in `cmd/dev-console/tools_*_registry.go` / `tools_*_dispatch.go`.
+2. Tool dispatch and option parsing in `cmd/browser-agent/tools_*_registry.go` / `tools_*_dispatch.go`.
 3. Extension-bound options forwarded inside queued query `Params` JSON.
 4. Extension execution and result correlation in `pending-queries.ts` + `/sync`.
 5. Final command status surfaced via `observe(what=command_result)`.

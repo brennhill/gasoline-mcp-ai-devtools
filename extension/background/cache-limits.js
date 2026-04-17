@@ -26,7 +26,11 @@ export const MAX_PENDING_BUFFER = 1000;
 // =============================================================================
 /** Screenshot rate limiting state */
 const screenshotTimestamps = new Map();
-/** Source map cache */
+/**
+ * Source map cache — intentionally NOT persisted across service worker restarts.
+ * Source maps are a cache (not state) and will rebuild on next error occurrence.
+ * Persisting parsed source maps would be expensive and unnecessary.
+ */
 const sourceMapCache = new Map();
 /** Memory pressure state */
 let memoryPressureLevel = 'normal';

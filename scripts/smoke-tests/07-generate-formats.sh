@@ -259,7 +259,7 @@ run_test_7_5() {
     fi
 
     local har_file
-    har_file="/tmp/gasoline-smoke-har-${SMOKE_MARKER:-smoke}-$(date +%s)-$$.har"
+    har_file="/tmp/kaboom-smoke-har-${SMOKE_MARKER:-smoke}-$(date +%s)-$$.har"
 
     local response
     response=$(call_tool "generate" "{\"format\":\"har\",\"save_to\":\"$har_file\"}")

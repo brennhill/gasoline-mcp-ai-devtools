@@ -1,7 +1,7 @@
 # QA Plan: Issue #100
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/100
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/100
 - Title: [Feature Proposal] Phase 4: Sidecar Headless Browser Support
 
 ## QA Goal

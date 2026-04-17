@@ -32,7 +32,7 @@ last_verified_date: 2026-03-05
 | DL-6 | Auth headers in captured network state | Verify that the baseline and regression-check network captures strip Authorization, Cookie, Set-Cookie, and other sensitive headers identically to `observe({what: "network"})` | critical |
 | DL-7 | WebSocket connection details expose auth tokens | Verify that WebSocket connection URLs and handshake headers captured in baseline do not include authentication tokens (e.g., `wss://api.example.com?token=secret`) | high |
 | DL-8 | Alert recommendation text leaks internal data | Verify that the `recommendation` field in alerts contains generic guidance and does not reference specific internal infrastructure, IPs, or credentials | medium |
-| DL-9 | Named snapshot persisted to disk contains unredacted data | Verify that `wd-baseline-{label}` snapshots saved to the session manager apply the same redaction rules as all other Gasoline captures | high |
+| DL-9 | Named snapshot persisted to disk contains unredacted data | Verify that `wd-baseline-{label}` snapshots saved to the session manager apply the same redaction rules as all other Kaboom captures | high |
 | DL-10 | Audit trail of watchdog events exposes sensitive context | Verify that watchdog start/stop/alert audit entries do not include raw network body content or unredacted error messages | medium |
 
 ### Negative Tests (must NOT leak)
@@ -164,7 +164,7 @@ last_verified_date: 2026-03-05
 |---|-----------|---------------|-------------------|----------|
 | EC-1 | No telemetry arrives during monitoring | Browser tab closed or navigated away | Watchdog completes with `verdict: "inconclusive"` and note about insufficient data | must |
 | EC-2 | Extension disconnects mid-monitoring | WebSocket connection to extension drops | Watchdog continues but cannot detect regressions; reports `inconclusive` | must |
-| EC-3 | Server restarts during monitoring | Gasoline process killed and restarted | Watchdog session lost; `observe({what: "deployment_status"})` returns empty list | must |
+| EC-3 | Server restarts during monitoring | Kaboom process killed and restarted | Watchdog session lost; `observe({what: "deployment_status"})` returns empty list | must |
 | EC-4 | Multiple deployments overlap | Second watchdog started while first is active | Both run independently with separate baselines and thresholds | should |
 | EC-5 | Baseline captured during error state | Pre-deploy state already has 5 console errors | Pre-existing errors recognized by fingerprint, not flagged as regressions | must |
 | EC-6 | Rapid consecutive deployments | Deploy v1, start watchdog, deploy v2 within soak period | First watchdog's baseline becomes stale; AI should stop first and start new watchdog | should |
@@ -182,7 +182,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web application loaded in the tracked tab (e.g., `http://localhost:3000`)
 - [ ] Application has a way to simulate a "deployment" (e.g., restart with a code change that introduces an error)
@@ -193,7 +193,7 @@ last_verified_date: 2026-03-05
 |---|-------------------|----------------|-----------------|------|
 | UAT-1 | AI starts watchdog: `{"tool":"configure","arguments":{"action":"watchdog","watchdog_action":"start","deployment_label":"v1.0-test","duration_minutes":5,"thresholds":{"max_new_errors":0,"latency_factor":1.5,"max_network_error_rate":0.05,"vitals_regression_pct":20}}}` | Server logs show watchdog starting | Response shows `status: "capturing_baseline"` with baseline data, transitions to `monitoring` | [ ] |
 | UAT-2 | AI checks status: `{"tool":"configure","arguments":{"action":"watchdog","watchdog_action":"status","watchdog_id":"wd-xxx"}}` | No changes in browser | Response shows `status: "monitoring"`, `alerts: []`, `verdict: "healthy"` | [ ] |
-| UAT-3 | Human "deploys" by introducing a console error in the app (e.g., add `throw new Error("PaymentService is not defined")`) and refreshes the page | Error visible in browser console | Error appears in Gasoline capture | [ ] |
+| UAT-3 | Human "deploys" by introducing a console error in the app (e.g., add `throw new Error("PaymentService is not defined")`) and refreshes the page | Error visible in browser console | Error appears in Kaboom capture | [ ] |
 | UAT-4 | AI waits 30+ seconds for next check, then checks status again | Watchdog check fires | Response shows `status: "alert"`, `alerts` array contains the new error, `verdict: "degraded"` | [ ] |
 | UAT-5 | AI checks via observe: `{"tool":"observe","arguments":{"what":"deployment_status"}}` | N/A | `active_watchdogs` contains the watchdog with `status: "alert"` and `alerts_count: 1` | [ ] |
 | UAT-6 | AI checks via changes: `{"tool":"observe","arguments":{"what":"changes"}}` | N/A | Response includes `deployment_alerts` key with the watchdog alert | [ ] |
@@ -209,7 +209,7 @@ last_verified_date: 2026-03-05
 | DL-UAT-1 | Baseline does not expose auth headers | Start watchdog while app makes authenticated API calls, inspect baseline in start response | No Authorization, Cookie, or token header values in baseline | [ ] |
 | DL-UAT-2 | Alert details do not expose internal paths | Trigger an error containing a file path (e.g., `/home/user/app/src/index.js:42`), check alert | Error message included but no server-side paths beyond what was in the console error | [ ] |
 | DL-UAT-3 | Watchdog summary does not expose full endpoint list | Complete a watchdog session, inspect `baseline_vs_final` | Network data is summarized (error rates, latency changes) not listed as individual endpoints | [ ] |
-| DL-UAT-4 | Named snapshot is redacted | After watchdog runs, use `diff_sessions` to compare against the saved `wd-baseline-*` snapshot | Snapshot data has same redaction as all other Gasoline captures | [ ] |
+| DL-UAT-4 | Named snapshot is redacted | After watchdog runs, use `diff_sessions` to compare against the saved `wd-baseline-*` snapshot | Snapshot data has same redaction as all other Kaboom captures | [ ] |
 
 ### Regression Checks
 - [ ] Existing `diff_sessions` capture/compare functionality works independently of watchdog

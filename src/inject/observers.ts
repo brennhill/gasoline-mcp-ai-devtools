@@ -134,7 +134,7 @@ export function wrapFetch(originalFetchFn: typeof fetch): typeof fetch {
  */
 export function installFetchCapture(): void {
   // Check for early-patch: use the saved original, not the early-patch wrapper
-  const earlyOriginal = window.__GASOLINE_ORIGINAL_FETCH__
+  const earlyOriginal = window.__KABOOM_ORIGINAL_FETCH__
   originalFetch = earlyOriginal || window.fetch
   // Layer 1: wrapFetchWithBodies captures request/response bodies for ALL requests
   // Layer 2: wrapFetch captures detailed error logging for 4xx/5xx responses
@@ -241,7 +241,7 @@ export function checkMemoryPressure(state: MemoryPressureState): MemoryPressureS
  * Phase 1 (Immediate): Lightweight, non-intercepting setup.
  */
 export function installPhase1(): void {
-  console.log('[Gasoline] Phase 1 installing (lightweight API + perf observers)')
+  console.log('[KaBOOM!] Phase 1 installing (lightweight API + perf observers)')
   injectionTimestamp = performance.now()
   phase2Installed = false
   phase2Timestamp = 0
@@ -281,7 +281,7 @@ export function installPhase2(): void {
   // Environment guard
   if (typeof window === 'undefined' || typeof document === 'undefined') return
 
-  console.log('[Gasoline] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)')
+  console.log('[KaBOOM!] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)')
   phase2Timestamp = performance.now()
   phase2Installed = true
 

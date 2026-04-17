@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #57
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/57
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/57
 - Title: Normalize generate API: strict mode-specific params and deterministic output diagnostics
 
 ## Objective

@@ -6,7 +6,7 @@ package generate
 import (
 	"strings"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/capture"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
 // BuildCSPDirectives extracts unique origins from network bodies and groups them by CSP directive.

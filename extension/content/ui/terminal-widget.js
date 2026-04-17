@@ -6,7 +6,7 @@
  */
 import { showActionToast } from './toast.js';
 import { state, resetAllState, getTerminalServerUrl, HEADER_ID, MINIMIZE_TERMINAL_BUTTON_ID, TERMINAL_WRITE_SUBMIT_DELAY_MS, TERMINAL_TYPING_IDLE_MS, TERMINAL_GUARD_POLL_MS, TERMINAL_GUARD_TOAST_INTERVAL_MS } from './terminal-widget-types.js';
-import { getServerUrl, getTerminalConfig, saveTerminalConfig, persistUIState, loadPersistedSession, clearPersistedSession, validateSession, startSession } from './terminal-widget-session.js';
+import { getServerUrl, getTerminalConfig, persistUIState, loadPersistedSession, clearPersistedSession, validateSession, startSession } from './terminal-widget-session.js';
 import { registerUICallbacks, createWidget, handleIframeMessage, notifyIframe, toggleMinimize } from './terminal-widget-ui.js';
 // =============================================================================
 // WRITE GUARD — defer queued writes while user is typing in the terminal
@@ -103,7 +103,7 @@ function flushQueuedWrites() {
 // =============================================================================
 // PUBLIC API
 // =============================================================================
-export function hideTerminal() {
+function hideTerminal() {
     if (!state.widgetEl)
         return;
     state.visible = false;
@@ -115,7 +115,7 @@ export function hideTerminal() {
     // Session stays alive — can reconnect via toggle or page reload
 }
 /** Kill the PTY session on the daemon and tear down the widget completely. */
-export async function exitTerminalSession() {
+async function exitTerminalSession() {
     // Stop the PTY on the daemon (with timeout so the UI never hangs).
     if (state.sessionState) {
         try {
@@ -132,7 +132,7 @@ export async function exitTerminalSession() {
     clearPersistedSession();
     unmountTerminal();
 }
-export function showTerminal() {
+function showTerminal() {
     if (!state.widgetEl)
         return;
     state.visible = true;
@@ -264,10 +264,8 @@ registerUICallbacks({
     resetWriteGuardState,
     scheduleQueuedWriteFlush
 });
-// Re-export for launcher integration
-export { saveTerminalConfig };
 /** Reset all shared state — test-only. Needed because split sub-modules are cached by Node ESM. */
-export function _resetForTesting() {
+function _resetForTesting() {
     window.removeEventListener('message', handleIframeMessage);
     resetAllState();
 }

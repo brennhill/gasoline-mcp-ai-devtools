@@ -36,7 +36,7 @@ Technical implementation for screenshot archival, metadata storage, and queryabl
 ```sql
 CREATE TABLE screenshots (
   id TEXT PRIMARY KEY,                      -- UUID
-  filepath TEXT UNIQUE NOT NULL,            -- /data/gasoline/screenshots/...
+  filepath TEXT UNIQUE NOT NULL,            -- /data/kaboom/screenshots/...
 
   -- Metadata
   component TEXT NOT NULL,                  -- e.g., "UserCard"
@@ -89,7 +89,7 @@ CREATE TABLE screenshot_config (
 ## File Storage Layout
 
 ```
-/data/gasoline/screenshots/
+/data/kaboom/screenshots/
 ├── 2026/01/30/
 │   ├── component-UserCard/
 │   │   ├── variant-selected/

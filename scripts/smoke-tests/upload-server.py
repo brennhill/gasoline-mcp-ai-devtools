@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Purpose: Branded zero-dependency upload harness used by smoke and UAT tests.
-# Why: Keeps upload tests deterministic while mirroring Gasoline visual language.
+# Why: Keeps upload tests deterministic while mirroring Kaboom visual language.
 # Docs: docs/features/feature/file-upload/index.md
 
 """upload-server.py — Zero-dependency test upload server for Stage 3/4 upload flows.
@@ -42,7 +42,7 @@ LOGO_SVG = """
       <stop offset="100%" style="stop-color:#fef3c7"/>
     </linearGradient>
   </defs>
-  <circle cx="64" cy="64" r="60" fill="#1a1a1a"/>
+  <circle cx="64" cy="64" r="60" fill="#302d2a"/>
   <path d="M64 16 C40 40,28 60,28 80 C28 100,44 116,64 116 C84 116,100 100,100 80 C100 60,88 40,64 16 Z" fill="url(#upload-fl)"/>
   <path d="M64 48 C52 60,44 72,44 84 C44 96,52 104,64 104 C76 104,84 96,84 84 C84 72,76 60,64 48 Z" fill="url(#upload-ifl)"/>
 </svg>
@@ -290,7 +290,7 @@ def render_page(title, badge, heading, subtitle, content_html):
   <header class="gh-header">
     <a class="gh-logo" href="/">
       {LOGO_SVG}
-      <span>Gasoline</span>
+      <span>Kaboom</span>
     </a>
     <span class="gh-badge">{badge}</span>
   </header>

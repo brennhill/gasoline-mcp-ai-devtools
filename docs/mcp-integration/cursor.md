@@ -1,6 +1,6 @@
 ---
-title: "Gasoline + Cursor"
-description: "Configure Gasoline as an MCP server for Cursor IDE. Give Cursor's AI real-time access to browser console logs, network errors, and exceptions."
+title: "Kaboom + Cursor"
+description: "Configure Kaboom as an MCP server for Cursor IDE. Give Cursor's AI real-time access to browser console logs, network errors, and exceptions."
 keywords: "Cursor MCP server, Cursor browser debugging, Cursor AI browser logs, Cursor MCP extension"
 permalink: /mcp-integration/cursor/
 header:
@@ -10,7 +10,7 @@ header:
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-28
 ---
 
 ## <i class="fas fa-file-code"></i> Configuration
@@ -20,9 +20,9 @@ Add to `~/.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": "npx",
-      "args": ["gasoline-mcp"]
+      "args": ["kaboom-agentic-browser"]
     }
   }
 }
@@ -32,9 +32,9 @@ Or use Cursor's UI: **Settings → MCP Servers → Add Server**:
 
 ```json
 {
-  "gasoline-browser-devtools": {
+  "kaboom-browser-devtools": {
     "command": "npx",
-    "args": ["gasoline-mcp"]
+    "args": ["kaboom-agentic-browser"]
   }
 }
 ```
@@ -49,7 +49,7 @@ After restarting Cursor, the AI can:
 - <i class="fas fa-plug"></i> Check WebSocket connection states
 - <i class="fas fa-universal-access"></i> Run accessibility audits
 
-Ask: _"What browser errors are happening?"_ — Cursor queries Gasoline automatically.
+Ask: _"What browser errors are happening?"_ — Cursor queries Kaboom automatically.
 
 ## <i class="fas fa-wrench"></i> Troubleshooting
 

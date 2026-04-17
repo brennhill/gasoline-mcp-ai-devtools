@@ -34,7 +34,7 @@ Replace the current `resolveElement` fallback with a two-step strategy: try fast
 
 function getShadowRoot(el: Element): ShadowRoot | null {
   return el.shadowRoot ?? null
-  // Closed root support (future): also check window.__GASOLINE_CLOSED_SHADOWS__
+  // Closed root support (future): also check window.__KABOOM_CLOSED_SHADOWS__
 }
 
 function querySelectorDeep(selector: string, root: ParentNode = document): Element | null {
@@ -187,7 +187,7 @@ function resolveDeepCombinator(selector: string): Element | null {
 
 **Chaining:** `a >>> b >>> c` resolves `a` in document, enters its shadow, resolves `b`, enters its shadow, resolves `c`. No limit on depth.
 
-**Disambiguation:** `>>>` is Gasoline-specific syntax, never passed to native CSS APIs. It was a deprecated CSS proposal (`::shadow` and `/deep/` combinators, removed from spec in 2015) — no browser interprets it today.
+**Disambiguation:** `>>>` is Kaboom-specific syntax, never passed to native CSS APIs. It was a deprecated CSS proposal (`::shadow` and `/deep/` combinators, removed from spec in 2015) — no browser interprets it today.
 
 ### 3.5 Selector Generation for `list_interactive`
 

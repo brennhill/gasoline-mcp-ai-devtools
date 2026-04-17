@@ -20,7 +20,7 @@ last_verified_date: 2026-03-05
 
 ## 1. Data Leak Analysis
 
-**Goal:** Verify the redaction engine effectively prevents sensitive data from reaching AI clients via MCP tool responses. This is the most security-critical feature in Gasoline -- a failure here directly exposes sensitive data.
+**Goal:** Verify the redaction engine effectively prevents sensitive data from reaching AI clients via MCP tool responses. This is the most security-critical feature in Kaboom -- a failure here directly exposes sensitive data.
 
 | # | Data Leak Risk | What to Check | Severity |
 |---|---------------|---------------|----------|
@@ -212,7 +212,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A web application that logs or displays known sensitive patterns (test data: fake SSN, fake credit card, fake API key)
 

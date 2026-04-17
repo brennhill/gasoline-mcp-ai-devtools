@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-03-05
+last_reviewed: 2026-04-13
 owners:
   - Brenn
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-13
 ---
 
 # Flow Maps
@@ -37,6 +37,8 @@ Each flow map should include:
 
 ## Current Maps
 
+- [Audit Workflow](./audit-workflow.md)
+- [Auto-Fix QA Flow](./auto-fix-qa-flow.md)
 - [Bridge Startup Contention and Convergence](./bridge-startup-contention-and-convergence.md)
 - [File Upload Smoke Harness](./file-upload-smoke-harness.md)
 - [Analyze Structured Extraction](./analyze-structured-extraction.md)
@@ -48,6 +50,7 @@ Each flow map should include:
 - [Daemon Stop and Force Cleanup](./daemon-stop-and-force-cleanup.md)
 - [DOM Selector Resolution and Disambiguation](./dom-selector-resolution-and-disambiguation.md)
 - [DRY Test Helpers and Daemon Header Consolidation](./dry-test-helper-and-daemon-header-consolidation.md)
+- [Extension Heartbeat Connection Status](./extension-heartbeat-connection-status.md)
 - [MCP Daemon Lifecycle](./mcp-daemon-lifecycle.md)
 - [Network Recording Control](./network-recording-control.md)
 - [Observe Dispatch and Augmentation](./observe-dispatch-and-augmentation.md)
@@ -59,7 +62,7 @@ Each flow map should include:
 - [Test Generation Dispatch](./test-generation-dispatch.md)
 - [Issue Reporting Submission](./issue-reporting-submission.md)
 - [Annotation Detail Enrichment](./annotation-detail-enrichment.md)
-- [Cookwithgasoline Content Publishing and Agent Markdown](./cookwithgasoline-content-publishing-and-agent-markdown.md)
+- [Gokaboom Content Publishing and Agent Markdown](./gokaboom-content-publishing-and-agent-markdown.md)
 - [Binary Watcher Upgrade Detection](./binary-watcher-upgrade-detection.md)
 - [Feature Doc Frontmatter and Freshness Gates](./feature-doc-frontmatter-freshness-gates.md)
 - [LLM Fast Verify Gate](./llm-fast-verify-gate.md)
@@ -73,5 +76,6 @@ Each flow map should include:
 - [Push Alert Notification Emission](./push-alert-notification-emission.md)
 - [Push Inbox Screenshot Throttle](./push-inbox-screenshot-throttle.md)
 - [Terminal Server Isolation](./terminal-server-isolation.md)
+- [Terminal Side Panel Host and Launcher Coordination](./terminal-side-panel-host.md)
 - [Interact Overlay & Selector Improvements](./interact-overlay-selector-improvements.md)
 - [Shared Extraction and Contract Normalization](./shared-extraction-and-contract-normalization.md)

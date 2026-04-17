@@ -246,7 +246,10 @@ describe('checkServerHealth', () => {
           Promise.resolve({
             status: 'ok',
             entries: 42,
-            maxEntries: 1000
+            maxEntries: 1000,
+            capture: {
+              extension_connected: true
+            }
           })
       })
     )
@@ -256,6 +259,29 @@ describe('checkServerHealth', () => {
     assert.strictEqual(health.status, 'ok')
     assert.strictEqual(health.entries, 42)
     assert.strictEqual(health.connected, true)
+  })
+
+  test('should return disconnected when daemon is up but heartbeat is missing', async () => {
+    globalThis.fetch = mock.fn(() =>
+      Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            status: 'ok',
+            entries: 42,
+            maxEntries: 1000,
+            capture: {
+              extension_connected: false,
+              extension_last_seen: ''
+            }
+          })
+      })
+    )
+
+    const health = await checkServerHealth()
+
+    assert.strictEqual(health.connected, false)
+    assert.ok(health.error.includes('heartbeat'))
   })
 
   test('should return disconnected when server is down', async () => {

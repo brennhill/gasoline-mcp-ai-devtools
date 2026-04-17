@@ -15,7 +15,7 @@ last_verified_date: 2026-03-05
 # Request/Session Correlation
 
 ## Overview
-Request/Session Correlation provides a unified view of all activity related to a single user session or request, connecting frontend interactions with backend processing. When a user's browser session generates multiple requests across multiple backend services, Gasoline automatically groups them together using session IDs and request IDs. A developer can ask "Show me everything that happened for user 123 in the last 5 minutes" and get a complete timeline: every page load, every API request, every backend log, every custom event, all correlated and ordered. This eliminates the need to manually stitch together logs from multiple systems.
+Request/Session Correlation provides a unified view of all activity related to a single user session or request, connecting frontend interactions with backend processing. When a user's browser session generates multiple requests across multiple backend services, Kaboom automatically groups them together using session IDs and request IDs. A developer can ask "Show me everything that happened for user 123 in the last 5 minutes" and get a complete timeline: every page load, every API request, every backend log, every custom event, all correlated and ordered. This eliminates the need to manually stitch together logs from multiple systems.
 
 ## Problem
 Modern applications span multiple services, but request tracing is fragmented:
@@ -29,7 +29,7 @@ Modern applications span multiple services, but request tracing is fragmented:
 Request/Session Correlation:
 1. **Session ID Management:** Each browser session gets a unique ID, included in all requests
 2. **Request ID Propagation:** Each API request gets a unique ID, propagated through all backend services
-3. **Automatic Correlation:** Gasoline indexes all events (logs, network, custom events) by session ID and request ID
+3. **Automatic Correlation:** Kaboom indexes all events (logs, network, custom events) by session ID and request ID
 4. **Unified Query:** Query all activity for a session: `observe({what: 'session-trace', session_id: 'session-abc'})`
 
 ## User Stories
@@ -127,7 +127,7 @@ inventory-service: INFO - Reserving items (request_id: req-002)
 email-service: INFO - Sending confirmation (request_id: req-002)
 ```
 
-#### Gasoline query:
+#### Kaboom query:
 ```javascript
 observe({
   what: 'session-trace',
@@ -190,9 +190,9 @@ observe({
 ## Frontend Implementation
 ```javascript
 // Session management
-const sessionId = localStorage.getItem('gasoline:session-id')
+const sessionId = localStorage.getItem('kaboom:session-id')
   || generateSessionID();
-localStorage.setItem('gasoline:session-id', sessionId);
+localStorage.setItem('kaboom:session-id', sessionId);
 
 // Include in all requests
 fetch('/api/endpoint', {

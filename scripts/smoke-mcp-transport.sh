@@ -8,7 +8,7 @@ echo "Running MCP transport smoke gate..."
 
 GOCACHE="${GOCACHE:-/tmp/go-build-cache}" \
 GOMODCACHE="${GOMODCACHE:-/tmp/go-modcache}" \
-go test ./cmd/dev-console \
+go test ./cmd/browser-agent \
   -run 'TestStdioIsolation_StartupNoiseDoesNotPolluteMCPTransport|TestStdioIsolation_ContentLengthFramingNotPollutedByStartupNoise|TestStdioIsolation_BridgeExitsAfterStdinEOF' \
   -count=1 -v
 

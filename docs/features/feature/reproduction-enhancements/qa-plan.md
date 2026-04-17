@@ -26,7 +26,7 @@ last_verified_date: 2026-03-05
 |---|---------------|---------------|----------|
 | DL-1 | Screenshots capture password fields with visible values | Screenshot taken while a password field has focus or shows characters; verify screenshots are stored in memory only and returned via MCP only | critical |
 | DL-2 | Screenshots capture sensitive page content (PII, financial data) | Screenshot of a bank statement or health record page; verify screenshots stay in server memory buffer only (not written to disk) | critical |
-| DL-3 | Screenshots embedded in bug report as base64 persist beyond session | Bug report with embedded base64 screenshots is returned as text; if the AI writes it to a file, the screenshots persist. Verify Gasoline does not write bug reports to disk | high |
+| DL-3 | Screenshots embedded in bug report as base64 persist beyond session | Bug report with embedded base64 screenshots is returned as text; if the AI writes it to a file, the screenshots persist. Verify Kaboom does not write bug reports to disk | high |
 | DL-4 | Data fixtures contain real user credentials | Fixture generation from observed API POST to `/api/login` with `{ email, password }` in request body; verify sensitive fields are replaced with test-safe values | critical |
 | DL-5 | Data fixtures contain real API keys in request headers | Fixture setup calls include Authorization headers from observed traffic; verify headers are stripped per existing redaction rules | critical |
 | DL-6 | Data fixtures contain PII from response bodies | Response bodies with names, emails, phone numbers; verify fixture simplification removes or anonymizes non-essential PII | high |
@@ -38,7 +38,7 @@ last_verified_date: 2026-03-05
 | DL-12 | Auth-dependent fixtures include plaintext credentials | Login step in fixture includes hardcoded username/password from observed session; verify these are replaced with placeholder values | critical |
 
 ### Negative Tests (must NOT leak)
-- [ ] Screenshots must NOT be written to disk by the Gasoline server (memory buffer only)
+- [ ] Screenshots must NOT be written to disk by the Kaboom server (memory buffer only)
 - [ ] Screenshots must NOT be accessible via any HTTP endpoint (MCP tool response only)
 - [ ] Data fixtures must NOT contain real passwords, API keys, or auth tokens from observed traffic
 - [ ] Data fixtures must NOT contain real PII (emails, phone numbers) unless they are essential to the test (and even then, anonymized)
@@ -178,7 +178,7 @@ last_verified_date: 2026-03-05
 > Step-by-step verification for a human working with an AI assistant. The AI executes MCP tool calls; the human observes browser behavior and confirms results.
 
 ### Prerequisites
-- [ ] Gasoline server running: `./dist/gasoline --port 7890`
+- [ ] Kaboom server running: `./dist/kaboom --port 7890`
 - [ ] Chrome extension installed and connected
 - [ ] A test web application running (e.g., localhost:3000) with a form, buttons, and API calls
 - [ ] Network body capture enabled (if testing fixtures)
@@ -223,7 +223,7 @@ last_verified_date: 2026-03-05
 
 | # | Check | Method | Expected | Pass |
 |---|-------|--------|----------|------|
-| DL-UAT-1 | Screenshots not on disk | Check `~/.gasoline/` and server working directory | No PNG files saved to disk by Gasoline | [ ] |
+| DL-UAT-1 | Screenshots not on disk | Check `~/.kaboom/` and server working directory | No PNG files saved to disk by Kaboom | [ ] |
 | DL-UAT-2 | Fixtures sanitize credentials | Generate test with fixtures from a session that included login | Generated fixture replaces real password with placeholder (e.g., "test-password") | [ ] |
 | DL-UAT-3 | Fixtures strip auth headers | Generate test with fixtures from API calls that had Authorization headers | Generated fixture API calls do NOT include Authorization headers | [ ] |
 | DL-UAT-4 | Screenshot not accessible via HTTP | `curl http://localhost:7890/screenshots` or any path | 404 Not Found — no HTTP endpoint for screenshots | [ ] |

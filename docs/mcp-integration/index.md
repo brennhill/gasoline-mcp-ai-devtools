@@ -1,19 +1,19 @@
 ---
 title: "Fuel Any Agent"
-description: "Connect Gasoline to any MCP-compatible coding agent. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, and VS Code with Continue."
+description: "Connect Kaboom to any MCP-compatible coding agent. Configuration guides for Claude Code, Cursor, Windsurf, Claude Desktop, Zed, and VS Code with Continue."
 keywords: "MCP server configuration, Model Context Protocol, autonomous coding agent, agentic debugging, browser debugging MCP"
 permalink: /mcp-integration/
 header:
   overlay_image: /assets/images/hero-banner.png
   overlay_filter: 0.85
-  excerpt: "One config. Your AI tool fires up Gasoline automatically."
+  excerpt: "One config. Your AI tool fires up Kaboom automatically."
 toc: true
 toc_sticky: true
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-28
 ---
 
-Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state.
+Kaboom implements the [Model Context Protocol](https://modelcontextprotocol.io/) — a standard for connecting AI assistants to external tools. Any MCP-compatible tool can tap into your browser state.
 
 ## <i class="fas fa-plug"></i> Supported Tools
 
@@ -28,16 +28,16 @@ Gasoline implements the [Model Context Protocol](https://modelcontextprotocol.io
 
 ## <i class="fas fa-fire"></i> How MCP Mode Works
 
-**Critical:** Your AI tool spawns a SINGLE Gasoline process that handles both:
+**Critical:** Your AI tool spawns a SINGLE Kaboom process that handles both:
 
 - <i class="fas fa-server"></i> **HTTP server** (port 7890) — for browser extension telemetry capture
 - <i class="fas fa-exchange-alt"></i> **MCP stdio** — for AI tool commands (observe, analyze, generate, configure, interact)
 
-**Both interfaces share the same browser state.** Do NOT manually start Gasoline with `npx gasoline-mcp` or `go run` — let your AI tool's MCP system spawn and manage the process. If you have a manually-started Gasoline instance on port 7890, kill it first to avoid conflicts.
+**Both interfaces share the same browser state.** Do NOT manually start Kaboom with `npx kaboom-agentic-browser` or `go run` — let your AI tool's MCP system spawn and manage the process. If you have a manually-started Kaboom instance on port 7890, kill it first to avoid conflicts.
 
 ## <i class="fas fa-tools"></i> Available MCP Tools
 
-Gasoline exposes **5 tools** — each with multiple sub-modes controlled by a single parameter.
+Kaboom exposes **5 tools** — each with multiple sub-modes controlled by a single parameter.
 
 | Tool | What it does | Key sub-modes |
 |------|-------------|---------------|
@@ -49,25 +49,25 @@ Gasoline exposes **5 tools** — each with multiple sub-modes controlled by a si
 
 ## <i class="fas fa-layer-group"></i> Token-Efficient MCP Resources
 
-Gasoline also exposes MCP resources so agents can discover capabilities with minimal prompt overhead and load details only when needed.
+Kaboom also exposes MCP resources so agents can discover capabilities with minimal prompt overhead and load details only when needed.
 
 | Resource URI | Purpose | When to Read |
 |---|---|---|
-| `gasoline://capabilities` | Compact capability index + routing hints | First step for workflow selection |
-| `gasoline://guide` | Full usage guide for all tools | When broad reference is needed |
-| `gasoline://quickstart` | Canonical short examples | When you need quick command patterns |
+| `kaboom://capabilities` | Compact capability index + routing hints | First step for workflow selection |
+| `kaboom://guide` | Full usage guide for all tools | When broad reference is needed |
+| `kaboom://quickstart` | Canonical short examples | When you need quick command patterns |
 
 Playbooks are available via template:
 
-- `gasoline://playbook/{capability}/{level}`
-- Example: `gasoline://playbook/performance/quick`
-- Example: `gasoline://playbook/accessibility/quick`
-- Example: `gasoline://playbook/security/full`
+- `kaboom://playbook/{capability}/{level}`
+- Example: `kaboom://playbook/performance/quick`
+- Example: `kaboom://playbook/accessibility/quick`
+- Example: `kaboom://playbook/security/full`
 - Levels: `quick` (default recommended), `full` (deep workflow)
 
 Recommended agent behavior:
 
-1. Read `gasoline://capabilities` first.
+1. Read `kaboom://capabilities` first.
 2. Choose a matching playbook by intent.
 3. Read only that playbook level (quick/full) for the active task.
 
@@ -187,9 +187,9 @@ If port 7890 is occupied:
 ```json
 {
   "mcpServers": {
-    "gasoline-browser-devtools": {
+    "kaboom-browser-devtools": {
       "command": "npx",
-      "args": ["gasoline-mcp", "--port", "7891"]
+      "args": ["kaboom-agentic-browser", "--port", "7891"]
     }
   }
 }
@@ -209,7 +209,7 @@ Add to `~/.continue/config.json`:
         "transport": {
           "type": "stdio",
           "command": "npx",
-          "args": ["gasoline-mcp"]
+          "args": ["kaboom-agentic-browser"]
         }
       }
     ]
@@ -220,7 +220,7 @@ Add to `~/.continue/config.json`:
 ## <i class="fas fa-check-circle"></i> Verify the Connection
 
 1. Restart your AI tool
-2. Gasoline server ignites automatically
+2. Kaboom server ignites automatically
 3. Extension popup shows "Connected"
 4. Ask your AI: _"What browser errors do you see?"_
 
@@ -231,19 +231,19 @@ Add to `~/.continue/config.json`:
 If MCP fails to start with a port conflict:
 
 ```bash
-# Find and kill existing Gasoline process
-ps aux | grep gasoline | grep -v grep
+# Find and kill existing Kaboom process
+ps aux | grep kaboom-agentic-browser | grep -v grep
 kill <PID>
 
 # Or if on macOS/Linux:
-pkill -f gasoline
+pkill -f kaboom-agentic-browser
 ```
 
 Then reload your MCP connection. The MCP system will spawn a fresh instance.
 
 ### Extension shows "Disconnected"
 
-- Check that your AI tool has started the MCP server (look for Gasoline in process list)
+- Check that your AI tool has started the MCP server (look for Kaboom in process list)
 - Verify the extension's Server URL matches the port in your MCP config (default: `http://localhost:7890`)
 - Try restarting your AI tool to re-initialize the MCP connection
 

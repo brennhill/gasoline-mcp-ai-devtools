@@ -4,7 +4,7 @@ description: "Autonomously debug and fix issues in real time. Streams console lo
 layout: home
 permalink: /
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-03-06
 ---
 
 <div class="hero">
@@ -27,22 +27,18 @@ last_reviewed: 2026-02-16
 One command. Your AI agent can see your browser.
 
 ```bash
-npx gasoline-mcp
+npx kaboom-mcp
 ```
 
 
 
-Gasoline is a **browser extension + local MCP server** that streams real-time browser data to autonomous coding agents. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all and fixes issues without you lifting a finger.
+Kaboom is a **browser extension + local MCP server** that streams real-time browser data to autonomous coding agents. Console errors, failed API calls, uncaught exceptions, WebSocket traffic, live DOM state — your AI sees it all and fixes issues without you lifting a finger.
 
-## Smart Teams Cook With Gasoline
+## Smart Teams Use KaBOOM!
 
-<img src="/assets/images/sparky-cook-with-gasoline-1.png" alt="Sparky cooking with gasoline" style="float: right; width: clamp(60px, 15vw, 120px); height: auto; margin: 0 0 1rem 1.5rem; border-radius: 8px;">
+<span style="color: #22c55e;">No more copy-paste debugging. Just code, fix, and ship.</span>
 
-<span style="color: #22c55e;">Sparky says: No more copy-paste debugging. Just code, fix, and ship.</span>
-
-<div style="clear: both;"></div>
-
-**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Gasoline uses a standard extension — your browser stays secure and unmodified.
+**No debug port required.** Other tools need Chrome launched with `--remote-debugging-port`, which disables security sandboxing and breaks your normal browser workflow. Kaboom uses a standard extension — your browser stays secure and unmodified.
 
 **Single binary, zero runtime.** No Node.js, no Python, no Puppeteer, no package.json. One Go binary that runs anywhere. No supply chain risk. No `node_modules`.
 
@@ -52,9 +48,9 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 
 **Enterprise-safe by design.** Binds to `127.0.0.1` only. Auth headers are stripped automatically. No telemetry, no accounts, no cloud. Audit the source — it's AGPL-3.0.
 
-## How Gasoline Compares
+## How Kaboom Compares
 
-| | Gasoline | Chrome DevTools MCP | BrowserTools MCP | Cursor Browser |
+| | Kaboom | Chrome DevTools MCP | BrowserTools MCP | Cursor Browser |
 |---|:---:|:---:|:---:|:---:|
 | **Console logs** | ✅ | ✅ | ✅ | ✅ |
 | **Network errors** | ✅ | ✅ | ✅ | ❌ |
@@ -81,8 +77,27 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 | **No debug port** | ✅ | ❌ `--remote-debugging-port` | ❌ `--remote-debugging-port` | N/A |
 | **Privacy** | ✅ Localhost only | ✅ Local | ⚠️ Optional cloud | ❌ Cursor servers |
 | **Performance overhead** | < 0.1ms | ~5ms | ~5ms | Unknown |
+| **[Token efficiency](/token-efficiency/)** | ~9,750 (5 tools) | ~30,000+ (20+ tools) | ~25,000+ (15+ tools) | Unknown |
 
 [Full comparison →](/alternatives/)
+
+## Absurdly Token Efficient
+
+Every MCP tool your agent loads eats into its context window. Most browser MCP tools register 15–30 individual tools, each burning ~1,500 tokens of schema. That's **30,000+ tokens gone** before a single call.
+
+Kaboom loads **5 tools in ~9,750 tokens** — full browser observability, automation, test generation, accessibility auditing, and more. Resources are lazy-loaded and cost zero tokens until read.
+
+| | Kaboom | Typical 20-Tool MCP |
+|---|---:|---:|
+| **Init (schemas)** | ~9,750 | ~30,000+ |
+| **Debug cycle (5 calls)** | ~11,000 | ~35,000+ |
+| **With summary mode** | ~10,400 | N/A |
+
+A complete debug-and-fix cycle — error triage, DOM inspection, code fix, reload, verification — stays **under 15,000 tokens total**. Enable `summary=true` and responses shrink another 60–70%.
+
+Fewer tokens = more room for your codebase, faster responses, lower cost.
+
+[Token efficiency deep dive →](/token-efficiency/)
 
 ## Enterprise Ready — Zero Data Leakage
 
@@ -90,14 +105,14 @@ Gasoline is a **browser extension + local MCP server** that streams real-time br
 <img src="/assets/images/sparky-shield-web.webp" alt="Sparky with shield" class="section-sparky">
 <div>
 
-**No browser data is ever shared with any AI provider.** Gasoline runs entirely on your machine:
+**No browser data is ever shared with any AI provider.** Kaboom runs entirely on your machine:
 
 - **Localhost only** — the server binds to `127.0.0.1`, unreachable from the network
 - **No cloud, no accounts, no telemetry** — nothing phones home, ever
 - **Auth headers stripped** — tokens and API keys are automatically redacted
 - **Open source (AGPL-3.0)** — audit every line your security team cares about
 
-Your browser logs stay on your hardware. The AI reads a local file via stdio. At no point does debugging data touch a third-party server — making Gasoline safe for regulated environments, proprietary codebases, and enterprise security policies.
+Your browser logs stay on your hardware. The AI reads a local file via stdio. At no point does debugging data touch a third-party server — making Kaboom safe for regulated environments, proprietary codebases, and enterprise security policies.
 
 [Full Security Details →](/security/)
 
@@ -106,7 +121,7 @@ Your browser logs stay on your hardware. The AI reads a local file via stdio. At
 
 ## Ecosystem Neutral — No Vendor Lock-In
 
-Gasoline implements the open **[Model Context Protocol](https://modelcontextprotocol.io/)** standard. Swap AI tools without changing your debugging setup:
+Kaboom implements the open **[Model Context Protocol](https://modelcontextprotocol.io/)** standard. Swap AI tools without changing your debugging setup:
 
 - **[Claude Code](/mcp-integration/claude-code/)** — `.mcp.json` in project root
 - **[Cursor](/mcp-integration/cursor/)** — `~/.cursor/mcp.json`
@@ -115,7 +130,7 @@ Gasoline implements the open **[Model Context Protocol](https://modelcontextprot
 - **[Zed](/mcp-integration/zed/)** — `~/.config/zed/settings.json`
 - **VS Code + Continue** — `~/.continue/config.json`
 
-Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your agent speaks MCP, Gasoline fuels it.
+Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your agent speaks MCP, Kaboom fuels it.
 
 ## The Pipeline
 
@@ -145,7 +160,7 @@ Not tied to Anthropic. Not tied to Cursor. Not tied to anyone. If your agent spe
 - **Session Checkpoints** — Save state, diff changes, detect regressions over time
 - **[Test Generation](/generate-test/)** — Playwright tests and reproduction scripts from actions
 - **Noise Filtering** — Auto-detect and dismiss irrelevant errors
-- **[Context API](/developer-api/)** — Annotate errors with `window.__gasoline`
+- **[Context API](/developer-api/)** — Annotate errors with `window.__kaboom`
 
 ## Zero Bloat, Zero Risk
 

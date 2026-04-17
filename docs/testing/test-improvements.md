@@ -21,7 +21,7 @@ The initial 6-tier parallel test approach (all tiers starting simultaneously on 
 
 ### Early Test Results (6-Tier Approach)
 
-From `/tmp/gasoline-uat-multitier-1770672748/`:
+From `/tmp/kaboom-uat-multitier-1770672748/`:
 
 | Test Category | Result | Port Range | Status |
 |---|---|---|---|

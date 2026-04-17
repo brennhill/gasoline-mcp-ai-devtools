@@ -6,7 +6,7 @@ tags: [roadmap, v5.9, v6, practical]
 last-verified: 2026-02-06
 ---
 
-# Gasoline Roadmap: What Actually Helps AI Debug UI
+# Kaboom Roadmap: What Actually Helps AI Debug UI
 
 v5.8 shipped DOM primitives, smart selectors, visual toasts, and 13 interact actions.
 That covers ~80% of what an AI needs to debug UI issues.
@@ -31,7 +31,7 @@ The remaining 20% is better context, not more data sources.
 One call replaces 3-4 separate observe() calls. Go-side only, no extension changes.
 
 **Tech spec:** [docs/features/feature/error-bundling/tech-spec.md](../feature/error-bundling/tech-spec.md)
-**Implementation:** `cmd/dev-console/tools_observe_bundling.go` (~130 lines)
+**Implementation:** `cmd/browser-agent/tools_observe_bundling.go` (~130 lines)
 **Tests:** 11 behavioral tests in `tools_observe_bundling_test.go`
 
 ---
@@ -76,7 +76,7 @@ interact({ action: "click", selector: "text=Load More", analyze: true })
 // → analysis: "340ms total: 180ms network (/api/items), 120ms JS long task, 40ms render."
 ```
 
-**User Timing passthrough** — extension captures standard `performance.mark()` / `performance.measure()` entries and surfaces them through `observe({what: 'performance'})`. No Gasoline-specific API.
+**User Timing passthrough** — extension captures standard `performance.mark()` / `performance.measure()` entries and surfaces them through `observe({what: 'performance'})`. No Kaboom-specific API.
 
 **The optimization loop:** edit → `interact(refresh)` → read perf_diff → repeat. One call per iteration.
 
@@ -115,9 +115,9 @@ interact({ action: "click", selector: "text=Load More", analyze: true })
 
 **Solution:** Export captured actions as either:
 1. **Playwright test scripts** — portable, runs in CI, standard tooling
-2. **Gasoline narratives** — JSON action sequences the AI replays via DOM primitives
+2. **Kaboom narratives** — JSON action sequences the AI replays via DOM primitives
 
-The key insight: DOM primitives (`interact({action: 'click', selector: 'text=Submit'})`) already solve browser automation. A Gasoline narrative is just a JSON array of interact calls the AI executes step-by-step, checking state between each step.
+The key insight: DOM primitives (`interact({action: 'click', selector: 'text=Submit'})`) already solve browser automation. A Kaboom narrative is just a JSON array of interact calls the AI executes step-by-step, checking state between each step.
 
 **Playwright export** — wire the existing `generatePlaywrightScript()` in testgen.go to `format: 'test'`:
 ```
@@ -125,7 +125,7 @@ generate({format: 'test', test_name: 'checkout-flow'})
 → returns full Playwright test using captured actions + multi-strategy selectors
 ```
 
-**Gasoline narrative export** — new format that produces a replayable JSON sequence:
+**Kaboom narrative export** — new format that produces a replayable JSON sequence:
 ```
 generate({format: 'narrative', name: 'checkout-flow'})
 ```
@@ -167,19 +167,19 @@ Returns:
 
 The AI replays a narrative by iterating steps and calling `interact()` for each one. Between steps it can `observe()` to verify state, handle errors, or adapt if selectors changed. This is more resilient than Playwright because the AI can self-heal on the fly.
 
-**Why this matters:** Turns Gasoline from a debugging tool into a UAT tool. Teams can record flows once, export them, and replay them whenever they want to verify nothing broke. The AI becomes both the recorder and the test runner.
+**Why this matters:** Turns Kaboom from a debugging tool into a UAT tool. Teams can record flows once, export them, and replay them whenever they want to verify nothing broke. The AI becomes both the recorder and the test runner.
 
 **What already exists:**
 - `EnhancedAction` captures rich multi-strategy selectors (testId, role, ariaLabel, text, id, cssPath)
 - `generatePlaywrightScript()` in testgen.go converts actions → Playwright code
 - DOM primitives handle smart selectors (text=, role=, placeholder=, label=, aria-label=)
-- Recording/playback architecture exists (start/stop, persistence to ~/.gasoline/recordings/)
+- Recording/playback architecture exists (start/stop, persistence to ~/.kaboom/recordings/)
 
 **What's missing:**
 - Wire `format: 'test'` to actual Playwright generation (replace the stub)
 - New `format: 'narrative'` that exports actions as interact-compatible JSON
 - Convert multi-strategy selectors to the best smart selector format (prefer text=, role= over CSS)
-- Narrative persistence (save/load from ~/.gasoline/narratives/)
+- Narrative persistence (save/load from ~/.kaboom/narratives/)
 
 **Effort:** ~1 week. Most of the hard work is done — selector capture, Playwright generation, and DOM primitives all exist. This is mostly wiring + a new export format.
 
@@ -228,7 +228,7 @@ Built on existing `captureVisibleTab()` infrastructure. Same rate limiting (1/se
 }
 ```
 
-**Key design:** Cap at top-N changes, ignore Gasoline's own injected elements, use MutationObserver in the extension. The summary field is the AI's primary signal — it can decide whether to dig deeper.
+**Key design:** Cap at top-N changes, ignore Kaboom's own injected elements, use MutationObserver in the extension. The summary field is the AI's primary signal — it can decide whether to dig deeper.
 
 **Effort:** ~1.5 weeks. MutationObserver setup, serialization, Go passthrough.
 
@@ -283,7 +283,7 @@ observe({what: "assertions", checks: [
 
 **Solution:** Two new operations:
 - `configure({action: 'record_start', name: 'checkout-flow'})` — starts recording actions + network responses
-- `configure({action: 'record_stop'})` — saves recording to `~/.gasoline/recordings/`
+- `configure({action: 'record_stop'})` — saves recording to `~/.kaboom/recordings/`
 - `configure({action: 'replay', name: 'checkout-flow'})` — replays actions with mocked network responses
 
 **Key design:** Recording bundles actions + network response snapshots. Replay uses network mocking (feature 8) to inject saved responses, then executes actions via DOM primitives. The AI monitors each step and can self-heal if selectors changed.
@@ -348,7 +348,7 @@ observe({what: "assertions", checks: [
 
 **Drawing tools:** Circle/rectangle highlight, arrow, freehand draw, text pin. Each annotation gets an optional text note. Annotations are rendered as a canvas overlay — never modify the page DOM.
 
-**Why this matters:** Bridges the gap between what the human *sees* and what the AI *knows*. A circle around a misaligned button + "fix this" is worth 50 words of description. Turns Gasoline into a visual collaboration layer between human and AI — the human points, the AI fixes.
+**Why this matters:** Bridges the gap between what the human *sees* and what the AI *knows*. A circle around a misaligned button + "fix this" is worth 50 words of description. Turns Kaboom into a visual collaboration layer between human and AI — the human points, the AI fixes.
 
 **Key design decisions:**
 - Canvas overlay (not DOM injection) — zero interference with page layout/styles
@@ -366,7 +366,7 @@ observe({what: "assertions", checks: [
 |----------------|-----|
 | Backend log streaming | Network bodies already show error responses. AI has Bash to grep backend code. |
 | Test execution capture | AI runs `npm test` via Bash and sees output directly. |
-| Application Events API | Requires devs to instrument code for Gasoline. High friction. |
+| Application Events API | Requires devs to instrument code for Kaboom. High friction. |
 | Request tracing | Network waterfall + bodies already cover this. |
 | Code navigation | IDE (Claude Code, Cursor) already has full file access. |
 | Dev environment control | AI already has Bash for restart, env vars, etc. |

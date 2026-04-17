@@ -118,11 +118,11 @@ describe('WebSocket Toggle', () => {
   test('should send message to background when WebSocket toggled', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('webSocketCaptureEnabled', 'setWebSocketCaptureEnabled', true)
+    handleFeatureToggle('webSocketCaptureEnabled', 'set_web_socket_capture_enabled', true)
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setWebSocketCaptureEnabled' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_web_socket_capture_enabled' && c.arguments[0].enabled === true
       )
     )
   })
@@ -134,7 +134,7 @@ describe('WebSocket Toggle', () => {
 
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setWebSocketCaptureMode' && c.arguments[0].mode === 'high'
+        (c) => c.arguments[0].type === 'set_web_socket_capture_mode' && c.arguments[0].mode === 'high'
       )
     )
   })
@@ -183,12 +183,12 @@ describe('Debug Logging', () => {
   test('should toggle debug mode and send message to background', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('debugMode', 'setDebugMode', true)
+    handleFeatureToggle('debugMode', 'set_debug_mode', true)
 
     // Should have sent message to background (popup does not save to storage)
     assert.ok(
       mockChrome.runtime.sendMessage.mock.calls.some(
-        (c) => c.arguments[0].type === 'setDebugMode' && c.arguments[0].enabled === true
+        (c) => c.arguments[0].type === 'set_debug_mode' && c.arguments[0].enabled === true
       )
     )
   })

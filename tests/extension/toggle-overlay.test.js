@@ -23,10 +23,14 @@ let mockChrome
 let mockDocument
 let mockElements
 let runtimeMessageHandler
+let nextTimerId = 1
+let scheduledTimeouts
 
 function resetMocks() {
   mockElements = {}
   runtimeMessageHandler = null
+  nextTimerId = 1
+  scheduledTimeouts = new Map()
 
   mockChrome = {
     runtime: {
@@ -89,6 +93,14 @@ function resetMocks() {
   globalThis.chrome = mockChrome
   globalThis.document = mockDocument
   globalThis.requestAnimationFrame = (cb) => cb()
+  globalThis.setTimeout = mock.fn((_handler, _delay) => {
+    const timerId = nextTimerId++
+    scheduledTimeouts.set(timerId, { handler: _handler, delay: _delay })
+    return timerId
+  })
+  globalThis.clearTimeout = mock.fn((timerId) => {
+    scheduledTimeouts.delete(timerId)
+  })
 }
 
 function createMockElement(id) {
@@ -143,7 +155,7 @@ describe('Action Toasts Toggle', () => {
 
     // Send a toast message — should NOT be suppressed
     sendRuntimeMessage({
-      type: 'GASOLINE_ACTION_TOAST',
+      type: 'kaboom_action_toast',
       text: 'Clicking button',
       detail: 'Submit form',
       state: 'trying'
@@ -168,7 +180,7 @@ describe('Action Toasts Toggle', () => {
     mockDocument.createElement.mock.resetCalls()
 
     sendRuntimeMessage({
-      type: 'GASOLINE_ACTION_TOAST',
+      type: 'kaboom_action_toast',
       text: 'Should be suppressed',
       state: 'trying'
     })
@@ -189,13 +201,13 @@ describe('Action Toasts Toggle', () => {
     initRuntimeMessageListener()
 
     // Disable via runtime message (simulating user toggling in popup)
-    sendRuntimeMessage({ type: 'setActionToastsEnabled', enabled: false })
+    sendRuntimeMessage({ type: 'set_action_toasts_enabled', enabled: false })
 
     mockDocument.createElement.mock.resetCalls()
 
     // Now toast should be suppressed
     sendRuntimeMessage({
-      type: 'GASOLINE_ACTION_TOAST',
+      type: 'kaboom_action_toast',
       text: 'Should be suppressed',
       state: 'success'
     })
@@ -215,12 +227,12 @@ describe('Action Toasts Toggle', () => {
     initRuntimeMessageListener()
 
     // Re-enable
-    sendRuntimeMessage({ type: 'setActionToastsEnabled', enabled: true })
+    sendRuntimeMessage({ type: 'set_action_toasts_enabled', enabled: true })
 
     mockDocument.createElement.mock.resetCalls()
 
     sendRuntimeMessage({
-      type: 'GASOLINE_ACTION_TOAST',
+      type: 'kaboom_action_toast',
       text: 'Should appear',
       state: 'success'
     })
@@ -232,10 +244,10 @@ describe('Action Toasts Toggle', () => {
     // Test the popup side: handleFeatureToggle sends the right message
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('actionToastsEnabled', 'setActionToastsEnabled', false)
+    handleFeatureToggle('actionToastsEnabled', 'set_action_toasts_enabled', false)
 
     const calls = mockChrome.runtime.sendMessage.mock.calls
-    const toggleCall = calls.find((c) => c.arguments[0]?.type === 'setActionToastsEnabled')
+    const toggleCall = calls.find((c) => c.arguments[0]?.type === 'set_action_toasts_enabled')
     assert.ok(toggleCall, 'Should send setActionToastsEnabled message')
     assert.strictEqual(toggleCall.arguments[0].enabled, false)
   })
@@ -255,10 +267,10 @@ describe('Action Toasts Toggle', () => {
     assert.ok(bgHandler, 'Background should install message listener')
 
     const sendResponse = mock.fn()
-    bgHandler({ type: 'setActionToastsEnabled', enabled: false }, { id: mockChrome.runtime.id }, sendResponse)
+    bgHandler({ type: 'set_action_toasts_enabled', enabled: false }, { id: mockChrome.runtime.id }, sendResponse)
 
     assert.ok(
-      mockDeps.forwardToAllContentScripts.mock.calls.some((c) => c.arguments[0]?.type === 'setActionToastsEnabled'),
+      mockDeps.forwardToAllContentScripts.mock.calls.some((c) => c.arguments[0]?.type === 'set_action_toasts_enabled'),
       'Background should forward toggle to content scripts'
     )
     assert.ok(
@@ -285,14 +297,14 @@ describe('Subtitles Toggle', () => {
     initRuntimeMessageListener()
 
     sendRuntimeMessage({
-      type: 'GASOLINE_SUBTITLE',
+      type: 'kaboom_subtitle',
       text: 'Opening settings page'
     })
 
     // Subtitle creates/updates a div element
     assert.ok(
       mockDocument.createElement.mock.calls.length > 0 ||
-        mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'gasoline-subtitle'),
+        mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'kaboom-subtitle'),
       'Subtitle element should be created/accessed when enabled'
     )
   })
@@ -305,7 +317,7 @@ describe('Subtitles Toggle', () => {
 
     mockDocument.createElement.mock.resetCalls()
     const result = sendRuntimeMessage({
-      type: 'GASOLINE_SUBTITLE',
+      type: 'kaboom_subtitle',
       text: 'Should be suppressed'
     })
 
@@ -320,10 +332,10 @@ describe('Subtitles Toggle', () => {
     initRuntimeMessageListener()
 
     // Disable subtitles
-    sendRuntimeMessage({ type: 'setSubtitlesEnabled', enabled: false })
+    sendRuntimeMessage({ type: 'set_subtitles_enabled', enabled: false })
 
     const result = sendRuntimeMessage({
-      type: 'GASOLINE_SUBTITLE',
+      type: 'kaboom_subtitle',
       text: 'Should be suppressed'
     })
 
@@ -337,16 +349,16 @@ describe('Subtitles Toggle', () => {
     initRuntimeMessageListener()
 
     // Re-enable
-    sendRuntimeMessage({ type: 'setSubtitlesEnabled', enabled: true })
+    sendRuntimeMessage({ type: 'set_subtitles_enabled', enabled: true })
 
     sendRuntimeMessage({
-      type: 'GASOLINE_SUBTITLE',
+      type: 'kaboom_subtitle',
       text: 'Should appear now'
     })
 
     // Should attempt to create/access the subtitle element
     assert.ok(
-      mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'gasoline-subtitle') ||
+      mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'kaboom-subtitle') ||
         mockDocument.createElement.mock.calls.length > 0,
       'Subtitle should be shown after re-enabling'
     )
@@ -359,12 +371,12 @@ describe('Subtitles Toggle', () => {
     initRuntimeMessageListener()
 
     // Create a subtitle first
-    const subtitleEl = createMockElement('gasoline-subtitle')
+    const subtitleEl = createMockElement('kaboom-subtitle')
     subtitleEl.style = { opacity: '1' }
-    mockElements['gasoline-subtitle'] = subtitleEl
+    mockElements['kaboom-subtitle'] = subtitleEl
 
     // Send empty text to clear
-    sendRuntimeMessage({ type: 'GASOLINE_SUBTITLE', text: '' })
+    sendRuntimeMessage({ type: 'kaboom_subtitle', text: '' })
 
     // Should set opacity to 0 (fade out)
     assert.strictEqual(subtitleEl.style.opacity, '0', 'Should fade out subtitle on clear')
@@ -373,10 +385,10 @@ describe('Subtitles Toggle', () => {
   test('popup sends correct message type for subtitles toggle', async () => {
     const { handleFeatureToggle } = await import('../../extension/popup.js')
 
-    handleFeatureToggle('subtitlesEnabled', 'setSubtitlesEnabled', true)
+    handleFeatureToggle('subtitlesEnabled', 'set_subtitles_enabled', true)
 
     const calls = mockChrome.runtime.sendMessage.mock.calls
-    const toggleCall = calls.find((c) => c.arguments[0]?.type === 'setSubtitlesEnabled')
+    const toggleCall = calls.find((c) => c.arguments[0]?.type === 'set_subtitles_enabled')
     assert.ok(toggleCall, 'Should send setSubtitlesEnabled message')
     assert.strictEqual(toggleCall.arguments[0].enabled, true)
   })
@@ -393,10 +405,10 @@ describe('Subtitles Toggle', () => {
     const bgHandler = mockChrome.runtime.onMessage.addListener.mock.calls[0]?.arguments[0]
     const sendResponse = mock.fn()
 
-    bgHandler({ type: 'setSubtitlesEnabled', enabled: true }, { id: mockChrome.runtime.id }, sendResponse)
+    bgHandler({ type: 'set_subtitles_enabled', enabled: true }, { id: mockChrome.runtime.id }, sendResponse)
 
     assert.ok(
-      mockDeps.forwardToAllContentScripts.mock.calls.some((c) => c.arguments[0]?.type === 'setSubtitlesEnabled'),
+      mockDeps.forwardToAllContentScripts.mock.calls.some((c) => c.arguments[0]?.type === 'set_subtitles_enabled'),
       'Should forward subtitles toggle to content scripts'
     )
   })
@@ -419,22 +431,22 @@ describe('Overlay Toggle Edge Cases', () => {
     initRuntimeMessageListener()
 
     // Disable toasts, keep subtitles enabled
-    sendRuntimeMessage({ type: 'setActionToastsEnabled', enabled: false })
+    sendRuntimeMessage({ type: 'set_action_toasts_enabled', enabled: false })
 
     // Toast should be suppressed
     mockDocument.createElement.mock.resetCalls()
     sendRuntimeMessage({
-      type: 'GASOLINE_ACTION_TOAST',
+      type: 'kaboom_action_toast',
       text: 'Suppressed',
       state: 'trying'
     })
     assert.strictEqual(mockDocument.createElement.mock.calls.length, 0, 'Toast suppressed')
 
     // Subtitle should still work
-    sendRuntimeMessage({ type: 'GASOLINE_SUBTITLE', text: 'Still showing' })
-    // Subtitle accesses getElementById for 'gasoline-subtitle' — that's how we know it ran
+    sendRuntimeMessage({ type: 'kaboom_subtitle', text: 'Still showing' })
+    // Subtitle accesses getElementById for 'kaboom-subtitle' — that's how we know it ran
     assert.ok(
-      mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'gasoline-subtitle'),
+      mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'kaboom-subtitle'),
       'Subtitle still functional when only toasts disabled'
     )
   })
@@ -451,10 +463,10 @@ describe('Overlay Toggle Edge Cases', () => {
     mockDocument.createElement.mock.resetCalls()
 
     // Both should be suppressed
-    sendRuntimeMessage({ type: 'GASOLINE_ACTION_TOAST', text: 'Test', state: 'trying' })
+    sendRuntimeMessage({ type: 'kaboom_action_toast', text: 'Test', state: 'trying' })
     assert.strictEqual(mockDocument.createElement.mock.calls.length, 0, 'Toast suppressed from storage')
 
-    const result = sendRuntimeMessage({ type: 'GASOLINE_SUBTITLE', text: 'Test' })
+    const result = sendRuntimeMessage({ type: 'kaboom_subtitle', text: 'Test' })
     assert.strictEqual(result, false, 'Subtitle suppressed from storage')
   })
 
@@ -465,19 +477,19 @@ describe('Overlay Toggle Edge Cases', () => {
     initRuntimeMessageListener()
 
     // Ensure toasts are enabled (ESM module state may leak from prior tests)
-    sendRuntimeMessage({ type: 'setActionToastsEnabled', enabled: true })
+    sendRuntimeMessage({ type: 'set_action_toasts_enabled', enabled: true })
 
     // Send from a different extension ID (untrusted) — should be rejected
     const sendResponse = mock.fn()
     runtimeMessageHandler(
-      { type: 'setActionToastsEnabled', enabled: false },
+      { type: 'set_action_toasts_enabled', enabled: false },
       { id: 'different-extension-id' },
       sendResponse
     )
 
     // Should have been rejected — the toggle should still be enabled
     mockDocument.createElement.mock.resetCalls()
-    sendRuntimeMessage({ type: 'GASOLINE_ACTION_TOAST', text: 'Still works', state: 'trying' })
+    sendRuntimeMessage({ type: 'kaboom_action_toast', text: 'Still works', state: 'trying' })
     assert.ok(
       mockDocument.createElement.mock.calls.length > 0,
       'Toast should still work after rejecting untrusted toggle message'
@@ -491,13 +503,13 @@ describe('Overlay Toggle Edge Cases', () => {
     initRuntimeMessageListener()
 
     // Ensure toasts are enabled (ESM module state may leak from prior tests)
-    sendRuntimeMessage({ type: 'setActionToastsEnabled', enabled: true })
+    sendRuntimeMessage({ type: 'set_action_toasts_enabled', enabled: true })
 
     const states = ['trying', 'success', 'warning', 'error', 'audio']
     for (const state of states) {
       mockDocument.createElement.mock.resetCalls()
       sendRuntimeMessage({
-        type: 'GASOLINE_ACTION_TOAST',
+        type: 'kaboom_action_toast',
         text: `Test ${state}`,
         state
       })
@@ -513,12 +525,12 @@ describe('Overlay Toggle Edge Cases', () => {
 
     // Rapidly toggle 20 times
     for (let i = 0; i < 20; i++) {
-      sendRuntimeMessage({ type: 'setActionToastsEnabled', enabled: i % 2 === 0 })
+      sendRuntimeMessage({ type: 'set_action_toasts_enabled', enabled: i % 2 === 0 })
     }
 
     // After 20 toggles (last was i=19, enabled = false)
     mockDocument.createElement.mock.resetCalls()
-    sendRuntimeMessage({ type: 'GASOLINE_ACTION_TOAST', text: 'Test', state: 'trying' })
+    sendRuntimeMessage({ type: 'kaboom_action_toast', text: 'Test', state: 'trying' })
     assert.strictEqual(
       mockDocument.createElement.mock.calls.length,
       0,
@@ -526,9 +538,9 @@ describe('Overlay Toggle Edge Cases', () => {
     )
 
     // Toggle back ON
-    sendRuntimeMessage({ type: 'setActionToastsEnabled', enabled: true })
+    sendRuntimeMessage({ type: 'set_action_toasts_enabled', enabled: true })
     mockDocument.createElement.mock.resetCalls()
-    sendRuntimeMessage({ type: 'GASOLINE_ACTION_TOAST', text: 'Test', state: 'trying' })
+    sendRuntimeMessage({ type: 'kaboom_action_toast', text: 'Test', state: 'trying' })
     assert.ok(mockDocument.createElement.mock.calls.length > 0, 'Should be enabled after explicit ON')
   })
 
@@ -540,18 +552,18 @@ describe('Overlay Toggle Edge Cases', () => {
 
     // Rapidly toggle 20 times
     for (let i = 0; i < 20; i++) {
-      sendRuntimeMessage({ type: 'setSubtitlesEnabled', enabled: i % 2 === 0 })
+      sendRuntimeMessage({ type: 'set_subtitles_enabled', enabled: i % 2 === 0 })
     }
 
     // After 20 toggles (last was i=19, enabled = false)
-    const result = sendRuntimeMessage({ type: 'GASOLINE_SUBTITLE', text: 'Test' })
+    const result = sendRuntimeMessage({ type: 'kaboom_subtitle', text: 'Test' })
     assert.strictEqual(result, false, 'Subtitle should be disabled after rapid toggles ending OFF')
 
     // Toggle back ON
-    sendRuntimeMessage({ type: 'setSubtitlesEnabled', enabled: true })
-    sendRuntimeMessage({ type: 'GASOLINE_SUBTITLE', text: 'Should show' })
+    sendRuntimeMessage({ type: 'set_subtitles_enabled', enabled: true })
+    sendRuntimeMessage({ type: 'kaboom_subtitle', text: 'Should show' })
     assert.ok(
-      mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'gasoline-subtitle'),
+      mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'kaboom-subtitle'),
       'Subtitle should work after re-enabling'
     )
   })
@@ -567,10 +579,10 @@ describe('Overlay Toggle Edge Cases', () => {
     mockDocument.createElement.mock.resetCalls()
 
     // Recording watermark should still work even with overlays disabled
-    sendRuntimeMessage({ type: 'GASOLINE_RECORDING_WATERMARK', visible: true })
+    sendRuntimeMessage({ type: 'kaboom_recording_watermark', visible: true })
     assert.ok(
       mockDocument.createElement.mock.calls.length > 0 ||
-        mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'gasoline-recording-watermark'),
+        mockDocument.getElementById.mock.calls.some((c) => c.arguments[0] === 'kaboom-recording-watermark'),
       'Recording watermark should not be affected by overlay toggles'
     )
   })

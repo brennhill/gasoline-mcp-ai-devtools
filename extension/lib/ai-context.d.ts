@@ -11,12 +11,6 @@
  * This file re-exports from ai-context-parsing.ts and ai-context-enrichment.ts
  * so existing importers are unaffected.
  */
-export { parseStackFrames, parseSourceMap, extractSnippet, extractSourceSnippets, setSourceMapCache, getSourceMapCache, getSourceMapCacheSize, resetParsingForTesting } from './ai-context-parsing.js';
-export { detectFramework, getReactComponentAncestry, captureStateSnapshot, generateAiSummary, enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot, resetEnrichmentForTesting } from './ai-context-enrichment.js';
-/**
- * Reset all module state for testing purposes
- * Clears source map cache and restores default settings.
- * Call this in beforeEach/afterEach test hooks to prevent test pollution.
- */
-export declare function resetForTesting(): void;
+export { parseStackFrames, parseSourceMap, extractSnippet, extractSourceSnippets, setSourceMapCache, getSourceMapCache, getSourceMapCacheSize, } from './ai-context-parsing.js';
+export { detectFramework, getReactComponentAncestry, captureStateSnapshot, generateAiSummary, enrichErrorWithAiContext, setAiContextEnabled, setAiContextStateSnapshot, } from './ai-context-enrichment.js';
 //# sourceMappingURL=ai-context.d.ts.map

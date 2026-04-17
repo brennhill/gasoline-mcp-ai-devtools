@@ -11,11 +11,11 @@ last_verified_date: 2026-03-05
 
 ## Problem Statement
 
-Using Gasoline requires constant context-switching between the browser and the AI chat. The worst case is annotations: the user activates draw mode, draws on the page, hits ESC — then has to switch to chat, type "check my annotations," and wait for the AI to call `analyze({what: "annotations"})`. Even with `wait: true`, the AI has to initiate and then poll via correlation_id.
+Using Kaboom requires constant context-switching between the browser and the AI chat. The worst case is annotations: the user activates draw mode, draws on the page, hits ESC — then has to switch to chat, type "check my annotations," and wait for the AI to call `analyze({what: "annotations"})`. Even with `wait: true`, the AI has to initiate and then poll via correlation_id.
 
 Screenshots have the same problem. The user sees something wrong in the browser and wants the AI to see it — but has to switch contexts to ask.
 
-This friction breaks flow state and makes Gasoline feel like two disconnected tools instead of one.
+This friction breaks flow state and makes Kaboom feel like two disconnected tools instead of one.
 
 ## Solution
 
@@ -54,7 +54,7 @@ No context switch. No typing. The user stays in the browser until they're ready 
 1. User draws annotations and hits ESC
 2. Daemon detects the client doesn't support sampling
 3. Daemon queues the annotations in the inbox
-4. On the next Gasoline tool call (any tool), the response includes a `_pending_push` field with the queued annotations
+4. On the next Kaboom tool call (any tool), the response includes a `_pending_push` field with the queued annotations
 5. AI sees the piggybacked content and responds
 
 ## Client Capability Matrix
@@ -94,7 +94,7 @@ No context switch. No typing. The user stays in the browser until they're ready 
 - [ ] New observe mode: `observe({what: "inbox"})` returns queued push events
 - [ ] Push events are queued with timestamp, type (annotation/screenshot), and payload
 - [ ] Events are cleared after retrieval (read-once)
-- [ ] Any Gasoline tool response can piggyback pending push events via `_pending_push` field
+- [ ] Any Kaboom tool response can piggyback pending push events via `_pending_push` field
 - [ ] Skill/system prompt guidance instructs AI to check inbox periodically
 
 ### R6: Blocking wait for annotations
@@ -133,7 +133,7 @@ No context switch. No typing. The user stays in the browser until they're ready 
 ### Integration
 - Works with existing draw mode (no breaking changes to `draw_mode_start` or `annotations`)
 - Works with existing screenshot capture (`observe({what: "screenshot"})`)
-- Keyboard shortcuts don't conflict with browser defaults or existing Gasoline shortcuts
+- Keyboard shortcuts don't conflict with browser defaults or existing Kaboom shortcuts
 
 ## Relationship to Other Tools
 

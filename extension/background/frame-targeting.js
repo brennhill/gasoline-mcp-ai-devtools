@@ -4,8 +4,8 @@
  * Docs: docs/features/feature/interact-explore/index.md
  */
 import { normalizeFrameTarget } from '../lib/frame-utils.js';
-export const INVALID_FRAME_ERROR = 'invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value';
-export const FRAME_NOT_FOUND_ERROR = 'frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page';
+const INVALID_FRAME_ERROR = 'invalid_frame: frame parameter must be a CSS selector, 0-based index, or "all". Got unsupported type or value';
+const FRAME_NOT_FOUND_ERROR = 'frame_not_found: no iframe matched the given selector or index. Verify the iframe exists and is loaded on the page';
 /**
  * Normalize and validate a frame argument from tool params.
  * Throws with a stable error contract for unsupported values.

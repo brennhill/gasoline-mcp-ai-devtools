@@ -20,7 +20,7 @@ canonical: false
 
 ## Why this document exists
 
-Gasoline is shipping quickly and already has strong core architecture patterns (zero-dependency Go server, async queue model, extension command pipeline, drift checks for wire types). The next step is to make the system easier to evolve without regressions as tool surface area grows.
+Kaboom is shipping quickly and already has strong core architecture patterns (zero-dependency Go server, async queue model, extension command pipeline, drift checks for wire types). The next step is to make the system easier to evolve without regressions as tool surface area grows.
 
 This roadmap defines concrete architecture improvements with:
 
@@ -46,7 +46,7 @@ This is intentionally implementation-oriented and file-path specific.
 2. Cross-layer boundaries are mostly conventional, not enforced.
 3. Async command lifecycle semantics exist but are not centralized as a single typed model used by all tools.
 4. Injected DOM code is now generated, but the same generation model is not yet systematized for other self-contained executeScript payloads.
-5. Go tool composition still has substantial centralized logic in `cmd/dev-console/` and can become harder to extend safely.
+5. Go tool composition still has substantial centralized logic in `cmd/browser-agent/` and can become harder to extend safely.
 6. Integration tests are strong in places but not yet fully contract-driven across Go + TS boundaries.
 
 ## North-star outcomes
@@ -96,8 +96,8 @@ Introduce a canonical contract source file (or package) that can generate:
 2. Generator:
    - `scripts/generate-tool-contracts.js`
 3. Generated outputs:
-   - `cmd/dev-console/generated_tools_schema.go`
-   - `cmd/dev-console/generated_tools_actions.go`
+   - `cmd/browser-agent/generated_tools_schema.go`
+   - `cmd/browser-agent/generated_tools_actions.go`
    - `src/types/generated/tool-contracts.ts`
    - `docs/core/generated/tool-contract-matrix.md`
 
@@ -285,7 +285,7 @@ Optional compatibility methods during migration:
 
 1. `internal/tools/<tool>/module.go`
 2. `internal/tools/<tool>/validation.go`, `execute.go`, `describe.go`, `examples.go`
-3. `cmd/dev-console/tools_registry.go` for assembly only
+3. `cmd/browser-agent/tools_registry.go` for assembly only
 4. Keep `ToolHandler` as integration root during migration.
 
 ### Registry policy
@@ -305,7 +305,7 @@ Optional compatibility methods during migration:
 
 1. New tool actions added without modifying large central switches/maps.
 2. Per-tool unit tests run without full server setup.
-3. Central `cmd/dev-console/` files trend downward in complexity.
+3. Central `cmd/browser-agent/` files trend downward in complexity.
 
 ## Improvement Track F: Contract-driven Testing
 
@@ -336,7 +336,7 @@ Validate behavior at boundaries, not just units.
 
 ### Concrete additions
 
-1. Extend `cmd/dev-console/tools_schema_parity_test.go` style across all tools.
+1. Extend `cmd/browser-agent/tools_schema_parity_test.go` style across all tools.
 2. Add fixture-based boundary tests under `tests/integration/contracts/`:
    - each fixture includes request, extension mock output, and expected MCP envelope
 3. Add shared lifecycle transition fixtures and expected envelopes:

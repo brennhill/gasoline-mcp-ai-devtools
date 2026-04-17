@@ -283,13 +283,13 @@ Response includes TTL section:
 Examples:
 ```bash
 # 15-minute global TTL
-gasoline --ttl 15m
+kaboom --ttl 15m
 
 # Different TTL per buffer
-gasoline --ttl 30m --ttl-network 5m --ttl-websocket 1h
+kaboom --ttl 30m --ttl-network 5m --ttl-websocket 1h
 
 # Unlimited (default)
-gasoline
+kaboom
 ```
 
 ---
@@ -356,7 +356,7 @@ func (c *Capture) GetWebSocketEvents(filter WebSocketEventFilter) []WebSocketEve
 
 ### Eviction Strategy: Time-Based (Not LRU)
 
-Gasoline uses **time-based eviction** via TTL, not LRU. The reasoning:
+Kaboom uses **time-based eviction** via TTL, not LRU. The reasoning:
 
 1. **Predictability**: Time-based eviction is deterministic. AI agents can reason about what data is available based on elapsed time.
 
@@ -456,11 +456,11 @@ As an alternative to CLI flags:
 
 | Variable | Equivalent Flag |
 |----------|-----------------|
-| `GASOLINE_TTL` | `--ttl` |
-| `GASOLINE_TTL_CONSOLE` | `--ttl-console` |
-| `GASOLINE_TTL_NETWORK` | `--ttl-network` |
-| `GASOLINE_TTL_WEBSOCKET` | `--ttl-websocket` |
-| `GASOLINE_TTL_ACTIONS` | `--ttl-actions` |
+| `KABOOM_TTL` | `--ttl` |
+| `KABOOM_TTL_CONSOLE` | `--ttl-console` |
+| `KABOOM_TTL_NETWORK` | `--ttl-network` |
+| `KABOOM_TTL_WEBSOCKET` | `--ttl-websocket` |
+| `KABOOM_TTL_ACTIONS` | `--ttl-actions` |
 
 ### Presets (via MCP)
 
@@ -550,7 +550,7 @@ Common TTL configurations can be applied via presets:
 
 ### Test File Location
 
-Tests go in `cmd/dev-console/ttl_test.go` (extending existing file).
+Tests go in `cmd/browser-agent/ttl_test.go` (extending existing file).
 
 ---
 
@@ -605,13 +605,13 @@ New capabilities are additive:
 
 | File | Purpose |
 |------|---------|
-| `cmd/dev-console/ttl.go` | TTL types, parsing, resolution logic |
-| `cmd/dev-console/ttl_test.go` | TTL tests |
-| `cmd/dev-console/types.go` | TTLConfig struct definition |
-| `cmd/dev-console/tools_core.go` | MCP tool schema update |
-| `cmd/dev-console/configure.go` | TTL action handler |
-| `cmd/dev-console/health.go` | Health endpoint TTL section |
-| `cmd/dev-console/main.go` | CLI flag parsing |
+| `cmd/browser-agent/ttl.go` | TTL types, parsing, resolution logic |
+| `cmd/browser-agent/ttl_test.go` | TTL tests |
+| `cmd/browser-agent/types.go` | TTLConfig struct definition |
+| `cmd/browser-agent/tools_core.go` | MCP tool schema update |
+| `cmd/browser-agent/configure.go` | TTL action handler |
+| `cmd/browser-agent/health.go` | Health endpoint TTL section |
+| `cmd/browser-agent/main.go` | CLI flag parsing |
 
 ---
 

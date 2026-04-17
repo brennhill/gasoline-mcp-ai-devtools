@@ -79,7 +79,7 @@ function createHandlerFunctions() {
     if (action === 'start') {
       try {
         const result = await globalThis.chrome.tabs.sendMessage(tabId, {
-          type: 'GASOLINE_DRAW_MODE_START',
+          type: 'kaboom_draw_mode_start',
           started_by: 'llm'
         })
         sendResult(syncClient, query.id, {
@@ -151,15 +151,15 @@ function createHandlerFunctions() {
         const tab = tabs[0]
         if (!tab?.id) return
         try {
-          const result = await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_GET_ANNOTATIONS' })
+          const result = await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'kaboom_get_annotations' })
           if (result?.draw_mode_active) {
-            await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_STOP' })
+            await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'kaboom_draw_mode_stop' })
           } else {
-            await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_START', started_by: 'user' })
+            await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'kaboom_draw_mode_start', started_by: 'user' })
           }
         } catch {
           try {
-            await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'GASOLINE_DRAW_MODE_START', started_by: 'user' })
+            await globalThis.chrome.tabs.sendMessage(tab.id, { type: 'kaboom_draw_mode_start', started_by: 'user' })
           } catch {
             debugLog('warn', 'Cannot reach content script for draw mode toggle')
           }
@@ -198,7 +198,7 @@ describe('Draw Mode Handler — handleDrawModeQuery', () => {
     assert.strictEqual(mockTabs.sendMessage.mock.calls.length, 1)
     const call = mockTabs.sendMessage.mock.calls[0]
     assert.strictEqual(call.arguments[0], 42)
-    assert.strictEqual(call.arguments[1].type, 'GASOLINE_DRAW_MODE_START')
+    assert.strictEqual(call.arguments[1].type, 'kaboom_draw_mode_start')
     assert.strictEqual(call.arguments[1].started_by, 'llm')
 
     assert.strictEqual(results.length, 1)
@@ -391,7 +391,7 @@ describe('Draw Mode Handler — installDrawModeCommandListener', () => {
 
     // First call: GET_ANNOTATIONS, second call: DRAW_MODE_START
     assert.strictEqual(mockTabs.sendMessage.mock.calls.length, 2)
-    assert.strictEqual(mockTabs.sendMessage.mock.calls[1].arguments[1].type, 'GASOLINE_DRAW_MODE_START')
+    assert.strictEqual(mockTabs.sendMessage.mock.calls[1].arguments[1].type, 'kaboom_draw_mode_start')
     assert.strictEqual(mockTabs.sendMessage.mock.calls[1].arguments[1].started_by, 'user')
   })
 
@@ -404,7 +404,7 @@ describe('Draw Mode Handler — installDrawModeCommandListener', () => {
     await listener('toggle_draw_mode')
 
     assert.strictEqual(mockTabs.sendMessage.mock.calls.length, 2)
-    assert.strictEqual(mockTabs.sendMessage.mock.calls[1].arguments[1].type, 'GASOLINE_DRAW_MODE_STOP')
+    assert.strictEqual(mockTabs.sendMessage.mock.calls[1].arguments[1].type, 'kaboom_draw_mode_stop')
   })
 
   test('tries to activate when content script unreachable', async () => {

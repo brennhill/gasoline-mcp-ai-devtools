@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/server"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/server"
 )
 
 // setupTestCapture creates a new Capture instance for testing.

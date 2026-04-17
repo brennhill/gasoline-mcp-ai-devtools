@@ -4,7 +4,7 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Error Recovery Strategy - Gasoline MCP
+# Error Recovery Strategy - Kaboom MCP
 
 **Version:** v5.8+
 **Last Updated:** 2026-02-07
@@ -13,7 +13,7 @@ last_reviewed: 2026-02-16
 
 ## Overview
 
-Gasoline implements a multi-layered error recovery strategy to handle transient failures, network timeouts, and server crashes gracefully. The system combines timeout escalation, exponential backoff, circuit breakers, and fallback mechanisms to maintain reliability under adverse conditions.
+Kaboom implements a multi-layered error recovery strategy to handle transient failures, network timeouts, and server crashes gracefully. The system combines timeout escalation, exponential backoff, circuit breakers, and fallback mechanisms to maintain reliability under adverse conditions.
 
 ---
 
@@ -47,7 +47,7 @@ These constants define the timing boundaries for various recovery mechanisms:
 
 ### Layer 1: Bridge Mode Startup Failure
 
-When Gasoline MCP starts, it attempts to connect to or spawn an HTTP server daemon.
+When Kaboom MCP starts, it attempts to connect to or spawn an HTTP server daemon.
 
 #### Fast-Start Strategy
 
@@ -260,7 +260,7 @@ Invariant violations are logged as warnings and trigger diagnostic collection.
 
 **ECONNREFUSED** (Connection refused)
 - Cause: Server not running or port wrong
-- Recovery: Check port setting, verify server startup with `ps aux | grep gasoline`
+- Recovery: Check port setting, verify server startup with `ps aux | grep kaboom`
 - Timing: Immediate, don't retry
 
 **ECONNRESET** (Connection reset by peer)
@@ -278,7 +278,7 @@ Invariant violations are logged as warnings and trigger diagnostic collection.
 **Daemon spawn failure**
 - Error: `Failed to start daemon: {reason}`
 - Recovery: Node.js wrapper spawns detached process; manual kill if zombie
-- Action: `lsof -ti :7890 | xargs kill; gasoline-mcp --port 7891`
+- Action: `lsof -ti :7890 | xargs kill; kaboom-mcp --port 7891`
 
 **Port already in use**
 - Error: `Port already bound` or `Address already in use`
@@ -315,13 +315,13 @@ Invariant violations are logged as warnings and trigger diagnostic collection.
 
 ```bash
 # Override port (default: 7890)
-GASOLINE_PORT=7891 npx gasoline-mcp
+KABOOM_PORT=7891 npx kaboom-mcp
 
 # Keep server running after MCP disconnect
-npx gasoline-mcp --persist
+npx kaboom-mcp --persist
 
 # Enable debug logging
-DEBUG=gasoline:* npx gasoline-mcp
+DEBUG=kaboom:* npx kaboom-mcp
 ```
 
 ### Extension Configuration
@@ -363,10 +363,10 @@ Enable in popup → Debugging → Debug Mode to capture:
 
 ```bash
 # Watch for timeout patterns
-grep -i "timeout\|escalate" ~gasoline-logs.jsonl | tail -20
+grep -i "timeout\|escalate" ~kaboom-logs.jsonl | tail -20
 
 # Count circuit breaker state changes
-grep "circuit.*open\|circuit.*closed" ~/.claude/gasoline.log | wc -l
+grep "circuit.*open\|circuit.*closed" ~/.claude/kaboom.log | wc -l
 
 # Find slow requests
 grep "duration_ms" -o | sort -n | tail -10

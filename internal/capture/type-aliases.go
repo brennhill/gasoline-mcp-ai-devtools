@@ -5,10 +5,10 @@
 package capture
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/circuit"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/performance"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/queries"
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/recording"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/circuit"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/performance"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/recording"
 )
 
 // Type aliases for imported packages to avoid qualifying every use.
@@ -56,4 +56,8 @@ type (
 
 // NewCircuitBreaker is re-exported from internal/circuit for backward compatibility.
 var NewCircuitBreaker = circuit.NewCircuitBreaker
+
+// Lifecycle and debug logger subsystem types are re-exported from:
+// - internal/lifecycle (LifecycleObserver, LifecycleEvent, LifecycleListener) — see lifecycle_observer.go
+// - internal/debuglog (DebugLogger) — see debug_logger.go
 

@@ -19,7 +19,7 @@ last_verified_date: 2026-03-05
 ### System Diagram
 ```
 ┌─────────────────────────────────────────────────────┐
-│  Gasoline MCP Server (Go)                           │
+│  Kaboom MCP Server (Go)                           │
 │  ┌───────────────────────────────────────────────┐  │
 │  │ Timeline Query Engine                         │  │
 │  │ - Parse timeline queries (correlation_id, etc)│  │
@@ -137,7 +137,7 @@ last_verified_date: 2026-03-05
 2. **Export Manager**
    - Snapshot timeline to JSON file
    - Compress with gzip
-   - Store in `.gasoline/exports/`
+   - Store in `.kaboom/exports/`
    - TTL cleanup (7 days default)
    - Generate shareable export URLs
 
@@ -221,7 +221,7 @@ interact({
 })
 → {
     export_id: "export-20260131-101600-001",
-    file_path: ".gasoline/exports/test-payment-001-20260131.json.gz",
+    file_path: ".kaboom/exports/test-payment-001-20260131.json.gz",
     size_bytes: 125000,
     events_count: 47,
     timestamp: "2026-01-31T10:16:00Z"

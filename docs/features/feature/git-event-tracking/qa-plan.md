@@ -19,11 +19,11 @@ last_verified_date: 2026-03-05
 ### Scenario 1: Hook Installation & Simple Commit
 #### Setup:
 - Test Git repository initialized
-- Gasoline MCP server running
+- Kaboom MCP server running
 - Hooks not yet installed
 
 #### Steps:
-1. Run `gasoline install-hooks /path/to/repo`
+1. Run `kaboom install-hooks /path/to/repo`
 2. Verify hooks installed in `.git/hooks/`
 3. Make a simple commit: `git commit -m "Test commit"`
 4. Query `observe({what: 'git-events', type: 'git:commit'})`
@@ -72,17 +72,17 @@ last_verified_date: 2026-03-05
 
 ### Scenario 3: Branch Switching (Checkout)
 #### Setup:
-- Multiple branches exist in repo: main, feature-x, feature-y
+- Multiple branches exist in repo: stable, feature-x, feature-y
 
 #### Steps:
-1. Start on main branch
+1. Start on stable branch
 2. Run `git checkout feature-x`
 3. Query `observe({what: 'git-events', type: 'git:checkout'})`
 4. Verify branch switch event
 
 #### Expected Result:
 - git:checkout event emitted
-- Event shows: from_branch="main", to_branch="feature-x"
+- Event shows: from_branch="stable", to_branch="feature-x"
 - Commit hash of feature-x head included
 - Event timestamp matches checkout time
 
@@ -123,7 +123,7 @@ last_verified_date: 2026-03-05
 - Two branches with independent commits
 
 #### Steps:
-1. On main branch: `git merge feature-x`
+1. On stable branch: `git merge feature-x`
 2. Query for merge events: `observe({what: 'git-events', type: 'git:merge*'})`
 
 #### Expected Result:
@@ -145,7 +145,7 @@ last_verified_date: 2026-03-05
 - Two branches with conflicting changes
 
 #### Steps:
-1. On main branch: `git merge feature-x`
+1. On stable branch: `git merge feature-x`
 2. Conflicts detected
 3. Resolve conflicts manually
 4. Query merge events
@@ -169,19 +169,19 @@ last_verified_date: 2026-03-05
 - Feature branch with 3 commits, main has new commits
 
 #### Steps:
-1. On feature branch: `git rebase main`
+1. On feature branch: `git rebase stable`
 2. All commits replay cleanly
 3. Query for rebase events
 
 #### Expected Result:
-- git:rebase:start event with base_branch="main", commits=3
+- git:rebase:start event with base_branch="stable", commits=3
 - No conflict events
 - git:rebase:complete event on success
 - Rebase time captured
 
 #### Acceptance Criteria:
 - [ ] Rebase start event shows correct number of commits
-- [ ] Base branch is "main"
+- [ ] Base branch is "stable"
 - [ ] Complete event emitted after rebase finishes
 - [ ] All commits replayed (verified by commit hash)
 
@@ -189,10 +189,10 @@ last_verified_date: 2026-03-05
 
 ### Scenario 8: Rebase with Conflicts
 #### Setup:
-- Feature branch with conflicts when rebasing onto main
+- Feature branch with conflicts when rebasing onto stable
 
 #### Steps:
-1. On feature branch: `git rebase main`
+1. On feature branch: `git rebase stable`
 2. Conflict detected, interactive resolution required
 3. Resolve conflicts, continue rebase
 4. Query rebase events
@@ -358,7 +358,7 @@ last_verified_date: 2026-03-05
   "service": "git",
   "fields": {
     "from_branch": "feature/payment-timeout",
-    "to_branch": "main",
+    "to_branch": "stable",
     "commit": "abc1234567890def"
   }
 }
@@ -394,7 +394,7 @@ echo "feature code" >> file.txt
 git commit -am "Add feature"
 
 # Go back to main and make conflicting change
-git checkout main
+git checkout stable
 echo "main code" >> file.txt
 git commit -am "Main change"
 

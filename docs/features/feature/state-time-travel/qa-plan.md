@@ -33,7 +33,7 @@ last_verified_date: 2026-03-05
 
 #### Unit Tests: Ring Buffer & Storage
 
-- [ ] **Storage in sessionStorage** — Events written to `sessionStorage['gasoline-event-buffer']`
+- [ ] **Storage in sessionStorage** — Events written to `sessionStorage['kaboom-event-buffer']`
 - [ ] **Recovery on reload** — After page reload, buffer restored from sessionStorage
 - [ ] **FIFO eviction** — When buffer exceeds 60 seconds, oldest events dropped
 - [ ] **Capacity management** — Buffer size stays under 5MB limit
@@ -111,11 +111,11 @@ last_verified_date: 2026-03-05
 3. Submit goes to server (or dummy endpoint)
 
 #### Steps:
-1. [ ] Load page with Gasoline attached
+1. [ ] Load page with Kaboom attached
 2. [ ] Enter email in form field
 3. [ ] Click Submit button
 4. [ ] Page reloads
-5. [ ] After reload, open Gasoline DevTools → History tab
+5. [ ] After reload, open Kaboom DevTools → History tab
 6. [ ] Call `observe({what: 'history'})`
 
 #### Expected Result:
@@ -247,9 +247,9 @@ last_verified_date: 2026-03-05
 2. Reproduce a bug (e.g., task doesn't save, button doesn't respond)
 
 #### Steps:
-1. [ ] Load page with Gasoline
+1. [ ] Load page with Kaboom
 2. [ ] Perform actions that trigger the bug (click, input, etc.)
-3. [ ] Open Gasoline DevTools → History tab
+3. [ ] Open Kaboom DevTools → History tab
 4. [ ] Review the timeline
 
 #### Expected Result:

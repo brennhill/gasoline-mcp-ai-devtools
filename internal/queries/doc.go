@@ -4,7 +4,7 @@
 
 /*
 Package queries implements the asynchronous command dispatch system between the
-Gasoline MCP server and the browser extension.
+Kaboom MCP server and the browser extension.
 
 Key types:
   - QueryDispatcher: manages pending queries, results, expiration, and queue capacity.
@@ -15,6 +15,6 @@ Key functions:
   - NewQueryDispatcher: creates a dispatcher with configurable queue size and TTL.
   - CreateQuery: queues a new command for extension delivery.
   - GetQueryResult: retrieves and consumes a one-time result by correlation ID.
-  - NormalizeCommandStatus: maps extension status values into canonical lifecycle states.
+  - normalizeCommandStatus: maps extension status values into canonical lifecycle states.
 */
 package queries

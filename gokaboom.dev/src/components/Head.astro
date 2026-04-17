@@ -1,0 +1,22 @@
+---
+// Head.astro — Global head injection for analytics + markdown mirror discovery.
+// Registered as a Starlight component override — must render starlightRoute.head
+// entries to preserve SEO meta, OpenGraph tags, etc. from Starlight.
+
+const { head } = Astro.locals.starlightRoute;
+const siteBase = Astro.site?.toString() ?? 'https://gokaboom.dev';
+const path = Astro.url?.pathname ?? '/';
+const normalizedPath = path === '/' ? 'index' : path.replace(/^\/+|\/+$/g, '') || 'index';
+const markdownUrl = new URL(`/${normalizedPath}.md`, siteBase).toString();
+---
+
+{head.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
+<meta name="robots" content="index,follow" />
+<meta name="content-signal" content="ai-train=yes, search=yes, ai-input=yes" />
+<link rel="alternate" type="text/markdown" href={markdownUrl} />
+<script
+  id="counterscale-script"
+  data-site-id="gokaboom.dev"
+  src="https://t.gokaboom.dev/tracker.js"
+  defer
+></script>

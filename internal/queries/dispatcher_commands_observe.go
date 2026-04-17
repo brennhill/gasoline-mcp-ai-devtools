@@ -57,7 +57,7 @@ func (qd *QueryDispatcher) GetFailedCommands() []*CommandResult {
 		}
 	}
 	for _, cmd := range qd.completedResults {
-		if cmd == nil || !IsFailedCommandStatus(cmd.Status) {
+		if cmd == nil || !isFailedCommandStatus(cmd.Status) {
 			continue
 		}
 		if _, exists := seen[cmd.CorrelationID]; exists {

@@ -147,11 +147,11 @@ AI: "Analyzing application structure...
 
 Based on this vision, here's what the core thesis could be:
 
-> **Gasoline enables AI to understand, debug, and improve web applications through semantic observability, causal reasoning, and closed-loop verification.**
+> **Kaboom enables AI to understand, debug, and improve web applications through semantic observability, causal reasoning, and closed-loop verification.**
 
 Or more simply:
 
-> **Gasoline gives AI the eyes, brain, and hands to autonomously work with web applications.**
+> **Kaboom gives AI the eyes, brain, and hands to autonomously work with web applications.**
 
 ---
 
@@ -168,9 +168,9 @@ Or more simply:
 
 ---
 
-## What This Means for Gasoline
+## What This Means for Kaboom
 
-If we embrace this vision, Gasoline's role shifts:
+If we embrace this vision, Kaboom's role shifts:
 
 **From:** A browser telemetry tool that exposes data to AI
 

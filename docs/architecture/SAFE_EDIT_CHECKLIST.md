@@ -31,7 +31,7 @@ Use this checklist when requesting or implementing changes.
 
 ## 3) Validation Gates (pick all applicable)
 
-- [ ] `go test ./cmd/dev-console/...`
+- [ ] `go test ./cmd/browser-agent/...`
 - [ ] `go test ./internal/...`
 - [ ] `make test`
 - [ ] `make check-wire-drift`

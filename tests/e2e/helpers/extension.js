@@ -16,7 +16,7 @@ import fs from 'fs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const projectRoot = path.join(__dirname, '..', '..')
 const extensionPath = path.join(projectRoot, 'extension')
-const binaryPath = path.join(projectRoot, 'dist', 'gasoline')
+const binaryPath = path.join(projectRoot, 'dist', 'kaboom-agentic-browser')
 
 /**
  * Find a free port on localhost
@@ -153,7 +153,7 @@ export const test = base.extend({
       return new Promise((resolve) => {
         const url = `http://127.0.0.1:${port}`
         chrome.storage.local.set({ serverUrl: url }, () => {
-          chrome.runtime.sendMessage({ type: 'setServerUrl', url }, () => {
+          chrome.runtime.sendMessage({ type: 'set_server_url', url }, () => {
             resolve()
           })
         })

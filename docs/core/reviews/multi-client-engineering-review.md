@@ -99,7 +99,7 @@ func (rb *RingBuffer[T]) ReadFrom(cursor int64) ([]T, int64) {
 }
 ```
 
-**Trade-off**: This uses more memory (pointer per slot) but eliminates all lock contention between readers and writers. For Gasoline's workload (high-frequency writes from extension, concurrent reads from multiple clients), this is the right choice.
+**Trade-off**: This uses more memory (pointer per slot) but eliminates all lock contention between readers and writers. For Kaboom's workload (high-frequency writes from extension, concurrent reads from multiple clients), this is the right choice.
 
 #### Alternative: Simpler RWMutex-Only Approach
 
@@ -297,7 +297,7 @@ func (v *Capture) GetWebSocketEventsForClient(
 
 With N clients and M tabs, naive fan-out is O(N*M) per event. But since:
 - N is bounded at 10
-- M (active tabs with Gasoline content scripts) is typically 1-3
+- M (active tabs with Kaboom content scripts) is typically 1-3
 - Events are batched by extension
 
 The actual overhead is negligible. No optimization needed for MVP.
@@ -360,7 +360,7 @@ func (m *SSEManager) Broadcast(event SSEEvent) {
 }
 
 func (m *SSEManager) Handler(w http.ResponseWriter, r *http.Request) {
-    clientID := r.Header.Get("X-Gasoline-Client")
+    clientID := r.Header.Get("X-Kaboom-Client")
 
     flusher, ok := w.(http.Flusher)
     if !ok {
@@ -415,7 +415,7 @@ Expose in `/health` so operators can detect degraded clients.
 #### The Spec's Proposal (lines 539-569)
 
 ```
-.gasoline/
+.kaboom/
   server.log
   clients/
     abc123.log
@@ -433,7 +433,7 @@ This creates 5+ files that must be coordinated. Concurrent writes to `shared/*.l
 #### Recommended: Single Append-Only JSONL
 
 ```
-~/.gasoline/gasoline.log    # Single file, all events
+~/.kaboom/kaboom.log    # Single file, all events
 ```
 
 Each line includes client ID for filtering:
@@ -446,8 +446,8 @@ Each line includes client ID for filtering:
 
 **Benefits**:
 1. Single append-only writer - no coordination needed
-2. `grep client=abc123 gasoline.log` for per-client filtering
-3. Simple rotation: `mv gasoline.log gasoline.log.1 && gzip gasoline.log.1`
+2. `grep client=abc123 kaboom.log` for per-client filtering
+3. Simple rotation: `mv kaboom.log kaboom.log.1 && gzip kaboom.log.1`
 4. Works with existing `tail -f` workflows
 
 **Concurrent Write Handling**:
@@ -571,7 +571,7 @@ Add explicit chaos testing items:
 
 ### Alternative A: Process-Per-Client (Rejected)
 
-Instead of multi-client server, each Claude Code session spawns its own gasoline process on a unique port. Extension connects to multiple ports.
+Instead of multi-client server, each Claude Code session spawns its own kaboom process on a unique port. Extension connects to multiple ports.
 
 **Why Rejected**: Requires extension changes to manage multiple connections. Violates "extension stays simple" principle.
 

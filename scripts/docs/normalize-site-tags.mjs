@@ -3,7 +3,7 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 
-const docsRoot = path.join(process.cwd(), 'cookwithgasoline.com/src/content/docs')
+const docsRoot = path.join(process.cwd(), 'gokaboom.dev/src/content/docs')
 
 const synonyms = {
   'bug-triage': ['bug repro', 'bug reproduction', 'repro', 'triage', 'incident triage'],

@@ -22,7 +22,7 @@ last_verified_date: 2026-03-05
 
 Google's Core Web Vitals — FCP, LCP, CLS, and INP — are the industry-standard metrics for measuring user-perceived page performance. They determine search ranking, they're what Lighthouse measures, and they're what developers talk about when discussing "is my page fast?"
 
-Gasoline already captures FCP, LCP, and CLS via PerformanceObservers, but they're buried inside performance snapshots as implementation details. They're not exposed as first-class metrics the AI can reason about independently, and INP (Interaction to Next Paint, the metric that replaced FID in March 2024) isn't captured at all.
+Kaboom already captures FCP, LCP, and CLS via PerformanceObservers, but they're buried inside performance snapshots as implementation details. They're not exposed as first-class metrics the AI can reason about independently, and INP (Interaction to Next Paint, the metric that replaced FID in March 2024) isn't captured at all.
 
 Web vitals capture promotes these metrics to a dedicated MCP tool with proper semantics: the AI can ask "what are the web vitals for this page?" and get a response that matches what Google's tools would report, using the same measurement methodology and the same good/needs-improvement/poor thresholds.
 
@@ -36,9 +36,9 @@ Web vitals capture promotes these metrics to a dedicated MCP tool with proper se
 
 **INP fills the interaction gap**: The existing performance budget monitor measures load performance. INP measures responsiveness — how long the browser takes to respond to user interactions (clicks, taps, key presses). Without INP, the AI has no visibility into janky interactions that frustrate users but don't affect load time.
 
-**Interoperability with Google's ecosystem**: The thresholds (good: <X, poor: >Y) and measurement methodology match Google's web-vitals library exactly. Reports from Gasoline are directly comparable to Lighthouse scores, CrUX data, and Web Vitals Chrome Extension readings. Teams using these tools get consistent numbers.
+**Interoperability with Google's ecosystem**: The thresholds (good: <X, poor: >Y) and measurement methodology match Google's web-vitals library exactly. Reports from Kaboom are directly comparable to Lighthouse scores, CrUX data, and Web Vitals Chrome Extension readings. Teams using these tools get consistent numbers.
 
-**Continuous measurement vs. one-shot audits**: Lighthouse runs once and gives you a snapshot. Gasoline captures web vitals continuously across every page load during development. The AI builds baselines over multiple loads and detects trends — "LCP has been creeping up over the last 5 reloads."
+**Continuous measurement vs. one-shot audits**: Lighthouse runs once and gives you a snapshot. Kaboom captures web vitals continuously across every page load during development. The AI builds baselines over multiple loads and detects trends — "LCP has been creeping up over the last 5 reloads."
 
 ---
 
@@ -225,6 +225,6 @@ The push notification on regression includes INP alerts: "INP regressed from 120
 
 Extension implementation: `extension/inject.js` (INP observer, LCP finalization, vitals collection).
 
-Server implementation: `cmd/dev-console/performance.go` (vitals storage, MCP tool handler, threshold classification).
+Server implementation: `cmd/browser-agent/performance.go` (vitals storage, MCP tool handler, threshold classification).
 
-Tests: `extension-tests/web-vitals.test.js` (extension-side), `cmd/dev-console/performance_test.go` (server-side).
+Tests: `extension-tests/web-vitals.test.js` (extension-side), `cmd/browser-agent/performance_test.go` (server-side).

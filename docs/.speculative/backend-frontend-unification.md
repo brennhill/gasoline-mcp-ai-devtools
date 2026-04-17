@@ -11,7 +11,7 @@ last-verified: 2026-01-31
 
 ## Vision Statement
 
-**Gasoline evolves from browser-centric debugging to unified system observability.** v7 enables AI to debug across the entire stack—browser, backend, infrastructure, tests—as a single coherent system, not isolated silos.
+**Kaboom evolves from browser-centric debugging to unified system observability.** v7 enables AI to debug across the entire stack—browser, backend, infrastructure, tests—as a single coherent system, not isolated silos.
 
 Currently, AI debugging is **asymmetric**:
 - ✅ **Eyes:** Perfect browser telemetry (logs, network, DOM, screenshots)
@@ -79,7 +79,7 @@ User reports issue
 
 ### Phase 1: EARS — Ingest Backend Data
 
-**Goal:** Connect backend logs, tests, and code changes into Gasoline's temporal buffer.
+**Goal:** Connect backend logs, tests, and code changes into Kaboom's temporal buffer.
 
 | Feature | What It Does | Why It Matters | Effort |
 |---------|-------------|---|--------|
@@ -128,10 +128,10 @@ User reports issue
 
 | Use Case | Before | After |
 |----------|--------|-------|
-| **"Why did checkout fail?"** | Check 5 separate tools (browser, server logs, DB logs, test suite, git) | Open Gasoline, see unified timeline with causality |
+| **"Why did checkout fail?"** | Check 5 separate tools (browser, server logs, DB logs, test suite, git) | Open Kaboom, see unified timeline with causality |
 | **"Is this a race condition?"** | Trace through code manually | AI simulates with timing variations, detects automatically |
 | **"Did this test ever pass?"** | Search git history | AI checks historical snapshots with full context |
-| **"What changed 3 days ago?"** | `git log -p` | Gasoline shows exact moment behavior changed, with test coverage |
+| **"What changed 3 days ago?"** | `git log -p` | Kaboom shows exact moment behavior changed, with test coverage |
 
 ---
 
@@ -179,7 +179,7 @@ All data normalized to:
 ```javascript
 // App code can inject correlation
 window.postMessage({
-  type: 'gasoline:event',
+  type: 'kaboom:event',
   event: {
     name: 'payment_started',
     correlation_id: 'abc123',  // From backend
@@ -233,7 +233,7 @@ window.postMessage({
 ## Design Principles
 
 ### 1. Privacy First
-- Data stays local (Gasoline server on localhost)
+- Data stays local (Kaboom server on localhost)
 - No remote service connectors (New Relic, DataDog, etc.)
 - Optional redaction patterns for PII
 - Compliance by default (GDPR, SOC2)
@@ -244,12 +244,12 @@ window.postMessage({
 - Auto-detection where possible (trace IDs in headers)
 
 ### 3. No Dependencies
-- Keep Gasoline's zero-deps promise
+- Keep Kaboom's zero-deps promise
 - Use standard log formats (JSON, syslog, plain text)
 - Parse locally, don't require special exporters
 
 ### 4. Backwards Compatible
-- All existing Gasoline features work unchanged
+- All existing Kaboom features work unchanged
 - New features are additions, not replacements
 - v6.x apps work unchanged with v7 server
 

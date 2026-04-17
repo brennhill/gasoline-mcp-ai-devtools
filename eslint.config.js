@@ -20,13 +20,13 @@ export default [
       '.worktrees/',
       '.claude/',
       '.codex/',
-      'cookwithgasoline.com/dist/',
+      'gokaboom.dev/dist/',
       'pypi/**/build/',
       'pypi/**/dist/',
       'pypi/**/*.egg-info/',
       // Generated framework smoke artifacts
-      'cmd/dev-console/testpages/frameworks/**',
-      'cmd/dev-console/testpages/_next/**',
+      'cmd/browser-agent/testpages/frameworks/**',
+      'cmd/browser-agent/testpages/_next/**',
       'scripts/smoke-tests/framework-fixtures/next-app/.next/**',
       'scripts/smoke-tests/framework-fixtures/next-app/out/**',
       // Compiled TypeScript output (linted at the .ts source level)
@@ -44,9 +44,9 @@ export default [
       'extension/offscreen.bundled.js',
       'extension/popup.bundled.js',
       // Vendored terminal assets (xterm.js)
-      'cmd/dev-console/terminal_assets/**',
+      'cmd/browser-agent/terminal_assets/**',
       // Generated smoke fixture bundles
-      'cmd/dev-console/testpages/frameworks/*.bundle.js'
+      'cmd/browser-agent/testpages/frameworks/*.bundle.js'
     ]
   },
 
@@ -65,7 +65,7 @@ export default [
         clients: 'readonly',
         registration: 'readonly',
         self: 'readonly',
-        __GASOLINE_VERSION__: 'readonly'
+        __KABOOM_VERSION__: 'readonly'
       }
     },
     plugins: {
@@ -175,9 +175,9 @@ export default [
     }
   },
 
-  // Gasoline CI package (runs in browser)
+  // Kaboom CI package (runs in browser)
   {
-    files: ['packages/gasoline-ci/**/*.js'],
+    files: ['packages/kaboom-ci/**/*.js'],
     languageOptions: {
       ecmaVersion: 2020,
       sourceType: 'script',
@@ -196,9 +196,9 @@ export default [
     }
   },
 
-  // Gasoline Playwright package (CommonJS, run in Node.js)
+  // Kaboom Playwright package (CommonJS, run in Node.js)
   {
-    files: ['packages/gasoline-playwright/**/*.js'],
+    files: ['packages/kaboom-playwright/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
@@ -213,7 +213,7 @@ export default [
 
   // Website demo/public snippets (run in browser)
   {
-    files: ['cookwithgasoline.com/public/**/*.js'],
+    files: ['gokaboom.dev/public/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -225,7 +225,7 @@ export default [
 
   // Website utility scripts (run in Node.js)
   {
-    files: ['cookwithgasoline.com/scripts/**/*.js', 'cookwithgasoline.com/scripts/**/*.mjs'],
+    files: ['gokaboom.dev/scripts/**/*.js', 'gokaboom.dev/scripts/**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',

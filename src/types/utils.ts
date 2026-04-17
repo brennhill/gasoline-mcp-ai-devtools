@@ -5,7 +5,7 @@
  */
 
 /**
- * @fileoverview Utility Types for Gasoline Extension
+ * @fileoverview Utility Types for Kaboom Extension
  *
  * Generic utility types, type guards, and helper types used across the extension.
  */

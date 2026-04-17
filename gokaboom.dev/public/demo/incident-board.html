@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KaBOOM Demo Incident Board</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --bg-soft: #11192b;
+      --panel: rgba(14, 22, 39, 0.84);
+      --line: #273756;
+      --text: #e5edff;
+      --muted: #97aad1;
+      --brand: #31c0ff;
+      --ok: #39d98a;
+      --warn: #ffd166;
+      --bad: #ff6b88;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Avenir Next", "Avenir", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 80% 0%, #163851 0%, transparent 35%),
+        radial-gradient(circle at 0% 0%, #2b1b39 0%, transparent 40%),
+        linear-gradient(140deg, var(--bg), #0b1320 60%, #101a2d 100%);
+    }
+
+    .shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 28px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .top {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(26px, 3.8vw, 36px);
+      letter-spacing: -0.01em;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .link {
+      display: inline-block;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.5fr 0.9fr;
+      gap: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: 1fr 170px 170px auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select {
+      width: 100%;
+      border: 1px solid #2c3f62;
+      border-radius: 9px;
+      background: #0b1424;
+      color: var(--text);
+      padding: 9px 10px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(16, 26, 43, 0.85);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: linear-gradient(120deg, #32bfff, #59d0ff);
+      color: #08202b;
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid #2a3d5f;
+    }
+
+    thead {
+      background: rgba(14, 25, 42, 0.95);
+    }
+
+    th,
+    td {
+      padding: 11px 10px;
+      text-align: left;
+      font-size: 14px;
+      border-bottom: 1px solid #23324f;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background: rgba(20, 31, 50, 0.74);
+    }
+
+    .sev {
+      border-radius: 999px;
+      font-size: 11px;
+      padding: 3px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid;
+      display: inline-block;
+    }
+
+    .sev-critical {
+      color: #ffc0cf;
+      border-color: #773348;
+      background: rgba(125, 36, 58, 0.35);
+    }
+
+    .sev-high {
+      color: #ffdcb0;
+      border-color: #774d2e;
+      background: rgba(118, 62, 23, 0.34);
+    }
+
+    .sev-medium {
+      color: #ffe7a6;
+      border-color: #6f5b25;
+      background: rgba(112, 87, 26, 0.28);
+    }
+
+    .status-open {
+      color: #ffc0cf;
+    }
+
+    .status-investigating {
+      color: #ffdda3;
+    }
+
+    .status-resolved {
+      color: #b5f3d0;
+    }
+
+    .activity-log {
+      border: 1px solid #2a3c60;
+      border-radius: 12px;
+      background: rgba(8, 14, 23, 0.78);
+      max-height: 340px;
+      overflow: auto;
+      padding: 9px;
+      list-style: none;
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .activity-log li {
+      border: 1px solid #263957;
+      border-radius: 9px;
+      padding: 9px;
+      font-size: 13px;
+      line-height: 1.45;
+      background: rgba(10, 16, 27, 0.82);
+    }
+
+    .quick-actions {
+      display: grid;
+      gap: 9px;
+    }
+
+    @media (max-width: 1020px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="top">
+      <div>
+        <h1>Incident Board</h1>
+        <div class="sub">Deterministic workflow for KaBOOM recording and diagnostics.</div>
+      </div>
+      <a class="link" href="/demo/index.html">Back to Launchpad</a>
+    </header>
+
+    <div class="layout">
+      <section class="panel" aria-label="Incident table panel">
+        <div class="filters">
+          <div>
+            <label for="incident-search">Search incidents</label>
+            <input id="incident-search" type="text" placeholder="Try websocket, checkout, onboarding" />
+          </div>
+          <div>
+            <label for="severity-filter">Severity</label>
+            <select id="severity-filter">
+              <option value="all">All severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+            </select>
+          </div>
+          <div>
+            <label for="status-filter">Status</label>
+            <select id="status-filter">
+              <option value="all">All statuses</option>
+              <option value="open">Open</option>
+              <option value="investigating">Investigating</option>
+              <option value="resolved">Resolved</option>
+            </select>
+          </div>
+          <div>
+            <button id="clear-filters" type="button">Clear Filters</button>
+          </div>
+        </div>
+
+        <table aria-label="Incident board table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Incident</th>
+              <th>Severity</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="incident-table-body">
+            <tr data-severity="critical" data-status="open" data-search="checkout timeout us-west-2 api">
+              <td>INC-1923</td>
+              <td>Checkout API timeout in us-west-2</td>
+              <td><span class="sev sev-critical">Critical</span></td>
+              <td class="status-open">Open</td>
+              <td><button type="button" data-action="ack" data-id="INC-1923">Acknowledge</button></td>
+            </tr>
+            <tr data-severity="high" data-status="investigating" data-search="notification websocket retry storm">
+              <td>INC-1921</td>
+              <td>Notification worker retry storm</td>
+              <td><span class="sev sev-high">High</span></td>
+              <td class="status-investigating">Investigating</td>
+              <td><button type="button" data-action="ack" data-id="INC-1921">Acknowledge</button></td>
+            </tr>
+            <tr data-severity="medium" data-status="resolved" data-search="onboarding labels accessibility">
+              <td>INC-1914</td>
+              <td>Onboarding charts missing labels</td>
+              <td><span class="sev sev-medium">Medium</span></td>
+              <td class="status-resolved">Resolved</td>
+              <td><button type="button" data-action="ack" data-id="INC-1914">Acknowledge</button></td>
+            </tr>
+            <tr data-severity="high" data-status="open" data-search="auth refresh token race condition">
+              <td>INC-1930</td>
+              <td>Token refresh race in auth gateway</td>
+              <td><span class="sev sev-high">High</span></td>
+              <td class="status-open">Open</td>
+              <td><button type="button" data-action="ack" data-id="INC-1930">Acknowledge</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <aside class="panel" aria-label="Incident actions panel">
+        <h2 style="margin: 0;">Response Controls</h2>
+        <div class="quick-actions">
+          <button id="run-mitigation" class="primary" type="button">Run Mitigation</button>
+          <button id="simulate-report-export" type="button">Simulate Report Export</button>
+          <button id="open-live-bridge-check" type="button">Open Bridge Check Prompt</button>
+        </div>
+
+        <h3 style="margin: 4px 0 0;">Operator Activity</h3>
+        <ul class="activity-log" id="activity-log" aria-label="Operator activity stream"></ul>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('incident-search');
+    const severityFilter = document.getElementById('severity-filter');
+    const statusFilter = document.getElementById('status-filter');
+    const clearFiltersButton = document.getElementById('clear-filters');
+    const tableBody = document.getElementById('incident-table-body');
+    const activityLog = document.getElementById('activity-log');
+
+    function addActivity(message) {
+      const item = document.createElement('li');
+      item.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+      activityLog.prepend(item);
+    }
+
+    function applyFilters() {
+      const query = searchInput.value.trim().toLowerCase();
+      const severity = severityFilter.value;
+      const status = statusFilter.value;
+
+      const rows = tableBody.querySelectorAll('tr');
+      rows.forEach(function(row) {
+        const matchesQuery = !query || row.dataset.search.indexOf(query) !== -1;
+        const matchesSeverity = severity === 'all' || row.dataset.severity === severity;
+        const matchesStatus = status === 'all' || row.dataset.status === status;
+        row.style.display = matchesQuery && matchesSeverity && matchesStatus ? '' : 'none';
+      });
+
+      addActivity('Filters updated (query="' + query + '", severity=' + severity + ', status=' + status + ').');
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    severityFilter.addEventListener('change', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+
+    clearFiltersButton.addEventListener('click', function() {
+      searchInput.value = '';
+      severityFilter.value = 'all';
+      statusFilter.value = 'all';
+      applyFilters();
+    });
+
+    tableBody.addEventListener('click', function(event) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.dataset.action === 'ack') {
+        addActivity('Incident ' + target.dataset.id + ' acknowledged by on-call engineer.');
+      }
+    });
+
+    document.getElementById('run-mitigation').addEventListener('click', function() {
+      addActivity('Mitigation plan started: draining queue, routing traffic to healthy region.');
+      setTimeout(function() {
+        addActivity('Traffic shift completed. Latency stabilized under 120ms.');
+      }, 900);
+    });
+
+    document.getElementById('simulate-report-export').addEventListener('click', function() {
+      addActivity('Report export started for incident summary PDF.');
+      setTimeout(function() {
+        addActivity('Report export completed: incident-summary-2026-02-15.pdf');
+      }, 650);
+    });
+
+    document.getElementById('open-live-bridge-check').addEventListener('click', function() {
+      addActivity('Prompt opened: "verify MCP bridge health and extension connectivity"');
+      alert('Prompt ready: verify MCP bridge health and extension connectivity.');
+    });
+
+    addActivity('Incident board loaded. Ready for scripted walkthrough.');
+  </script>
+</body>
+</html>

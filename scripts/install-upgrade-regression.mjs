@@ -217,10 +217,10 @@ async function expectDaemonIdentity(port, expectedVersion, timeoutMs = 20000) {
   }
 
   const serviceName = resolveServiceName(health)
-  if (serviceName.toLowerCase() !== 'gasoline-browser-devtools') {
+  if (serviceName.toLowerCase() !== 'kaboom-browser-devtools') {
     fail(
       `daemon service-name mismatch on port ${port}`,
-      `expected=gasoline-browser-devtools actual=${serviceName || '<missing>'}`
+      `expected=kaboom-browser-devtools actual=${serviceName || '<missing>'}`
     )
   }
 
@@ -236,23 +236,23 @@ async function expectDaemonIdentity(port, expectedVersion, timeoutMs = 20000) {
 async function main() {
   const version = readVersionFile()
   const python = pickPython()
-  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gasoline-upgrade-regression-'))
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'kaboom-upgrade-regression-'))
   const homeDir = path.join(tmpRoot, 'home')
   const binDir = path.join(tmpRoot, 'bin')
   fs.mkdirSync(homeDir, { recursive: true })
   fs.mkdirSync(binDir, { recursive: true })
 
-  const oldBinary = path.join(tmpRoot, `gasoline-old${exeSuffix}`)
-  const newBinary = path.join(tmpRoot, `gasoline-new${exeSuffix}`)
+  const oldBinary = path.join(tmpRoot, `kaboom-old${exeSuffix}`)
+  const newBinary = path.join(tmpRoot, `kaboom-new${exeSuffix}`)
 
   const envBase = {
     ...process.env,
     HOME: homeDir,
     USERPROFILE: homeDir,
-    GASOLINE_RELEASES_URL: 'http://127.0.0.1:1/releases/latest'
+    KABOOM_RELEASES_URL: 'http://127.0.0.1:1/releases/latest'
   }
 
-  const cmdPkg = process.env.GASOLINE_CMD_PKG || './cmd/dev-console'
+  const cmdPkg = process.env.KABOOM_CMD_PKG || './cmd/browser-agent'
   info('building old/new binaries')
   run('go', ['build', '-ldflags', '-X main.version=0.0.1', '-o', oldBinary, cmdPkg], {
     env: envBase
@@ -261,17 +261,16 @@ async function main() {
     env: envBase
   })
 
-  writeShim(binDir, 'gasoline-mcp', newBinary)
-  writeShim(binDir, 'gasoline-agentic-devtools', newBinary)
-  writeShim(binDir, 'gasoline', newBinary)
-  writeShim(binDir, 'dev-console', newBinary)
+  writeShim(binDir, 'kaboom-agentic-browser', newBinary)
+  writeShim(binDir, 'kaboom', newBinary)
+  writeShim(binDir, 'browser-agent', newBinary)
   const envWithShims = {
     ...envBase,
     PATH: `${binDir}${path.delimiter}${process.env.PATH || ''}`
   }
 
   const port = await getFreePort()
-  const pidFile = path.join(homeDir, '.gasoline', 'run', `gasoline-${port}.pid`)
+  const pidFile = path.join(homeDir, '.kaboom', 'run', `kaboom-${port}.pid`)
   info(`using port ${port}`)
 
   let daemon = null
@@ -292,7 +291,7 @@ async function main() {
     info('stage 2: npm cleanup kills old daemon + pid file')
     daemon = startDaemon(oldBinary, port, envWithShims)
     await expectDaemonIdentity(port, '0.0.1')
-    run('node', ['npm/gasoline-mcp/lib/kill-daemon.js'], { env: envWithShims })
+    run('node', ['npm/kaboom-agentic-browser/lib/kill-daemon.js'], { env: envWithShims })
     await waitForChildExit(daemon, 12000)
     if (fs.existsSync(pidFile)) {
       fail(`npm cleanup did not remove pid file ${pidFile}`)
@@ -305,12 +304,12 @@ async function main() {
       python,
       [
         '-c',
-        "import os,sys;sys.path.insert(0,os.environ['GASOLINE_PYPI_PATH']);from gasoline_mcp import platform;platform.cleanup_old_processes()"
+        "import os,sys;sys.path.insert(0,os.environ['KABOOM_PYPI_PATH']);from kaboom_agentic_browser import platform;platform.cleanup_old_processes()"
       ],
       {
         env: {
           ...envWithShims,
-          GASOLINE_PYPI_PATH: path.join(repoRoot, 'pypi', 'gasoline-mcp')
+          KABOOM_PYPI_PATH: path.join(repoRoot, 'pypi', 'kaboom-agentic-browser')
         }
       }
     )

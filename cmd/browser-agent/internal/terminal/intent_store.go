@@ -1,0 +1,158 @@
+// intent_store.go -- In-memory store for user-initiated intents (e.g., "Find Problems" button).
+// Why: Bridges the UI trigger to the AI session — the intent persists until the AI picks it up.
+// Docs: docs/features/feature/auto-fix/index.md
+
+package terminal
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+const (
+	IntentTTL      = 5 * time.Minute
+	IntentMaxCount = 3
+	// IntentMaxNudges is the number of tool responses to nudge before giving up and discarding.
+	IntentMaxNudges    = 3
+	IntentActionQAScan = "qa_scan"
+)
+
+// Intent represents a user-initiated action request.
+type Intent struct {
+	CorrelationID string `json:"correlation_id"`
+	PageURL       string `json:"page_url"`
+	Action        string `json:"action"`
+	CreatedAt     int64  `json:"created_at"`
+	NudgeCount    int    `json:"-"`
+}
+
+// IntentStore is a thread-safe in-memory store for user intents.
+type IntentStore struct {
+	mu    sync.Mutex
+	items []Intent
+	count atomic.Int32 // Fast-path: skip lock when empty
+}
+
+// NewIntentStore creates a new intent store.
+func NewIntentStore() *IntentStore {
+	return &IntentStore{}
+}
+
+// Add creates a new intent and returns its correlation ID.
+func (s *IntentStore) Add(pageURL, action string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cleanExpiredLocked()
+
+	for len(s.items) >= IntentMaxCount {
+		s.items = s.items[1:]
+	}
+
+	id := GenerateCorrelationID()
+	s.items = append(s.items, Intent{
+		CorrelationID: id,
+		PageURL:       pageURL,
+		Action:        action,
+		CreatedAt:     time.Now().Unix(),
+	})
+	s.count.Store(int32(len(s.items)))
+	return id
+}
+
+// Consume removes and returns the intent with the given correlation ID.
+func (s *IntentStore) Consume(correlationID string) *Intent {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cleanExpiredLocked()
+
+	for i, it := range s.items {
+		if it.CorrelationID == correlationID {
+			s.items = append(s.items[:i], s.items[i+1:]...)
+			s.count.Store(int32(len(s.items)))
+			return &it
+		}
+	}
+	return nil
+}
+
+// Pending returns all non-expired intents without consuming them.
+func (s *IntentStore) Pending() []Intent {
+	if s.count.Load() == 0 {
+		return []Intent{}
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cleanExpiredLocked()
+	out := make([]Intent, len(s.items))
+	copy(out, s.items)
+	return out
+}
+
+// NudgeAndClean increments the nudge count on all pending intents and removes
+// any that have exceeded IntentMaxNudges. Returns true if there are still
+// pending intents that should be surfaced to the AI.
+func (s *IntentStore) NudgeAndClean() bool {
+	if s.count.Load() == 0 {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.cleanExpiredLocked()
+
+	n := 0
+	for i := range s.items {
+		s.items[i].NudgeCount++
+		if s.items[i].NudgeCount <= IntentMaxNudges {
+			s.items[n] = s.items[i]
+			n++
+		}
+	}
+	s.items = s.items[:n]
+	s.count.Store(int32(n))
+	return n > 0
+}
+
+// ConsumeAll removes and returns all non-expired intents.
+func (s *IntentStore) ConsumeAll() []Intent {
+	if s.count.Load() == 0 {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	out := make([]Intent, len(s.items))
+	copy(out, s.items)
+	s.items = s.items[:0]
+	s.count.Store(0)
+	return out
+}
+
+func (s *IntentStore) cleanExpiredLocked() {
+	now := time.Now().Unix()
+	cutoff := now - int64(IntentTTL.Seconds())
+	n := 0
+	for _, it := range s.items {
+		if it.CreatedAt >= cutoff {
+			s.items[n] = it
+			n++
+		}
+	}
+	s.items = s.items[:n]
+	s.count.Store(int32(n))
+}
+
+// GenerateCorrelationID creates a unique correlation ID for intents.
+func GenerateCorrelationID() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return "intent_" + hex.EncodeToString([]byte(time.Now().String()[:19]))
+	}
+	return "intent_" + hex.EncodeToString(b)
+}

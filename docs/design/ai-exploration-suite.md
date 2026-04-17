@@ -4,7 +4,7 @@
 
 ## 1. Motivation
 
-AI coding agents using Gasoline's MCP tools follow a predictable pattern when working with a web page:
+AI coding agents using Kaboom's MCP tools follow a predictable pattern when working with a web page:
 
 1. Navigate to a URL
 2. Understand what is on the page (structure, interactive elements, content)
@@ -555,7 +555,7 @@ All file paths are relative to the repository root unless noted.
 
 **Verdict: Sound layering with two structural concerns.**
 
-The three-layer architecture (MCP schema -> Go server handlers -> Extension command handlers) is clean and well-separated. The command registry pattern in `src/background/commands/registry.ts` with `registerCommand` / `dispatch` is a good replacement for a monolithic if-chain. The Go-side dispatch via `interactDispatch()` map initialized with `sync.Once` (`cmd/dev-console/tools_interact.go`, line 30) is correct and thread-safe.
+The three-layer architecture (MCP schema -> Go server handlers -> Extension command handlers) is clean and well-separated. The command registry pattern in `src/background/commands/registry.ts` with `registerCommand` / `dispatch` is a good replacement for a monolithic if-chain. The Go-side dispatch via `interactDispatch()` map initialized with `sync.Once` (`cmd/browser-agent/tools_interact.go`, line 30) is correct and thread-safe.
 
 **Concern 1: Duplicated `navigationDiscoveryScript` across two files.**
 
@@ -600,7 +600,7 @@ This is a clean DAG. No issues.
 | **Total (no navigation)** | **~600-2500ms** | | |
 | **Total (with navigation)** | **~1600-5500ms** | | |
 
-These are comfortably within the 15s `MaybeWaitForCommand` budget (`cmd/dev-console/tools_async.go`, line 141: `asyncInitialWait` default). Acceptable.
+These are comfortably within the 15s `MaybeWaitForCommand` budget (`cmd/browser-agent/tools_async.go`, line 141: `asyncInitialWait` default). Acceptable.
 
 **Adding `page_structure` to `explore_page`** (the `include_structure` param proposed in Section 8.1 Finding 2) would add `pageStructureScript` as a fourth parallel script. Estimated overhead:
 
@@ -617,7 +617,7 @@ Since it runs in parallel, wall-clock impact is **0-200ms** (only matters if it 
 
 #### 9.2.2 Batch with Per-Step Screenshots
 
-The batch handler (`cmd/dev-console/tools_interact_batch.go`) executes steps sequentially through `h.toolInteract(req, replayStepArgs)` (line 88). If a step includes `include_screenshot=true`, the `toolInteract` dispatcher (line 205 of `tools_interact.go`) calls `appendScreenshotToResponse`, which calls `observe.GetScreenshot` with a 20-second timeout (`internal/tools/observe/analysis.go`, lines 348-360). Each screenshot involves:
+The batch handler (`cmd/browser-agent/tools_interact_batch.go`) executes steps sequentially through `h.toolInteract(req, replayStepArgs)` (line 88). If a step includes `include_screenshot=true`, the `toolInteract` dispatcher (line 205 of `tools_interact.go`) calls `appendScreenshotToResponse`, which calls `observe.GetScreenshot` with a 20-second timeout (`internal/tools/observe/analysis.go`, lines 348-360). Each screenshot involves:
 
 1. `CreatePendingQueryWithTimeout` (screenshot query)
 2. `WaitForResult` up to 20s
@@ -829,7 +829,7 @@ var composableParams struct {
 
 There is no code path that calls `queueComposableActionDiff`. The function exists but is never invoked. An AI agent setting `action_diff: true` on a `click` call will have the parameter silently ignored.
 
-**Fix** (in `cmd/dev-console/tools_interact.go`):
+**Fix** (in `cmd/browser-agent/tools_interact.go`):
 
 Add `ActionDiff bool \`json:"action_diff"\`` to the composable params struct (after line 182).
 

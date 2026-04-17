@@ -11,7 +11,7 @@ last_verified_date: 2026-03-05
 
 ## Overview
 
-Add a push delivery pipeline to the Gasoline daemon. When the browser extension sends content (annotations, screenshots), the daemon delivers it to the connected MCP client using the best available mechanism: MCP sampling, notifications, or inbox queuing.
+Add a push delivery pipeline to the Kaboom daemon. When the browser extension sends content (annotations, screenshots), the daemon delivers it to the connected MCP client using the best available mechanism: MCP sampling, notifications, or inbox queuing.
 
 Additionally, change `wait: true` on annotations from immediate-return-then-poll to blocking-then-poll: hold the MCP tool response for up to 15s waiting for annotations to arrive. If they arrive within the window, return them directly (zero polling). If the timeout expires, then return a correlation_id for polling as before.
 
@@ -92,7 +92,7 @@ sequenceDiagram
     D->>D: Check client capabilities
     Note over D: No sampling support
     D->>D: Queue in inbox
-    Note over C: AI makes any Gasoline tool call
+    Note over C: AI makes any Kaboom tool call
     C->>D: observe({what: "errors"})
     D-->>C: {errors: [...], _pending_push: [{type: "annotations", ...}]}
     Note over C: AI sees piggybacked push and responds
@@ -183,7 +183,7 @@ type ClientCapabilities struct {
                 }
             }
         ],
-        "systemPrompt": "The user is pushing browser annotations to you via Gasoline. Analyze the annotated areas and respond with actionable feedback.",
+        "systemPrompt": "The user is pushing browser annotations to you via Kaboom. Analyze the annotated areas and respond with actionable feedback.",
         "includeContext": "thisServer",
         "maxTokens": 1024
     }
@@ -396,7 +396,7 @@ Empty inbox returns `{"events": [], "count": 0}`.
 
 ## _pending_push Piggyback
 
-When the inbox is non-empty, any Gasoline tool response includes a `_pending_push` field:
+When the inbox is non-empty, any Kaboom tool response includes a `_pending_push` field:
 
 ```json
 {
@@ -444,7 +444,7 @@ export function installPushCommandListener() {
 
         // Show toast asking for optional note
         await chrome.tabs.sendMessage(tab.id, {
-            type: 'GASOLINE_PUSH_NOTE_PROMPT',
+            type: 'KABOOM_PUSH_NOTE_PROMPT',
             screenshot_data_url: dataUrl
         })
         // Content script shows input, waits 3s, then POSTs to /push/screenshot
@@ -485,7 +485,7 @@ export function installPushCommandListener() {
 | `internal/push/router_test.go` | ~150 | Router tests (capability detection, fallback chain) |
 | `internal/push/sampling.go` | ~100 | MCP sampling request builder and sender |
 | `internal/push/sampling_test.go` | ~80 | Sampling message format tests |
-| `cmd/dev-console/tools_observe_inbox.go` | ~60 | observe({what: "inbox"}) handler |
+| `cmd/browser-agent/tools_observe_inbox.go` | ~60 | observe({what: "inbox"}) handler |
 | `extension/background/push-handler.js` | ~120 | Screenshot push hotkey handler |
 | `extension/content/push-note.js` | ~80 | Toast input UI for screenshot notes |
 
@@ -495,12 +495,12 @@ export function installPushCommandListener() {
 
 | File | Changes | LOC Delta |
 |------|---------|-----------|
-| `cmd/dev-console/tools_mcp.go` | Extract client capabilities from initialize handshake | +20 |
-| `cmd/dev-console/tools_observe.go` | Route `what: "inbox"` to handler | +5 |
-| `cmd/dev-console/tool_handler.go` | Add PushInbox + PushRouter to ToolHandler struct | +10 |
-| `cmd/dev-console/tools_analyze_annotations.go` | After annotation store, also call push router | +15 |
-| `cmd/dev-console/http_routes.go` | Add `/push/screenshot` endpoint | +20 |
-| `cmd/dev-console/response_builder.go` | Add `_pending_push` piggyback to all tool responses | +25 |
+| `cmd/browser-agent/tools_mcp.go` | Extract client capabilities from initialize handshake | +20 |
+| `cmd/browser-agent/tools_observe.go` | Route `what: "inbox"` to handler | +5 |
+| `cmd/browser-agent/tool_handler.go` | Add PushInbox + PushRouter to ToolHandler struct | +10 |
+| `cmd/browser-agent/tools_analyze_annotations.go` | After annotation store, also call push router | +15 |
+| `cmd/browser-agent/http_routes.go` | Add `/push/screenshot` endpoint | +20 |
+| `cmd/browser-agent/response_builder.go` | Add `_pending_push` piggyback to all tool responses | +25 |
 | `extension/manifest.json` | Add `push_screenshot` command | +6 |
 | `extension/background/init.js` | Call `installPushCommandListener()` | +2 |
 

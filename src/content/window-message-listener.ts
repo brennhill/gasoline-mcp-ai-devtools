@@ -27,10 +27,10 @@ import { getPageNonce } from './script-injection.js'
 type ResponseResolver = (requestId: number | string, result: unknown) => void
 
 const RESPONSE_HANDLERS: Record<string, ResponseResolver> = {
-  GASOLINE_HIGHLIGHT_RESPONSE: (id, result) => resolveHighlightRequest(id as number, result as HighlightResponse),
-  GASOLINE_EXECUTE_JS_RESULT: (id, result) => resolveExecuteRequest(id as number, result as ExecuteJsResult),
-  GASOLINE_A11Y_QUERY_RESPONSE: (id, result) => resolveA11yRequest(id as number, result as A11yAuditResult),
-  GASOLINE_DOM_QUERY_RESPONSE: (id, result) => resolveDomRequest(id as number, result as DomQueryResult)
+  kaboom_highlight_response: (id, result) => resolveHighlightRequest(id as number, result as HighlightResponse),
+  kaboom_execute_js_result: (id, result) => resolveExecuteRequest(id as number, result as ExecuteJsResult),
+  kaboom_a11y_query_response: (id, result) => resolveA11yRequest(id as number, result as A11yAuditResult),
+  kaboom_dom_query_response: (id, result) => resolveDomRequest(id as number, result as DomQueryResult)
 }
 
 export function initWindowMessageListener(): void {

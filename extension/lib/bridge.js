@@ -25,7 +25,7 @@ export function postLog(payload) {
     // Extract fields we want from payload (exclude ts, message, source, url to avoid overwriting enrichments)
     const { level, type, args, error, stack, ...otherFields } = payload;
     window.postMessage({
-        type: 'GASOLINE_LOG',
+        type: 'kaboom_log',
         payload: {
             // Enriched fields (these are the source of truth)
             ts: new Date().toISOString(),

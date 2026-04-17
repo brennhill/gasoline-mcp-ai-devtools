@@ -33,8 +33,8 @@ func BuildSummary(counts Counts) map[string]any {
 	}
 }
 
-// CountsFromAuditResult derives counts from top-level a11y arrays.
-func CountsFromAuditResult(auditResult map[string]any) Counts {
+// countsFromAuditResult derives counts from top-level a11y arrays.
+func countsFromAuditResult(auditResult map[string]any) Counts {
 	return Counts{
 		Violations:   arrayLen(auditResult["violations"]),
 		Passes:       arrayLen(auditResult["passes"]),
@@ -49,7 +49,7 @@ func EnsureAuditSummary(auditResult map[string]any) {
 	if auditResult == nil {
 		return
 	}
-	fallback := CountsFromAuditResult(auditResult)
+	fallback := countsFromAuditResult(auditResult)
 
 	rawSummary, ok := auditResult["summary"]
 	if !ok {

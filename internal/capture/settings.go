@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/state"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 // PersistedSettings is the on-disk cache schema for extension pilot status.
@@ -78,7 +78,7 @@ func readSettingsData() ([]byte, error) {
 func (c *Capture) LoadSettingsFromDisk() {
 	data, err := readSettingsData()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] %v\n", err)
 		return
 	}
 	if data == nil {
@@ -87,7 +87,7 @@ func (c *Capture) LoadSettingsFromDisk() {
 
 	var settings PersistedSettings
 	if err := json.Unmarshal(data, &settings); err != nil {
-		fmt.Fprintf(os.Stderr, "[gasoline] Could not parse settings file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[Kaboom] Could not parse settings file: %v\n", err)
 		return
 	}
 

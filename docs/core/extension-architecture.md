@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Gasoline Chrome extension (MV3) captures browser telemetry (console logs, network requests, WebSocket events, user actions, performance data) and relays it to a local Go server over HTTP. It also receives commands from the server (DOM queries, JS execution, navigation) and executes them in the page. The extension operates across three execution contexts that communicate via two message channels: `chrome.runtime` messages and `window.postMessage`.
+The Kaboom Chrome extension (MV3) captures browser telemetry (console logs, network requests, WebSocket events, user actions, performance data) and relays it to a local Go server over HTTP. It also receives commands from the server (DOM queries, JS execution, navigation) and executes them in the page. The extension operates across three execution contexts that communicate via two message channels: `chrome.runtime` messages and `window.postMessage`.
 
 ## Execution Contexts
 
@@ -111,7 +111,7 @@ src/
 - **Batcher pattern** -- `batcher-instances.ts` creates debounced batchers (one per data type) that accumulate entries and flush to the server on a timer. Each batcher is wrapped in a shared circuit breaker to back off on server failures.
 - **Sync client** -- A single `/sync` long-poll endpoint replaces individual POST endpoints for extension-to-server communication. The sync loop sends settings + extension logs upstream and receives commands downstream.
 - **Wire types** -- `src/types/wire-*.ts` are generated from `internal/types/wire_*.go`. CI runs `make check-wire-drift` to ensure they stay in sync. These define the exact HTTP payload shapes.
-- **Nonce validation** -- Content script generates a cryptographic nonce per page load, passes it to inject via a `data-gasoline-nonce` attribute on the script element. All `window.postMessage` calls from content include the nonce; inject validates it before processing.
+- **Nonce validation** -- Content script generates a cryptographic nonce per page load, passes it to inject via a `data-kaboom-nonce` attribute on the script element. All `window.postMessage` calls from content include the nonce; inject validates it before processing.
 - **Tab isolation** -- Content script's `window-message-listener.ts` filters captured data so only the tracked tab's telemetry is forwarded to background.
 
 ## Constraints

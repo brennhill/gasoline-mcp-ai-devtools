@@ -107,7 +107,7 @@ const createMockWindow = () => ({
 // Set a baseline chrome mock so background.js async activity doesn't crash
 globalThis.chrome = createMockChrome()
 
-let originalChrome, originalDocument, originalWindow
+let originalDocument, originalWindow
 
 // Track all setInterval calls so we can clean up leaked timers from module init
 const activeIntervals = new Set()

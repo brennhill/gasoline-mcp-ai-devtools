@@ -25,7 +25,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
         with:
-          go-version: '1.21'
+          go-version: '1.24.13'
           cache: true
 
       - name: Set up Node.js
@@ -77,11 +77,11 @@ jobs:
           mkdir -p npm/linux-arm64/bin
           mkdir -p npm/win32-x64/bin
 
-          cp dist/gasoline-agentic-devtools-darwin-arm64 npm/darwin-arm64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-darwin-x64 npm/darwin-x64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-linux-x64 npm/linux-x64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-linux-arm64 npm/linux-arm64/bin/gasoline
-          cp dist/gasoline-agentic-devtools-win32-x64.exe npm/win32-x64/bin/gasoline.exe
+          cp dist/kaboom-agentic-browser-darwin-arm64 npm/darwin-arm64/bin/kaboom
+          cp dist/kaboom-agentic-browser-darwin-x64 npm/darwin-x64/bin/kaboom
+          cp dist/kaboom-agentic-browser-linux-x64 npm/linux-x64/bin/kaboom
+          cp dist/kaboom-agentic-browser-linux-arm64 npm/linux-arm64/bin/kaboom
+          cp dist/kaboom-agentic-browser-win32-x64.exe npm/win32-x64/bin/kaboom.exe
 
           chmod +x npm/*/bin/*
 
@@ -125,7 +125,7 @@ jobs:
 
       - name: Publish aggregate package
         run: |
-          cd npm/gasoline-agentic-browser
+          cd npm/kaboom-agentic-browser
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

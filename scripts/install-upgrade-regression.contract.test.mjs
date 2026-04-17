@@ -13,32 +13,51 @@ test('upgrade regression script validates health service identity', () => {
   assert.match(source, /service-name/, 'expected service-name validation in health checks')
   assert.match(
     source,
-    /gasoline-browser-devtools/i,
-    'expected service identity check to enforce gasoline-browser-devtools'
+    /kaboom-browser-devtools/i,
+    'expected service identity check to enforce kaboom-browser-devtools'
   )
 })
 
-test('shell installer keeps canonical binary and legacy aliases', () => {
+test('shell installer uses Kaboom canonical binaries and install roots', () => {
   const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
-  assert.match(source, /gasoline-agentic-devtools/, 'expected canonical binary name in install.sh')
-  assert.match(source, /gasoline-agentic-browser/, 'expected legacy browser alias in install.sh')
-  assert.match(source, /sync_binary_compat_aliases/, 'expected install.sh alias compatibility helper')
+  assert.match(source, /kaboom-agentic-browser/, 'expected canonical binary name in install.sh')
+  assert.match(source, /kaboom-hooks/, 'expected hooks binary name in install.sh')
+  assert.match(source, /\.kaboom/, 'expected Kaboom install root in install.sh')
+  assert.match(source, /KaboomAgenticDevtoolExtension/, 'expected Kaboom extension dir in install.sh')
+  assert.doesNotMatch(source, /sync_binary_compat_aliases/, 'expected install.sh to stop creating legacy aliases')
 })
 
-test('powershell installer keeps canonical binary and legacy aliases', () => {
+test('powershell installer uses Kaboom canonical binaries and install roots', () => {
   const source = fs.readFileSync(path.join(__dirname, 'install.ps1'), 'utf8')
-  assert.match(source, /gasoline-agentic-devtools\.exe/, 'expected canonical binary name in install.ps1')
-  assert.match(source, /gasoline-agentic-browser\.exe/, 'expected legacy browser alias in install.ps1')
-  assert.match(source, /Sync-BinaryCompatAliases/, 'expected install.ps1 alias compatibility helper')
+  assert.match(source, /kaboom-agentic-browser\.exe|kaboom\.exe/, 'expected canonical binary name in install.ps1')
+  assert.match(source, /\.kaboom|KaboomAgenticDevtoolExtension/, 'expected Kaboom install roots in install.ps1')
 })
 
-test('npm wrapper exposes gasoline-agentic-devtools command alias', () => {
+test('shell installer supports --hooks-only mode', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
+  assert.match(source, /HOOKS_ONLY/, 'expected HOOKS_ONLY variable in install.sh')
+  assert.match(source, /--hooks-only/, 'expected --hooks-only flag handling')
+  assert.match(source, /kaboom-hooks/, 'expected kaboom-hooks binary name')
+  assert.match(source, /download_and_verify/, 'expected download_and_verify helper')
+})
+
+test('shell installer downloads both binaries by default', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
+  assert.match(source, /kaboom-agentic-browser-\$PLATFORM/, 'expected main binary download')
+  assert.match(source, /kaboom-hooks-\$PLATFORM/, 'expected hooks binary download')
+})
+
+test('shell installer skips extension and daemon for hooks-only', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
+  assert.match(source, /HOOKS_ONLY.*guard/, 'expected HOOKS_ONLY guard comment')
+})
+
+test('npm wrapper exposes only Kaboom commands', () => {
   const pkg = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '..', 'npm', 'gasoline-agentic-browser', 'package.json'), 'utf8')
+    fs.readFileSync(path.join(__dirname, '..', 'npm', 'kaboom-agentic-browser', 'package.json'), 'utf8')
   )
-  assert.equal(
-    pkg.bin?.['gasoline-agentic-devtools'],
-    'bin/gasoline-agentic-browser',
-    'expected npm bin alias for gasoline-agentic-devtools'
-  )
+  assert.equal(pkg.bin?.['kaboom-agentic-browser'], 'bin/kaboom-agentic-browser')
+  assert.equal(pkg.bin?.['kaboom-hooks'], 'bin/kaboom-hooks')
+  assert.equal(pkg.bin?.['gasoline-agentic-devtools'], undefined)
+  assert.equal(pkg.bin?.['gasoline-agentic-browser'], undefined)
 })

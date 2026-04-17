@@ -6,7 +6,7 @@ last_reviewed: 2026-02-16
 
 # Test Quality Audit Report
 
-**Project:** Gasoline MCP
+**Project:** Kaboom MCP
 **Date:** 2026-02-14
 **Auditor:** Senior QA Engineer (Automated)
 **Scope:** All test suites -- smoke tests, Go unit tests, regression tests
@@ -26,7 +26,7 @@ last_reviewed: 2026-02-16
 **Test Suites Audited:**
 - 15 smoke test files (`scripts/smoke-tests/01-*.sh` through `15-*.sh`)
 - 2 test framework files (`scripts/tests/framework.sh`, `scripts/smoke-tests/framework-smoke.sh`)
-- ~100 Go unit test files across `cmd/dev-console/` and `internal/`
+- ~100 Go unit test files across `cmd/browser-agent/` and `internal/`
 - 13 regression test files (`tests/regression/`)
 - 29 UAT category test files (`scripts/tests/cat-*.sh`)
 - 0 TypeScript test files found (none exist in `src/`)
@@ -199,16 +199,16 @@ The polling helper uses a fixed 0.5-second sleep between polls. On fast operatio
 
 ---
 
-## Part 3: Go Unit Tests (`cmd/dev-console/`)
+## Part 3: Go Unit Tests (`cmd/browser-agent/`)
 
-### File: `cmd/dev-console/tools_contract_test.go`
+### File: `cmd/browser-agent/tools_contract_test.go`
 
 **[MEDIUM] Generate tool contracts only check non-error, not content shape**
 Lines 132-178: Tests for `generate reproduction`, `generate test`, `generate pr_summary`, `generate har`, `generate csp`, `generate sri`, `generate sarif` all use `assertNonErrorResponse` which only checks: (1) not an error, (2) has content blocks, (3) text is non-empty. None verify the generated output contains the expected format-specific structure (e.g., HAR has `log.entries`, SARIF has `runs[].results`).
 
 ---
 
-### File: `cmd/dev-console/tools_observe_contract_test.go`
+### File: `cmd/browser-agent/tools_observe_contract_test.go`
 
 This file is well-structured with proper field-level type checking via `assertResponseShape` and `assertObjectShape`. Good use of nested object validation (e.g., checking `errors[0]` shape). One area for improvement:
 
@@ -217,7 +217,7 @@ Tests load either full data or empty data. Missing tests for: single entry, buff
 
 ---
 
-### File: `cmd/dev-console/server_reliability_test.go`
+### File: `cmd/browser-agent/server_reliability_test.go`
 
 **[CRITICAL] `TestReliability_ResourceLeaks_Goroutines` is permanently skipped**
 Line 236: `t.Skip("Skipped: flaky in parallel test runs; works in isolation")`. The goroutine leak detection test -- arguably the most important reliability test -- is permanently skipped. The comment says "TODO: Investigate root cause of flakiness" but there is no tracking issue referenced. This means goroutine leaks can ship to production undetected.
@@ -230,7 +230,7 @@ Line 139: `if successRate < 99.0` allows up to 1% of 1,000 requests to fail sile
 
 ---
 
-### File: `cmd/dev-console/upload_security_test.go`
+### File: `cmd/browser-agent/upload_security_test.go`
 
 This file is exemplary. Thorough security testing with:
 - Denylist matching for SSH keys, AWS credentials, .env files, key files, git config, system files
@@ -248,7 +248,7 @@ No test for Unicode path normalization attacks (e.g., using fullwidth characters
 
 ---
 
-### File: `cmd/dev-console/ssrf_transport_test.go`
+### File: `cmd/browser-agent/ssrf_transport_test.go`
 
 Excellent coverage with boundary IP tests for all RFC 1918 ranges, IPv6 unique-local, link-local, cloud metadata endpoints, and DNS rebinding protection. Well-structured with proper negative tests.
 
@@ -256,35 +256,35 @@ No significant findings.
 
 ---
 
-### File: `cmd/dev-console/tools_interact_dom_test.go`
+### File: `cmd/browser-agent/tools_interact_dom_test.go`
 
 **[MEDIUM] Two tests permanently skipped without regression alternative**
 Lines 200-206: `TestDOMPrimitive_Click_ReturnsCorrelationID` and `TestDOMPrimitive_ListInteractive_ReturnsCorrelationID` are skipped with "covered by shell UAT." However, shell UAT requires a browser extension to be connected -- meaning this test path is only covered in manual smoke tests, not in automated CI.
 
 ---
 
-### File: `cmd/dev-console/integration_test.go`
+### File: `cmd/browser-agent/integration_test.go`
 
 **[HIGH] `TestIntegration_AllMCPToolsReturnValidResponses` accepts error responses**
 Lines 243-244: When a tool returns an error response (non-"not implemented"), the test only logs a warning (`t.Logf`) and does not fail. This means tools that return runtime errors (e.g., "no data", "connection failed") are silently accepted as passing. The test claims to verify "ALL exposed MCP tools return valid responses" but actually only catches "not implemented" stubs.
 
 ---
 
-### File: `cmd/dev-console/stdio_silence_test.go`
+### File: `cmd/browser-agent/stdio_silence_test.go`
 
 **[CRITICAL] All 3 stdio silence tests are permanently skipped**
 Lines 35, 169, 254: `TestStdioSilence_NormalConnection`, `TestStdioSilence_MultiClientSpawn`, and `TestStdioSilence_ConnectionRetry` are all skipped with "uses test binary which lacks -port flag; use shell UAT instead." The test comments say this is a "CRITICAL INVARIANT TEST" and contains "DO NOT remove or weaken this test" -- yet the test is permanently disabled. Stdio silence violations could ship to production.
 
 ---
 
-### File: `cmd/dev-console/golden_test.go`
+### File: `cmd/browser-agent/golden_test.go`
 
 **[HIGH] Golden test writes but never compares**
 `TestUpdateGoldenToolsList` writes the current schema to a golden file but never compares it against a previous version. This is a _generator_, not a _test_. Running it always "passes" because it only writes. There is no test that reads the golden file and compares it against the current output to detect schema drift.
 
 ---
 
-### File: `cmd/dev-console/mcp_protocol_test.go` (from session summary)
+### File: `cmd/browser-agent/mcp_protocol_test.go` (from session summary)
 
 Marked "DO NOT MODIFY" -- good. Integration test that builds binary and starts server. Verified to check response newlines, notification handling, JSON-RPC structure. No findings.
 

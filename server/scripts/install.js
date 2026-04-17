@@ -2,7 +2,7 @@
 
 /**
  * Postinstall script to download the correct binary for the platform
- * Also handles cleanup of old gasoline processes for clean upgrades
+ * Also handles cleanup of old Kaboom and legacy processes for clean upgrades
  */
 
 const https = require('https')
@@ -14,9 +14,9 @@ const crypto = require('crypto')
 const { spawnSync, spawn } = require('child_process')
 
 const VERSION = require('../package.json').version
-const GITHUB_REPO = 'brennhill/gasoline-agentic-browser-devtools-mcp'
-const BINARY_NAME = 'gasoline'
-const EXPECTED_SERVICE_NAME = 'gasoline-browser-devtools'
+const GITHUB_REPO = 'brennhill/Kaboom-Browser-AI-Devtools-MCP'
+const BINARY_NAME = 'kaboom-agentic-browser'
+const EXPECTED_SERVICE_NAME = 'kaboom-browser-devtools'
 
 function printPanel(title, lines = []) {
   const border = '+----------------------------------------------------------+'
@@ -39,7 +39,7 @@ function printBanner() {
   console.log(' | |_| | (_| \\__ \\ (_) | | | | | |  __/')
   console.log('  \\____|\\__,_|___/\\___/|_|_|_| |_|\\___|')
   console.log('')
-  printPanel('GASOLINE INSTALLER', [
+  printPanel('KABOOM INSTALLER', [
     'Polished setup for binary + background server + extension guidance.',
     '',
     'Install flow:',
@@ -51,25 +51,28 @@ function printBanner() {
 }
 
 /**
- * Kill all running gasoline processes to ensure clean upgrade
+ * Kill all running Kaboom and legacy processes to ensure clean upgrade
  */
 // #lizard forgives
 function cleanupOldProcesses() {
   if (process.platform === 'win32') {
-    // Windows: Find and kill gasoline processes
+    // Windows: Find and kill Kaboom and legacy processes
     try {
-      const result = spawnSync('tasklist', ['/FI', 'IMAGENAME eq gasoline*', '/FO', 'CSV'], {
-        encoding: 'utf8',
-        windowsHide: true
-      })
-      if (result.stdout) {
-        const lines = result.stdout.split('\n').slice(1) // Skip header
-        for (const line of lines) {
-          const match = line.match(/"gasoline[^"]*","(\d+)"/)
-          if (match) {
-            const pid = match[1]
-            spawnSync('taskkill', ['/F', '/PID', pid], { windowsHide: true })
-            console.log(`Killed old gasoline process (PID: ${pid})`)
+      for (const imagePattern of ['kaboom*', 'gasoline*', 'browser-agent*']) {
+        const result = spawnSync('tasklist', ['/FI', `IMAGENAME eq ${imagePattern}`, '/FO', 'CSV'], {
+          encoding: 'utf8',
+          windowsHide: true
+        })
+        if (result.stdout) {
+          const lines = result.stdout.split('\n').slice(1) // Skip header
+          for (const line of lines) {
+            const match = line.match(/"([^"]+)","(\d+)"/)
+            if (match) {
+              const imageName = match[1]
+              const pid = match[2]
+              spawnSync('taskkill', ['/F', '/PID', pid], { windowsHide: true })
+              console.log(`Killed old ${imageName} process (PID: ${pid})`)
+            }
           }
         }
       }
@@ -77,12 +80,14 @@ function cleanupOldProcesses() {
       // Ignore errors - process might not exist
     }
   } else {
-    // Unix: Find and kill gasoline processes by name
+    // Unix: Find and kill Kaboom and legacy processes by name
     try {
       // Method 1: pkill by name (most reliable)
-      spawnSync('pkill', ['-f', 'gasoline'], {
-        encoding: 'utf8'
-      })
+      for (const pattern of ['kaboom-agentic-browser', 'gasoline', 'browser-agent']) {
+        spawnSync('pkill', ['-f', pattern], {
+          encoding: 'utf8'
+        })
+      }
 
       // Method 2: Also check for processes on common ports (7890, 17890)
       const ports = ['7890', '17890']
@@ -119,7 +124,7 @@ function verifyVersion(binaryPath) {
     if (result.stdout) {
       const version = result.stdout.trim()
       if (version.includes(VERSION)) {
-        console.log(`✓ Verified gasoline version: ${version}`)
+        console.log(`✓ Verified Kaboom version: ${version}`)
         return true
       } else {
         console.warn(`Warning: Expected version ${VERSION}, got: ${version}`)
@@ -270,12 +275,12 @@ function installStagedBinary(stagedPath, livePath) {
 }
 
 /**
- * Start the gasoline server in the background
+ * Start the Kaboom server in the background
  * Returns true if server started successfully
  */
 function autoStartServer(binaryPath, port = 7890) {
   return new Promise((resolve) => {
-    console.log(`Starting gasoline server on port ${port}...`)
+    console.log(`Starting Kaboom server on port ${port}...`)
 
     // Check if port is already in use
     const testServer = http.createServer() // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server -- localhost-only health check, no sensitive data
@@ -284,7 +289,7 @@ function autoStartServer(binaryPath, port = 7890) {
         checkServerIdentity(port, VERSION)
           .then((ok) => {
             if (ok) {
-              console.log(`Port ${port} already in use by Gasoline ${VERSION}`)
+              console.log(`Port ${port} already in use by Kaboom ${VERSION}`)
               resolve(true)
               return
             }
@@ -419,8 +424,8 @@ async function main() {
   const binaryPath = path.join(binDir, binaryName)
   const stagedBinaryPath = path.join(binDir, `${binaryName}.tmp-${Date.now()}`)
 
-  // Clean up any old gasoline processes before installing new version
-  console.log('Cleaning up old gasoline processes...')
+  // Clean up any old Kaboom and legacy processes before installing new version
+  console.log('Cleaning up old Kaboom and legacy processes...')
   cleanupOldProcesses()
 
   // Ensure bin directory exists
@@ -431,7 +436,7 @@ async function main() {
   // Download URL
   const downloadUrl = `https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/${binaryName}`
 
-  console.log(`Downloading gasoline binary for ${process.platform}-${process.arch}...`)
+  console.log(`Downloading Kaboom binary for ${process.platform}-${process.arch}...`)
   console.log(`URL: ${downloadUrl}`)
 
   let usedLocalBinary = false
@@ -456,24 +461,24 @@ async function main() {
     } else {
       console.error('')
       console.error('╔════════════════════════════════════════════════════════════════╗')
-      console.error('║  GASOLINE BINARY NOT AVAILABLE                                 ║')
+      console.error('║  KABOOM BINARY NOT AVAILABLE                                   ║')
       console.error('╚════════════════════════════════════════════════════════════════╝')
       console.error('')
       console.error('No pre-built binary found for your platform.')
       console.error('')
       console.error('OPTION 1: Build from source (requires Go 1.21+)')
-      console.error('  git clone https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp.git')
+      console.error('  git clone https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP.git')
       console.error('  cd gasoline')
-      console.error('  go build -o /usr/local/bin/gasoline ./cmd/dev-console')
+      console.error('  go build -o /usr/local/bin/kaboom-agentic-browser ./cmd/browser-agent')
       console.error('')
       console.error('OPTION 2: Run directly with Go')
-      console.error('  go run ./cmd/dev-console')
+      console.error('  go run ./cmd/browser-agent')
       console.error('')
       console.error('OPTION 3: Use MCP config with Go (Claude Code / Cursor)')
       console.error('  Add to .mcp.json:')
-      console.error('  {"mcpServers":{"gasoline":{"command":"go","args":["run","./cmd/dev-console"]}}}')
+      console.error('  {"mcpServers":{"kaboom-browser-devtools":{"command":"go","args":["run","./cmd/browser-agent"]}}}')
       console.error('')
-      console.error('For help: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp#quick-start')
+      console.error('For help: https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP#quick-start')
       console.error('')
       // eslint-disable-next-line n/no-process-exit -- CLI script exits with error status
       process.exit(1)
@@ -493,7 +498,7 @@ async function main() {
     fs.chmodSync(binaryPath, 0o755)
   }
 
-  // bin/gasoline is a Node.js launcher that works on all platforms.
+  // bin/kaboom-agentic-browser is a Node.js launcher that works on all platforms.
   // No separate shim needed — npm's bin wiring + the node shebang handle it.
 
   // Verify the installed version
@@ -502,15 +507,15 @@ async function main() {
   // Auto-start the server so extension reconnects immediately
   await autoStartServer(binaryPath)
 
-  console.log('gasoline installed successfully!')
-  const extensionDir = process.env.GASOLINE_EXTENSION_DIR || path.join(os.homedir(), 'GasolineAgenticDevtoolExtension')
+  console.log('Kaboom installed successfully!')
+  const extensionDir = process.env.KABOOM_EXTENSION_DIR || path.join(os.homedir(), 'KaboomAgenticDevtoolExtension')
   printPanel('MANUAL BROWSER CHECKLIST', [
     'The installer cannot click browser UI controls for you.',
     '',
     '1) Open chrome://extensions (or brave://extensions)',
     '2) Enable Developer mode',
     `3) Click Load unpacked and select: ${extensionDir}`,
-    '4) Pin Gasoline in the toolbar (recommended)',
+    '4) Pin Kaboom in the toolbar (recommended)',
     '5) Open popup and click Track This Tab'
   ])
   return

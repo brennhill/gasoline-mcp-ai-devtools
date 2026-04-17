@@ -17,8 +17,8 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 
 ## Entrypoints
 
-1. `analyze({what:"form_state"})` in `cmd/dev-console/tools_analyze_dispatch.go`.
-2. `analyze({what:"data_table"})` in `cmd/dev-console/tools_analyze_dispatch.go`.
+1. `analyze({what:"form_state"})` in `cmd/browser-agent/tools_analyze_dispatch.go`.
+2. `analyze({what:"data_table"})` in `cmd/browser-agent/tools_analyze_dispatch.go`.
 
 ## Primary Flow
 
@@ -26,7 +26,7 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 2. Go server enqueues pending query (`form_state` or `data_table`) with shared fail-fast queue handling (`enqueuePendingQuery`).
 3. Extension `handlePendingQuery` routes to `registerCommand('form_state'|'data_table')`.
 4. Background command sends content-script message (`FORM_STATE_QUERY` or `DATA_TABLE_QUERY`) for the resolved tab.
-5. Content script forwards to inject context with nonce-scoped postMessage (`GASOLINE_FORM_STATE_QUERY` / `GASOLINE_DATA_TABLE_QUERY`).
+5. Content script forwards to inject context with nonce-scoped postMessage (`KABOOM_FORM_STATE_QUERY` / `KABOOM_DATA_TABLE_QUERY`).
 6. Inject handlers execute deterministic extractors:
    - `discoverForms(..., mode:'discover')` for form state.
    - `extractDataTables(...)` for HTML table rows/headers.
@@ -49,9 +49,9 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 
 ## Code Paths
 
-- `cmd/dev-console/tools_analyze_dispatch.go`
-- `cmd/dev-console/tools_analyze_inspect_forms.go`
-- `cmd/dev-console/tools_pending_query_enqueue.go`
+- `cmd/browser-agent/tools_analyze_dispatch.go`
+- `cmd/browser-agent/tools_analyze_inspect_forms.go`
+- `cmd/browser-agent/tools_pending_query_enqueue.go`
 - `internal/schema/analyze.go`
 - `internal/tools/configure/mode_specs_analyze.go`
 - `src/background/commands/analyze.ts`
@@ -65,9 +65,9 @@ Structured page data extraction for `analyze` modes `form_state` and `data_table
 
 ## Test Paths
 
-- `cmd/dev-console/tools_analyze_structured_extraction_test.go`
-- `cmd/dev-console/tools_analyze_inspect_test.go`
-- `cmd/dev-console/tools_pending_query_enqueue_test.go`
+- `cmd/browser-agent/tools_analyze_structured_extraction_test.go`
+- `cmd/browser-agent/tools_analyze_inspect_test.go`
+- `cmd/browser-agent/tools_pending_query_enqueue_test.go`
 - `internal/tools/analyze/forms_test.go`
 - `tests/extension/data-table.test.js`
 

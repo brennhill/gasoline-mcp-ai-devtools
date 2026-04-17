@@ -438,7 +438,7 @@ describe('Snapshot CRUD in background.js', () => {
     assert.ok(result.size_bytes > 0, 'Should have size_bytes')
 
     // Verify stored
-    const stored = snapshotStorage['gasoline_state_snapshots']
+    const stored = snapshotStorage['kaboom_state_snapshots']
     assert.ok(stored['my-snapshot'], 'Snapshot should be stored')
     assert.strictEqual(stored['my-snapshot'].name, 'my-snapshot')
   })

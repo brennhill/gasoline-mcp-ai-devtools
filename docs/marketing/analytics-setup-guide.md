@@ -4,9 +4,9 @@ status: reference
 last_reviewed: 2026-02-16
 ---
 
-# Analytics Setup Guide for Gasoline MCP
+# Analytics Setup Guide for Kaboom MCP
 
-This guide will help you set up analytics tracking for cookwithgasoline.com to measure marketing effectiveness and user behavior.
+This guide will help you set up analytics tracking for gokaboom.dev to measure marketing effectiveness and user behavior.
 
 ---
 
@@ -28,8 +28,8 @@ We'll set up the following analytics tools:
 
 1. Go to [analytics.google.com](https://analytics.google.com)
 2. Click "Start measuring" or "Admin" → "Create Account"
-3. Account name: `Gasoline MCP`
-4. Property name: `cookwithgasoline.com`
+3. Account name: `Kaboom MCP`
+4. Property name: `gokaboom.dev`
 5. Reporting time zone: Your timezone
 6. Currency: USD (or your preference)
 7. Click "Create"
@@ -55,7 +55,7 @@ Add the GA4 tracking code to your website's `<head>` section:
 </script>
 ```
 
-**For cookwithgasoline.com:**
+**For gokaboom.dev:**
 
 If you're using a static site generator (Hugo, Jekyll, etc.), add this to your base template.
 
@@ -119,7 +119,7 @@ Enable:
 
 GitHub provides built-in analytics for repositories:
 
-1. Go to your repo: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp
+1. Go to your repo: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp
 2. Click "Insights" tab
 3. View:
    - **Traffic** - Views, clones, visitors
@@ -133,7 +133,7 @@ Use GitHub's API or third-party tools:
 
 ```bash
 # Get star count
-curl -s https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp | jq '.stargazers_count'
+curl -s https://api.github.com/repos/brennhill/kaboom-agentic-browser-devtools-mcp | jq '.stargazers_count'
 ```
 
 ### Set Up GitHub Insights Dashboard
@@ -151,23 +151,23 @@ Consider using:
 
 ```bash
 # Get download stats for last 30 days
-curl -s https://api.npmjs.org/downloads/point/last-month/gasoline-mcp
+curl -s https://api.npmjs.org/downloads/point/last-month/kaboom-mcp
 
 # Get download stats for specific version
-curl -s https://api.npmjs.org/downloads/point/last-month/gasoline-mcp@6.0.0
+curl -s https://api.npmjs.org/downloads/point/last-month/kaboom-mcp@6.0.0
 
 # Get daily downloads for last week
-curl -s https://api.npmjs.org/downloads/range/last-week/gasoline-mcp
+curl -s https://api.npmjs.org/downloads/range/last-week/kaboom-mcp
 ```
 
 ### PyPI Downloads
 
 ```bash
 # Get download stats
-curl -s https://pypistats.org/api/packages/gasoline-mcp/recent
+curl -s https://pypistats.org/api/packages/kaboom-mcp/recent
 
 # Get overall stats
-curl -s https://pypistats.org/api/packages/gasoline-mcp/overall
+curl -s https://pypistats.org/api/packages/kaboom-mcp/overall
 ```
 
 ### Set Up Automated Tracking
@@ -179,8 +179,8 @@ Create a script to track downloads daily:
 # track-downloads.sh
 
 DATE=$(date +%Y-%m-%d)
-NPM_DOWNLOADS=$(curl -s https://api.npmjs.org/downloads/point/last-month/gasoline-mcp | jq '.downloads')
-PYPI_DOWNLOADS=$(curl -s https://pypistats.org/api/packages/gasoline-mcp/recent | jq '.last_month')
+NPM_DOWNLOADS=$(curl -s https://api.npmjs.org/downloads/point/last-month/kaboom-mcp | jq '.downloads')
+PYPI_DOWNLOADS=$(curl -s https://pypistats.org/api/packages/kaboom-mcp/recent | jq '.last_month')
 
 echo "$DATE,$NPM_DOWNLOADS,$PYPI_DOWNLOADS" >> downloads.csv
 ```
@@ -304,7 +304,7 @@ Use Google Apps Script to automate data updates:
 
 ```javascript
 function updateGitHubStars() {
-  var response = UrlFetchApp.fetch('https://api.github.com/repos/brennhill/gasoline-agentic-browser-devtools-mcp');
+  var response = UrlFetchApp.fetch('https://api.github.com/repos/brennhill/kaboom-agentic-browser-devtools-mcp');
   var data = JSON.parse(response.getContentText());
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('GitHub');
   sheet.getRange('B2').setValue(data.stargazers_count);
@@ -322,7 +322,7 @@ Consider:
 
 ## 8. Privacy Considerations
 
-Gasoline MCP is privacy-focused, so ensure analytics respect user privacy:
+Kaboom MCP is privacy-focused, so ensure analytics respect user privacy:
 
 1. **Anonymize IP addresses** in GA4:
    ```javascript
@@ -349,7 +349,7 @@ Gasoline MCP is privacy-focused, so ensure analytics respect user privacy:
 Create a weekly report to track progress:
 
 ```
-Gasoline MCP Weekly Analytics Report
+Kaboom MCP Weekly Analytics Report
 Week of: [DATE]
 
 Website Metrics:

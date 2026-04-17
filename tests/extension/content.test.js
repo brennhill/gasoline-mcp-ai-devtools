@@ -6,7 +6,7 @@ import { createMockChrome } from './helpers.js'
 import { initTabTracking } from '../../extension/content/tab-tracking.js'
 import { initWindowMessageListener } from '../../extension/content/window-message-listener.js'
 import { registerDomRequest } from '../../extension/content/request-tracking.js'
-import { MESSAGE_MAP } from '../../extension/content/message-forwarding.js'
+import { MESSAGE_MAP, safeSendMessage } from '../../extension/content/message-forwarding.js'
 
 describe('Content Window Message Bridge', () => {
   let messageHandler
@@ -16,7 +16,7 @@ describe('Content Window Message Bridge', () => {
     messageHandler = undefined
 
     runtimeSendMessage = mock.fn((msg) => {
-      if (msg?.type === 'GET_TAB_ID') return Promise.resolve({ tabId: 42 })
+      if (msg?.type === 'get_tab_id') return Promise.resolve({ tabId: 42 })
       return Promise.resolve()
     })
 
@@ -46,11 +46,11 @@ describe('Content Window Message Bridge', () => {
   })
 
   test('MESSAGE_MAP contains expected forwarding contracts', () => {
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_LOG, 'log')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_WS, 'ws_event')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_NETWORK_BODY, 'network_body')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_ENHANCED_ACTION, 'enhanced_action')
-    assert.strictEqual(MESSAGE_MAP.GASOLINE_PERFORMANCE_SNAPSHOT, 'performance_snapshot')
+    assert.strictEqual(MESSAGE_MAP.kaboom_log, 'log')
+    assert.strictEqual(MESSAGE_MAP.kaboom_ws, 'ws_event')
+    assert.strictEqual(MESSAGE_MAP.kaboom_network_body, 'network_body')
+    assert.strictEqual(MESSAGE_MAP.kaboom_enhanced_action, 'enhanced_action')
+    assert.strictEqual(MESSAGE_MAP.kaboom_performance_snapshot, 'performance_snapshot')
   })
 
   test('forwards GASOLINE_NETWORK_BODY from tracked tab through runtime.sendMessage', async () => {
@@ -63,7 +63,7 @@ describe('Content Window Message Bridge', () => {
     messageHandler({
       source: globalThis.window,
       origin: globalThis.window.location.origin,
-      data: { type: 'GASOLINE_NETWORK_BODY', payload }
+      data: { type: 'kaboom_network_body', payload }
     })
 
     const forwarded = runtimeSendMessage.mock.calls
@@ -84,7 +84,7 @@ describe('Content Window Message Bridge', () => {
     messageHandler({
       source: globalThis.window,
       origin: globalThis.window.location.origin,
-      data: { type: 'GASOLINE_LOG', payload: { level: 'error', message: 'boom' } }
+      data: { type: 'kaboom_log', payload: { level: 'error', message: 'boom' } }
     })
 
     const forwardedCount = runtimeSendMessage.mock.calls
@@ -94,7 +94,7 @@ describe('Content Window Message Bridge', () => {
     assert.strictEqual(forwardedCount, 0)
   })
 
-  test('resolves real pending DOM request on GASOLINE_DOM_QUERY_RESPONSE', async () => {
+  test('resolves real pending DOM request on kaboom_dom_query_RESPONSE', async () => {
     await initTabTracking()
     initWindowMessageListener()
 
@@ -108,12 +108,29 @@ describe('Content Window Message Bridge', () => {
       source: globalThis.window,
       origin: globalThis.window.location.origin,
       data: {
-        type: 'GASOLINE_DOM_QUERY_RESPONSE',
+        type: 'kaboom_dom_query_response',
         requestId,
         result: expected
       }
     })
 
     assert.deepStrictEqual(resolved, expected)
+  })
+
+  test('extension reload warning uses Kaboom copy and suppresses repeat sends after invalidation', () => {
+    const warn = mock.method(console, 'warn', () => {})
+    globalThis.chrome.runtime.sendMessage = mock.fn(() => {
+      throw new Error('Extension context invalidated')
+    })
+
+    safeSendMessage({ type: 'log', payload: { level: 'warn', message: 'first' } })
+    safeSendMessage({ type: 'log', payload: { level: 'warn', message: 'second' } })
+
+    assert.strictEqual(globalThis.chrome.runtime.sendMessage.mock.calls.length, 1)
+    assert.strictEqual(warn.mock.calls.length, 1)
+    const message = warn.mock.calls[0].arguments[0]
+    assert.match(message, /Kaboom extension was reloaded/)
+    assert.match(message, /A page refresh will reconnect capture automatically/)
+    assert.doesNotMatch(message, /Gasoline extension was reloaded|STRUM extension was reloaded/)
   })
 })

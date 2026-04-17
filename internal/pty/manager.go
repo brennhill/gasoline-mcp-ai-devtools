@@ -12,30 +12,48 @@ import (
 	"sync"
 )
 
+// SessionKey identifies a session by repository path and agent type,
+// allowing multiple providers (e.g., Claude and Codex) to coexist for the same repo.
+type SessionKey struct {
+	RepoPath  string
+	AgentType string
+}
+
+// maxSessions is the maximum number of concurrent PTY sessions.
+// Each session spawns a real OS process, so this must be bounded.
+const maxSessions = 10
+
+// ErrMaxSessions is returned when the session limit is reached.
+var ErrMaxSessions = errors.New("pty: maximum concurrent sessions reached")
+
 // Manager manages PTY sessions with token-based authentication.
 type Manager struct {
-	mu       sync.RWMutex
-	sessions map[string]*Session // keyed by session ID
-	tokens   map[string]string   // token → session ID
+	mu        sync.RWMutex
+	sessions  map[string]*Session    // keyed by session ID
+	tokens    map[string]string      // token → session ID
+	repoIndex map[SessionKey]string  // (repo, agent) → session ID
 }
 
 // NewManager creates a new session manager.
 func NewManager() *Manager {
 	return &Manager{
-		sessions: make(map[string]*Session),
-		tokens:   make(map[string]string),
+		sessions:  make(map[string]*Session),
+		tokens:    make(map[string]string),
+		repoIndex: make(map[SessionKey]string),
 	}
 }
 
 // StartConfig is the configuration for starting a new terminal session.
 type StartConfig struct {
-	ID   string   // Session ID (default: "default").
-	Cmd  string   // CLI binary.
-	Args []string // CLI arguments.
-	Dir  string   // Working directory.
-	Env  []string // Extra environment variables.
-	Cols uint16   // Terminal columns.
-	Rows uint16   // Terminal rows.
+	ID        string   // Session ID (default: "default").
+	Cmd       string   // CLI binary.
+	Args      []string // CLI arguments.
+	Dir       string   // Working directory.
+	Env       []string // Extra environment variables.
+	Cols      uint16   // Terminal columns.
+	Rows      uint16   // Terminal rows.
+	RepoPath  string   // Repository path (for repo+agent indexing).
+	AgentType string   // Agent type (e.g., "claude", "codex").
 }
 
 // StartResult is returned after successfully starting a session.
@@ -67,6 +85,10 @@ func (m *Manager) Start(cfg StartConfig) (*StartResult, error) {
 		return nil, fmt.Errorf("%w: %s", ErrSessionExists, cfg.ID)
 	}
 
+	if len(m.sessions) >= maxSessions {
+		return nil, fmt.Errorf("%w: limit %d", ErrMaxSessions, maxSessions)
+	}
+
 	sess, err := Spawn(SpawnConfig{
 		ID:   cfg.ID,
 		Cmd:  cfg.Cmd,
@@ -88,6 +110,10 @@ func (m *Manager) Start(cfg StartConfig) (*StartResult, error) {
 
 	m.sessions[cfg.ID] = sess
 	m.tokens[token] = cfg.ID
+	if cfg.RepoPath != "" {
+		key := SessionKey{RepoPath: cfg.RepoPath, AgentType: cfg.AgentType}
+		m.repoIndex[key] = cfg.ID
+	}
 
 	return &StartResult{
 		SessionID: cfg.ID,
@@ -154,6 +180,13 @@ func (m *Manager) Stop(id string) error {
 			break
 		}
 	}
+	// Remove repo-agent mapping.
+	for key, sid := range m.repoIndex {
+		if sid == id {
+			delete(m.repoIndex, key)
+			break
+		}
+	}
 	delete(m.sessions, id)
 	m.mu.Unlock()
 
@@ -171,6 +204,7 @@ func (m *Manager) StopAll() {
 	}
 	m.sessions = make(map[string]*Session)
 	m.tokens = make(map[string]string)
+	m.repoIndex = make(map[SessionKey]string)
 	m.mu.Unlock()
 
 	for _, sess := range toClose {
@@ -195,6 +229,22 @@ func (m *Manager) Count() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.sessions)
+}
+
+// GetByRepoAgent returns the session for a given repo path and agent type.
+func (m *Manager) GetByRepoAgent(repoPath, agentType string) (*Session, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	key := SessionKey{RepoPath: repoPath, AgentType: agentType}
+	sid, ok := m.repoIndex[key]
+	if !ok {
+		return nil, fmt.Errorf("%w: repo=%s agent=%s", ErrSessionNotFound, repoPath, agentType)
+	}
+	sess, ok := m.sessions[sid]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", ErrSessionNotFound, sid)
+	}
+	return sess, nil
 }
 
 // generateToken creates a cryptographically random 32-byte hex token.

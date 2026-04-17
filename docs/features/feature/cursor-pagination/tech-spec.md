@@ -16,7 +16,7 @@ last_verified_date: 2026-03-05
 # Technical Specification: Cursor-Based Pagination
 
 **Status:** SHIPPED in v5.3
-**Canonical Reference:** Codebase (cmd/dev-console/tools_core.go)
+**Canonical Reference:** Codebase (cmd/browser-agent/tools_core.go)
 **Last Verified:** 2026-01-30
 
 ---
@@ -28,8 +28,8 @@ Cursor-based pagination was implemented in v5.3 to solve token limit problems. T
 ### Core Implementation Details
 
 #### Where it lives:
-- Go implementation: `cmd/dev-console/tools_core.go` (paginate utilities and observe handlers)
-- Test file: `cmd/dev-console/composite_tools_test.go`
+- Go implementation: `cmd/browser-agent/tools_core.go` (paginate utilities and observe handlers)
+- Test file: `cmd/browser-agent/composite_tools_test.go`
 
 #### Supported data streams:
 - `errors` (logs with pagination)
@@ -117,7 +117,7 @@ When buffer is full, oldest entries are evicted. Cursors for evicted entries bec
 ## Testing
 
 All pagination scenarios are covered in:
-- **Core test:** `cmd/dev-console/composite_tools_test.go`
+- **Core test:** `cmd/browser-agent/composite_tools_test.go`
 - **UAT scenarios:** `docs/core/uat-v5.3-checklist.md`
 
 Tested:

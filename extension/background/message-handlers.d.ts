@@ -69,7 +69,7 @@ interface StoredStateSnapshot extends BrowserStateSnapshot {
     size_bytes: number;
 }
 /**
- * Save a state snapshot to chrome.storage.local
+ * Save a state snapshot to persistent storage
  */
 export declare function saveStateSnapshot(name: string, state: BrowserStateSnapshot): Promise<{
     success: boolean;
@@ -77,7 +77,7 @@ export declare function saveStateSnapshot(name: string, state: BrowserStateSnaps
     size_bytes: number;
 }>;
 /**
- * Load a state snapshot from chrome.storage.local
+ * Load a state snapshot from persistent storage
  */
 export declare function loadStateSnapshot(name: string): Promise<StoredStateSnapshot | null>;
 /**
@@ -90,7 +90,7 @@ export declare function listStateSnapshots(): Promise<Array<{
     size_bytes: number;
 }>>;
 /**
- * Delete a state snapshot from chrome.storage.local
+ * Delete a state snapshot from persistent storage
  */
 export declare function deleteStateSnapshot(name: string): Promise<{
     success: boolean;

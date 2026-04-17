@@ -3,10 +3,10 @@
 
 package configure
 
-import "github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/mcp"
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 
 // Deps provides all dependencies the configure handlers need.
-// *ToolHandler in cmd/dev-console/ satisfies this interface.
+// *ToolHandler in cmd/browser-agent/ satisfies this interface.
 type Deps interface {
 	mcp.CaptureProvider
 	mcp.LogBufferReader

@@ -5,7 +5,7 @@
 package capture
 
 import (
-	"github.com/brennhill/gasoline-agentic-browser-devtools-mcp/internal/types"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/types"
 )
 
 // BufferClearCounts is an alias to canonical definition in internal/types/buffer.go.
@@ -37,7 +37,7 @@ func (c *Capture) ClearNetworkBuffers() BufferClearCounts {
 // ClearWebSocketBuffers resets websocket events and live-connection tracking.
 //
 // Invariants:
-// - wsEvents/wsAddedAt/wsMemoryTotal/wsTotalAdded are reset atomically.
+// - wsEvents/wsMemoryTotal/wsTotalAdded are reset atomically.
 func (c *Capture) ClearWebSocketBuffers() BufferClearCounts {
 	c.mu.Lock()
 	defer c.mu.Unlock()

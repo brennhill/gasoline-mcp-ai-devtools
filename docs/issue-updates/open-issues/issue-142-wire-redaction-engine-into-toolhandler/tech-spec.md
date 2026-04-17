@@ -1,7 +1,7 @@
 # Tech Spec (Plain English): Issue #142
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/142
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/142
 - Title: Wire redaction engine into ToolHandler
 
 ## Objective

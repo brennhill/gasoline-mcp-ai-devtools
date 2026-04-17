@@ -1,5 +1,5 @@
 #!/bin/bash
-# test-all-tools-comprehensive.sh — Parallel UAT runner for Gasoline MCP.
+# test-all-tools-comprehensive.sh — Parallel UAT runner for Kaboom MCP.
 # Launches 8 groups of category tests, collects results, prints summary.
 # Compatible with bash 3.2+ (macOS default).
 # NO set -e: we need to collect all results even if some groups fail.
@@ -34,10 +34,10 @@ check_deps
 
 # Disable per-category global cleanup while running categories in parallel.
 # Each category still cleans up its own daemon by port.
-export GASOLINE_TEST_DISABLE_GLOBAL_CLEANER=1
+export KABOOM_TEST_DISABLE_GLOBAL_CLEANER=1
 # Comprehensive run should collect all test outcomes, not abort category scripts
 # on first non-zero helper command.
-export GASOLINE_TEST_FAIL_FAST=0
+export KABOOM_TEST_FAIL_FAST=0
 
 # ── Timeout Compatibility ─────────────────────────────────
 if command -v timeout >/dev/null 2>&1; then
@@ -54,8 +54,8 @@ SCRIPT_PATH="${BASH_SOURCE[0]:-$0}"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 resolve_project_root() {
-    if [ -n "${GASOLINE_PROJECT_ROOT:-}" ] && [ -d "${GASOLINE_PROJECT_ROOT:-}" ]; then
-        (cd "$GASOLINE_PROJECT_ROOT" && pwd -P)
+    if [ -n "${KABOOM_PROJECT_ROOT:-}" ] && [ -d "${KABOOM_PROJECT_ROOT:-}" ]; then
+        (cd "$KABOOM_PROJECT_ROOT" && pwd -P)
         return 0
     fi
 
@@ -82,17 +82,19 @@ resolve_project_root() {
 }
 
 PROJECT_ROOT="$(resolve_project_root)" || {
-    echo "FATAL: Could not resolve project root. Set GASOLINE_PROJECT_ROOT=/path/to/repo" >&2
+    echo "FATAL: Could not resolve project root. Set KABOOM_PROJECT_ROOT=/path/to/repo" >&2
     exit 1
 }
 TESTS_DIR="$PROJECT_ROOT/scripts/tests"
 
-if [ -x "$PROJECT_ROOT/gasoline-mcp" ]; then
-    WRAPPER="$PROJECT_ROOT/gasoline-mcp"
-elif command -v gasoline-mcp >/dev/null 2>&1; then
-    WRAPPER="$(command -v gasoline-mcp)"
+if [ -x "$PROJECT_ROOT/dist/kaboom-agentic-browser" ]; then
+    WRAPPER="$PROJECT_ROOT/dist/kaboom-agentic-browser"
+elif [ -x "$PROJECT_ROOT/npm/kaboom-agentic-browser/bin/kaboom-agentic-browser" ]; then
+    WRAPPER="$PROJECT_ROOT/npm/kaboom-agentic-browser/bin/kaboom-agentic-browser"
+elif command -v kaboom-agentic-browser >/dev/null 2>&1; then
+    WRAPPER="$(command -v kaboom-agentic-browser)"
 else
-    echo "FATAL: gasoline-mcp not found in $PROJECT_ROOT or PATH" >&2
+    echo "FATAL: kaboom-agentic-browser not found in $PROJECT_ROOT or PATH" >&2
     exit 1
 fi
 
@@ -102,7 +104,7 @@ OVERALL_START="$(date +%s)"
 
 echo ""
 echo "############################################################"
-echo "# GASOLINE MCP — COMPREHENSIVE UAT"
+echo "# Kaboom MCP — COMPREHENSIVE UAT"
 echo "############################################################"
 echo ""
 echo "Binary:     $WRAPPER"
@@ -147,14 +149,14 @@ if [ "$EXT_CONNECTED" != "true" ]; then
     echo "# FATAL: No browser extension connected"
     echo "############################################################"
     echo ""
-    echo "UAT requires a Chrome browser with the Gasoline extension"
+    echo "UAT requires a Chrome browser with the Kaboom extension"
     echo "connected and tracking a tab."
     echo ""
     echo "  Extension last seen: $EXT_LAST_SEEN"
     echo ""
     echo "Steps:"
-    echo "  1. Open Chrome with the Gasoline extension installed"
-    echo "  2. Click the Gasoline icon → 'Track This Tab'"
+    echo "  1. Open Chrome with the Kaboom extension installed"
+    echo "  2. Click the Kaboom icon → 'Track This Tab'"
     echo "  3. Re-run this UAT script"
     echo ""
     exit 1
@@ -168,35 +170,36 @@ echo ""
 # independent daemon. This lets all groups run simultaneously
 # without contention — total UAT wall time is ~the slowest group
 # instead of the sum of all groups.
-PORT_GROUP1=7890  # cat-01-protocol
-PORT_GROUP2=7891  # cat-02-observe
-PORT_GROUP3=7892  # cat-03-generate
-PORT_GROUP4=7893  # cat-04-configure + cat-05-interact (sequential)
-PORT_GROUP5=7894  # cat-07-concurrency
-PORT_GROUP6=7895  # cat-08-security + cat-09-http (sequential)
-PORT_GROUP7=7896  # cat-06-lifecycle
-PORT_GROUP8=7897  # cat-10-regression
-PORT_GROUP9=7898  # cat-11-data-pipeline
-PORT_GROUP10=7899 # cat-12-rich-actions
-PORT_GROUP11=7900 # cat-13-pilot-contract
-PORT_GROUP12=7901 # cat-14-extension-startup
-PORT_GROUP13=7902 # cat-15-pilot-success-path
-PORT_GROUP14=7903 # cat-16-api-contract
-PORT_GROUP15=7904 # cat-18-recording
-PORT_GROUP16=7905 # cat-19-link-health
-PORT_GROUP18=7907 # cat-23-draw-mode
-PORT_GROUP19=7908 # cat-24-upload
-PORT_GROUP20=7909 # cat-25-annotations
-PORT_GROUP21=7910 # cat-26-dynamic-upgrade
-PORT_GROUP22=7911 # cat-28-terminal
+# IMPORTANT: Stride of 2 — each daemon also binds port+1 for the terminal server.
+PORT_GROUP1=7890  # cat-01-protocol        (terminal: 7891)
+PORT_GROUP2=7892  # cat-02-observe          (terminal: 7893)
+PORT_GROUP3=7894  # cat-03-generate         (terminal: 7895)
+PORT_GROUP4=7896  # cat-04-configure + cat-05-interact (terminal: 7897)
+PORT_GROUP5=7898  # cat-07-concurrency      (terminal: 7899)
+PORT_GROUP6=7900  # cat-08-security + cat-09-http (terminal: 7901)
+PORT_GROUP7=7902  # cat-06-lifecycle        (terminal: 7903)
+PORT_GROUP8=7904  # cat-10-regression       (terminal: 7905)
+PORT_GROUP9=7906  # cat-11-data-pipeline    (terminal: 7907)
+PORT_GROUP10=7908 # cat-12-rich-actions     (terminal: 7909)
+PORT_GROUP11=7910 # cat-13-pilot-contract   (terminal: 7911)
+PORT_GROUP12=7912 # cat-14-extension-startup (terminal: 7913)
+PORT_GROUP13=7914 # cat-15-pilot-success-path (terminal: 7915)
+PORT_GROUP14=7916 # cat-16-api-contract     (terminal: 7917)
+PORT_GROUP15=7918 # cat-18-recording        (terminal: 7919)
+PORT_GROUP16=7920 # cat-19-link-health      (terminal: 7921)
+PORT_GROUP18=7922 # cat-23-draw-mode        (terminal: 7923)
+PORT_GROUP19=7924 # cat-24-upload           (terminal: 7925)
+PORT_GROUP20=7926 # cat-25-annotations      (terminal: 7927)
+PORT_GROUP21=7928 # cat-26-dynamic-upgrade  (terminal: 7929)
+PORT_GROUP22=7930 # cat-28-terminal         (terminal: 7931)
 
 # All ports used by this runner
 ALL_UAT_PORTS="$PORT_GROUP1 $PORT_GROUP2 $PORT_GROUP3 $PORT_GROUP4 $PORT_GROUP5 $PORT_GROUP6 $PORT_GROUP7 $PORT_GROUP8 $PORT_GROUP9 $PORT_GROUP10 $PORT_GROUP11 $PORT_GROUP12 $PORT_GROUP13 $PORT_GROUP14 $PORT_GROUP15 $PORT_GROUP16 $PORT_GROUP18 $PORT_GROUP19 $PORT_GROUP20 $PORT_GROUP21 $PORT_GROUP22"
-# NOTE: PORT_GROUP17 is defined later (line ~303) and added to cleanup below
+# NOTE: PORT_GROUP17 is defined later (line ~357) and added to cleanup below
 
 # Safety-net trap: kill daemons on all ports if runner exits abnormally
 _uat_cleanup() {
-    for port in $ALL_UAT_PORTS 7906; do  # 7906 = PORT_GROUP17 (defined later)
+    for port in $ALL_UAT_PORTS 7932; do  # 7932 = PORT_GROUP17 (defined later)
         lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
     done
     # Also kill upload test servers that cat-24 may have spawned
@@ -210,7 +213,7 @@ _uat_cleanup() {
 trap _uat_cleanup EXIT
 
 # Kill anything on our ports before starting
-for port in $ALL_UAT_PORTS 7906; do  # 7906 = PORT_GROUP17 (defined later)
+for port in $ALL_UAT_PORTS 7932; do  # 7932 = PORT_GROUP17 (defined later)
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 sleep 0.5
@@ -351,7 +354,7 @@ PIDS="$PIDS $!"
 PIDS="$PIDS $!"
 
 # Group 17: Noise Rule Persistence (single script)
-PORT_GROUP17=7906  # cat-20-noise-persistence
+PORT_GROUP17=7932  # cat-20-noise-persistence (terminal: 7933)
 (
     cd "$PROJECT_ROOT" || exit
     bash "$TESTS_DIR/cat-20-noise-persistence.sh" "$PORT_GROUP17" "$RESULTS_DIR/results-20.txt" \
@@ -540,7 +543,7 @@ for port in $ALL_UAT_PORTS 7906; do
     lsof -ti :"$port" 2>/dev/null | xargs kill -9 2>/dev/null || true
 done
 
-if [ "${GASOLINE_KEEP_RESULTS:-0}" = "1" ]; then
+if [ "${KABOOM_KEEP_RESULTS:-0}" = "1" ]; then
     echo "Results kept at: $RESULTS_DIR"
 else
     rm -rf "$RESULTS_DIR"

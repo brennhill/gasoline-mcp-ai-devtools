@@ -58,7 +58,7 @@ Return audit report to server
 - `extension/inject.js` (modified): Invoke audit on query
 
 **Server files**:
-- `cmd/dev-console/queries.go`: Add handler
+- `cmd/browser-agent/queries.go`: Add handler
 
 **Trade-offs**:
 - Extension-side analysis because requires DOM and network access
@@ -79,7 +79,7 @@ Return audit report to server
 
 - Location API
 - Resource Timing API
-- Network waterfall from Gasoline
+- Network waterfall from Kaboom
 
 ## Performance Considerations
 
@@ -92,4 +92,4 @@ Return audit report to server
 
 - Read-only inspection of page state
 - No external network requests
-- Header inspection uses data already captured by Gasoline
+- Header inspection uses data already captured by Kaboom

@@ -4,6 +4,7 @@ package pty
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 )
@@ -196,4 +197,167 @@ func TestManager_ConcurrentAccess(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+// --- Session-per-repo-per-agent (improvement 7) ---
+
+func TestManager_GetByRepoAgent(t *testing.T) {
+	m := NewManager()
+	defer m.StopAll()
+
+	_, err := m.Start(StartConfig{
+		ID:        "claude-myrepo",
+		Cmd:       "/bin/sh",
+		Args:      []string{"-c", "exec cat"},
+		RepoPath:  "/home/user/myrepo",
+		AgentType: "claude",
+	})
+	if err != nil {
+		t.Fatalf("start claude: %v", err)
+	}
+
+	_, err = m.Start(StartConfig{
+		ID:        "codex-myrepo",
+		Cmd:       "/bin/sh",
+		Args:      []string{"-c", "exec cat"},
+		RepoPath:  "/home/user/myrepo",
+		AgentType: "codex",
+	})
+	if err != nil {
+		t.Fatalf("start codex: %v", err)
+	}
+
+	// Get Claude session for myrepo.
+	sess, err := m.GetByRepoAgent("/home/user/myrepo", "claude")
+	if err != nil {
+		t.Fatalf("get claude: %v", err)
+	}
+	if sess.ID != "claude-myrepo" {
+		t.Fatalf("expected claude-myrepo, got %s", sess.ID)
+	}
+
+	// Get Codex session for myrepo.
+	sess, err = m.GetByRepoAgent("/home/user/myrepo", "codex")
+	if err != nil {
+		t.Fatalf("get codex: %v", err)
+	}
+	if sess.ID != "codex-myrepo" {
+		t.Fatalf("expected codex-myrepo, got %s", sess.ID)
+	}
+
+	// Nonexistent combination.
+	_, err = m.GetByRepoAgent("/home/user/other", "claude")
+	if !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("expected ErrSessionNotFound, got: %v", err)
+	}
+}
+
+func TestManager_RepoIndex_CleanedOnStop(t *testing.T) {
+	m := NewManager()
+	defer m.StopAll()
+
+	_, err := m.Start(StartConfig{
+		ID:        "test-sess",
+		Cmd:       "/bin/sh",
+		Args:      []string{"-c", "exec cat"},
+		RepoPath:  "/repo",
+		AgentType: "claude",
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	if err := m.Stop("test-sess"); err != nil {
+		t.Fatalf("stop: %v", err)
+	}
+
+	_, err = m.GetByRepoAgent("/repo", "claude")
+	if !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("expected ErrSessionNotFound after stop, got: %v", err)
+	}
+}
+
+func TestManager_RepoIndex_CleanedOnStopAll(t *testing.T) {
+	m := NewManager()
+
+	_, err := m.Start(StartConfig{
+		ID:        "test-sess",
+		Cmd:       "/bin/sh",
+		Args:      []string{"-c", "exec cat"},
+		RepoPath:  "/repo",
+		AgentType: "claude",
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	m.StopAll()
+
+	_, err = m.GetByRepoAgent("/repo", "claude")
+	if !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("expected ErrSessionNotFound after StopAll, got: %v", err)
+	}
+}
+
+func TestManager_MaxSessionsLimit(t *testing.T) {
+	m := NewManager()
+	defer m.StopAll()
+
+	// Fill up to the limit.
+	for i := 0; i < maxSessions; i++ {
+		_, err := m.Start(StartConfig{
+			ID:   fmt.Sprintf("sess-%d", i),
+			Cmd:  "/bin/sh",
+			Args: []string{"-c", "exec cat"},
+		})
+		if err != nil {
+			t.Fatalf("start session %d: %v", i, err)
+		}
+	}
+
+	if m.Count() != maxSessions {
+		t.Fatalf("expected %d sessions, got %d", maxSessions, m.Count())
+	}
+
+	// Next session should be rejected.
+	_, err := m.Start(StartConfig{
+		ID:   "overflow",
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if !errors.Is(err, ErrMaxSessions) {
+		t.Fatalf("expected ErrMaxSessions, got: %v", err)
+	}
+
+	// After stopping one, a new session should be allowed.
+	if err := m.Stop("sess-0"); err != nil {
+		t.Fatalf("stop: %v", err)
+	}
+	_, err = m.Start(StartConfig{
+		ID:   "replacement",
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("start replacement after stop: %v", err)
+	}
+}
+
+func TestManager_NoRepoIndex_WithoutRepoPath(t *testing.T) {
+	m := NewManager()
+	defer m.StopAll()
+
+	_, err := m.Start(StartConfig{
+		Cmd:  "/bin/sh",
+		Args: []string{"-c", "exec cat"},
+	})
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+
+	// Without RepoPath, GetByRepoAgent should not find it.
+	_, err = m.GetByRepoAgent("", "")
+	if !errors.Is(err, ErrSessionNotFound) {
+		t.Fatalf("expected ErrSessionNotFound, got: %v", err)
+	}
 }

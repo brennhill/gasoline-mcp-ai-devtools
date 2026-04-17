@@ -1,12 +1,12 @@
 # Product Update: Issue #39
 
 ## Source
-- Issue: https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp/issues/39
+- Issue: https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp/issues/39
 - Title: Test 15.16: Stage 4 escalation form submission doesn't reach success page
 - Last Updated: 2026-02-14T13:23:40Z
 
 ## Change Summary
-This update resolves or advances Issue #39 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Gasoline workflows rather than introducing isolated behavior.
+This update resolves or advances Issue #39 by defining a complete product behavior change, scoped to what users and AI agents should experience at runtime. The change is written to align with existing Kaboom workflows rather than introducing isolated behavior.
 
 ## Problem Statement
 Test 15.16: Stage 4 escalation form submission doesn't reach success page

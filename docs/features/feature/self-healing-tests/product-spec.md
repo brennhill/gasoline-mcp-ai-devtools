@@ -28,7 +28,7 @@ Test failures are the primary feedback mechanism for AI coding assistants. Howev
 
 Self-Healing Tests enable AI to autonomously repair test failures by:
 
-1. **Observe** the test failure via Gasoline (logs, network calls, DOM state, performance)
+1. **Observe** the test failure via Kaboom (logs, network calls, DOM state, performance)
 2. **Diagnose** the root cause (API changed? CSS broken? Selector stale? Mock mismatch?)
 3. **Repair** the code or test (update mocks, fix selectors, adjust assertions)
 4. **Verify** the fix works (re-run test, confirm pass, no regressions)
@@ -38,7 +38,7 @@ The AI acts as a self-healing agent: test fails → diagnose via context → fix
 ## Requirements
 
 ### Core Flow
-- **Autonomous Test Repair:** When a test fails, AI diagnoses via Gasoline context (network, logs, DOM, performance) and proposes fixes
+- **Autonomous Test Repair:** When a test fails, AI diagnoses via Kaboom context (network, logs, DOM, performance) and proposes fixes
 - **Multi-Path Diagnostics:** Support repairs across code, tests, mocks, selectors, assertions
 - **Closed-Loop Verification:** AI re-runs tests after fix to confirm success before marking resolved
 - **Root-Cause Linking:** Connect test failure → DOM/network/log anomaly → code location requiring fix
@@ -71,14 +71,14 @@ The AI acts as a self-healing agent: test fails → diagnose via context → fix
 - ✅ **Multi-Path:** Can diagnose and repair across code, mocks, selectors, assertions, API contracts
 - ✅ **Evidence:** Repair proposals include root-cause analysis + verification results
 - ✅ **Regression-Free:** Fixes don't introduce new test failures (verify full suite)
-- ✅ **Battle-Tested:** UAT at ~/dev/gasoline-demos: 34 bugs autonomously fixed with zero human guidance
+- ✅ **Battle-Tested:** UAT at ~/dev/kaboom-demos: 34 bugs autonomously fixed with zero human guidance
 
 ## User Workflow
 
 ### Scenario 1: Code Logic Failure
 1. Developer runs test suite
 2. Test fails: "Expected button to be disabled, but was enabled"
-3. AI observes failure via Gasoline
+3. AI observes failure via Kaboom
    - Fetches logs, network calls, DOM state at failure moment
    - Detects: No API error response, but state update didn't trigger
 4. AI diagnoses: "Component state mutation is missing in action handler"
@@ -154,22 +154,22 @@ VERIFICATION
 
 ## Integration Points
 
-- **Gasoline Context:** Uses `observe()` to fetch logs, network, DOM, performance data at failure moment
+- **Kaboom Context:** Uses `observe()` to fetch logs, network, DOM, performance data at failure moment
 - **Code Analysis:** Parses test files to identify selectors, assertions, API expectations
 - **Test Runner:** Integration with Cypress, Jest, Playwright to capture failures and re-run
-- **CI/CD:** Gasoline CI Infrastructure (Wave 1 #2) enables autonomous repair in pipelines
+- **CI/CD:** Kaboom CI Infrastructure (Wave 1 #2) enables autonomous repair in pipelines
 
 ## Dependencies
 
-- ✅ **Gasoline Core:** observe() tool provides full browser/network context
+- ✅ **Kaboom Core:** observe() tool provides full browser/network context
 - ✅ **Buffer-Specific Clearing (v5.3):** Isolates test-specific logs from noise
 - ⏳ **Context Streaming (Wave 1 #3):** Real-time error context improves diagnosis speed
-- ⏳ **Gasoline CI Infrastructure (Wave 1 #2):** Enables automated repair loops in CI/CD
+- ⏳ **Kaboom CI Infrastructure (Wave 1 #2):** Enables automated repair loops in CI/CD
 
 ## Notes
 
-- **UAT Evidence:** ~/dev/gasoline-demos site demonstrates 34 bugs autonomously fixed with zero human guidance
+- **UAT Evidence:** ~/dev/kaboom-demos site demonstrates 34 bugs autonomously fixed with zero human guidance
 - **Related Specs:**
-  - [Gasoline CI Infrastructure](../ci-infrastructure/product-spec.md) — Enables autonomous loops in CI/CD
+  - [Kaboom CI Infrastructure](../ci-infrastructure/product-spec.md) — Enables autonomous loops in CI/CD
   - [Context Streaming](../context-streaming/product-spec.md) — Real-time diagnostics
 - **Marketing Message:** "AI autonomously fixes tests, not just suggests fixes. Closed-loop verification: failure → diagnosis → repair → confirm → done."

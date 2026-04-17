@@ -20,9 +20,9 @@ last_verified_date: 2026-03-05
 
 ## Purpose
 
-Gasoline's accessibility audit (`run_accessibility_audit`) detects WCAG violations in the running page — missing alt text, low contrast ratios, missing form labels, etc. Today, these results exist only in the MCP tool response. The AI sees them and can fix them, but the human reviewer has no persistent record of what was found, what was fixed, and what remains.
+Kaboom's accessibility audit (`run_accessibility_audit`) detects WCAG violations in the running page — missing alt text, low contrast ratios, missing form labels, etc. Today, these results exist only in the MCP tool response. The AI sees them and can fix them, but the human reviewer has no persistent record of what was found, what was fixed, and what remains.
 
-SARIF (Static Analysis Results Interchange Format) is the industry-standard JSON format for communicating tool findings. GitHub Code Scanning, VS Code's Problems panel, Azure DevOps, SonarQube, and dozens of CI tools consume SARIF natively. By exporting accessibility audit results as SARIF, Gasoline's findings integrate directly into the developer's existing code review workflow — violations appear as annotations on the PR diff, just like ESLint errors or TypeScript warnings.
+SARIF (Static Analysis Results Interchange Format) is the industry-standard JSON format for communicating tool findings. GitHub Code Scanning, VS Code's Problems panel, Azure DevOps, SonarQube, and dozens of CI tools consume SARIF natively. By exporting accessibility audit results as SARIF, Kaboom's findings integrate directly into the developer's existing code review workflow — violations appear as annotations on the PR diff, just like ESLint errors or TypeScript warnings.
 
 This is the key human verification mechanism: the AI finds and fixes a11y issues, and the human sees the evidence in their familiar PR review interface without needing to run a separate audit tool.
 
@@ -50,13 +50,13 @@ This is the key human verification mechanism: the AI finds and fixes a11y issues
 
 A SARIF 2.1.0 log contains:
 
-1. **Tool section**: Identifies Gasoline as the analysis tool, with version and documentation URL
+1. **Tool section**: Identifies Kaboom as the analysis tool, with version and documentation URL
 2. **Rules section**: Defines each a11y rule that was checked (axe-core rule IDs map to SARIF rule descriptors)
 3. **Results section**: Lists each violation found, with location (file path + source element), severity, and remediation guidance
 
 ### Mapping A11y Results to SARIF
 
-Gasoline's `run_accessibility_audit` returns axe-core-compatible results with:
+Kaboom's `run_accessibility_audit` returns axe-core-compatible results with:
 - Rule ID (e.g., `color-contrast`, `image-alt`, `label`)
 - Impact level (`critical`, `serious`, `moderate`, `minor`)
 - CSS selector of the failing element
@@ -79,7 +79,7 @@ These map to SARIF fields:
 
 ### Source Location Mapping
 
-The most valuable SARIF feature is source location — pointing to the exact file and line that renders the violating element. Gasoline doesn't have source maps or build-tool integration, so it uses a best-effort heuristic:
+The most valuable SARIF feature is source location — pointing to the exact file and line that renders the violating element. Kaboom doesn't have source maps or build-tool integration, so it uses a best-effort heuristic:
 
 1. **Component attribution**: If the HTML snippet contains a `data-component` or `data-testid` attribute, the SARIF location references that component name as a logical location. This is enough for GitHub to create a code annotation.
 
@@ -103,7 +103,7 @@ The most valuable SARIF feature is source location — pointing to the exact fil
 **Response** (when output_path is specified):
 ```
 {
-  "file_path": "/path/to/project/.gasoline/reports/a11y-2026-01-24.sarif",
+  "file_path": "/path/to/project/.kaboom/reports/a11y-2026-01-24.sarif",
   "violations_count": 7,
   "rules_checked": 85,
   "summary": "7 violations (2 critical, 3 serious, 2 moderate). SARIF file ready for upload."
@@ -118,7 +118,7 @@ After the agent generates the SARIF file, it can upload it to GitHub Code Scanni
 gh api /repos/{owner}/{repo}/code-scanning/sarifs \
   -f "commit_sha=$(git rev-parse HEAD)" \
   -f "ref=$(git symbolic-ref HEAD)" \
-  -f "sarif=$(gzip -c .gasoline/reports/a11y.sarif | base64)"
+  -f "sarif=$(gzip -c .kaboom/reports/a11y.sarif | base64)"
 ```
 
 Or via GitHub Actions:
@@ -126,7 +126,7 @@ Or via GitHub Actions:
 ```yaml
 - uses: github/codeql-action/upload-sarif@v3
   with:
-    sarif_file: .gasoline/reports/a11y.sarif
+    sarif_file: .kaboom/reports/a11y.sarif
 ```
 
 The agent can do this as part of the PR creation workflow (see workflow integration spec).
@@ -142,9 +142,9 @@ The agent can do this as part of the PR creation workflow (see workflow integrat
   "runs": [{
     "tool": {
       "driver": {
-        "name": "Gasoline",
+        "name": "Kaboom",
         "version": "4.0.0",
-        "informationUri": "https://github.com/brennhill/gasoline-agentic-browser-devtools-mcp",
+        "informationUri": "https://github.com/brennhill/kaboom-agentic-browser-devtools-mcp",
         "rules": [
           {
             "id": "color-contrast",
@@ -223,6 +223,6 @@ The agent can do this as part of the PR creation workflow (see workflow integrat
 
 ## File Locations
 
-Server implementation: `cmd/dev-console/export_sarif.go` (SARIF generation, MCP tool handler).
+Server implementation: `cmd/browser-agent/export_sarif.go` (SARIF generation, MCP tool handler).
 
-Tests: `cmd/dev-console/export_sarif_test.go`.
+Tests: `cmd/browser-agent/export_sarif_test.go`.

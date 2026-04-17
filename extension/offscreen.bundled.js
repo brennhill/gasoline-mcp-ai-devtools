@@ -10,24 +10,27 @@
   }
 
   // extension/lib/daemon-http.js
-  var DEFAULT_CLIENT_NAME = "gasoline-extension";
+  var DEFAULT_CLIENT_NAME = "kaboom-extension";
   function buildDaemonHeaders(options = {}) {
     const { clientName = DEFAULT_CLIENT_NAME, extensionVersion, contentType = "application/json", additionalHeaders = {} } = options;
     const normalizedVersion = typeof extensionVersion === "string" && extensionVersion.trim().length > 0 ? extensionVersion.trim() : "";
     const headers = {
-      "X-Gasoline-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
+      "X-Kaboom-Client": normalizedVersion ? `${clientName}/${normalizedVersion}` : clientName
     };
     if (contentType !== null) {
       headers["Content-Type"] = contentType;
     }
     if (normalizedVersion) {
-      headers["X-Gasoline-Extension-Version"] = normalizedVersion;
+      headers["X-Kaboom-Extension-Version"] = normalizedVersion;
     }
     return {
       ...headers,
       ...additionalHeaders
     };
   }
+
+  // extension/lib/brand.js
+  var KABOOM_RECORDING_LOG_PREFIX = "[KaBOOM! REC]";
 
   // extension/offscreen/recording-worker.js
   var MAX_RECORDING_BYTES = 1024 * 1024 * 1024;
@@ -46,7 +49,7 @@
     totalBytes: 0
   };
   var state = { ...defaultState };
-  var LOG = "[Gasoline REC offscreen]";
+  var LOG = `${KABOOM_RECORDING_LOG_PREFIX} offscreen`;
   async function handleStartRecording(msg) {
     console.log(LOG, "handleStartRecording", {
       name: msg.name,
@@ -60,7 +63,7 @@
       console.warn(LOG, "START BLOCKED: already recording");
       chrome.runtime.sendMessage({
         target: "background",
-        type: "OFFSCREEN_RECORDING_STARTED",
+        type: "offscreen_recording_started",
         success: false,
         error: "RECORD_START: Already recording in offscreen document."
       });
@@ -175,7 +178,7 @@
       console.log(LOG, "Recording STARTED, sending confirmation to background");
       chrome.runtime.sendMessage({
         target: "background",
-        type: "OFFSCREEN_RECORDING_STARTED",
+        type: "offscreen_recording_started",
         success: true
       });
     } catch (err) {
@@ -187,7 +190,7 @@
       state = { ...defaultState };
       chrome.runtime.sendMessage({
         target: "background",
-        type: "OFFSCREEN_RECORDING_STARTED",
+        type: "offscreen_recording_started",
         success: false,
         error: `RECORD_START: ${errorMessage(err, "Failed to start recording in offscreen document.")}`
       });
@@ -206,7 +209,7 @@
       console.warn(LOG, "STOP: not active");
       chrome.runtime.sendMessage({
         target: "background",
-        type: "OFFSCREEN_RECORDING_STOPPED",
+        type: "offscreen_recording_stopped",
         status: "error",
         name: "",
         error: "RECORD_STOP: No active recording in offscreen document."
@@ -223,7 +226,7 @@
       state = { ...defaultState };
       chrome.runtime.sendMessage({
         target: "background",
-        type: "OFFSCREEN_RECORDING_STOPPED",
+        type: "offscreen_recording_stopped",
         status: "error",
         name: "",
         error: "RECORD_STOP: Recorder already inactive."
@@ -263,7 +266,7 @@
         const response = await fetch(`${serverUrl}/recordings/save`, {
           method: "POST",
           headers: buildDaemonHeaders({
-            clientName: "gasoline-extension-offscreen",
+            clientName: "kaboom-extension-offscreen",
             contentType: null
           }),
           body: formData
@@ -274,7 +277,7 @@
           console.error(LOG, "Server returned error:", response.status);
           chrome.runtime.sendMessage({
             target: "background",
-            type: "OFFSCREEN_RECORDING_STOPPED",
+            type: "offscreen_recording_stopped",
             status: "error",
             name,
             error: `RECORD_STOP: Server returned ${response.status}.`
@@ -290,7 +293,7 @@
         console.log(LOG, "Recording SAVED", { name, duration, size: blob.size, path: savePath });
         chrome.runtime.sendMessage({
           target: "background",
-          type: "OFFSCREEN_RECORDING_STOPPED",
+          type: "offscreen_recording_stopped",
           status: "saved",
           name,
           duration_seconds: duration,
@@ -303,7 +306,7 @@
         state = { ...defaultState };
         chrome.runtime.sendMessage({
           target: "background",
-          type: "OFFSCREEN_RECORDING_STOPPED",
+          type: "offscreen_recording_stopped",
           status: "error",
           name,
           error: `RECORD_STOP: ${errorMessage(err, "Save failed.")}`
@@ -319,9 +322,9 @@
     if (message.target !== "offscreen")
       return;
     console.log(LOG, "Received message:", message.type);
-    if (message.type === "OFFSCREEN_START_RECORDING") {
+    if (message.type === "offscreen_start_recording") {
       handleStartRecording(message);
-    } else if (message.type === "OFFSCREEN_STOP_RECORDING") {
+    } else if (message.type === "offscreen_stop_recording") {
       handleStopRecording();
     }
   });

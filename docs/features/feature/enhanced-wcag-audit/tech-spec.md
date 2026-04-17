@@ -57,7 +57,7 @@ Return combined audit report
 - `extension/inject.js` (modified): Invoke enhanced checks if `enhanced: true`
 
 **Server files**:
-- `cmd/dev-console/queries.go`: Pass `enhanced` flag to extension
+- `cmd/browser-agent/queries.go`: Pass `enhanced` flag to extension
 
 **Trade-offs**:
 - Opt-in via `enhanced: true` flag (not always-on) to avoid slowing down standard a11y audits
