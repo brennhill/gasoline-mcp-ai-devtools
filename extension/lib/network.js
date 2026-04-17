@@ -468,7 +468,7 @@ export function adoptEarlyBodies() {
         window.postMessage(message, window.location.origin);
     }
     if (adopted > 0) {
-        console.log(`[Kaboom] Adopted ${adopted} early network body(ies)`);
+        console.log(`[KaBOOM!] Adopted ${adopted} early network body(ies)`);
     }
     // Clean up early-patch globals
     delete window.__KABOOM_ORIGINAL_FETCH__;
@@ -507,7 +507,7 @@ export function wrapFetchWithBodies(fetchFn) {
             }
         })
             .catch((err) => {
-            console.debug('[Kaboom] Network body capture error:', err);
+            console.debug('[KaBOOM!] Network body capture error:', err);
         });
         return response;
     };

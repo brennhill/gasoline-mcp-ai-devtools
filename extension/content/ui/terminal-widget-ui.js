@@ -202,7 +202,7 @@ export function createWidget(token) {
         transition: 'background 200ms ease'
     });
     const titleSpan = document.createElement('span');
-    titleSpan.textContent = 'Kaboom Terminal';
+    titleSpan.textContent = 'KaBOOM! Terminal';
     Object.assign(titleSpan.style, {
         color: '#787c99',
         fontSize: '12px',

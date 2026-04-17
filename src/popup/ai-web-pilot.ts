@@ -61,7 +61,7 @@ export async function handleAiWebPilotToggle(enabled: boolean): Promise<void> {
     { type: 'set_ai_web_pilot_enabled', enabled },
     (response: { success?: boolean } | undefined) => {
       if (!response || !response.success) {
-        console.error('[Kaboom] Failed to set AI Web Pilot toggle in background')
+        console.error('[KaBOOM!] Failed to set AI Web Pilot toggle in background')
         // Revert the UI if background didn't accept the change
         const toggle = document.getElementById('aiWebPilotEnabled') as HTMLInputElement | null
         if (toggle) {

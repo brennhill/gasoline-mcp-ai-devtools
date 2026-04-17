@@ -241,7 +241,7 @@ export function createWidget(token: string): HTMLDivElement {
   })
 
   const titleSpan = document.createElement('span')
-  titleSpan.textContent = 'Kaboom Terminal'
+  titleSpan.textContent = 'KaBOOM! Terminal'
   Object.assign(titleSpan.style, {
     color: '#787c99',
     fontSize: '12px',

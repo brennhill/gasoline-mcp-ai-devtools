@@ -126,12 +126,12 @@ function restoreStorageEntries(storage: Storage, entries: Record<string, string>
   for (const [key, value] of Object.entries(entries)) {
     if (!isValidStorageKey(key)) {
       skipped++
-      console.warn(`[Kaboom] Skipped ${label} key with invalid pattern:`, key) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+      console.warn(`[KaBOOM!] Skipped ${label} key with invalid pattern:`, key) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
       continue
     }
     if (typeof value === 'string' && value.length > MAX_STORAGE_VALUE_SIZE) {
       skipped++
-      console.warn(`[Kaboom] Skipped ${label} value exceeding 10MB:`, key) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+      console.warn(`[KaBOOM!] Skipped ${label} value exceeding 10MB:`, key) // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
       continue
     }
     storage.setItem(key, value)
@@ -170,10 +170,10 @@ function navigateSameOrigin(url: string): void {
     if ((parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.origin === window.location.origin) {
       window.location.href = url
     } else {
-      console.warn('[Kaboom] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin)
+      console.warn('[KaBOOM!] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin)
     }
   } catch (e) {
-    console.warn('[Kaboom] Invalid URL for navigation:', url, e)
+    console.warn('[KaBOOM!] Invalid URL for navigation:', url, e)
   }
 }
 
@@ -197,7 +197,7 @@ export function restoreState(state: BrowserStateSnapshot, includeUrl: boolean = 
   }
 
   if (includeUrl && state.url) navigateSameOrigin(state.url)
-  if (skipped > 0) console.warn(`[Kaboom] restoreState completed with ${skipped} skipped item(s)`)
+  if (skipped > 0) console.warn(`[KaBOOM!] restoreState completed with ${skipped} skipped item(s)`)
 
   return { success: true, restored }
 }
@@ -242,7 +242,7 @@ export function highlightElement(selector: string, durationMs: number = 5000): H
   if (targetElement) {
     targetElement.appendChild(kaboomHighlighter)
   } else {
-    console.warn('[Kaboom] No document body available for highlighter injection')
+    console.warn('[KaBOOM!] No document body available for highlighter injection')
     return
   }
 

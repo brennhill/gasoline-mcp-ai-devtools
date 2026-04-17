@@ -344,7 +344,7 @@ function createTerminalHeader(): HTMLDivElement {
   })
 
   const titleSpan = document.createElement('span')
-  titleSpan.textContent = 'Kaboom Terminal'
+  titleSpan.textContent = 'KaBOOM! Terminal'
   Object.assign(titleSpan.style, {
     color: '#d8dee9',
     fontSize: '12px',
@@ -677,7 +677,7 @@ async function bootTerminalPanel(forceFresh = false): Promise<void> {
     } else if (terminalBodyEl) {
       terminalBodyEl.replaceChildren()
       const fallback = document.createElement('div')
-      fallback.textContent = 'Terminal unavailable. Start the Kaboom daemon and reopen the panel.'
+      fallback.textContent = 'Terminal unavailable. Start the KaBOOM! daemon and reopen the panel.'
       Object.assign(fallback.style, {
         color: '#fca5a5',
         padding: '16px',

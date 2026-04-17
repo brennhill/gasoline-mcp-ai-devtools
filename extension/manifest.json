@@ -14,7 +14,7 @@
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png"
     },
-    "default_title": "Kaboom: Agentic Browser Devtools"
+    "default_title": "KaBOOM!: Agentic Browser Devtools"
   },
   "background": {
     "service_worker": "background.js",

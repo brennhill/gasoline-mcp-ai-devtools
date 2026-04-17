@@ -30,7 +30,7 @@
   }
 
   // extension/lib/brand.js
-  var KABOOM_RECORDING_LOG_PREFIX = "[Kaboom REC]";
+  var KABOOM_RECORDING_LOG_PREFIX = "[KaBOOM! REC]";
 
   // extension/offscreen/recording-worker.js
   var MAX_RECORDING_BYTES = 1024 * 1024 * 1024;

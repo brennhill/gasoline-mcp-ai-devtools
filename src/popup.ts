@@ -165,7 +165,7 @@ export function initPopup(): void {
       const urlEl = document.getElementById('tracking-bar-url')
       if (urlEl && changes[StorageKey.TRACKED_TAB_URL]!.newValue) {
         urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL]!.newValue as string
-        console.log('[Kaboom] Tracked tab URL updated in popup:', changes[StorageKey.TRACKED_TAB_URL]!.newValue)
+        console.log('[KaBOOM!] Tracked tab URL updated in popup:', changes[StorageKey.TRACKED_TAB_URL]!.newValue)
       }
     }
   })

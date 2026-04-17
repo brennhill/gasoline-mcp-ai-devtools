@@ -219,12 +219,12 @@ export function installKaboomAPI() {
         setInputValue(selector, value) {
             const element = document.querySelector(selector);
             if (!element) {
-                console.error('[Kaboom] Element not found:', selector);
+                console.error('[KaBOOM!] Element not found:', selector);
                 return false;
             }
             try {
                 if (!setNativeValue(element, value)) {
-                    console.error('[Kaboom] Element is not a form input:', selector);
+                    console.error('[KaBOOM!] Element is not a form input:', selector);
                     return false;
                 }
                 // Dispatch events that React/Vue/Svelte listen for
@@ -234,7 +234,7 @@ export function installKaboomAPI() {
                 return true;
             }
             catch (err) {
-                console.error('[Kaboom] Failed to set input value:', err);
+                console.error('[KaBOOM!] Failed to set input value:', err);
                 return false;
             }
         },

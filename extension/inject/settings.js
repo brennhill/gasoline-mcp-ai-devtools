@@ -17,7 +17,7 @@ export const VALID_SETTINGS = INJECT_FORWARDED_SETTINGS;
 const VALID_STATE_ACTIONS = new Set(['capture', 'restore']);
 export function isValidSettingPayload(data) {
     if (!VALID_SETTINGS.has(data.setting)) {
-        console.warn('[Kaboom] Invalid setting:', data.setting);
+        console.warn('[KaBOOM!] Invalid setting:', data.setting);
         return false;
     }
     if (data.setting === SettingName.WEBSOCKET_CAPTURE_MODE)
@@ -26,7 +26,7 @@ export function isValidSettingPayload(data) {
         return typeof data.url === 'string';
     // Boolean settings
     if (typeof data.enabled !== 'boolean') {
-        console.warn('[Kaboom] Invalid enabled value type');
+        console.warn('[KaBOOM!] Invalid enabled value type');
         return false;
     }
     return true;
@@ -63,7 +63,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     const { messageId, action, state } = data;
     // Validate action
     if (!VALID_STATE_ACTIONS.has(action)) {
-        console.warn('[Kaboom] Invalid state action:', action);
+        console.warn('[KaBOOM!] Invalid state action:', action);
         window.postMessage({
             type: 'kaboom_state_response',
             messageId,
@@ -73,7 +73,7 @@ export function handleStateCommand(data, captureStateFn, restoreStateFn) {
     }
     // Validate state object for restore action
     if (action === 'restore' && (!state || typeof state !== 'object')) {
-        console.warn('[Kaboom] Invalid state object for restore');
+        console.warn('[KaBOOM!] Invalid state object for restore');
         window.postMessage({
             type: 'kaboom_state_response',
             messageId,

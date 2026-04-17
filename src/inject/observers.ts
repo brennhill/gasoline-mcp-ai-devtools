@@ -241,7 +241,7 @@ export function checkMemoryPressure(state: MemoryPressureState): MemoryPressureS
  * Phase 1 (Immediate): Lightweight, non-intercepting setup.
  */
 export function installPhase1(): void {
-  console.log('[Kaboom] Phase 1 installing (lightweight API + perf observers)')
+  console.log('[KaBOOM!] Phase 1 installing (lightweight API + perf observers)')
   injectionTimestamp = performance.now()
   phase2Installed = false
   phase2Timestamp = 0
@@ -281,7 +281,7 @@ export function installPhase2(): void {
   // Environment guard
   if (typeof window === 'undefined' || typeof document === 'undefined') return
 
-  console.log('[Kaboom] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)')
+  console.log('[KaBOOM!] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)')
   phase2Timestamp = performance.now()
   phase2Installed = true
 

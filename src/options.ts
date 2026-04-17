@@ -310,7 +310,7 @@ export async function testConnection(): Promise<void> {
       if (errorMsg.includes('timeout')) {
         resultEl.textContent = `Failed — server not responding at ${serverUrl}. Is it running? Run: npx kaboom-mcp`
       } else if (errorMsg.includes('HTTP 404')) {
-        resultEl.textContent = `Failed — server running but health endpoint not found. Is this Kaboom MCP v5.8.0+?`
+        resultEl.textContent = `Failed — server running but health endpoint not found. Is this KaBOOM! MCP v5.8.0+?`
       } else if (errorMsg.includes('HTTP')) {
         resultEl.textContent = `Failed — server error (${errorMsg}). Check server logs.`
       } else {

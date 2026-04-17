@@ -107,7 +107,7 @@ function getStreamId(tabId) {
  */
 export async function requestRecordingGesture(tab, name, fps, audio, mediaType) {
     chrome.tabs.update(tab.id, { active: true });
-    sendTabToast(tab.id, `\u2191 Open Kaboom`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(30000));
+    sendTabToast(tab.id, `\u2191 Open KaBOOM!`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(30000));
     await setLocal(StorageKey.PENDING_RECORDING, { name, fps, audio, tabId: tab.id, url: tab.url });
     startAwaitingApprovalBadge();
     let gestureResult;
@@ -123,16 +123,16 @@ export async function requestRecordingGesture(tab, name, fps, audio, mediaType) 
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${mediaType} recording request was denied in the Kaboom popup.`
+            error: `RECORD_START: ${mediaType} recording request was denied in the KaBOOM! popup.`
         };
     }
     if (gestureResult !== 'granted') {
         console.log(LOG, 'GESTURE_TIMEOUT: User did not approve recording request within 30s');
-        sendTabToast(tab.id, `\u2191 Open Kaboom`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(8000));
+        sendTabToast(tab.id, `\u2191 Open KaBOOM!`, `Approve ${mediaType.toLowerCase()} recording request`, 'audio', scaleTimeout(8000));
         return {
             status: 'error',
             name: '',
-            error: `RECORD_START: ${mediaType} recording requires popup approval. Open the Kaboom popup, click Approve, then try again.`
+            error: `RECORD_START: ${mediaType} recording requires popup approval. Open the KaBOOM! popup, click Approve, then try again.`
         };
     }
     sendTabToast(tab.id, buildRecordingToastLabel(tab.url), '', 'success', scaleTimeout(2000));

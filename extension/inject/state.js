@@ -83,12 +83,12 @@ function restoreStorageEntries(storage, entries, label) {
     for (const [key, value] of Object.entries(entries)) {
         if (!isValidStorageKey(key)) {
             skipped++;
-            console.warn(`[Kaboom] Skipped ${label} key with invalid pattern:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+            console.warn(`[KaBOOM!] Skipped ${label} key with invalid pattern:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
             continue;
         }
         if (typeof value === 'string' && value.length > MAX_STORAGE_VALUE_SIZE) {
             skipped++;
-            console.warn(`[Kaboom] Skipped ${label} value exceeding 10MB:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
+            console.warn(`[KaBOOM!] Skipped ${label} value exceeding 10MB:`, key); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- console.warn with internal state key, not user-controlled
             continue;
         }
         storage.setItem(key, value);
@@ -131,11 +131,11 @@ function navigateSameOrigin(url) {
             window.location.href = url;
         }
         else {
-            console.warn('[Kaboom] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin);
+            console.warn('[KaBOOM!] Skipped navigation: URL must be same origin', url, 'current:', window.location.origin);
         }
     }
     catch (e) {
-        console.warn('[Kaboom] Invalid URL for navigation:', url, e);
+        console.warn('[KaBOOM!] Invalid URL for navigation:', url, e);
     }
 }
 // #lizard forgives
@@ -157,7 +157,7 @@ export function restoreState(state, includeUrl = true) {
     if (includeUrl && state.url)
         navigateSameOrigin(state.url);
     if (skipped > 0)
-        console.warn(`[Kaboom] restoreState completed with ${skipped} skipped item(s)`);
+        console.warn(`[KaBOOM!] restoreState completed with ${skipped} skipped item(s)`);
     return { success: true, restored };
 }
 /**
@@ -197,7 +197,7 @@ export function highlightElement(selector, durationMs = 5000) {
         targetElement.appendChild(kaboomHighlighter);
     }
     else {
-        console.warn('[Kaboom] No document body available for highlighter injection');
+        console.warn('[KaBOOM!] No document body available for highlighter injection');
         return;
     }
     setTimeout(() => {

@@ -168,7 +168,7 @@ function adoptEarlyConnections() {
         attachMessageCapture(ws, connectionId, urlString, tracker);
     }
     if (adopted > 0) {
-        console.log(`[Kaboom] Adopted ${adopted} early WebSocket connection(s)`);
+        console.log(`[KaBOOM!] Adopted ${adopted} early WebSocket connection(s)`);
     }
     // Clean up early-patch globals
     delete window.__KABOOM_ORIGINAL_WS__;

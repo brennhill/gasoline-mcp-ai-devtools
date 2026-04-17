@@ -56,14 +56,14 @@ export interface StateCommandMessageData {
 
 export function isValidSettingPayload(data: SettingMessageData): boolean {
   if (!VALID_SETTINGS.has(data.setting)) {
-    console.warn('[Kaboom] Invalid setting:', data.setting)
+    console.warn('[KaBOOM!] Invalid setting:', data.setting)
     return false
   }
   if (data.setting === SettingName.WEBSOCKET_CAPTURE_MODE) return typeof data.mode === 'string'
   if (data.setting === SettingName.SERVER_URL) return typeof data.url === 'string'
   // Boolean settings
   if (typeof data.enabled !== 'boolean') {
-    console.warn('[Kaboom] Invalid enabled value type')
+    console.warn('[KaBOOM!] Invalid enabled value type')
     return false
   }
   return true
@@ -106,7 +106,7 @@ export function handleStateCommand(
 
   // Validate action
   if (!VALID_STATE_ACTIONS.has(action)) {
-    console.warn('[Kaboom] Invalid state action:', action)
+    console.warn('[KaBOOM!] Invalid state action:', action)
     window.postMessage(
       {
         type: 'kaboom_state_response',
@@ -120,7 +120,7 @@ export function handleStateCommand(
 
   // Validate state object for restore action
   if (action === 'restore' && (!state || typeof state !== 'object')) {
-    console.warn('[Kaboom] Invalid state object for restore')
+    console.warn('[KaBOOM!] Invalid state object for restore')
     window.postMessage(
       {
         type: 'kaboom_state_response',

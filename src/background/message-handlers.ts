@@ -693,7 +693,7 @@ export async function deleteStateSnapshot(name: string): Promise<{ success: bool
 
 // Single-line prompt: PTY interprets \n as Enter, so multi-line text would execute as separate commands.
 const QA_SCAN_PROMPT =
-  'The user clicked "Audit". Run the Kaboom audit workflow for the tracked site. Use /kaboom/audit if available, otherwise /audit, and produce the six-lane Phase 1 report.'
+  'The user clicked "Audit". Run the KaBOOM! audit workflow for the tracked site. Use /kaboom/audit if available, otherwise /audit, and produce the six-lane Phase 1 report.'
 
 const QA_SCAN_FETCH_TIMEOUT_MS = 3000
 

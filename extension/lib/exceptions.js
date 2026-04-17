@@ -25,12 +25,12 @@ function enrichAndPost(entry) {
             postLog(entry);
         }
     })().catch((err) => {
-        console.error('[Kaboom] Exception enrichment error:', err);
+        console.error('[KaBOOM!] Exception enrichment error:', err);
         try {
             postLog(entry);
         }
         catch (postErr) {
-            console.error('[Kaboom] Failed to log entry:', postErr);
+            console.error('[KaBOOM!] Failed to log entry:', postErr);
         }
     });
 }

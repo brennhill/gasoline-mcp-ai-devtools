@@ -85,12 +85,12 @@ export function updateVersionBadge(): void {
       color: '#0969da' // Blue for info
     })
     chrome.action.setTitle({
-      title: `Kaboom: New version available (${availableVersion})`
+      title: `KaBOOM!: New version available (${availableVersion})`
     })
   } else {
     // Clear the version update indicator
     chrome.action.setTitle({
-      title: 'Kaboom'
+      title: 'KaBOOM!'
     })
   }
 }

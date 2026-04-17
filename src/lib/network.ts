@@ -630,7 +630,7 @@ export function adoptEarlyBodies(): void {
   }
 
   if (adopted > 0) {
-    console.log(`[Kaboom] Adopted ${adopted} early network body(ies)`)
+    console.log(`[KaBOOM!] Adopted ${adopted} early network body(ies)`)
   }
 
   // Clean up early-patch globals
@@ -682,7 +682,7 @@ export function wrapFetchWithBodies(fetchFn: FetchLike): FetchLike {
         }
       })
       .catch((err: Error) => {
-        console.debug('[Kaboom] Network body capture error:', err)
+        console.debug('[KaBOOM!] Network body capture error:', err)
       })
 
     return response

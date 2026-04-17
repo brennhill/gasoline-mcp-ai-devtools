@@ -156,7 +156,7 @@ export async function startSession(
           onSandboxError(body.message ?? '', body.instruction ?? '', body.command ?? '')
         } else {
           console.warn(
-            '[Kaboom] Terminal sandbox restriction: ' +
+            '[KaBOOM!] Terminal sandbox restriction: ' +
               (body.message ?? 'no message') +
               '. ' +
               (body.instruction ?? 'No instruction provided.')
@@ -170,7 +170,7 @@ export async function startSession(
         persistSession(ss)
         return ss
       }
-      console.warn('[Kaboom] Terminal session rejected (HTTP ' + resp.status + '): ' +
+      console.warn('[KaBOOM!] Terminal session rejected (HTTP ' + resp.status + '): ' +
         (body.error ?? 'unknown') + '. Check the daemon logs for details.')
       return null
     }
@@ -179,7 +179,7 @@ export async function startSession(
     persistSession(ss)
     return ss
   } catch (err) {
-    console.warn('[Kaboom] Terminal session start failed: ' +
+    console.warn('[KaBOOM!] Terminal session start failed: ' +
       (err instanceof Error ? err.message : String(err)) +
       `. ${getDaemonStartHint()}`)
     return null

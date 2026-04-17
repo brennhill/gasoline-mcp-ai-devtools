@@ -183,7 +183,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
   }
 
   executeWithTimeoutProtection().catch((err) => {
-    console.error('[Kaboom] Unexpected error in executeJavaScript:', err)
+    console.error('[KaBOOM!] Unexpected error in executeJavaScript:', err)
     deferred.resolve({
       success: false,
       error: 'execution_error',

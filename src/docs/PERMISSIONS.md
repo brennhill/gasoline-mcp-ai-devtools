@@ -1,8 +1,8 @@
-# Kaboom Extension Permissions & Security Model
+# KaBOOM! Extension Permissions & Security Model
 
 ## Overview
 
-This document explains why Kaboom requires each permission and how the extension maintains security and privacy.
+This document explains why KaBOOM! requires each permission and how the extension maintains security and privacy.
 
 ## Manifest Permissions
 
@@ -15,7 +15,7 @@ This document explains why Kaboom requires each permission and how the extension
 - Required for screenshot capture on demand
 
 **Security Model:**
-- Only applies when user explicitly activates tab tracking in Kaboom UI
+- Only applies when user explicitly activates tab tracking in KaBOOM! UI
 - Combined with `tabs` permission to track which tab is "active"
 - Does not grant access to all tabs automatically
 
@@ -190,7 +190,7 @@ page context (inject.js)
 
 ## Performance Impact
 
-Kaboom is designed to have minimal impact on browsing:
+KaBOOM! is designed to have minimal impact on browsing:
 
 - **WebSocket < 0.1ms latency:** Uses non-blocking I/O
 - **Fetch < 0.5ms latency:** Network body capture is separate from fetch operation
@@ -205,7 +205,7 @@ Kaboom is designed to have minimal impact on browsing:
 
 ## User Controls
 
-Users can configure capture at runtime via Kaboom UI:
+Users can configure capture at runtime via KaBOOM! UI:
 
 - **Server URL:** Change MCP server destination
 - **Log Level:** Filter (error, warn, info, log, debug, all)
@@ -228,7 +228,7 @@ Users can also:
 
 ## Chrome API Availability
 
-Kaboom requires Chrome 102+ for optimal functionality:
+KaBOOM! requires Chrome 102+ for optimal functionality:
 
 - **chrome.storage.session:** Available Chrome 102+
   - Gracefully degrades to memory cache in older versions

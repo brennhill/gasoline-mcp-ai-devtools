@@ -334,7 +334,7 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
 
   // Validate parameters
   if (typeof script !== 'string') {
-    console.warn('[Kaboom] Script must be a string')
+    console.warn('[KaBOOM!] Script must be a string')
     postResponse({
       type: 'kaboom_execute_js_result',
       requestId,
@@ -344,7 +344,7 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
   }
 
   if (typeof requestId !== 'number' && typeof requestId !== 'string') {
-    console.warn('[Kaboom] Invalid requestId type')
+    console.warn('[KaBOOM!] Invalid requestId type')
     return
   }
 
@@ -357,7 +357,7 @@ function handleExecuteJs(data: ExecuteJsRequestMessageData): void {
       })
     })
     .catch((err: Error) => {
-      console.error('[Kaboom] Failed to execute JS:', err)
+      console.error('[KaBOOM!] Failed to execute JS:', err)
       postResponse({
         type: 'kaboom_execute_js_result',
         requestId,
@@ -390,7 +390,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
         })
       })
       .catch((err: Error) => {
-        console.error('[Kaboom] Accessibility audit error:', err)
+        console.error('[KaBOOM!] Accessibility audit error:', err)
         postResponse({
           type: 'kaboom_a11y_query_response',
           requestId,
@@ -398,7 +398,7 @@ function handleA11yQuery(data: A11yQueryRequestMessageData): void {
         })
       })
   } catch (err) {
-    console.error('[Kaboom] Failed to run accessibility audit:', err)
+    console.error('[KaBOOM!] Failed to run accessibility audit:', err)
     postResponse({
       type: 'kaboom_a11y_query_response',
       requestId,
@@ -431,7 +431,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
         })
       })
       .catch((err: Error) => {
-        console.error('[Kaboom] DOM query error:', err)
+        console.error('[KaBOOM!] DOM query error:', err)
         postResponse({
           type: 'kaboom_dom_query_response',
           requestId,
@@ -439,7 +439,7 @@ function handleDomQuery(data: DomQueryRequestMessageData): void {
         })
       })
   } catch (err) {
-    console.error('[Kaboom] Failed to run DOM query:', err)
+    console.error('[KaBOOM!] Failed to run DOM query:', err)
     postResponse({
       type: 'kaboom_dom_query_response',
       requestId,
@@ -461,7 +461,7 @@ function handleGetWaterfall(data: GetWaterfallRequestMessageData): void {
       page_url: window.location.href
     })
   } catch (err) {
-    console.error('[Kaboom] Failed to get network waterfall:', err)
+    console.error('[KaBOOM!] Failed to get network waterfall:', err)
     postResponse({
       type: 'kaboom_waterfall_response',
       requestId,

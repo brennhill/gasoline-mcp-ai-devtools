@@ -314,13 +314,13 @@ export function installKaboomAPI(): void {
     setInputValue(selector: string, value: string | boolean): boolean {
       const element = document.querySelector(selector)
       if (!element) {
-        console.error('[Kaboom] Element not found:', selector)
+        console.error('[KaBOOM!] Element not found:', selector)
         return false
       }
 
       try {
         if (!setNativeValue(element, value)) {
-          console.error('[Kaboom] Element is not a form input:', selector)
+          console.error('[KaBOOM!] Element is not a form input:', selector)
           return false
         }
 
@@ -330,7 +330,7 @@ export function installKaboomAPI(): void {
         element.dispatchEvent(new Event('blur', { bubbles: true }))
         return true
       } catch (err) {
-        console.error('[Kaboom] Failed to set input value:', err)
+        console.error('[KaBOOM!] Failed to set input value:', err)
         return false
       }
     },

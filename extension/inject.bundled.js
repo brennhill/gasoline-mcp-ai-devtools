@@ -199,7 +199,7 @@ function isSensitiveInput(element) {
 }
 
 // extension/lib/brand.js
-var KABOOM_LOG_PREFIX = "[Kaboom]";
+var KABOOM_LOG_PREFIX = "[KaBOOM!]";
 
 // extension/lib/context.js
 var contextAnnotations = /* @__PURE__ */ new Map();
@@ -993,7 +993,7 @@ function adoptEarlyBodies() {
     window.postMessage(message, window.location.origin);
   }
   if (adopted > 0) {
-    console.log(`[Kaboom] Adopted ${adopted} early network body(ies)`);
+    console.log(`[KaBOOM!] Adopted ${adopted} early network body(ies)`);
   }
   delete window.__KABOOM_ORIGINAL_FETCH__;
   delete window.__KABOOM_ORIGINAL_XHR_OPEN__;
@@ -1023,7 +1023,7 @@ function wrapFetchWithBodies(fetchFn) {
       } catch {
       }
     }).catch((err) => {
-      console.debug("[Kaboom] Network body capture error:", err);
+      console.debug("[KaBOOM!] Network body capture error:", err);
     });
     return response;
   };
@@ -1314,7 +1314,7 @@ function installPerformanceCapture() {
   if (typeof performance === "undefined" || !performance)
     return;
   if (performanceCaptureActive) {
-    console.warn("[Kaboom] Performance capture already installed, skipping");
+    console.warn("[KaBOOM!] Performance capture already installed, skipping");
     return;
   }
   capturedMarks = [];
@@ -1838,11 +1838,11 @@ function enrichAndPost(entry) {
       postLog(entry);
     }
   })().catch((err) => {
-    console.error("[Kaboom] Exception enrichment error:", err);
+    console.error("[KaBOOM!] Exception enrichment error:", err);
     try {
       postLog(entry);
     } catch (postErr) {
-      console.error("[Kaboom] Failed to log entry:", postErr);
+      console.error("[KaBOOM!] Failed to log entry:", postErr);
     }
   });
 }
@@ -2305,7 +2305,7 @@ function adoptEarlyConnections() {
     attachMessageCapture(ws, connectionId, urlString, tracker);
   }
   if (adopted > 0) {
-    console.log(`[Kaboom] Adopted ${adopted} early WebSocket connection(s)`);
+    console.log(`[KaBOOM!] Adopted ${adopted} early WebSocket connection(s)`);
   }
   delete window.__KABOOM_ORIGINAL_WS__;
   delete window.__KABOOM_EARLY_WS__;
@@ -2756,12 +2756,12 @@ function installKaboomAPI() {
     setInputValue(selector, value) {
       const element = document.querySelector(selector);
       if (!element) {
-        console.error("[Kaboom] Element not found:", selector);
+        console.error("[KaBOOM!] Element not found:", selector);
         return false;
       }
       try {
         if (!setNativeValue(element, value)) {
-          console.error("[Kaboom] Element is not a form input:", selector);
+          console.error("[KaBOOM!] Element is not a form input:", selector);
           return false;
         }
         element.dispatchEvent(new Event("input", { bubbles: true }));
@@ -2769,7 +2769,7 @@ function installKaboomAPI() {
         element.dispatchEvent(new Event("blur", { bubbles: true }));
         return true;
       } catch (err) {
-        console.error("[Kaboom] Failed to set input value:", err);
+        console.error("[KaBOOM!] Failed to set input value:", err);
         return false;
       }
     },
@@ -3060,7 +3060,7 @@ function checkMemoryPressure(state) {
   return result;
 }
 function installPhase1() {
-  console.log("[Kaboom] Phase 1 installing (lightweight API + perf observers)");
+  console.log("[KaBOOM!] Phase 1 installing (lightweight API + perf observers)");
   injectionTimestamp = performance.now();
   phase2Installed = false;
   phase2Timestamp = 0;
@@ -3088,7 +3088,7 @@ function installPhase2() {
     return;
   if (typeof window === "undefined" || typeof document === "undefined")
     return;
-  console.log("[Kaboom] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)");
+  console.log("[KaBOOM!] Phase 2 installing (heavy interceptors: console, fetch, WS, errors, actions)");
   phase2Timestamp = performance.now();
   phase2Installed = true;
   install();
@@ -3811,7 +3811,7 @@ Tip: Run small test scripts to isolate the issue, then build up complexity.`
     }
   };
   executeWithTimeoutProtection().catch((err) => {
-    console.error("[Kaboom] Unexpected error in executeJavaScript:", err);
+    console.error("[KaBOOM!] Unexpected error in executeJavaScript:", err);
     deferred.resolve({
       success: false,
       error: "execution_error",
@@ -3826,7 +3826,7 @@ var VALID_SETTINGS = INJECT_FORWARDED_SETTINGS;
 var VALID_STATE_ACTIONS = /* @__PURE__ */ new Set(["capture", "restore"]);
 function isValidSettingPayload(data) {
   if (!VALID_SETTINGS.has(data.setting)) {
-    console.warn("[Kaboom] Invalid setting:", data.setting);
+    console.warn("[KaBOOM!] Invalid setting:", data.setting);
     return false;
   }
   if (data.setting === SettingName.WEBSOCKET_CAPTURE_MODE)
@@ -3834,7 +3834,7 @@ function isValidSettingPayload(data) {
   if (data.setting === SettingName.SERVER_URL)
     return typeof data.url === "string";
   if (typeof data.enabled !== "boolean") {
-    console.warn("[Kaboom] Invalid enabled value type");
+    console.warn("[KaBOOM!] Invalid enabled value type");
     return false;
   }
   return true;
@@ -3870,7 +3870,7 @@ function handleSetting(data) {
 function handleStateCommand(data, captureStateFn, restoreStateFn) {
   const { messageId, action, state } = data;
   if (!VALID_STATE_ACTIONS.has(action)) {
-    console.warn("[Kaboom] Invalid state action:", action);
+    console.warn("[KaBOOM!] Invalid state action:", action);
     window.postMessage({
       type: "kaboom_state_response",
       messageId,
@@ -3879,7 +3879,7 @@ function handleStateCommand(data, captureStateFn, restoreStateFn) {
     return;
   }
   if (action === "restore" && (!state || typeof state !== "object")) {
-    console.warn("[Kaboom] Invalid state object for restore");
+    console.warn("[KaBOOM!] Invalid state object for restore");
     window.postMessage({
       type: "kaboom_state_response",
       messageId,
@@ -4065,7 +4065,7 @@ function handleDataTableMessage(data) {
 function handleExecuteJs(data) {
   const { requestId, script, timeoutMs } = data;
   if (typeof script !== "string") {
-    console.warn("[Kaboom] Script must be a string");
+    console.warn("[KaBOOM!] Script must be a string");
     postResponse({
       type: "kaboom_execute_js_result",
       requestId,
@@ -4074,7 +4074,7 @@ function handleExecuteJs(data) {
     return;
   }
   if (typeof requestId !== "number" && typeof requestId !== "string") {
-    console.warn("[Kaboom] Invalid requestId type");
+    console.warn("[KaBOOM!] Invalid requestId type");
     return;
   }
   executeJavaScript(script, timeoutMs).then((result) => {
@@ -4084,7 +4084,7 @@ function handleExecuteJs(data) {
       result
     });
   }).catch((err) => {
-    console.error("[Kaboom] Failed to execute JS:", err);
+    console.error("[KaBOOM!] Failed to execute JS:", err);
     postResponse({
       type: "kaboom_execute_js_result",
       requestId,
@@ -4112,7 +4112,7 @@ function handleA11yQuery(data) {
         result
       });
     }).catch((err) => {
-      console.error("[Kaboom] Accessibility audit error:", err);
+      console.error("[KaBOOM!] Accessibility audit error:", err);
       postResponse({
         type: "kaboom_a11y_query_response",
         requestId,
@@ -4120,7 +4120,7 @@ function handleA11yQuery(data) {
       });
     });
   } catch (err) {
-    console.error("[Kaboom] Failed to run accessibility audit:", err);
+    console.error("[KaBOOM!] Failed to run accessibility audit:", err);
     postResponse({
       type: "kaboom_a11y_query_response",
       requestId,
@@ -4148,7 +4148,7 @@ function handleDomQuery(data) {
         result
       });
     }).catch((err) => {
-      console.error("[Kaboom] DOM query error:", err);
+      console.error("[KaBOOM!] DOM query error:", err);
       postResponse({
         type: "kaboom_dom_query_response",
         requestId,
@@ -4156,7 +4156,7 @@ function handleDomQuery(data) {
       });
     });
   } catch (err) {
-    console.error("[Kaboom] Failed to run DOM query:", err);
+    console.error("[KaBOOM!] Failed to run DOM query:", err);
     postResponse({
       type: "kaboom_dom_query_response",
       requestId,
@@ -4175,7 +4175,7 @@ function handleGetWaterfall(data) {
       page_url: window.location.href
     });
   } catch (err) {
-    console.error("[Kaboom] Failed to get network waterfall:", err);
+    console.error("[KaBOOM!] Failed to get network waterfall:", err);
     postResponse({
       type: "kaboom_waterfall_response",
       requestId,
@@ -4247,12 +4247,12 @@ function restoreStorageEntries(storage, entries, label) {
   for (const [key, value] of Object.entries(entries)) {
     if (!isValidStorageKey(key)) {
       skipped++;
-      console.warn(`[Kaboom] Skipped ${label} key with invalid pattern:`, key);
+      console.warn(`[KaBOOM!] Skipped ${label} key with invalid pattern:`, key);
       continue;
     }
     if (typeof value === "string" && value.length > MAX_STORAGE_VALUE_SIZE) {
       skipped++;
-      console.warn(`[Kaboom] Skipped ${label} value exceeding 10MB:`, key);
+      console.warn(`[KaBOOM!] Skipped ${label} value exceeding 10MB:`, key);
       continue;
     }
     storage.setItem(key, value);
@@ -4294,10 +4294,10 @@ function navigateSameOrigin(url) {
     if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.origin === window.location.origin) {
       window.location.href = url;
     } else {
-      console.warn("[Kaboom] Skipped navigation: URL must be same origin", url, "current:", window.location.origin);
+      console.warn("[KaBOOM!] Skipped navigation: URL must be same origin", url, "current:", window.location.origin);
     }
   } catch (e) {
-    console.warn("[Kaboom] Invalid URL for navigation:", url, e);
+    console.warn("[KaBOOM!] Invalid URL for navigation:", url, e);
   }
 }
 function restoreState(state, includeUrl = true) {
@@ -4318,7 +4318,7 @@ function restoreState(state, includeUrl = true) {
   if (includeUrl && state.url)
     navigateSameOrigin(state.url);
   if (skipped > 0)
-    console.warn(`[Kaboom] restoreState completed with ${skipped} skipped item(s)`);
+    console.warn(`[KaBOOM!] restoreState completed with ${skipped} skipped item(s)`);
   return { success: true, restored };
 }
 function highlightElement(selector, durationMs = 5e3) {
@@ -4352,7 +4352,7 @@ function highlightElement(selector, durationMs = 5e3) {
   if (targetElement) {
     targetElement.appendChild(kaboomHighlighter);
   } else {
-    console.warn("[Kaboom] No document body available for highlighter injection");
+    console.warn("[KaBOOM!] No document body available for highlighter injection");
     return;
   }
   setTimeout(() => {

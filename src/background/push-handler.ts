@@ -111,7 +111,7 @@ export function installPushCommandListener(logFn?: (message: string) => void): v
           await chrome.tabs.sendMessage(tab.id, {
             type: 'kaboom_action_toast',
             text: 'Screenshot push failed',
-            detail: 'Could not reach Kaboom daemon',
+            detail: 'Could not reach KaBOOM! daemon',
             state: 'error',
             duration_ms: 3000
           })

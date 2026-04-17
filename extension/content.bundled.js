@@ -563,9 +563,9 @@
   // extension/lib/brand.js
   var KABOOM_DOCS_URL = "https://gokaboom.dev/docs";
   var KABOOM_REPOSITORY_URL = "https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP";
-  var KABOOM_LOG_PREFIX = "[Kaboom]";
+  var KABOOM_LOG_PREFIX = "[KaBOOM!]";
   function getReloadedExtensionWarning() {
-    return "[Kaboom] Please refresh this page. The Kaboom extension was reloaded and this page still has the old content script. A page refresh will reconnect capture automatically.";
+    return "[KaBOOM!] Please refresh this page. The KaBOOM! extension was reloaded and this page still has the old content script. A page refresh will reconnect capture automatically.";
   }
 
   // extension/content/message-forwarding.js
@@ -2388,7 +2388,7 @@
   async function startDrawMode() {
     try {
       if (!chrome?.runtime?.getURL) {
-        console.warn("[Kaboom] Draw mode unavailable: extension context invalidated. Refresh the page to restore.");
+        console.warn("[KaBOOM!] Draw mode unavailable: extension context invalidated. Refresh the page to restore.");
         return;
       }
       const drawModeModule = await import(
@@ -2399,7 +2399,7 @@
         drawModeModule.activateDrawMode("user");
       }
     } catch (err) {
-      console.warn("[Kaboom] Draw mode failed to load: " + (err instanceof Error ? err.message : String(err)) + ". The extension may need to be reloaded at chrome://extensions.");
+      console.warn("[KaBOOM!] Draw mode failed to load: " + (err instanceof Error ? err.message : String(err)) + ". The extension may need to be reloaded at chrome://extensions.");
     }
   }
   var shutterAudioCtx = null;
@@ -2653,7 +2653,7 @@
     });
     stopButtonEl = stopButton;
     let auditLaunchDebounce = 0;
-    const auditButton = createActionButton("\u2691", "Audit \u2014 run the Kaboom audit workflow", () => {
+    const auditButton = createActionButton("\u2691", "Audit \u2014 run the KaBOOM! audit workflow", () => {
       const now = Date.now();
       if (now - auditLaunchDebounce < 500)
         return;
@@ -2704,7 +2704,7 @@
     });
     const docsLink = createSettingsMenuLink(ICON_DOCS, "Docs", KABOOM_DOCS_URL);
     const repoLink = createSettingsMenuLink(ICON_GITHUB, "GitHub Repository", KABOOM_REPOSITORY_URL);
-    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide Kaboom Devtool");
+    const hideButton = createSettingsMenuItem(ICON_HIDE, "Hide KaBOOM! Devtool");
     hideButton.addEventListener("click", () => {
       hideLauncherUntilPopupReopen();
     });
@@ -2714,10 +2714,10 @@
     const toggle = document.createElement("button");
     toggle.id = TOGGLE_ID;
     toggle.type = "button";
-    toggle.title = "Kaboom quick actions";
+    toggle.title = "KaBOOM! quick actions";
     const toggleIcon = document.createElement("img");
     toggleIcon.src = chrome.runtime.getURL("icons/icon.svg");
-    toggleIcon.alt = "Kaboom";
+    toggleIcon.alt = "KaBOOM!";
     Object.assign(toggleIcon.style, {
       width: "36px",
       height: "36px",

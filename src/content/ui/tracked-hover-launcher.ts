@@ -235,7 +235,7 @@ function uninstallAnnotationListener(): void {
 async function startDrawMode(): Promise<void> {
   try {
     if (!chrome?.runtime?.getURL) {
-      console.warn('[Kaboom] Draw mode unavailable: extension context invalidated. Refresh the page to restore.')
+      console.warn('[KaBOOM!] Draw mode unavailable: extension context invalidated. Refresh the page to restore.')
       return
     }
     const drawModeModule = await import(/* webpackIgnore: true */ chrome.runtime.getURL('content/draw-mode.js'))
@@ -243,7 +243,7 @@ async function startDrawMode(): Promise<void> {
       drawModeModule.activateDrawMode('user')
     }
   } catch (err) {
-    console.warn('[Kaboom] Draw mode failed to load: ' + (err instanceof Error ? err.message : String(err)) +
+    console.warn('[KaBOOM!] Draw mode failed to load: ' + (err instanceof Error ? err.message : String(err)) +
       '. The extension may need to be reloaded at chrome://extensions.')
   }
 }
@@ -519,7 +519,7 @@ function createLauncherUi(): HTMLDivElement {
   stopButtonEl = stopButton
 
   let auditLaunchDebounce = 0
-  const auditButton = createActionButton('\u2691', 'Audit — run the Kaboom audit workflow', () => {
+  const auditButton = createActionButton('\u2691', 'Audit — run the KaBOOM! audit workflow', () => {
     const now = Date.now()
     if (now - auditLaunchDebounce < 500) return
     auditLaunchDebounce = now
@@ -578,7 +578,7 @@ function createLauncherUi(): HTMLDivElement {
     KABOOM_REPOSITORY_URL
   )
 
-  const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide Kaboom Devtool')
+  const hideButton = createSettingsMenuItem(ICON_HIDE, 'Hide KaBOOM! Devtool')
   hideButton.addEventListener('click', () => {
     hideLauncherUntilPopupReopen()
   })
@@ -590,11 +590,11 @@ function createLauncherUi(): HTMLDivElement {
   const toggle = document.createElement('button')
   toggle.id = TOGGLE_ID
   toggle.type = 'button'
-  toggle.title = 'Kaboom quick actions'
+  toggle.title = 'KaBOOM! quick actions'
 
   const toggleIcon = document.createElement('img')
   toggleIcon.src = chrome.runtime.getURL('icons/icon.svg')
-  toggleIcon.alt = 'Kaboom'
+  toggleIcon.alt = 'KaBOOM!'
   Object.assign(toggleIcon.style, {
     width: '36px',
     height: '36px',

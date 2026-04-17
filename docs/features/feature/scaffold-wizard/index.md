@@ -1367,80 +1367,50 @@ Content script shows subtitle at bottom of viewport
 
 No LLM involved. The daemon already knows what's happening (it's running the scaffold, proxying tool calls, watching file changes). It just maps events to human-readable messages.
 
-### Aggregated Usage Beacon (every 10 minutes)
+### Aggregated Usage Beacon (every 5 minutes)
 
-The daemon maintains an in-memory counter map of `tool:action` pairs. Every 10 minutes (if there was activity since the last beacon), it fires a single aggregated event:
+Kaboom now emits a structured `usage_summary` rollup every 5 minutes when there has been activity in the window.
 
 ```json
 {
   "event": "usage_summary",
-  "v": "0.8.1",
-  "os": "darwin-arm64",
   "iid": "f7a2c1e9b4d8",
-  "props": {
-    "window_m": "10",
-    "observe:errors": "12",
-    "observe:screenshot": "3",
-    "observe:logs": "8",
-    "interact:click": "24",
-    "interact:navigate": "5",
-    "interact:type": "11",
-    "analyze:accessibility": "1",
-    "generate:test": "2",
-    "configure:health": "4"
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:35:00Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "window_m": 5,
+  "tool_stats": [
+    {
+      "family": "observe",
+      "name": "errors",
+      "tool": "observe:errors",
+      "count": 12,
+      "latency_avg_ms": 45,
+      "latency_max_ms": 230
+    },
+    {
+      "family": "interact",
+      "name": "click",
+      "tool": "interact:click",
+      "count": 24,
+      "error_count": 1,
+      "latency_avg_ms": 1200,
+      "latency_max_ms": 3500
+    }
+  ],
+  "async_outcomes": {
+    "complete": 7,
+    "error": 1,
+    "timeout": 1
   }
 }
 ```
 
-**What's in it:** tool name + `what` parameter, count of calls in the last 10 minutes. Nothing else — no URLs, no selectors, no user content, no error messages.
+This rollup is a coarse aggregate, not the only telemetry source. Kaboom also emits raw `tool_call`, `first_tool_call`, `session_start`, `session_end`, and `app_error` events. The rollup exists to make aggregate dashboards cheaper and faster.
 
-**What's NOT in it:** anything from the arguments beyond `what`. No `selector`, no `url`, no `script`, no `text`, no `save_to`. Just the action name and how many times it was called.
-
-**Implementation:**
-
-```go
-// In the tool call handler, after dispatching:
-usageCounters.Increment(toolName + ":" + whatParam)
-
-// Background goroutine, every 10 minutes:
-func usageBeaconLoop() {
-    ticker := time.NewTicker(10 * time.Minute)
-    for range ticker.C {
-        snapshot := usageCounters.SwapAndReset()
-        if len(snapshot) == 0 {
-            continue // no activity, skip beacon
-        }
-        props := make(map[string]string)
-        props["window_m"] = "10"
-        for key, count := range snapshot {
-            props[key] = strconv.Itoa(count)
-        }
-        telemetry.BeaconEvent("usage_summary", props)
-    }
-}
-```
-
-`SwapAndReset` atomically swaps the counter map with a fresh one and returns the old counts. Lock-free with `sync.Map` or a simple mutex — the hot path (Increment) is one map write.
-
-**Dashboard queries:**
-
-```sql
--- Most popular tool actions (last 7 days)
--- props are in blob4 as JSON, extract and sum
-SELECT index1, count() as beacons
-FROM kaboom_events
-WHERE index1 = 'usage_summary' AND timestamp > now() - interval '7 day'
-GROUP BY index1
-
--- Feature adoption over time
--- Parse blob4 JSON for specific tool:action keys
-```
-
-**Why this design:**
-- **One beacon per 10 minutes** instead of one per tool call — 100x fewer requests to the endpoint
-- **Aggregated** — individual actions can't be correlated to a timeline or user session
-- **No activity = no beacon** — idle daemons send nothing
-- **Respects `KABOOM_TELEMETRY=off`** — same opt-out as everything else
+Nothing from tool arguments or user content should appear in this payload. Tool identity, counts, error counts, and latency aggregates are sufficient for the dashboard.
 
 ### Event-to-Subtitle Mapping
 
@@ -1586,39 +1556,40 @@ POST /v1/event
 Content-Type: application/json
 
 {
-  "event": "scaffold_complete",
-  "v": "0.8.1",
+  "event": "tool_call",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:10:01Z",
+  "v": "0.8.2",
   "os": "darwin-arm64",
-  "client": "claude-code",
-  "props": {
-    "audience": "just_me",
-    "deploy_platform": "vercel",
-    "scanner": "none",
-    "github": true
-  }
+  "channel": "stable",
+  "family": "observe",
+  "name": "page",
+  "tool": "observe:page",
+  "outcome": "success"
 }
 ```
 
-**Response:** `204 No Content` (fire-and-forget, never blocks the caller)
+**Response:** `202 Accepted`
 
-The endpoint is a minimal Go service (or Cloudflare Worker) that increments counters in a time-series store. ~50 lines of code. No database of individual events — just aggregate counters bucketed by day.
+The canonical contract lives in:
+
+- [docs/core/app-metrics.md](/Users/brenn/dev/gasoline/docs/core/app-metrics.md)
+
+The metrics service flattens these events into Cloudflare Analytics Engine rows for dashboard queries.
 
 ### Events
 
-| Event | Fired When | Properties | Source |
-|-------|-----------|------------|--------|
-| `install_start` | Install script begins | `os`, `method` (npm/curl/brew) | `scripts/install.sh` |
-| `install_complete` | Install script succeeds | `os`, `v`, `clients_configured` (count) | `scripts/install.sh` |
-| `install_error` | Install script fails | `os`, `step` (which step failed) | `scripts/install.sh` |
-| `daemon_start` | Daemon process starts | `os`, `v`, `mode` (bridge/daemon) | `cmd/browser-agent/main.go` |
-| `extension_connect` | Extension first syncs | `v`, `browser` (chrome/brave/edge) | daemon `/sync` handler |
-| `wizard_start` | User opens `/launch` | `v` | wizard landing page JS |
-| `wizard_step` | User completes a wizard step | `step` (1-8), `skipped` (bool) | wizard JS |
-| `scaffold_start` | "Create" button clicked | `v`, `audience` | scaffold handler |
-| `scaffold_complete` | Phase 1 finishes | `v`, `duration_s`, `deploy_platform`, `scanner`, `github` | scaffold handler |
-| `compose_complete` | Phase 2 finishes | `v`, `duration_s`, `components_created` | compose handler |
-| `deploy_first` | First deploy from scaffolded project | `platform` | deploy script |
-| `tool_call` | MCP tool invoked | `tool` (observe/analyze/generate/configure/interact) | daemon tool handler |
+| Event | Fired When | Primary purpose |
+|-------|-----------|-----------------|
+| `tool_call` | One meaningful tool invocation completes | tool usage, latency, and error analysis |
+| `first_tool_call` | The first tool call ever for an install | activation analysis |
+| `session_start` | A new session begins | active-session analysis |
+| `session_end` | A session ends or rotates | session depth and duration |
+| `usage_summary` | 5-minute activity rollup | cheap aggregate dashboards |
+| `app_error` | Product/runtime failure outside a normal tool call | reliability analysis |
+
+Scaffold-specific UX should reuse the canonical Kaboom contract. It should not invent a separate telemetry event namespace inside this feature spec.
 
 ### What We DON'T Track
 
@@ -1631,23 +1602,10 @@ The endpoint is a minimal Go service (or Cloudflare Worker) that increments coun
 
 ### Implementation
 
-**Install script beacon** (`scripts/install.sh`):
-```bash
-# Anonymous telemetry (disable: KABOOM_TELEMETRY=off)
-if [ "$KABOOM_TELEMETRY" != "off" ]; then
-  curl -s --max-time 2 -X POST "https://t.gokaboom.dev/v1/event" \
-    -H "Content-Type: application/json" \
-    -d "{\"event\":\"install_complete\",\"v\":\"${VERSION}\",\"os\":\"$(uname -s)-$(uname -m)\"}" \
-    > /dev/null 2>&1 &
-fi
-```
-
-Fire-and-forget: backgrounded, 2s timeout, stdout/stderr suppressed. Never blocks installation.
-
-**Daemon beacon** (Go, on startup):
+**Daemon beacon** (Go):
 ```go
 // Anonymous telemetry — disable with KABOOM_TELEMETRY=off
-func beaconEvent(event string, props map[string]any) {
+func fireStructuredBeacon(fields map[string]any) {
     if os.Getenv("KABOOM_TELEMETRY") == "off" {
         return
     }
@@ -1658,38 +1616,28 @@ func beaconEvent(event string, props map[string]any) {
 }
 ```
 
-**Wizard beacon** (browser JS):
-```javascript
-// Anonymous telemetry — respects KABOOM_TELEMETRY=off via daemon config
-function beacon(event, props = {}) {
-  if (window.__kaboom_telemetry_off) return
-  navigator.sendBeacon('https://t.gokaboom.dev/v1/event',
-    JSON.stringify({ event, v: Kaboom_VERSION, ...props }))
-}
-```
-
-`navigator.sendBeacon` is fire-and-forget, survives page navigation, and doesn't block the UI.
+Kaboom telemetry is daemon-owned. The daemon emits the canonical event set with the shared envelope and install/session identity.
 
 ### Analytics Dashboard
 
-**Website analytics:** Umami (self-hosted, already in use for `gokaboom.dev`). No cookies, GDPR-compliant.
+The current app telemetry dashboard is the hosted `/app` surface in the metrics worker. Key views should come from the canonical contract:
 
-**Product analytics:** Custom dashboard reading from the telemetry endpoint's counter store. Key views:
-
-- **Funnel:** install_start → install_complete → daemon_start → extension_connect → wizard_start → scaffold_complete → compose_complete → deploy_first
-- **Daily active daemons** (daemon_start count, deduplicated by day)
-- **Tool popularity** (tool_call breakdown by tool name)
-- **Wizard drop-off** (which step users abandon)
-- **Platform split** (os, deploy platform, scanner choices)
+- monthly active installs
+- activation via `first_tool_call`
+- tool and subtool usage
+- session depth and session duration
+- latency and error rates by tool
+- async outcome rates
+- install-level drilldown
+- behavior segments and co-usage analysis
 
 ### Telemetry Endpoint Hosting
 
 Options:
-- **Cloudflare Worker** — free tier handles millions of requests. Write counters to Workers KV or D1. Simplest.
-- **Self-hosted Go** — 50 lines, runs alongside existing infrastructure. Write to SQLite or ClickHouse.
-- **Umami custom events** — Umami supports custom events via API. Could unify website + product analytics in one dashboard.
+- **Cloudflare Worker** — current approach. Structured events flattened into Analytics Engine rows.
+- **Self-hosted Go** — possible if it preserves the same contract and normalized storage model.
 
-Recommend Cloudflare Worker for v1 — zero cost, global edge, no server to manage.
+Recommend Cloudflare Worker for production because it already matches the deployed metrics dashboard and contract.
 
 ## Open Questions
 

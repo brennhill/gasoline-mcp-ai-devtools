@@ -1,138 +1,508 @@
-# App Metrics
+# Kaboom App Telemetry Contract
 
-All telemetry is anonymous, local-first, and opt-out via `KABOOM_TELEMETRY=off`.
+Date: 2026-04-15
 
-## Architecture
+This document is the canonical telemetry contract for Kaboom app analytics sent to `POST /v1/event`.
 
-The Go server is the **sole analytics sender**. The extension sends no independent analytics.
+Only the event types and fields defined here are part of the analytics contract. Unknown extra fields may be ignored by the ingest service and must not be used for analysis.
 
+## Goals
+
+This contract is designed to support:
+
+- monthly active installs
+- install-level drilldown
+- tool and subtool usage
+- first-use and activation analysis
+- session depth and session duration
+- per-tool latency and error rates
+- async outcome analysis
+- co-usage and workflow analysis
+- product/runtime reliability analysis
+
+## Endpoint
+
+Kaboom sends app telemetry to:
+
+```text
+POST /v1/event
+Content-Type: application/json
 ```
-Extension UI action ──> sync payload (features_used) ──┐
-                                                        ├──> Go UsageCounter + Session Manager ──> usage_summary / lifecycle beacon
-MCP tool call ──> server-side Increment("<family>:<what>") ──┘
+
+Production URL:
+
+```text
+https://t.gokaboom.dev/v1/event
 ```
 
-## Install ID
+Successful ingestion returns `202 Accepted`.
 
-- **Source of truth:** Go server, persisted at `~/.kaboom/install_id`
-- **Format:** 12-character random hex string (6 bytes via `crypto/rand`)
-- **Propagation:** Server sends `install_id` in every `/sync` response. Extension persists it to `chrome.storage.local` for MV3 service worker eviction survival.
-- **Opt-out fallback:** If `KABOOM_TELEMETRY=off`, beacons are suppressed but the ID still exists.
+Malformed telemetry is fail-open:
 
-## Session ID
+- valid events write their normal normalized rows
+- partially invalid `usage_summary` payloads salvage valid rows
+- invalid payloads also write one `malformed` debug row
+- the full malformed body is archived to R2 when available
+- malformed payloads do not block ingestion with `400`
 
-- **Source of truth:** Go server only. The extension does not mint or persist session IDs.
-- **Format:** 16-character random hex string (8 bytes via `crypto/rand`)
-- **Propagation:** Server includes `sid` in every telemetry beacon
-- **Persistence:** In-memory only. A daemon restart always creates a new session
+## Shared Envelope
 
-### Session Lifecycle
+Every event must include the shared envelope.
 
-- A new session starts on the first tracked activity when no active session exists
-- A session stays active while telemetry-bearing activity continues
-- The server rotates the session after **30 minutes of inactivity**
-- Any accepted MCP tool increment or extension feature increment refreshes session activity
-- Lifecycle beacons also carry the current `sid`. If no active session exists, the server mints one before sending
+| Field | Type | Required | Example | Notes |
+|-------|------|----------|---------|-------|
+| `event` | string | yes | `tool_call` | Event type |
+| `iid` | string | yes | `e41ce1f047c8` | Stable install ID |
+| `sid` | string | yes | `8510f6ce8ca743c2` | Session ID, 16-character hex |
+| `ts` | string | yes | `2026-04-15T08:10:00Z` | ISO-8601 UTC timestamp |
+| `v` | string | yes | `0.8.2` | App version |
+| `os` | string | yes | `darwin-arm64` | OS/platform identifier |
+| `channel` | string | yes | `stable` | Release channel |
+| `llm` | string | no | `claude-code` | MCP client name from initialize handshake |
+| `screen` | string | no | `review` | Current visible surface |
+| `workspace_bucket` | string | no | `2_5` | Approximate workload/project-size bucket |
 
-## Usage Summary Beacon
+Notes:
 
-**Endpoint:** `https://t.gokaboom.dev/v1/event`
-**Event:** `usage_summary`
-**Interval:** Every 5 minutes (skipped if idle)
+- Kaboom is the only producer. There is no `app` field.
+- `iid` must remain stable for one install across launches and upgrades.
+- `sid` must remain stable for one session and rotate on session boundaries.
+- `sid` is normalized as lowercase hex by the ingest service.
+- `ts` is the app event time. Analytics Engine write time must not be used as a substitute.
 
-### Payload
+## Tool Identity
+
+All tool-oriented events use the same identity model.
+
+| Field | Type | Required | Example |
+|-------|------|----------|---------|
+| `family` | string | yes | `observe` |
+| `name` | string | yes | `page` |
+| `tool` | string | yes | `observe:page` |
+
+Allowed families:
+
+- `observe`
+- `interact`
+- `generate`
+- `analyze`
+- `configure`
+- `ext`
+
+Rules:
+
+- `name` is open-ended but must be non-empty.
+- `tool` must equal `family:name`.
+
+## Event Types
+
+The supported event set is:
+
+- `tool_call`
+- `first_tool_call`
+- `session_start`
+- `session_end`
+- `usage_summary`
+- `app_error`
+
+In addition to those producer event types, the ingest service may write a storage-only row type named `malformed` for debugging invalid payloads.
+
+### `tool_call`
+
+Emit one event per meaningful tool invocation or command action.
+
+| Field | Type | Required | Example | Notes |
+|-------|------|----------|---------|-------|
+| `family` | string | yes | `observe` | Tool family |
+| `name` | string | yes | `page` | Tool/subtool name |
+| `tool` | string | yes | `observe:page` | Combined tool key |
+| `outcome` | string | yes | `success` | One of `success`, `error`, `cancelled`, `timeout`, `expired` |
+| `latency_ms` | integer | no | `45` | End-to-end latency |
+| `source` | string | no | `ui` | Runtime origin such as `ui`, `extension`, `mcp`, `background` |
+| `async` | boolean | no | `true` | Whether the command was async |
+| `async_outcome` | string | no | `timeout` | One of `complete`, `error`, `timeout`, `expired`, `cancelled` |
+
+Example:
+
+```json
+{
+  "event": "tool_call",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:10:01Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "family": "observe",
+  "name": "page",
+  "tool": "observe:page",
+  "outcome": "success",
+  "latency_ms": 45,
+  "source": "ui"
+}
+```
+
+### `first_tool_call`
+
+Emit once per install, on the first tool call ever observed for that install.
+
+| Field | Type | Required | Example |
+|-------|------|----------|---------|
+| `family` | string | yes | `observe` |
+| `name` | string | yes | `page` |
+| `tool` | string | yes | `observe:page` |
+
+Example:
+
+```json
+{
+  "event": "first_tool_call",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:10:01Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "family": "observe",
+  "name": "page",
+  "tool": "observe:page"
+}
+```
+
+### `session_start`
+
+Emit when a new session begins.
+
+| Field | Type | Required | Example | Notes |
+|-------|------|----------|---------|-------|
+| `reason` | string | yes | `first_activity` | One of `first_activity`, `startup`, `post_timeout`, `resume` |
+
+Example:
+
+```json
+{
+  "event": "session_start",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:10:00Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "reason": "first_activity"
+}
+```
+
+### `session_end`
+
+Emit when a session closes or rotates.
+
+| Field | Type | Required | Example | Notes |
+|-------|------|----------|---------|-------|
+| `reason` | string | yes | `timeout` | One of `timeout`, `shutdown`, `restart`, `crash`, `background` |
+| `duration_s` | integer | yes | `1500` | Non-negative integer. `0` is valid for very short sessions. |
+| `tool_calls` | integer | yes | `28` | Positive integer |
+| `active_window_m` | integer | no | `25` | Optional active minutes estimate |
+
+Example:
+
+```json
+{
+  "event": "session_end",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:35:00Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "reason": "shutdown",
+  "duration_s": 1500,
+  "tool_calls": 28
+}
+```
+
+### `usage_summary`
+
+Emit a structured rollup every 5 minutes when there has been activity.
+
+`usage_summary` is a rollup event. It is not a replacement for `tool_call`.
+
+| Field | Type | Required | Example | Notes |
+|-------|------|----------|---------|-------|
+| `window_m` | integer | yes | `5` | Positive integer |
+| `tool_stats` | array | yes | see below | One entry per tool in the window |
+| `async_outcomes` | object | no | see below | Aggregate async outcome counts |
+
+Each `tool_stats` entry:
+
+| Field | Type | Required | Example |
+|-------|------|----------|---------|
+| `family` | string | yes | `observe` |
+| `name` | string | yes | `page` |
+| `tool` | string | yes | `observe:page` |
+| `count` | integer | yes | `12` |
+| `error_count` | integer | no | `1` |
+| `latency_avg_ms` | integer | no | `45` |
+| `latency_max_ms` | integer | no | `230` |
+
+Allowed `async_outcomes` keys:
+
+- `complete`
+- `error`
+- `timeout`
+- `expired`
+- `cancelled`
+
+Example:
 
 ```json
 {
   "event": "usage_summary",
-  "v": "0.8.1",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:35:00Z",
+  "v": "0.8.2",
   "os": "darwin-arm64",
-  "iid": "a1b2c3d4e5f6",
-  "sid": "8f3c1e4b7d92a6ff",
+  "channel": "stable",
   "window_m": 5,
-  "props": {
-    "observe:errors": 5,
-    "observe:logs": 3,
-    "interact:click": 2,
-    "ext:screenshot": 1,
-    "ext:video": 1
+  "tool_stats": [
+    {
+      "family": "observe",
+      "name": "page",
+      "tool": "observe:page",
+      "count": 12,
+      "error_count": 0,
+      "latency_avg_ms": 45,
+      "latency_max_ms": 230
+    },
+    {
+      "family": "interact",
+      "name": "click",
+      "tool": "interact:click",
+      "count": 5,
+      "error_count": 1,
+      "latency_avg_ms": 1200,
+      "latency_max_ms": 3500
+    }
+  ],
+  "async_outcomes": {
+    "complete": 7,
+    "error": 1,
+    "timeout": 1
   }
 }
 ```
 
-### Envelope Contract
+### `app_error`
 
-All telemetry beacons use this top-level envelope:
+Emit `app_error` for product/runtime failures that are not naturally modeled as a failed `tool_call`.
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `event` | string | yes | Event name, e.g. `usage_summary`, `daemon_start` |
-| `v` | string | yes | App version |
-| `os` | string | yes | Platform string, e.g. `darwin-arm64` |
-| `iid` | string | yes | Install ID |
-| `sid` | string | yes | Session ID |
-| `window_m` | integer | usage summaries only | Length of the summarized activity window in minutes |
-| `props` | object<string, integer> | usage summaries only | Per-tool or per-feature counters for the window |
+Use `tool_call` with `outcome = error` for normal user-invoked tool failures.
 
-`props` values are integers, not strings.
+| Field | Type | Required | Example | Notes |
+|-------|------|----------|---------|-------|
+| `error_kind` | string | yes | `internal` | Broad error class |
+| `error_code` | string | yes | `DAEMON_PANIC` | Stable short code |
+| `severity` | string | yes | `fatal` | One of `warning`, `error`, `fatal` |
+| `source` | string | no | `daemon` | Runtime origin |
+| `retryable` | boolean | no | `true` | Whether the app could retry automatically |
 
-### Key Format
+Recommended `error_kind` values:
 
-| Prefix | Source | Example |
-|--------|--------|---------|
-| `observe:*`, `interact:*`, `generate:*`, `analyze:*`, `configure:*` | MCP tool call (server-side) | `observe:errors`, `interact:click`, `generate:test`, `analyze:performance`, `configure:noise_rule` |
-| `ext:*` | Extension UI action (via sync) | `ext:screenshot`, `ext:annotations`, `ext:video`, `ext:dom_action` |
+- `network`
+- `auth`
+- `validation`
+- `timeout`
+- `internal`
+- `integration`
+- `unknown`
 
-### MCP Tool Tracking
+Example:
 
-All 5 tools dispatch on the `what` parameter. The server increments `<family>:what` on every call, where `family` is one of `observe`, `interact`, `generate`, `analyze`, or `configure`:
+```json
+{
+  "event": "app_error",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:11:00Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "error_kind": "internal",
+  "error_code": "DAEMON_PANIC",
+  "severity": "fatal",
+  "source": "daemon"
+}
+```
 
-- `observe:errors`, `observe:logs`, `observe:screenshot`, `observe:network_waterfall`, `observe:actions`, `observe:page`, ...
-- `interact:click`, `interact:type`, `interact:navigate`, `interact:execute_js`, ...
-- `generate:test`, `generate:reproduction`, `generate:har`, ...
-- `configure:noise_rule`, `configure:streaming`, `configure:health`, ...
-- `analyze:accessibility`, `analyze:performance`, ...
+## Emission Rules
 
-If `what` is missing, the server should not emit a malformed metric key.
+### Install identity
 
-### Extension UI Feature Tracking
+- Generate `iid` once per install.
+- Persist it locally.
+- Keep it stable across launches and upgrades.
 
-Only actions triggered by the user in the extension UI (not via MCP):
+### Session identity
 
-| Feature | Trigger |
-|---------|---------|
-| `screenshot` | Context menu, popup button |
-| `annotations` | Context menu, keyboard shortcut, popup toggle |
-| `video` | Context menu, keyboard shortcut, popup record button |
-| `dom_action` | Context menu DOM actions |
+- Generate a new `sid` when a session begins.
+- Rotate it after 30 minutes of inactivity.
+- Rotate it when a session ends because of timeout, shutdown, restart, crash, or backgrounding.
 
-These are sent as `features_used` in the `/sync` payload. The server validates against an allowlist (only these 4 keys are accepted) and increments the usage counter with the `ext:` prefix.
+### Event emission
 
-## Lifecycle Beacons
+- Emit `session_start` on the first activity in a new session.
+- Emit `tool_call` for each meaningful tool invocation.
+- Emit `first_tool_call` once per install ever.
+- Emit `session_end` when the session closes.
+- Emit `usage_summary` every 5 minutes when there has been activity in the window.
+- Emit `app_error` only for runtime/product failures that are not one ordinary failed tool call.
 
-Separate from usage summaries, the server sends one-shot beacons for lifecycle events:
+### Privacy
 
-| Event | When |
-|-------|------|
-| `daemon_start` | Server starts |
-| `extension_connect` | Extension connects or reconnects |
-| `extension_version_mismatch` | Extension/server major.minor differs |
+Do not send:
 
-Lifecycle beacons use the same top-level envelope (`event`, `v`, `os`, `iid`, `sid`) but omit `window_m` and `props` unless a specific lifecycle event later needs structured counters.
+- prompts
+- file contents
+- project names
+- URLs
+- stack traces
+- user identifiers
+- anything that can identify a person or project
 
-## Opt-Out
+## Storage Model In Cloudflare Analytics Engine
 
-Set `KABOOM_TELEMETRY=off` environment variable. All beacons (usage, lifecycle, error) are suppressed. The extension storage key `kaboom_telemetry_off` disables extension-side telemetry beacons.
+The worker flattens incoming telemetry into normalized Analytics Engine rows.
 
-## Code Locations
+Current row types:
 
-| Component | File |
-|-----------|------|
-| Usage counter | `internal/telemetry/usage_counter.go` |
-| Usage beacon loop | `internal/telemetry/usage_beacon.go` |
-| Beacon sender | `internal/telemetry/beacon.go` |
-| Install ID | `internal/telemetry/install_id.go` |
-| Features callback wiring | `cmd/browser-agent/tools_core_constructor.go` |
-| Features allowlist + sync | `internal/capture/sync.go` |
-| UI usage tracker (ext) | `src/background/ui-usage-tracker.ts` |
-| Install ID persistence (ext) | `src/background/sync-client.ts` |
+- `tool_call`
+- `first_tool_call`
+- `session_start`
+- `session_end`
+- `tool_summary`
+- `async_outcome`
+- `app_error`
+- `malformed`
+
+Flattening rules:
+
+- one `tool_call` row per `tool_call` event
+- one `first_tool_call` row per `first_tool_call` event
+- one `session_start` row per `session_start` event
+- one `session_end` row per `session_end` event
+- one `app_error` row per `app_error` event
+- one `tool_summary` row per `usage_summary.tool_stats[]` entry
+- one `async_outcome` row per `usage_summary.async_outcomes` key
+- one `malformed` row for each invalid or partially invalid payload
+
+Blob layout in `kaboomTelemetry`:
+
+| Slot | Meaning |
+|------|---------|
+| `blob1` | app id (`kaboom`) |
+| `blob2` | row type |
+| `blob3` | event name |
+| `blob4` | install id |
+| `blob5` | session id |
+| `blob6` | app version |
+| `blob7` | os |
+| `blob8` | tool, or raw payload preview for `malformed` rows |
+| `blob9` | source or reason |
+| `blob10` | family |
+| `blob11` | name, or raw payload archive key for `malformed` rows |
+| `blob12` | channel |
+| `blob13` | llm (MCP client name) |
+| `blob14` | outcome |
+| `blob15` | async outcome |
+| `blob16` | error kind |
+| `blob17` | error code |
+| `blob18` | severity, or joined validation errors for `malformed` rows |
+| `blob19` | screen |
+| `blob20` | workspace bucket |
+
+Double layout in `kaboomTelemetry`:
+
+| Slot | Meaning |
+|------|---------|
+| `double1` | event time in ms since epoch |
+| `double2` | count |
+| `double3` | window minutes |
+| `double4` | latency ms |
+| `double5` | latency average ms |
+| `double6` | latency max ms |
+| `double7` | error count |
+| `double8` | duration seconds |
+| `double9` | tool calls |
+| `double10` | active window minutes |
+| `double11` | retryable (`1` or `0`) |
+
+Index layout:
+
+- `index1` stores `iid`
+
+Notes:
+
+- `tool_call`, `first_tool_call`, `session_start`, `session_end`, and `app_error` all write `count = 1`.
+- `session_start.reason`, `session_end.reason`, and `app_error.source` are stored in `blob9`.
+- `ts` is stored as `double1` and should be used for v2 time filtering.
+- `malformed` rows use `error_kind = malformed_payload`, `error_code = json_parse_failed`, `contract_validation_failed`, or `body_read_failed`, and `source = ingest`.
+- `malformed` rows store only a preview in `blob8`; the full raw payload is archived in R2 under `telemetry-malformed/...` and the archive key is stored in `blob11` when archival succeeds.
+- product analytics queries should exclude `malformed` rows by default.
+
+## Analysis Mapping
+
+| Question | Primary source |
+|----------|----------------|
+| Monthly active installs | distinct `iid` over range |
+| Tool popularity | `tool_call` and `tool_summary` |
+| Tool latency | `tool_call.latency_ms` and `tool_summary.latency_*` |
+| Error rate by tool | `tool_call.outcome = error` and `tool_summary.error_count` |
+| Async reliability | `tool_call.async_outcome` and `async_outcome` rows |
+| First-use funnel | `first_tool_call` |
+| Session depth | `session_end.tool_calls` |
+| Session length | `session_end.duration_s` |
+| Install-level drilldown | all rows filtered by `iid` |
+| Product/runtime failures | `app_error` |
+
+## Reference Payloads
+
+Minimal `tool_call`:
+
+```json
+{
+  "event": "tool_call",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:10:01Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "family": "observe",
+  "name": "page",
+  "tool": "observe:page",
+  "outcome": "success"
+}
+```
+
+Minimal `usage_summary`:
+
+```json
+{
+  "event": "usage_summary",
+  "iid": "e41ce1f047c8",
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-15T08:35:00Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "window_m": 5,
+  "tool_stats": [
+    {
+      "family": "observe",
+      "name": "page",
+      "tool": "observe:page",
+      "count": 12
+    }
+  ]
+}
+```

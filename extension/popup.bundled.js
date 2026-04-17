@@ -363,8 +363,8 @@
   }
 
   // extension/lib/brand.js
-  var KABOOM_LOG_PREFIX = "[Kaboom]";
-  var KABOOM_RECORDING_LOG_PREFIX = "[Kaboom REC]";
+  var KABOOM_LOG_PREFIX = "[KaBOOM!]";
+  var KABOOM_RECORDING_LOG_PREFIX = "[KaBOOM! REC]";
 
   // extension/lib/error-utils.js
   function errorMessage(err, fallback = "Unknown error") {
@@ -1040,11 +1040,11 @@
   function handleFeatureToggle(storageKey, messageType, enabled) {
     chrome.runtime.sendMessage({ type: messageType, enabled }, (response) => {
       if (chrome.runtime.lastError) {
-        console.error(`[Kaboom] Message error for ${messageType}:`, chrome.runtime.lastError.message);
+        console.error(`[KaBOOM!] Message error for ${messageType}:`, chrome.runtime.lastError.message);
       } else if (response?.success) {
-        console.log(`[Kaboom] ${messageType} acknowledged by background`);
+        console.log(`[KaBOOM!] ${messageType} acknowledged by background`);
       } else {
-        console.warn(`[Kaboom] ${messageType} - no response from background`);
+        console.warn(`[KaBOOM!] ${messageType} - no response from background`);
       }
     });
   }
@@ -1218,7 +1218,7 @@
     hideAuditButton();
     btn.disabled = true;
     btn.textContent = "Tracking Disabled on This Site";
-    btn.title = "This domain is in the cloaked domains list. Kaboom is disabled here to prevent interference.";
+    btn.title = "This domain is in the cloaked domains list. KaBOOM! is disabled here to prevent interference.";
     Object.assign(btn.style, { opacity: "0.5", background: "#252525", color: "#888", borderColor: "#333" });
   }
   function showTrackingState(btn, trackedTabUrl, trackedTabId) {
@@ -1349,7 +1349,7 @@
   async function handleAiWebPilotToggle(enabled) {
     chrome.runtime.sendMessage({ type: "set_ai_web_pilot_enabled", enabled }, (response) => {
       if (!response || !response.success) {
-        console.error("[Kaboom] Failed to set AI Web Pilot toggle in background");
+        console.error("[KaBOOM!] Failed to set AI Web Pilot toggle in background");
         const toggle = document.getElementById("aiWebPilotEnabled");
         if (toggle) {
           toggle.checked = !enabled;
@@ -1517,7 +1517,7 @@
         const urlEl = document.getElementById("tracking-bar-url");
         if (urlEl && changes[StorageKey.TRACKED_TAB_URL].newValue) {
           urlEl.textContent = changes[StorageKey.TRACKED_TAB_URL].newValue;
-          console.log("[Kaboom] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
+          console.log("[KaBOOM!] Tracked tab URL updated in popup:", changes[StorageKey.TRACKED_TAB_URL].newValue);
         }
       }
     });

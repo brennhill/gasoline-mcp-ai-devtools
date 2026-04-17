@@ -172,7 +172,7 @@ export function installRecordingListeners(deps: RecordingListenerDeps): void {
                 .sendMessage(returnTabId, {
                   type: 'kaboom_action_toast',
                   text: 'Mic permission granted',
-                  detail: 'Open Kaboom and click Record',
+                  detail: 'Open KaBOOM! and click Record',
                   state: 'success' as const,
                   duration_ms: scaleTimeout(8000)
                 })

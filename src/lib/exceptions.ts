@@ -39,11 +39,11 @@ function enrichAndPost(entry: ExceptionEntry): void {
       postLog(entry as unknown as BridgePayload)
     }
   })().catch((err: Error) => {
-    console.error('[Kaboom] Exception enrichment error:', err)
+    console.error('[KaBOOM!] Exception enrichment error:', err)
     try {
       postLog(entry as unknown as BridgePayload)
     } catch (postErr) {
-      console.error('[Kaboom] Failed to log entry:', postErr)
+      console.error('[KaBOOM!] Failed to log entry:', postErr)
     }
   })
 }

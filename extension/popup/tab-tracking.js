@@ -42,7 +42,7 @@ function showCloakedState(btn) {
     hideAuditButton();
     btn.disabled = true;
     btn.textContent = 'Tracking Disabled on This Site';
-    btn.title = 'This domain is in the cloaked domains list. Kaboom is disabled here to prevent interference.';
+    btn.title = 'This domain is in the cloaked domains list. KaBOOM! is disabled here to prevent interference.';
     Object.assign(btn.style, { opacity: '0.5', background: '#252525', color: '#888', borderColor: '#333' });
 }
 function showTrackingState(btn, trackedTabUrl, trackedTabId) {

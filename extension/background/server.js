@@ -11,9 +11,9 @@ function buildHeartbeatStatusError(capture) {
         return 'Server reachable, but extension heartbeat status is unavailable. Update the server and extension, then reopen the popup.';
     }
     if (capture.extension_last_seen && capture.extension_last_seen.trim().length > 0) {
-        return `Server reachable, but extension heartbeat is stale (last seen ${capture.extension_last_seen}). Reopen the Kaboom popup and click "Track This Tab".`;
+        return `Server reachable, but extension heartbeat is stale (last seen ${capture.extension_last_seen}). Reopen the KaBOOM! popup and click "Track This Tab".`;
     }
-    return 'Server reachable, but extension heartbeat is missing. Open the Kaboom popup and click "Track This Tab".';
+    return 'Server reachable, but extension heartbeat is missing. Open the KaBOOM! popup and click "Track This Tab".';
 }
 /**
  * Get standard headers for API requests including version header
