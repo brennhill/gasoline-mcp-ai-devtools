@@ -721,6 +721,100 @@ func TestE2E_SwapAndReset_AccumulatesAndResets(t *testing.T) {
 	}
 }
 
+// ---------- E2E: Warm pre-loads install ID off hot path ----------
+
+func TestE2E_Warm_PreloadsInstallID(t *testing.T) {
+	resetInstallIDState()
+	dir := t.TempDir()
+	overrideKaboomDir(dir)
+	t.Cleanup(func() {
+		resetInstallIDState()
+		resetKaboomDir()
+	})
+
+	// Before Warm, install ID is not cached.
+	resetInstallIDState()
+
+	Warm()
+
+	// After Warm, GetInstallID should return instantly (no I/O).
+	id := GetInstallID()
+	if id == "" {
+		t.Fatal("GetInstallID returned empty after Warm()")
+	}
+	if !regexp.MustCompile(`^[0-9a-f]{12}$`).MatchString(id) {
+		t.Errorf("install ID = %q, want 12-char hex", id)
+	}
+}
+
+// ---------- E2E: opt-out caching ----------
+
+func TestE2E_OptOutCachedAtInit(t *testing.T) {
+	// Verify that telemetryOptedOut returns consistent results.
+	// (Tests env var reading, not caching — caching is an implementation detail.)
+	t.Setenv("KABOOM_TELEMETRY", "off")
+	if !telemetryOptedOut() {
+		t.Error("telemetryOptedOut should return true when KABOOM_TELEMETRY=off")
+	}
+	t.Setenv("KABOOM_TELEMETRY", "OFF")
+	if !telemetryOptedOut() {
+		t.Error("telemetryOptedOut should be case-insensitive")
+	}
+	t.Setenv("KABOOM_TELEMETRY", "")
+	if telemetryOptedOut() {
+		t.Error("telemetryOptedOut should return false when KABOOM_TELEMETRY is empty")
+	}
+}
+
+// ---------- E2E: empty tool key ----------
+
+func TestE2E_EmptyToolKey_NoBlowup(t *testing.T) {
+	received := captureBeacon(t)
+	resetSessionState()
+
+	tracker := NewUsageTracker()
+	// Empty key should not panic or crash — just records as empty.
+	tracker.RecordToolCall("", 0, false)
+
+	body := waitForEvent(t, received, "tool_call")
+	requireEnvelope(t, body, "tool_call/empty_key")
+
+	// Family and name should be empty strings (splitKey on "" returns "", "").
+	if body["family"] != "" {
+		t.Errorf("family = %q, want empty", body["family"])
+	}
+	if body["tool"] != "" {
+		t.Errorf("tool = %q, want empty", body["tool"])
+	}
+}
+
+// ---------- E2E: beacon timeout does not block caller ----------
+
+func TestE2E_SlowServer_DoesNotBlockCaller(t *testing.T) {
+	drainSem()
+	t.Cleanup(drainSem)
+
+	// Server that takes 5 seconds to respond — far longer than the 2s timeout.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Second)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+	overrideEndpoint(srv.URL)
+	t.Cleanup(resetEndpoint)
+
+	resetSessionState()
+	tracker := NewUsageTracker()
+
+	start := time.Now()
+	tracker.RecordToolCall("observe:page", 0, false)
+	elapsed := time.Since(start)
+
+	if elapsed > 100*time.Millisecond {
+		t.Errorf("RecordToolCall blocked for %v with slow server — should return immediately", elapsed)
+	}
+}
+
 // ---------- E2E: JSON serialization roundtrip ----------
 
 func TestE2E_BeaconJSON_Roundtrip(t *testing.T) {

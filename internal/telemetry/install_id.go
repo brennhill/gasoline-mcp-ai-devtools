@@ -37,6 +37,13 @@ func defaultKaboomDir() string {
 	return filepath.Join(home, ".kaboom")
 }
 
+// Warm pre-loads install ID and session state so the first tool call
+// doesn't incur filesystem I/O on the hot path. Call at daemon startup.
+func Warm() {
+	GetInstallID()
+	TouchSession()
+}
+
 // GetInstallID returns the persistent anonymous install ID.
 // On first call, reads from ~/.kaboom/install_id or generates a new 12-char hex string.
 // Thread-safe via sync.Once. Never returns an error — falls back to a fresh random ID.
