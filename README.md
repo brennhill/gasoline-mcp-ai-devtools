@@ -35,7 +35,7 @@
 
 ## 📦 Latest Release
 
-Current version: **v0.8.2** — Link health analyzer, browser automation, recording, and performance analysis for AI agents.
+Current version: **v0.8.2** — Structured telemetry, session analytics, KaBOOM! branding, and contract-compliant metrics reporting.
 
 **macOS / Linux:**
 ```bash
@@ -124,7 +124,7 @@ Restart Claude Code, Cursor, Windsurf, or Zed. The Kaboom server will now start 
 
 All captured data (logs, network, actions) stays 100% local — nothing leaves your machine. No cloud, no accounts.
 
-We collect anonymous usage statistics (feature usage flags, extension version) using a random identifier not linked to your identity. No URLs, browsing data, or personal information is collected.
+We collect anonymous usage statistics (tool call frequency, session duration, error rates) using a random install identifier not linked to your identity. No URLs, prompts, file contents, browsing data, or personal information is collected. Disable with `KABOOM_TELEMETRY=off`.
 
 **[Privacy details →](https://gokaboom.dev/privacy/)**
 
@@ -132,7 +132,7 @@ We collect anonymous usage statistics (feature usage flags, extension version) u
 
 See [latest benchmarks](docs/benchmarks/latest-benchmark.md) for current performance data.
 
-Last benchmarked: 2026-02-09 on darwin/arm64 (v0.8.1)
+Last benchmarked: 2026-02-09 on darwin/arm64
 
 ## Known Issues
 
