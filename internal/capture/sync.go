@@ -7,7 +7,6 @@ package capture
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -237,9 +236,7 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if state.wasDisconnected {
-		telemetry.BeaconError("extension_disconnect", map[string]string{
-			"disconnect_seconds": fmt.Sprintf("%.0f", state.timeSinceLastPoll.Seconds()),
-		})
+		telemetry.AppError("extension_disconnect", nil)
 		c.queryDispatcher.ExpireAllPendingQueries("extension_disconnected")
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_disconnected", map[string]any{

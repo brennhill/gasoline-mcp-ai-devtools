@@ -6,7 +6,6 @@ package bridge
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -64,11 +63,7 @@ func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool, s
 		// The extra map below (for appendExitDiagnostic) intentionally includes
 		// more detail because it writes to a local file, not to telemetry.
 		if stats.parseErrors > 0 || stats.methodNotFound > 0 || (readErr != nil && !errors.Is(readErr, io.EOF)) {
-			telemetry.BeaconError("bridge_exit_error", map[string]string{
-				"parse_errors":     fmt.Sprintf("%d", stats.parseErrors),
-				"forwarded":        fmt.Sprintf("%d", stats.forwarded),
-				"method_not_found": fmt.Sprintf("%d", stats.methodNotFound),
-			})
+			telemetry.AppError("bridge_exit_error", nil)
 		}
 		reason := "stdin_eof"
 		if readErr != nil && !errors.Is(readErr, io.EOF) {

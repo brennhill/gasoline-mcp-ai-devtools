@@ -3,9 +3,9 @@
 package telemetry
 
 import (
-    "encoding/json"
-    "net/http"
-    "net/http/httptest"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"sync"
 	"testing"
@@ -244,15 +244,17 @@ func TestUsageTracker_RecordAsyncOutcome(t *testing.T) {
 	}
 }
 
-func TestUsageTracker_FirstToolCallOnlyOncePerProcess(t *testing.T) {
+func TestUsageTracker_FirstToolCallOnlyOncePerInstall(t *testing.T) {
 	drainSem()
 	t.Cleanup(drainSem)
 
 	resetInstallIDState()
+	resetFirstToolCallState()
 	dir := t.TempDir()
 	overrideKaboomDir(dir)
 	t.Cleanup(func() {
 		resetInstallIDState()
+		resetFirstToolCallState()
 		resetKaboomDir()
 	})
 
@@ -272,58 +274,69 @@ func TestUsageTracker_FirstToolCallOnlyOncePerProcess(t *testing.T) {
 	defer resetEndpoint()
 
 	tracker := NewUsageTracker()
-
-	// First call should fire session_start + tool_call + first_tool_call.
 	tracker.RecordToolCall("observe:page", 0, false)
 
-	waitForEvent := func(event string) map[string]any {
-		t.Helper()
-		for {
-			select {
-			case body := <-received:
-				if body["event"] == event {
-					return body
-				}
-			case <-time.After(3 * time.Second):
-				t.Fatalf("timed out waiting for %s beacon", event)
-			}
-		}
-	}
-
-	// All 3 events should arrive. Collect them all within timeout.
-	events := map[string]bool{}
-	for len(events) < 3 {
+	firstRunEvents := map[string]map[string]any{}
+	for len(firstRunEvents) < 3 {
 		select {
 		case body := <-received:
-			if e, ok := body["event"].(string); ok {
-				events[e] = true
+			if event, ok := body["event"].(string); ok {
+				firstRunEvents[event] = body
 			}
 		case <-time.After(3 * time.Second):
-			t.Fatalf("timed out waiting for all 3 events, got: %v", events)
+			t.Fatalf("timed out waiting for first-run telemetry, got %v", firstRunEvents)
 		}
 	}
-	if !events["session_start"] {
-		t.Error("missing session_start")
+
+	sessionStart := firstRunEvents["session_start"]
+	if sessionStart["reason"] != "first_activity" {
+		t.Fatalf("session_start reason = %v, want first_activity", sessionStart["reason"])
 	}
-	if !events["tool_call"] {
-		t.Error("missing tool_call")
+	if _, ok := firstRunEvents["tool_call"]; !ok {
+		t.Fatal("missing tool_call beacon on first run")
 	}
-	if !events["first_tool_call"] {
-		t.Error("missing first_tool_call")
+	if _, ok := firstRunEvents["first_tool_call"]; !ok {
+		t.Fatal("missing first_tool_call beacon on first run")
 	}
 
-	// Second call on the same tracker should NOT fire first_tool_call again.
-	tracker.RecordToolCall("observe:errors", 0, false)
-	waitForEvent("tool_call")
+	resetInstallIDState()
+	resetFirstToolCallState()
 
-	// Brief wait — no first_tool_call should arrive.
+	trackerAfterRestart := NewUsageTracker()
+	trackerAfterRestart.RecordToolCall("observe:page", 0, false)
+
+	secondRunEvents := map[string]map[string]any{}
+	for len(secondRunEvents) < 2 {
+		select {
+		case body := <-received:
+			if event, ok := body["event"].(string); ok {
+				secondRunEvents[event] = body
+			}
+		case <-time.After(3 * time.Second):
+			t.Fatalf("timed out waiting for second-run telemetry, got %v", secondRunEvents)
+		}
+	}
+
+	sessionStartAfterRestart := secondRunEvents["session_start"]
+	if sessionStartAfterRestart["reason"] != "first_activity" {
+		t.Fatalf(
+			"session_start after restart reason = %v, want first_activity",
+			sessionStartAfterRestart["reason"],
+		)
+	}
+	if _, ok := secondRunEvents["tool_call"]; !ok {
+		t.Fatal("missing tool_call beacon after restart")
+	}
+	if _, ok := secondRunEvents["first_tool_call"]; ok {
+		t.Fatal("unexpected duplicate first_tool_call after restart for same install")
+	}
+
 	select {
 	case body := <-received:
 		if body["event"] == "first_tool_call" {
-			t.Fatal("first_tool_call fired twice on the same tracker instance")
+			t.Fatal("unexpected duplicate first_tool_call after restart for same install")
 		}
 	case <-time.After(200 * time.Millisecond):
-		// Good — no duplicate.
 	}
 }
 
@@ -357,6 +370,9 @@ func TestUsageTracker_SessionStartOnlyOnFirstCall(t *testing.T) {
 		case body := <-received:
 			if body["event"] == "session_start" {
 				sessionStarts++
+				if body["reason"] != "first_activity" {
+					t.Fatalf("session_start reason = %v, want first_activity", body["reason"])
+				}
 			}
 		case <-deadline:
 			goto done
@@ -450,17 +466,26 @@ func TestAppError_PayloadStructure(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
-	AppError("daemon_panic", "runtime error", map[string]string{"extra": "info"})
+	AppError("daemon_panic", map[string]string{"extra": "info"})
 
 	for {
 		select {
 		case body := <-received:
 			if body["event"] == "app_error" {
-				if body["category"] != "daemon_panic" {
-					t.Errorf("category = %v, want daemon_panic", body["category"])
+				if body["error_kind"] != "internal" {
+					t.Errorf("error_kind = %v, want internal", body["error_kind"])
 				}
-				if body["detail"] != "runtime error" {
-					t.Errorf("detail = %v, want runtime error", body["detail"])
+				if body["error_code"] != "DAEMON_PANIC" {
+					t.Errorf("error_code = %v, want DAEMON_PANIC", body["error_code"])
+				}
+				if body["severity"] != "fatal" {
+					t.Errorf("severity = %v, want fatal", body["severity"])
+				}
+				if body["source"] != "daemon" {
+					t.Errorf("source = %v, want daemon", body["source"])
+				}
+				if _, exists := body["detail"]; exists {
+					t.Error("detail field should not be present — not in Counterscale contract")
 				}
 				if body["extra"] != "info" {
 					t.Errorf("extra = %v, want info", body["extra"])
@@ -496,7 +521,7 @@ func TestAppError_NilProps(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
-	AppError("test_error", "detail", nil) // nil props should not panic
+	AppError("test_error", nil) // nil props should not panic
 
 	for {
 		select {
@@ -525,13 +550,10 @@ func TestUsageTracker_SessionDepth(t *testing.T) {
 		t.Fatalf("session depth = %d, want 3", c.SessionDepth())
 	}
 
-	// SwapAndReset should include session_depth but NOT reset it.
+	// SwapAndReset should not reset session depth (it's a session-scoped counter).
 	snapshot := c.SwapAndReset()
 	if snapshot == nil {
 		t.Fatal("snapshot is nil")
-	}
-	if snapshot.SessionDepth != 3 {
-		t.Fatalf("session_depth in snapshot = %d, want 3", snapshot.SessionDepth)
 	}
 	if c.SessionDepth() != 3 {
 		t.Fatalf("session depth after swap = %d, want 3 (should not reset)", c.SessionDepth())

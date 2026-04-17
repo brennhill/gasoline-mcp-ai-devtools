@@ -129,7 +129,7 @@ func tryConnectToExisting(state *daemonState, port int) bool {
 	if serviceName == "" {
 		serviceName = "unknown"
 	}
-	telemetry.BeaconError("bridge_port_blocked", map[string]string{"port": fmt.Sprintf("%d", port)})
+	telemetry.AppError("bridge_port_blocked", nil)
 	state.markFailed(fmt.Sprintf("port %d is occupied by non-kaboom service %q", port, serviceName))
 	return true // fatally blocked
 }

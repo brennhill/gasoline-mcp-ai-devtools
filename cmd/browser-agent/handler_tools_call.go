@@ -39,7 +39,7 @@ func (h *MCPHandler) handleToolsCall(req JSONRPCRequest) JSONRPCResponse {
 	h.warnUnknownToolArguments(params.Name, params.Arguments)
 
 	if err := h.checkToolRateLimit(); err != nil {
-		telemetry.AppError("tool_rate_limited", params.Name, nil)
+		telemetry.AppError("tool_rate_limited", nil)
 		return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Error: err}
 	}
 

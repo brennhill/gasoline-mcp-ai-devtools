@@ -14,9 +14,10 @@ const sessionTimeout = 30 * time.Minute
 
 // session holds the current session state. Thread-safe via mu.
 var session struct {
-	mu       sync.Mutex
-	id       string
-	lastSeen time.Time
+	mu              sync.Mutex
+	id              string
+	lastSeen        time.Time
+	nextStartReason string // set by TouchSession on rotation, consumed by ConsumeSessionStartReason
 }
 
 // sessionEndCallback is called when a session rotates due to timeout.
@@ -61,6 +62,7 @@ func TouchSession() {
 		cb = sessionEndCallback
 		// Mint new session BEFORE releasing lock — no TOCTOU window.
 		session.id = generateSessionID()
+		session.nextStartReason = "post_timeout"
 	}
 	session.lastSeen = time.Now()
 	session.mu.Unlock()
@@ -69,6 +71,19 @@ func TouchSession() {
 	if cb != nil {
 		cb("timeout")
 	}
+}
+
+// ConsumeSessionStartReason returns and clears the pending session start reason.
+// Returns "first_activity" when no specific reason was set (first session or default).
+func ConsumeSessionStartReason() string {
+	session.mu.Lock()
+	reason := session.nextStartReason
+	session.nextStartReason = ""
+	session.mu.Unlock()
+	if reason == "" {
+		return "first_activity"
+	}
+	return reason
 }
 
 func generateSessionID() string {
@@ -84,5 +99,6 @@ func resetSessionState() {
 	session.mu.Lock()
 	session.id = ""
 	session.lastSeen = time.Time{}
+	session.nextStartReason = ""
 	session.mu.Unlock()
 }

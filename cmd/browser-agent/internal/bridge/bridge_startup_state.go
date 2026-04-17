@@ -218,12 +218,12 @@ func spawnDaemonAsync(state *daemonState) {
 	util.SafeGo(func() {
 		cmd, err := state.buildDaemonCmd()
 		if err != nil {
-			telemetry.BeaconError("bridge_spawn_failed", map[string]string{"reason": "build_cmd_error"})
+			telemetry.AppError("bridge_spawn_build_error", nil)
 			state.markFailed(err.Error())
 			return
 		}
 		if err := cmd.Start(); err != nil {
-			telemetry.BeaconError("bridge_spawn_failed", map[string]string{"reason": "start_error"})
+			telemetry.AppError("bridge_spawn_start_error", nil)
 			state.markFailed("Failed to start daemon: " + err.Error())
 			return
 		}
@@ -232,7 +232,7 @@ func spawnDaemonAsync(state *daemonState) {
 		if waitForServer(state.port, daemonStartupReadyTimeout) {
 			state.markReady()
 		} else {
-			telemetry.BeaconError("bridge_spawn_failed", map[string]string{"reason": "startup_timeout"})
+			telemetry.AppError("bridge_spawn_timeout", nil)
 			state.markFailed(fmt.Sprintf("Daemon started but not responding on port %d after %s", state.port, daemonStartupReadyTimeout))
 		}
 	})

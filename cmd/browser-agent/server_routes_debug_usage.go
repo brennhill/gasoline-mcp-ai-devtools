@@ -21,7 +21,7 @@ func debugEndpointsEnabled() bool {
 func handleDebugUsage(mcp *MCPHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]any{"error": "method not allowed"})
 			return
 		}
 		tracker := mcp.GetUsageTracker()
@@ -40,7 +40,7 @@ func handleDebugUsage(mcp *MCPHandler) http.HandlerFunc {
 func handleDebugBeaconFlush(mcp *MCPHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			jsonResponse(w, http.StatusMethodNotAllowed, map[string]any{"error": "method not allowed"})
 			return
 		}
 		tracker := mcp.GetUsageTracker()

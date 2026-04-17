@@ -161,23 +161,15 @@ func runNativeInstall() {
 		}
 
 		if err := mergeJSONConfig(path, cfg.key, exe, cfg.isCustom); err != nil {
-			reason := "write_failed"
-			if strings.Contains(err.Error(), "invalid JSON") {
-				reason = "invalid_json"
-			}
-			telemetry.BeaconError("install_config_error", map[string]string{
-				"client": cfg.name,
-				"reason": reason,
-			})
+			telemetry.AppError("install_config_error", nil)
 			stderrf("  ⚠️  %s: %v\n", cfg.name, err)
 		} else {
 			clientsConfigured++
 		}
 	}
 
-	telemetry.BeaconEvent("install_complete", map[string]string{
-		"clients_configured": fmt.Sprintf("%d", clientsConfigured),
-	})
+	// NOTE: install_complete lifecycle event not yet in Counterscale contract.
+	// Add to LIFECYCLE_EVENTS in counterscale ingest before re-enabling.
 
 	// 4. Start the Daemon
 	// We start the daemon so the extension works immediately and the user

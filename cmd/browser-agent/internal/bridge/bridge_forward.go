@@ -45,10 +45,7 @@ func bridgeForwardRequest(client *http.Client, endpoint string, req mcp.JSONRPCR
 	}
 	defer activeCancel()
 	if err != nil {
-		telemetry.BeaconError("bridge_connection_error", map[string]string{
-			"error_code":    "bridge_connection_error",
-			"fallback_used": fmt.Sprintf("%v", fallbackUsed),
-		})
+		telemetry.AppError("bridge_connection_error", nil)
 		message := "Server connection error: " + err.Error()
 		if req.Method == "tools/call" {
 			sendToolErrorWithOptions(req.ID, message, framing, bridgeToolErrorOptions{

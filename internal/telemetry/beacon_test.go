@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func TestBeaconError_DisabledByEnv(t *testing.T) {
+func TestBeacon_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
 
 	fired := make(chan bool, 1)
@@ -36,7 +36,7 @@ func TestBeaconError_DisabledByEnv(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
-	BeaconError("test_event", map[string]string{"key": "val"})
+	BeaconEvent("test_event", map[string]string{"key": "val"})
 
 	select {
 	case sent := <-fired:
@@ -52,22 +52,22 @@ func TestBeaconError_DisabledByEnv(t *testing.T) {
 	}
 }
 
-func TestBeaconError_FireAndForget(t *testing.T) {
-	// Verify BeaconError returns immediately even when server is unreachable.
+func TestBeacon_FireAndForget(t *testing.T) {
+	// Verify BeaconEvent returns immediately even when server is unreachable.
 	// Use a non-routable address so the goroutine doesn't linger on other test servers.
 	overrideEndpoint("http://198.51.100.1:1") // TEST-NET-2, non-routable
 	defer resetEndpoint()
 
 	start := time.Now()
-	BeaconError("slow_test", nil)
+	BeaconEvent("slow_test", nil)
 	elapsed := time.Since(start)
 
 	if elapsed > 100*time.Millisecond {
-		t.Fatalf("BeaconError blocked for %v, expected fire-and-forget", elapsed)
+		t.Fatalf("BeaconEvent blocked for %v, expected fire-and-forget", elapsed)
 	}
 }
 
-func TestBeaconError_FormatsJSON(t *testing.T) {
+func TestBeacon_FormatsJSON(t *testing.T) {
 	drainSem()
 	received := make(chan map[string]any, 10)
 
@@ -87,7 +87,7 @@ func TestBeaconError_FormatsJSON(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
-	BeaconError("test_error", map[string]string{"error_code": "conn_refused", "port": "7890"})
+	BeaconEvent("test_error", map[string]string{"error_code": "conn_refused", "port": "7890"})
 
 	// Drain until we find our specific event (stale goroutines may send others first).
 	var body map[string]any
@@ -175,18 +175,18 @@ func TestBeaconEvent_IncludesVersion(t *testing.T) {
 	}
 }
 
-func TestBeaconError_IgnoresHTTPFailure(t *testing.T) {
+func TestBeacon_IgnoresHTTPFailure(t *testing.T) {
 	drainSem() // ensure clean semaphore from prior tests
 	// Point at a closed server — should not panic or block the caller.
 	overrideEndpoint("http://127.0.0.1:1") // nothing listening
 	defer resetEndpoint()
 
 	start := time.Now()
-	BeaconError("unreachable", map[string]string{"key": "val"})
+	BeaconEvent("unreachable", map[string]string{"key": "val"})
 	elapsed := time.Since(start)
 
 	if elapsed > 100*time.Millisecond {
-		t.Fatalf("BeaconError blocked for %v on unreachable server, expected fire-and-forget", elapsed)
+		t.Fatalf("BeaconEvent blocked for %v on unreachable server, expected fire-and-forget", elapsed)
 	}
 	// The goroutine will fail in the background — that's fine. Give it time to clean up.
 	time.Sleep(50 * time.Millisecond)
@@ -263,8 +263,8 @@ func TestBeacon_SemaphoreBackpressure(t *testing.T) {
 	}
 }
 
-// #5: SetLLMName inclusion/omission in beacon payload.
-func TestBeacon_IncludesLLMName(t *testing.T) {
+// #5: llm field included when SetLLMName is set, omitted when empty.
+func TestBeacon_LLMFieldInEnvelope(t *testing.T) {
 	received := make(chan map[string]any, 1)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any
@@ -293,37 +293,6 @@ func TestBeacon_IncludesLLMName(t *testing.T) {
 
 	if body["llm"] != "claude-code" {
 		t.Errorf("llm = %v, want claude-code", body["llm"])
-	}
-}
-
-func TestBeacon_OmitsLLMNameWhenEmpty(t *testing.T) {
-	received := make(chan map[string]any, 1)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var body map[string]any
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		select {
-		case received <- body:
-		default:
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer srv.Close()
-
-	overrideEndpoint(srv.URL)
-	defer resetEndpoint()
-	SetLLMName("")
-
-	BeaconEvent("no_llm_test", nil)
-
-	var body map[string]any
-	select {
-	case body = <-received:
-	case <-time.After(2 * time.Second):
-		t.Fatal("beacon not received within timeout")
-	}
-
-	if _, exists := body["llm"]; exists {
-		t.Errorf("llm key should be absent when empty, got %v", body["llm"])
 	}
 }
 
@@ -451,7 +420,6 @@ func TestBuildUsageSummaryPayload_Structure(t *testing.T) {
 			{Tool: "interact:click", Family: "interact", Name: "click", Count: 1},
 		},
 		AsyncOutcomes: map[string]int{"complete": 2},
-		SessionDepth:  4,
 	}
 	payload := BuildUsageSummaryPayload(5, snapshot)
 
@@ -489,8 +457,8 @@ func TestBuildUsageSummaryPayload_Structure(t *testing.T) {
 	if stats[0].Tool != "observe:page" || stats[0].Count != 3 {
 		t.Errorf("tool_stats[0] = %+v, want observe:page count=3", stats[0])
 	}
-	if payload["session_depth"] != 4 {
-		t.Errorf("session_depth = %v, want 4", payload["session_depth"])
+	if _, exists := payload["session_depth"]; exists {
+		t.Error("session_depth should not be in usage_summary payload — not in Counterscale contract")
 	}
 }
 
@@ -518,7 +486,7 @@ func TestBeacon_SemaphoreCleanupOnFailure(t *testing.T) {
 	}
 }
 
-func TestBeaconError_NilProps(t *testing.T) {
+func TestBeacon_NilProps(t *testing.T) {
 	received := make(chan map[string]any, 1)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -535,7 +503,7 @@ func TestBeaconError_NilProps(t *testing.T) {
 	overrideEndpoint(srv.URL)
 	defer resetEndpoint()
 
-	BeaconError("nil_props_test", nil)
+	BeaconEvent("nil_props_test", nil)
 
 	var body map[string]any
 	select {

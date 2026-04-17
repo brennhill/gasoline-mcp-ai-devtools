@@ -50,6 +50,7 @@ var sem = make(chan struct{}, maxConcurrentBeacons)
 var beaconClient = &http.Client{Timeout: 2 * time.Second}
 
 // buildEnvelope returns the base fields included in every beacon.
+// Only includes fields defined in the Counterscale contract shared envelope.
 func buildEnvelope(event string) map[string]any {
 	beaconMu.RLock()
 	llm := llmName
@@ -68,26 +69,61 @@ func buildEnvelope(event string) map[string]any {
 	return env
 }
 
-// BeaconError fires an anonymous error event to the telemetry endpoint.
-// Fire-and-forget: backgrounded, 2s timeout, never blocks caller, never panics.
-// Deprecated: prefer AppError for structured app_error events.
-func BeaconError(event string, props map[string]string) {
-	sendBeacon(event, props)
-}
-
 // AppError fires a structured app_error event.
-func AppError(category string, detail string, props map[string]string) {
-	fields := map[string]any{
-		"event":    "app_error",
-		"category": category,
-		"detail":   detail,
-	}
+// Props are merged first so contract fields (error_kind, severity, etc.) always win.
+func AppError(category string, props map[string]string) {
+	errorKind, severity, source, retryable := classifyAppError(category)
+
+	// Apply caller props first so contract fields cannot be overwritten.
+	fields := map[string]any{}
 	if props != nil {
 		for k, v := range props {
 			fields[k] = v
 		}
 	}
+
+	// Contract fields applied last — always authoritative.
+	fields["event"] = "app_error"
+	fields["error_kind"] = errorKind
+	fields["error_code"] = normalizeAppErrorCode(category)
+	fields["severity"] = severity
+	fields["source"] = source
+	if retryable {
+		fields["retryable"] = true
+	}
 	fireStructuredBeacon(fields)
+}
+
+func classifyAppError(category string) (errorKind string, severity string, source string, retryable bool) {
+	switch category {
+	case "daemon_panic":
+		return "internal", "fatal", "daemon", false
+	case "daemon_start_failed":
+		return "internal", "fatal", "startup", false
+	case "tool_rate_limited":
+		return "integration", "warning", "daemon", true
+	case "bridge_connection_error":
+		return "integration", "error", "bridge", true
+	case "bridge_port_blocked":
+		return "integration", "error", "bridge", false
+	case "bridge_spawn_build_error", "bridge_spawn_start_error":
+		return "internal", "fatal", "bridge", false
+	case "bridge_spawn_timeout":
+		return "internal", "error", "bridge", true
+	case "bridge_exit_error":
+		return "internal", "error", "bridge", false
+	case "extension_disconnect":
+		return "integration", "warning", "extension", false
+	case "install_config_error":
+		return "internal", "error", "installer", false
+	default:
+		return "unknown", "error", "daemon", false
+	}
+}
+
+func normalizeAppErrorCode(category string) string {
+	replacer := strings.NewReplacer("-", "_", " ", "_")
+	return strings.ToUpper(replacer.Replace(strings.TrimSpace(category)))
 }
 
 // BeaconEvent fires an anonymous lifecycle event.
@@ -98,17 +134,9 @@ func BeaconEvent(event string, props map[string]string) {
 
 // BeaconUsageSummary fires a structured usage_summary beacon.
 func BeaconUsageSummary(windowMinutes int, snapshot *UsageSnapshot) {
-	if snapshot == nil {
+	payload := BuildUsageSummaryPayload(windowMinutes, snapshot)
+	if payload == nil {
 		return
-	}
-	payload := buildEnvelope("usage_summary")
-	payload["ts"] = time.Now().UTC().Format(time.RFC3339)
-	payload["channel"] = Channel
-	payload["window_m"] = windowMinutes
-	payload["tool_stats"] = snapshot.ToolStats
-	payload["async_outcomes"] = snapshot.AsyncOutcomes
-	if snapshot.SessionDepth > 0 {
-		payload["session_depth"] = snapshot.SessionDepth
 	}
 	fireBeacon(payload)
 }
@@ -124,9 +152,8 @@ func BuildUsageSummaryPayload(windowMinutes int, snapshot *UsageSnapshot) map[st
 	payload["channel"] = Channel
 	payload["window_m"] = windowMinutes
 	payload["tool_stats"] = snapshot.ToolStats
-	payload["async_outcomes"] = snapshot.AsyncOutcomes
-	if snapshot.SessionDepth > 0 {
-		payload["session_depth"] = snapshot.SessionDepth
+	if len(snapshot.AsyncOutcomes) > 0 {
+		payload["async_outcomes"] = snapshot.AsyncOutcomes
 	}
 	return payload
 }

@@ -13,9 +13,9 @@ var Channel = "dev"
 
 // ToolStat holds per-tool aggregated metrics for one beacon window.
 type ToolStat struct {
-	Tool         string `json:"tool"`          // "observe:page"
-	Family       string `json:"family"`        // "observe"
-	Name         string `json:"name"`          // "page"
+	Tool         string `json:"tool"`   // "observe:page"
+	Family       string `json:"family"` // "observe"
+	Name         string `json:"name"`   // "page"
 	Count        int    `json:"count"`
 	ErrorCount   int    `json:"error_count"`
 	LatencyAvgMs int64  `json:"latency_avg_ms"`
@@ -26,7 +26,6 @@ type ToolStat struct {
 type UsageSnapshot struct {
 	ToolStats     []ToolStat     `json:"tool_stats"`
 	AsyncOutcomes map[string]int `json:"async_outcomes"`
-	SessionDepth  int            `json:"session_depth,omitempty"`
 }
 
 // toolAccum accumulates per-tool metrics within one beacon window.
@@ -42,10 +41,8 @@ type UsageTracker struct {
 	mu            sync.Mutex
 	tools         map[string]*toolAccum // key: "family:name"
 	asyncOutcomes map[string]int        // "complete", "timeout", etc.
-	sessionCalls  int                   // total calls this session
-	sessionStart  time.Time             // when session started (for duration calc)
-	lastReported  int                   // session depth at last SwapAndReset
-	everCalled    bool                  // first-use detection
+	sessionCalls int      // total calls this session
+	sessionStart time.Time // when session started (for duration calc)
 }
 
 // NewUsageTracker creates a new empty usage tracker.
@@ -90,20 +87,26 @@ func (u *UsageTracker) RecordToolCall(key string, elapsed time.Duration, isError
 		acc.errCount++
 	}
 	u.sessionCalls++
+	u.mu.Unlock()
+
+	// TouchSession may rotate the session (firing session_end callback which
+	// resets u.sessionStart). Check for new session AFTER touch so post-timeout
+	// rotation is detected.
+	TouchSession()
+	firstEver := markFirstToolCallEmittedForInstall()
+
+	u.mu.Lock()
 	newSession := u.sessionStart.IsZero()
 	if newSession {
 		u.sessionStart = time.Now()
 	}
-	firstEver := !u.everCalled
-	u.everCalled = true
 	u.mu.Unlock()
-
-	TouchSession()
 
 	// Emit session_start on first call of a new session.
 	if newSession {
 		fireStructuredBeacon(map[string]any{
-			"event": "session_start",
+			"event":  "session_start",
+			"reason": ConsumeSessionStartReason(),
 		})
 	}
 
@@ -113,13 +116,12 @@ func (u *UsageTracker) RecordToolCall(key string, elapsed time.Duration, isError
 		outcome = "error"
 	}
 	fireStructuredBeacon(map[string]any{
-		"event":         "tool_call",
-		"family":        family,
-		"name":          name,
-		"tool":          key,
-		"outcome":       outcome,
-		"latency_ms":    ms,
-		"async_outcome": nil,
+		"event":      "tool_call",
+		"family":     family,
+		"name":       name,
+		"tool":       key,
+		"outcome":    outcome,
+		"latency_ms": ms,
 	})
 
 	if firstEver {
@@ -168,7 +170,7 @@ func (u *UsageTracker) Peek() map[string]int {
 func (u *UsageTracker) SwapAndReset() *UsageSnapshot {
 	u.mu.Lock()
 
-	if len(u.tools) == 0 && len(u.asyncOutcomes) == 0 && u.sessionCalls <= u.lastReported {
+	if len(u.tools) == 0 && len(u.asyncOutcomes) == 0 {
 		u.mu.Unlock()
 		return nil // nothing to report
 	}
@@ -196,12 +198,6 @@ func (u *UsageTracker) SwapAndReset() *UsageSnapshot {
 		outcomes[k] = v
 	}
 
-	depth := 0
-	if u.sessionCalls > u.lastReported {
-		depth = u.sessionCalls
-		u.lastReported = u.sessionCalls
-	}
-
 	u.tools = make(map[string]*toolAccum)
 	u.asyncOutcomes = make(map[string]int)
 	u.mu.Unlock()
@@ -209,7 +205,6 @@ func (u *UsageTracker) SwapAndReset() *UsageSnapshot {
 	return &UsageSnapshot{
 		ToolStats:     stats,
 		AsyncOutcomes: outcomes,
-		SessionDepth:  depth,
 	}
 }
 
@@ -220,7 +215,6 @@ func (u *UsageTracker) EmitSessionEnd(reason string) {
 	start := u.sessionStart
 	u.sessionCalls = 0
 	u.sessionStart = time.Time{}
-	u.lastReported = 0
 	u.mu.Unlock()
 
 	if calls == 0 {
@@ -242,7 +236,11 @@ func (u *UsageTracker) EmitSessionEnd(reason string) {
 
 // fireStructuredBeacon sends a beacon with the standard envelope + extra fields.
 func fireStructuredBeacon(fields map[string]any) {
-	payload := buildEnvelope(fields["event"].(string))
+	event, ok := fields["event"].(string)
+	if !ok || event == "" {
+		return // silently drop malformed beacon
+	}
+	payload := buildEnvelope(event)
 	payload["ts"] = time.Now().UTC().Format(time.RFC3339)
 	payload["channel"] = Channel
 	for k, v := range fields {
