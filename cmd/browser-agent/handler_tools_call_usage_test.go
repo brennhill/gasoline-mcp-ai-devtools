@@ -304,8 +304,9 @@ func TestHandleToolCall_TracksSessionDepth(t *testing.T) {
 	if snapshot == nil {
 		t.Fatal("snapshot is nil")
 	}
-	if snapshot.SessionDepth != 3 {
-		t.Fatalf("session_depth in snapshot = %d, want 3", snapshot.SessionDepth)
+	// SessionDepth is tracked on the tracker (not in snapshot — removed from contract).
+	if counter.SessionDepth() != 3 {
+		t.Fatalf("session depth = %d, want 3", counter.SessionDepth())
 	}
 }
 
