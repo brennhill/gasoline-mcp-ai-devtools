@@ -202,6 +202,11 @@ jobs:
             dist/kaboom-agentic-browser-linux-arm64
             dist/kaboom-agentic-browser-linux-x64
             dist/kaboom-agentic-browser-win32-x64.exe
+            dist/kaboom-hooks-darwin-arm64
+            dist/kaboom-hooks-darwin-x64
+            dist/kaboom-hooks-linux-arm64
+            dist/kaboom-hooks-linux-x64
+            dist/kaboom-hooks-win32-x64.exe
             dist/kaboom-extension-v*.zip
             dist/checksums.txt
           generate_release_notes: true
