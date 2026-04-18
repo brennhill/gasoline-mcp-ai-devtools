@@ -11,36 +11,6 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
-// guardCheck is a precondition that returns (response, true) to short-circuit the caller.
-type guardCheck func(req JSONRPCRequest, opts ...func(*StructuredError)) (JSONRPCResponse, bool)
-
-// checkGuards runs each guard in order, returning the first blocking response.
-// Eliminates the repeated 6-line requirePilot+requireExtension boilerplate:
-//
-//	Before: if resp, blocked := h.requirePilot(req); blocked { return resp }
-//	        if resp, blocked := h.requireExtension(req); blocked { return resp }
-//	After:  if resp, blocked := checkGuards(req, h.requirePilot, h.requireExtension); blocked { return resp }
-func checkGuards(req JSONRPCRequest, guards ...guardCheck) (JSONRPCResponse, bool) {
-	for _, g := range guards {
-		if resp, blocked := g(req); blocked {
-			return resp, true
-		}
-	}
-	return JSONRPCResponse{}, false
-}
-
-// checkGuardsWithOpts runs each guard in order with extra StructuredError options,
-// returning the first blocking response. Used by handlers like handleDOMPrimitive
-// that need to pass contextOpts (action, selector) through to guard error responses.
-func checkGuardsWithOpts(req JSONRPCRequest, opts []func(*StructuredError), guards ...guardCheck) (JSONRPCResponse, bool) {
-	for _, g := range guards {
-		if resp, blocked := g(req, opts...); blocked {
-			return resp, true
-		}
-	}
-	return JSONRPCResponse{}, false
-}
-
 // requirePilot returns (resp, true) if AI Web Pilot is disabled, short-circuiting the caller.
 // Usage: if resp, blocked := h.requirePilot(req); blocked { return resp }
 func (h *ToolHandler) requirePilot(req JSONRPCRequest, extraOpts ...func(*StructuredError)) (JSONRPCResponse, bool) {
@@ -157,17 +127,6 @@ func requireString(req JSONRPCRequest, value, paramName, hint string) (JSONRPCRe
 	if value == "" {
 		return fail(req, ErrMissingParam,
 			fmt.Sprintf("Required parameter '%s' is missing", paramName),
-			hint, withParam(paramName)), true
-	}
-	return JSONRPCResponse{}, false
-}
-
-// requirePositiveInt returns (resp, true) if value is not a positive integer, short-circuiting the caller.
-// Usage: if resp, blocked := requirePositiveInt(req, params.Count, "count", "Add a positive 'count'"); blocked { return resp }
-func requirePositiveInt(req JSONRPCRequest, value int, paramName, hint string) (JSONRPCResponse, bool) {
-	if value <= 0 {
-		return fail(req, ErrMissingParam,
-			fmt.Sprintf("Required parameter '%s' must be a positive integer", paramName),
 			hint, withParam(paramName)), true
 	}
 	return JSONRPCResponse{}, false

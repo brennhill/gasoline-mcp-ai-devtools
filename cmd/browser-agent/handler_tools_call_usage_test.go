@@ -40,49 +40,6 @@ func TestToolAliasPrecedence_MatchesDispatcherOrder(t *testing.T) {
 	}
 }
 
-func TestExtractWhatParam(t *testing.T) {
-	tests := []struct {
-		name string
-		args json.RawMessage
-		want string
-	}{
-		{
-			name: "valid args with what=errors",
-			args: json.RawMessage(`{"what":"errors"}`),
-			want: "errors",
-		},
-		{
-			name: "missing what key",
-			args: json.RawMessage(`{"key":"value"}`),
-			want: "",
-		},
-		{
-			name: "empty args object",
-			args: json.RawMessage(`{}`),
-			want: "",
-		},
-		{
-			name: "malformed JSON",
-			args: json.RawMessage(`{not valid json`),
-			want: "",
-		},
-		{
-			name: "nil args",
-			args: nil,
-			want: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := extractWhatParam(tt.args)
-			if got != tt.want {
-				t.Errorf("extractWhatParam(%s) = %q, want %q", string(tt.args), got, tt.want)
-			}
-		})
-	}
-}
-
 func TestUsageKey_DeprecatedAliases(t *testing.T) {
 	// When callers use deprecated aliases (action/mode/format) instead of "what",
 	// dispatch succeeds but we want the dashboard to distinguish these from callers

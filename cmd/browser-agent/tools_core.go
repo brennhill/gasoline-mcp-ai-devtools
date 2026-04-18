@@ -210,21 +210,6 @@ func (h *ToolHandler) ensureToolModules() {
 	})
 }
 
-// extractWhatParam extracts the "what" string from raw JSON args.
-// Returns empty string if missing or unparseable.
-func extractWhatParam(args json.RawMessage) string {
-	if len(args) == 0 {
-		return ""
-	}
-	var parsed struct {
-		What string `json:"what"`
-	}
-	if json.Unmarshal(args, &parsed) != nil {
-		return ""
-	}
-	return parsed.What
-}
-
 // toolAliasPrecedence mirrors each tool's deprecated-alias fallback order as declared
 // in its aliasParams (tool_dispatch_helpers.go, tools_configure.go, tools_generate.go,
 // tools_interact_dispatch.go). Telemetry must read aliases in the same order the

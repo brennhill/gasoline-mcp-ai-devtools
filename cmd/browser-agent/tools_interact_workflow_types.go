@@ -4,8 +4,6 @@
 package main
 
 import (
-	"time"
-
 	act "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tools/interact"
 )
 
@@ -20,17 +18,3 @@ func isErrorResponse(resp JSONRPCResponse) bool {
 	return act.IsErrorResponse(resp)
 }
 
-// isNonFinalResponse — delegated to internal/tools/interact package.
-func isNonFinalResponse(resp JSONRPCResponse) bool {
-	return act.IsNonFinalResponse(resp)
-}
-
-// responseStatus — delegated to internal/tools/interact package.
-func responseStatus(resp JSONRPCResponse) string {
-	return act.ResponseStatus(resp)
-}
-
-// workflowResult — delegated to internal/tools/interact package.
-func workflowResult(req JSONRPCRequest, workflow string, trace []WorkflowStep, lastResp JSONRPCResponse, start time.Time) JSONRPCResponse {
-	return act.WorkflowResult(req, workflow, trace, lastResp, start)
-}

@@ -6,7 +6,6 @@ package main
 
 import (
 	"encoding/json"
-	"math/rand/v2"
 	"sort"
 	"strings"
 	"sync"
@@ -17,14 +16,6 @@ import (
 
 // domPrimitiveActions delegates to the interact package.
 var domPrimitiveActions = act.DOMPrimitiveActions
-
-// randIntn returns a random int in [0, n). Uses math/rand/v2 which auto-seeds.
-func randIntn(n int) int {
-	if n <= 0 {
-		return 0
-	}
-	return rand.IntN(n)
-}
 
 // interactAliasParams defines the deprecated alias parameters for the interact tool.
 var interactAliasParams = []modeAlias{

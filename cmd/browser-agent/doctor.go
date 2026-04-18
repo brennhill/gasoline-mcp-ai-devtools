@@ -8,22 +8,6 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 )
 
-func isLocalPortAvailable(port int) bool {
-	return health.IsLocalPortAvailable(port)
-}
-
-func suggestAvailablePort(startPort, maxOffset int) (int, bool) {
-	return health.SuggestAvailablePort(startPort, maxOffset)
-}
-
-func checkPortAvailability(port int) {
-	health.CheckPortAvailability(port, portKillHint)
-}
-
-func checkStateDirectory() {
-	health.CheckStateDirectory()
-}
-
 func runSetupCheckWithOptions(port int, options setupCheckOptions) bool {
 	return health.RunSetupCheckWithOptions(port, health.SetupCheckOptions{
 		MinSamples:      options.minSamples,
