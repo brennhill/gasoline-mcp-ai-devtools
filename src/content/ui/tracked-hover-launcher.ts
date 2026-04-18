@@ -8,6 +8,7 @@ import type { ShowTrackedHoverLauncherMessage } from '../../types/runtime-messag
 import { RuntimeMessageName, StorageKey } from '../../lib/constants.js'
 import { KABOOM_DOCS_URL, KABOOM_REPOSITORY_URL } from '../../lib/brand.js'
 import { requestAudit } from '../../lib/request-audit.js'
+import { requestWorkspaceScreenshot } from '../../lib/workspace-actions.js'
 import { getLocal, setLocal, removeLocal, onStorageChanged } from '../../lib/storage-utils.js'
 import {
   initTerminalPanelBridge,
@@ -296,22 +297,18 @@ function showScreenshotFlash(success: boolean): void {
   setTimeout(() => flash.remove(), 450)
 }
 
-function runScreenshotCapture(): void {
+async function runScreenshotCapture(): Promise<void> {
   // Prime the AudioContext during the user gesture (click) so Chrome allows playback.
   if (!shutterAudioCtx || shutterAudioCtx.state === 'closed') {
     try { shutterAudioCtx = new AudioContext() } catch { /* no audio */ }
   }
 
   try {
-    chrome.runtime.sendMessage(
-      { type: 'capture_screenshot' },
-      (response: { success?: boolean; error?: string } | undefined) => {
-        const err = chrome.runtime.lastError
-        const success = !err && response !== undefined && response.success !== false
-        showScreenshotFlash(success)
-        if (success) playShutterSound()
-      }
-    )
+    const response = await requestWorkspaceScreenshot()
+    const result = response as { success?: boolean; error?: string } | undefined
+    const success = result !== undefined && result.success !== false
+    showScreenshotFlash(success)
+    if (success) playShutterSound()
   } catch {
     showScreenshotFlash(false)
   }
@@ -483,17 +480,17 @@ function createLauncherUi(): HTMLDivElement {
   const screenshotButton = createActionButton('\u2316', 'Screenshot — capture the current page and send to AI', () => {
     panelPinned = false
     setPanelOpen(false)
-    runScreenshotCapture()
+    void runScreenshotCapture()
   })
   screenshotButton.style.fontSize = '26px'
   screenshotButton.style.paddingBottom = '5px'
 
-  const terminalButton = createActionButton('_\u276F', 'Terminal — open the side panel terminal', () => {
+  const workspaceButton = createActionButton('_\u276F', 'Workspace — open the QA workspace', () => {
     panelPinned = false
     setPanelOpen(false)
     void openTerminalPanel()
   })
-  terminalButton.style.fontSize = '21px'
+  workspaceButton.style.fontSize = '21px'
 
   const settingsButton = createActionButton('\u2699', 'Settings — docs, GitHub, hide launcher', () => {
     panelPinned = true
@@ -533,7 +530,7 @@ function createLauncherUi(): HTMLDivElement {
   panel.appendChild(stopButton)
   panel.appendChild(screenshotButton)
   panel.appendChild(auditButton)
-  panel.appendChild(terminalButton)
+  panel.appendChild(workspaceButton)
 
   const dotSep = document.createElement('span')
   dotSep.textContent = '\u22EE'

@@ -4,7 +4,7 @@ feature_id: feature-terminal
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-28
+last_reviewed: 2026-04-18
 code_paths:
   - src/lib/brand.ts
   - cmd/browser-agent/terminal_handlers.go
@@ -12,6 +12,9 @@ code_paths:
   - cmd/browser-agent/terminal_assets/terminal.html
   - extension/sidepanel.html
   - extension/sidepanel.js
+  - src/background/workspace-status.ts
+  - src/content/workspace-status.ts
+  - src/lib/workspace-actions.ts
   - src/content/ui/terminal-panel-bridge.ts
   - src/content/ui/terminal-widget-session.ts
   - src/content/ui/terminal-widget-types.ts
@@ -20,20 +23,27 @@ code_paths:
   - src/background/message-handlers.ts
   - src/types/runtime-messages.ts
   - src/sidepanel.ts
+  - src/sidepanel/workspace-context.ts
+  - src/sidepanel/workspace-shell.ts
+  - src/sidepanel/workspace-status.ts
+  - src/sidepanel/workspace-terminal-pane.ts
   - internal/pty/manager.go
   - internal/pty/session.go
 test_paths:
   - tests/extension/brand-metadata.test.js
   - cmd/browser-agent/terminal_handlers_test.go
   - tests/extension/sidepanel-terminal.test.js
+  - tests/extension/workspace-sidebar.test.js
+  - tests/extension/workspace-status.test.js
+  - tests/extension/workspace-actions.test.js
   - tests/extension/terminal-widget-session-branding.test.js
   - tests/extension/terminal-widget-ui-branding.test.js
   - tests/extension/tracked-hover-launcher.test.js
   - tests/extension/message-handlers.test.js
   - internal/pty/manager_test.go
   - internal/pty/session_test.go
-last_verified_version: 0.8.1
-last_verified_date: 2026-03-28
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # Terminal
@@ -46,12 +56,14 @@ last_verified_date: 2026-03-28
 - Singleton session shared across all tabs via `chrome.storage.session`
 - One Kaboom work context maps to one Chrome tab group; the panel opens on a workspace tab, not whichever tab sent the request
 - Three UI states: **open**, **minimized**, **closed** - all persisted across page refreshes
-- Hover launcher keeps the page overlay for quick actions, but the terminal button now opens the side panel on the active workspace tab and hides the launcher only while the panel is open
+- Hover launcher keeps the page overlay for quick actions, but the workspace button now opens the QA workspace on the active workspace tab and hides the launcher only while the panel is open
 - Background must call `chrome.sidePanel.open()` in the original click gesture path; tab-specific `setOptions()` cannot be awaited first or Chrome may refuse to open the panel
 - Header redraw control (`↻`) reloads iframe graphics without killing the PTY session
 - Header power control (`⏻`) closes the side panel and ends the PTY session
 - Header minimize control hides the side panel while preserving the current PTY session
-- The current side panel rollout is terminal-only; xterm fills the available panel height
+- The side panel now ships as a QA-first workspace shell: summary strip, shared action row, dominant terminal pane, and lightweight status area
+- Workspace status comes from a typed background/content snapshot bridge with deterministic SEO/accessibility/performance heuristics
+- Mixed context injection is now explicit: page context auto-injects on workspace open, route changes queue while the user is typing, audit snapshots inject a short summary, and the action row keeps a manual `Inject context` escape hatch
 - Terminal startup failure guidance now consistently points users at the Kaboom daemon command: `npx kaboom-agentic-browser`
 - Any legacy or fallback terminal shell that still mounts from content-script code now uses `Kaboom Terminal` so mixed-brand terminal chrome does not reappear.
 - Annotation auto-send now uses a typing-aware write queue: if the user is active in terminal, writes wait until ~1.5s idle
@@ -59,7 +71,7 @@ last_verified_date: 2026-03-28
 - WebSocket frame writes are serialized per-connection to prevent concurrent writer frame interleaving
 - Scrollback buffer capped at 256 KB for memory safety
 - PTY session tests share a bounded `readUntilContains` helper to keep echo/size assertions consistent
-- Canonical flow maps: [terminal-side-panel-host.md](../../../architecture/flow-maps/terminal-side-panel-host.md), [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
+- Canonical flow maps: [workspace-sidebar-qa-shell.md](../../../architecture/flow-maps/workspace-sidebar-qa-shell.md), [terminal-side-panel-host.md](../../../architecture/flow-maps/terminal-side-panel-host.md), [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
 - Feature flow-map pointer: [flow-map.md](./flow-map.md)
 
 ---

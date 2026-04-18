@@ -31,6 +31,7 @@ import { postDaemonJSON } from '../lib/daemon-http.js'
 import { getLocal, getLocals, setLocal } from '../lib/storage-utils.js'
 import { resolveTerminalWorkspaceTarget, setKaboomOverlayVisibility } from './tab-state.js'
 import { trackUIFeature } from './ui-usage-tracker.js'
+import { getWorkspaceStatusSnapshot } from './workspace-status.js'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -95,6 +96,24 @@ type MessageResponse = unknown
 
 /** Send response callback type */
 type SendResponse = (response?: MessageResponse) => void
+
+function normalizeWorkspaceStatusMode(mode: unknown): 'live' | 'audit' {
+  return mode === 'audit' ? 'audit' : 'live'
+}
+
+function normalizeWorkspaceStatusTabId(
+  sender: ChromeMessageSender,
+  requestedTabId: unknown
+): number | undefined {
+  const senderTabId = sender.tab?.id
+  if (Number.isInteger(senderTabId) && Number(senderTabId) > 0) {
+    return Number(senderTabId)
+  }
+  if (Number.isInteger(requestedTabId) && Number(requestedTabId) > 0) {
+    return Number(requestedTabId)
+  }
+  return undefined
+}
 
 async function openTerminalSidePanel(tabId: number | undefined): Promise<{ success: boolean; error?: string }> {
   if (typeof chrome === 'undefined' || !chrome.sidePanel?.open) {
@@ -270,6 +289,15 @@ function handleMessage(
       openTerminalSidePanel(sender.tab?.id)
         .then((result) => sendResponse(result))
         .catch((error) => sendResponse({ success: false, error: errorMessage(error) }))
+      return true
+
+    case 'get_workspace_status':
+      getWorkspaceStatusSnapshot({
+        mode: normalizeWorkspaceStatusMode(message.mode),
+        tabId: normalizeWorkspaceStatusTabId(sender, message.tab_id)
+      })
+        .then((snapshot) => sendResponse(snapshot))
+        .catch((error) => sendResponse({ error: errorMessage(error) }))
       return true
 
     case 'get_tracking_state':

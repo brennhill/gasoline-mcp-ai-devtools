@@ -297,7 +297,7 @@ describe('message routing', () => {
     assert.strictEqual(chrome.tabGroups.update.mock.calls.length, 1, 'workspace group should be named and styled')
     assert.strictEqual(chrome.tabGroups.update.mock.calls[0].arguments[0], 77)
     assert.deepStrictEqual(chrome.tabGroups.update.mock.calls[0].arguments[1], {
-      title: 'Kaboom',
+      title: 'KaBOOM!',
       color: 'orange',
       collapsed: false
     })
@@ -359,6 +359,47 @@ describe('message routing', () => {
     assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('tabId=1'))
     assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('tabGroupId=77'))
     assert.ok(String(setOptions.mock.calls[0].arguments[0].path || '').includes('mainTabId=42'))
+  })
+
+  test('get_workspace_status ignores content-script tab overrides and normalizes invalid modes', async () => {
+    chrome.storage.local.get = mock.fn((_keys, callback) => {
+      const result = { kaboom_recording: { active: false } }
+      callback?.(result)
+      return Promise.resolve(result)
+    })
+    chrome.tabs.get = mock.fn((tabId) => Promise.resolve({
+      id: tabId,
+      title: `Tab ${tabId}`,
+      url: `https://tab-${tabId}.example/`
+    }))
+    chrome.tabs.sendMessage = mock.fn((tabId, message) => Promise.resolve({
+      seo: { label: 'SEO', score: 81, state: 'healthy', source: 'heuristic' },
+      accessibility: { label: 'Accessibility', score: 76, state: 'needs_attention', source: 'heuristic' },
+      performance: { verdict: 'mixed', source: 'heuristic' },
+      page: {
+        title: `Tab ${tabId}`,
+        url: `https://tab-${tabId}.example/`,
+        summary: 'Scoped workspace summary'
+      },
+      recommendation: `Status for ${message.type}`
+    }))
+
+    const { handler } = getInstalledHandler()
+    const sendResponse = mock.fn()
+
+    const result = handler(
+      { type: 'get_workspace_status', mode: 'bogus', tab_id: 99 },
+      contentScriptSender,
+      sendResponse
+    )
+
+    assert.strictEqual(result, true)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    assert.strictEqual(chrome.tabs.get.mock.calls[0].arguments[0], 1)
+    assert.strictEqual(chrome.tabs.sendMessage.mock.calls[0].arguments[0], 1)
+    assert.deepStrictEqual(chrome.tabs.sendMessage.mock.calls[0].arguments[1], { type: 'kaboom_get_workspace_status' })
+    assert.strictEqual(sendResponse.mock.calls[0].arguments[0].mode, 'live')
   })
 
   test('qa_scan_requested injects the Phase 1 audit prompt into the terminal server', async () => {

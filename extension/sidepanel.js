@@ -6,9 +6,14 @@
  */
 import { StorageKey } from './lib/constants.js';
 import { onStorageChanged } from './lib/storage-utils.js';
-import { state, resetAllState, getTerminalServerUrl, WIDGET_ID, IFRAME_ID, HEADER_ID, DISCONNECT_TERMINAL_BUTTON_ID, REDRAW_TERMINAL_BUTTON_ID, MINIMIZE_TERMINAL_BUTTON_ID, MINIMIZED_WIDGET_HEIGHT, TERMINAL_WRITE_SUBMIT_DELAY_MS, TERMINAL_TYPING_IDLE_MS, TERMINAL_GUARD_POLL_MS, TERMINAL_GUARD_TOAST_INTERVAL_MS } from './content/ui/terminal-widget-types.js';
+import { state, resetAllState, getTerminalServerUrl, MINIMIZED_WIDGET_HEIGHT, TERMINAL_WRITE_SUBMIT_DELAY_MS, TERMINAL_TYPING_IDLE_MS, TERMINAL_GUARD_POLL_MS, TERMINAL_GUARD_TOAST_INTERVAL_MS } from './content/ui/terminal-widget-types.js';
 import { getServerUrl, getTerminalConfig, persistUIState, loadPersistedSession, clearPersistedSession, validateSession, startSession } from './content/ui/terminal-widget-session.js';
 import { showActionToast } from './content/ui/toast.js';
+import { createWorkspaceShell } from './sidepanel/workspace-shell.js';
+import { createWorkspaceTerminalPane } from './sidepanel/workspace-terminal-pane.js';
+import { renderWorkspaceStatus } from './sidepanel/workspace-status.js';
+import { createWorkspaceContextController } from './sidepanel/workspace-context.js';
+import { requestWorkspaceAudit, requestWorkspaceNoteMode, requestWorkspaceScreenshot, toggleWorkspaceRecording } from './lib/workspace-actions.js';
 // =============================================================================
 // WRITE GUARD — defer queued writes while user is typing in the terminal
 // =============================================================================
@@ -109,12 +114,21 @@ let terminalShellEl = null;
 let terminalBodyEl = null;
 let statusDotEl = null;
 let minimizeButtonEl = null;
+let workspaceSummaryStripEl = null;
+let workspaceStatusAreaEl = null;
+let currentWorkspaceSnapshot = null;
+let workspaceContextMessage = null;
+let workspaceContextController = null;
+let currentWorkspaceHostTabId;
 let runtimeListenerInstalled = false;
 let storageListenerInstalled = false;
 let unloadListenerInstalled = false;
 let panelReady = false;
 let pendingSandboxError = null;
 let panelCloseIntent = null;
+let workspaceBootGeneration = 0;
+let workspaceStatusRequestVersion = 0;
+let workspaceActionRequestVersion = 0;
 function getHostTabIdFromLocation() {
     try {
         const raw = new URLSearchParams(globalThis.location?.search ?? '').get('tabId');
@@ -236,6 +250,107 @@ function updateStatusDot(dotState) {
             break;
     }
 }
+function isWorkspaceStatusSnapshot(value) {
+    if (typeof value !== 'object' || value === null)
+        return false;
+    return 'seo' in value && 'accessibility' in value && 'performance' in value && 'session' in value && 'page' in value;
+}
+function shouldApplyWorkspaceStatus(snapshot, requestVersion) {
+    if (requestVersion !== workspaceStatusRequestVersion)
+        return false;
+    if (!currentWorkspaceSnapshot)
+        return true;
+    if (currentWorkspaceSnapshot.mode === 'audit' && snapshot.mode === 'live') {
+        return currentWorkspaceSnapshot.page.url !== snapshot.page.url;
+    }
+    return true;
+}
+function applyWorkspaceStatus(snapshot, requestVersion = workspaceStatusRequestVersion) {
+    if (!workspaceSummaryStripEl || !workspaceStatusAreaEl)
+        return;
+    if (!shouldApplyWorkspaceStatus(snapshot, requestVersion))
+        return;
+    currentWorkspaceSnapshot = snapshot;
+    renderWorkspaceStatus(workspaceSummaryStripEl, workspaceStatusAreaEl, snapshot, workspaceContextMessage);
+    workspaceContextController?.setSnapshot(snapshot);
+}
+function setWorkspaceContextUi(message) {
+    workspaceContextMessage = message;
+    if (!currentWorkspaceSnapshot || !workspaceSummaryStripEl || !workspaceStatusAreaEl)
+        return;
+    renderWorkspaceStatus(workspaceSummaryStripEl, workspaceStatusAreaEl, currentWorkspaceSnapshot, workspaceContextMessage);
+}
+function supersedeWorkspaceContextUi(message) {
+    workspaceActionRequestVersion += 1;
+    setWorkspaceContextUi(message);
+}
+function startWorkspaceAction(message) {
+    const actionVersion = ++workspaceActionRequestVersion;
+    setWorkspaceContextUi(message);
+    return actionVersion;
+}
+function finishWorkspaceAction(actionVersion, message) {
+    if (actionVersion !== workspaceActionRequestVersion)
+        return;
+    setWorkspaceContextUi(message);
+}
+function describeWorkspaceActionFailure(error) {
+    if (typeof error === 'string' && error.trim())
+        return error.trim();
+    if (error instanceof Error && error.message.trim())
+        return error.message.trim();
+    if (typeof error === 'object' && error !== null) {
+        const maybeError = error.error;
+        if (typeof maybeError === 'string' && maybeError.trim())
+            return maybeError.trim();
+        const maybeMessage = error.message;
+        if (typeof maybeMessage === 'string' && maybeMessage.trim())
+            return maybeMessage.trim();
+    }
+    return 'Try again from the workspace.';
+}
+function ensureWorkspaceActionSucceeded(response) {
+    if (typeof response !== 'object' || response === null)
+        return;
+    if ('success' in response && response.success === false) {
+        throw new Error(describeWorkspaceActionFailure(response));
+    }
+    if ('error' in response && typeof response.error === 'string' && response.error.trim()) {
+        throw new Error(describeWorkspaceActionFailure(response));
+    }
+}
+function runWorkspaceAction(options) {
+    const actionVersion = startWorkspaceAction(options.pendingMessage);
+    void options.run()
+        .then((response) => {
+        ensureWorkspaceActionSucceeded(response);
+        finishWorkspaceAction(actionVersion, options.successMessage);
+    })
+        .catch((error) => {
+        finishWorkspaceAction(actionVersion, `${options.failurePrefix} ${describeWorkspaceActionFailure(error)}`);
+    });
+}
+async function refreshWorkspaceStatus(mode = 'live') {
+    const requestVersion = ++workspaceStatusRequestVersion;
+    try {
+        const tabId = await getHostTabId();
+        const response = await chrome.runtime.sendMessage({
+            type: 'get_workspace_status',
+            mode,
+            tab_id: tabId
+        });
+        if (isWorkspaceStatusSnapshot(response)) {
+            applyWorkspaceStatus(response, requestVersion);
+            if (!shouldApplyWorkspaceStatus(response, requestVersion))
+                return undefined;
+            return response;
+        }
+    }
+    catch {
+        // Best effort. The workspace shell still renders without live status.
+    }
+    return undefined;
+}
 function notifyIframe(command, data = {}) {
     if (!state.iframeEl?.contentWindow)
         return;
@@ -289,173 +404,84 @@ function handleIframeMessage(event) {
         }
     }
 }
-function createTerminalHeader() {
-    const header = document.createElement('div');
-    header.id = HEADER_ID;
-    Object.assign(header.style, {
-        height: '38px',
-        background: '#16161e',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 10px 0 12px',
-        gap: '8px',
-        borderBottom: '1px solid #292e42',
-        flexShrink: '0'
-    });
-    statusDotEl = document.createElement('span');
-    statusDotEl.className = 'kaboom-terminal-status-dot';
-    Object.assign(statusDotEl.style, {
-        width: '8px',
-        height: '8px',
-        borderRadius: '50%',
-        background: '#565f89',
-        flexShrink: '0',
-        transition: 'background 200ms ease'
-    });
-    const titleSpan = document.createElement('span');
-    titleSpan.textContent = 'KaBOOM! Terminal';
-    Object.assign(titleSpan.style, {
-        color: '#d8dee9',
-        fontSize: '12px',
-        fontWeight: '600',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        userSelect: 'none'
-    });
-    const spacer = document.createElement('div');
-    spacer.style.flex = '1';
-    const disconnectButton = document.createElement('button');
-    disconnectButton.id = DISCONNECT_TERMINAL_BUTTON_ID;
-    disconnectButton.textContent = '\u23FB';
-    disconnectButton.title = 'Disconnect terminal & end session';
-    disconnectButton.type = 'button';
-    Object.assign(disconnectButton.style, {
-        width: '24px',
-        height: '24px',
-        border: 'none',
-        background: 'transparent',
-        color: '#f7768e',
-        fontSize: '12px',
-        cursor: 'pointer',
-        borderRadius: '4px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: '0'
-    });
-    disconnectButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        void exitTerminalSession();
-    });
-    const redrawButton = document.createElement('button');
-    redrawButton.id = REDRAW_TERMINAL_BUTTON_ID;
-    redrawButton.textContent = '\u21BB';
-    redrawButton.title = 'Redraw terminal graphics';
-    redrawButton.type = 'button';
-    Object.assign(redrawButton.style, {
-        width: '24px',
-        height: '24px',
-        border: 'none',
-        background: 'transparent',
-        color: '#565f89',
-        fontSize: '14px',
-        cursor: 'pointer',
-        borderRadius: '4px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: '0'
-    });
-    redrawButton.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        redrawTerminal();
-    });
-    minimizeButtonEl = document.createElement('button');
-    minimizeButtonEl.id = MINIMIZE_TERMINAL_BUTTON_ID;
-    minimizeButtonEl.textContent = '\u2581';
-    minimizeButtonEl.title = 'Minimize terminal';
-    minimizeButtonEl.type = 'button';
-    Object.assign(minimizeButtonEl.style, {
-        width: '24px',
-        height: '24px',
-        border: 'none',
-        background: 'transparent',
-        color: '#565f89',
-        fontSize: '14px',
-        cursor: 'pointer',
-        borderRadius: '4px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: '0'
-    });
-    minimizeButtonEl.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        void minimizePanel();
-    });
-    header.appendChild(statusDotEl);
-    header.appendChild(titleSpan);
-    header.appendChild(disconnectButton);
-    header.appendChild(spacer);
-    header.appendChild(redrawButton);
-    header.appendChild(minimizeButtonEl);
-    return header;
-}
 function createPanelShell(token) {
-    const root = document.createElement('div');
-    root.id = WIDGET_ID;
-    Object.assign(root.style, {
-        position: 'fixed',
-        inset: '0',
-        zIndex: '2147483644',
-        display: 'flex',
-        flexDirection: 'column',
-        background: '#0f1117',
-        color: '#e5e7eb',
-        opacity: '1',
-        pointerEvents: 'auto',
-        transition: 'opacity 180ms ease'
+    const terminalPane = createWorkspaceTerminalPane({
+        token,
+        serverUrl: state.serverUrl,
+        onDisconnect: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void exitTerminalSession();
+        },
+        onRedraw: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            redrawTerminal();
+        },
+        onMinimize: (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void minimizePanel();
+        }
     });
-    const terminalShell = document.createElement('div');
-    terminalShell.style.cssText = [
-        'flex:1 1 auto',
-        'height:100%',
-        'min-height:0',
-        'display:flex',
-        'flex-direction:column',
-        'background:#11131a'
-    ].join(';');
-    const header = createTerminalHeader();
-    const terminalBody = document.createElement('div');
-    terminalBody.style.cssText = [
-        'flex:1',
-        'min-height:0',
-        'display:block',
-        'background:#1a1b26'
-    ].join(';');
-    if (token) {
-        const iframe = document.createElement('iframe');
-        iframe.id = IFRAME_ID;
-        iframe.src = `${getTerminalServerUrl(state.serverUrl)}/terminal?token=${encodeURIComponent(token)}`;
-        iframe.setAttribute('allow', 'clipboard-write');
-        iframe.style.cssText = 'width:100%;height:100%;border:none;background:#1a1b26;display:block;';
-        terminalBody.appendChild(iframe);
-        state.iframeEl = iframe;
-    }
-    else {
-        state.iframeEl = null;
-    }
-    terminalShell.appendChild(header);
-    terminalShell.appendChild(terminalBody);
-    root.appendChild(terminalShell);
-    terminalShellEl = terminalShell;
-    terminalBodyEl = terminalBody;
-    state.widgetEl = root;
-    return root;
+    const workspaceShell = createWorkspaceShell(terminalPane.shellEl, {
+        onToggleRecording: () => {
+            const recordingActive = currentWorkspaceSnapshot?.session.recording_active === true;
+            runWorkspaceAction({
+                pendingMessage: recordingActive ? 'Stopping recording from the workspace...' : 'Starting recording from the workspace...',
+                successMessage: recordingActive ? 'Recording stopped from the workspace.' : 'Recording started from the workspace.',
+                failurePrefix: recordingActive ? 'Failed to stop recording.' : 'Failed to start recording.',
+                run: () => toggleWorkspaceRecording(recordingActive)
+            });
+        },
+        onScreenshot: () => {
+            runWorkspaceAction({
+                pendingMessage: 'Capturing screenshot from the workspace...',
+                successMessage: 'Screenshot captured for the workspace session.',
+                failurePrefix: 'Screenshot capture failed.',
+                run: () => requestWorkspaceScreenshot()
+            });
+        },
+        onRunAudit: () => {
+            runWorkspaceAction({
+                pendingMessage: 'Requesting audit in the workspace terminal...',
+                successMessage: 'Audit requested in the workspace terminal. Waiting for results.',
+                failurePrefix: 'Audit request failed.',
+                run: () => requestWorkspaceAudit(currentWorkspaceSnapshot?.page.url)
+            });
+        },
+        onAddNote: () => {
+            runWorkspaceAction({
+                pendingMessage: 'Starting note mode on the tracked page...',
+                successMessage: 'Note mode started on the tracked page.',
+                failurePrefix: 'Failed to start note mode.',
+                run: async () => {
+                    const tabId = await getHostTabId();
+                    if (tabId === undefined) {
+                        throw new Error('No tracked tab is available.');
+                    }
+                    return await requestWorkspaceNoteMode(tabId);
+                }
+            });
+        },
+        onInjectContext: () => {
+            workspaceActionRequestVersion += 1;
+            workspaceContextController?.injectCurrentContext();
+        },
+        onResetWorkspace: () => {
+            workspaceActionRequestVersion += 1;
+            workspaceContextController?.reset();
+        }
+    });
+    terminalShellEl = terminalPane.shellEl;
+    terminalBodyEl = terminalPane.bodyEl;
+    statusDotEl = terminalPane.statusDotEl;
+    minimizeButtonEl = terminalPane.minimizeButtonEl;
+    workspaceSummaryStripEl = workspaceShell.summaryStripEl;
+    workspaceStatusAreaEl = workspaceShell.statusAreaEl;
+    state.iframeEl = terminalPane.iframeEl;
+    state.widgetEl = workspaceShell.rootEl;
+    return workspaceShell.rootEl;
 }
 function mountPanel(root) {
     if (rootEl)
@@ -470,6 +496,9 @@ function mountPanel(root) {
     window.addEventListener('message', handleIframeMessage);
 }
 function unmountPanel() {
+    workspaceBootGeneration += 1;
+    workspaceContextController?.dispose();
+    workspaceContextController = null;
     if (rootEl) {
         rootEl.remove();
         rootEl = null;
@@ -478,6 +507,11 @@ function unmountPanel() {
     terminalBodyEl = null;
     statusDotEl = null;
     minimizeButtonEl = null;
+    workspaceSummaryStripEl = null;
+    workspaceStatusAreaEl = null;
+    currentWorkspaceHostTabId = undefined;
+    currentWorkspaceSnapshot = null;
+    workspaceContextMessage = null;
     state.widgetEl = null;
     state.iframeEl = null;
     panelReady = false;
@@ -556,10 +590,24 @@ function installRuntimeListener() {
     chrome.runtime.onMessage.addListener((message, sender) => {
         if (sender.id !== chrome.runtime.id)
             return false;
-        if (message.type !== 'terminal_panel_write')
+        if (message.type === 'terminal_panel_write') {
+            if (typeof message.text === 'string')
+                writeToTerminal(message.text);
             return false;
-        if (typeof message.text === 'string')
-            writeToTerminal(message.text);
+        }
+        if (message.type === 'workspace_status_updated' &&
+            sender.tab === undefined &&
+            isWorkspaceStatusSnapshot(message.snapshot)) {
+            const hostTabId = message.host_tab_id;
+            if (hostTabId !== undefined && hostTabId !== currentWorkspaceHostTabId) {
+                return false;
+            }
+            const snapshot = message.snapshot;
+            workspaceStatusRequestVersion += 1;
+            applyWorkspaceStatus(snapshot);
+            workspaceContextController?.handleAuditSnapshot(snapshot);
+            return false;
+        }
         return false;
     });
 }
@@ -614,6 +662,7 @@ async function ensureTerminalSession() {
     state.minimized = false;
 }
 async function bootTerminalPanel(forceFresh = false) {
+    const bootGeneration = ++workspaceBootGeneration;
     if (panelReady && !forceFresh)
         return;
     panelReady = true;
@@ -628,11 +677,34 @@ async function bootTerminalPanel(forceFresh = false) {
         state.serverUrl = await getServerUrl();
     }
     await ensureTerminalSession();
+    if (bootGeneration !== workspaceBootGeneration)
+        return;
     const token = state.sessionState?.token;
     const root = createPanelShell(token ?? '');
+    if (bootGeneration !== workspaceBootGeneration)
+        return;
     mountPanel(root);
+    const hostTabId = await getHostTabId();
+    if (bootGeneration !== workspaceBootGeneration || root !== rootEl)
+        return;
+    currentWorkspaceHostTabId = hostTabId;
+    workspaceContextController?.dispose();
+    const contextController = createWorkspaceContextController({
+        hostTabId,
+        writeToTerminal,
+        shouldDeferWrite: () => shouldDeferQueuedWrite(),
+        onUiStateChange: ({ message }) => {
+            supersedeWorkspaceContextUi(message);
+        },
+        refreshWorkspaceStatus
+    });
+    workspaceContextController = contextController;
     setTerminalBodyVisible(true);
     persistUIState('open');
+    const liveSnapshot = await refreshWorkspaceStatus('live');
+    if (bootGeneration !== workspaceBootGeneration || workspaceContextController !== contextController)
+        return;
+    contextController.handleWorkspaceOpen(liveSnapshot);
     if (!token) {
         const error = pendingSandboxError;
         if (error) {

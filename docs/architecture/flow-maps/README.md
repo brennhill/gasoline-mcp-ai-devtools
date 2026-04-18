@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-04-13
+last_reviewed: 2026-04-18
 owners:
   - Brenn
 last_verified_version: 0.8.2
-last_verified_date: 2026-04-13
+last_verified_date: 2026-04-18
 ---
 
 # Flow Maps
@@ -77,5 +77,6 @@ Each flow map should include:
 - [Push Inbox Screenshot Throttle](./push-inbox-screenshot-throttle.md)
 - [Terminal Server Isolation](./terminal-server-isolation.md)
 - [Terminal Side Panel Host and Launcher Coordination](./terminal-side-panel-host.md)
+- [Workspace Sidebar QA Shell](./workspace-sidebar-qa-shell.md)
 - [Interact Overlay & Selector Improvements](./interact-overlay-selector-improvements.md)
 - [Shared Extraction and Contract Normalization](./shared-extraction-and-contract-normalization.md)

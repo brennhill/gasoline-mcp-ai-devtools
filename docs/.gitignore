@@ -7,3 +7,6 @@
 .sass-cache/
 .jekyll-cache/
 .jekyll-metadata
+
+# Local planning/spec scratch space
+/superpowers/

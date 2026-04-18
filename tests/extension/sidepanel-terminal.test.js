@@ -16,6 +16,8 @@ let windowListeners = {}
 let runtimeMessageListeners = []
 let storageChangeListener = null
 let activeTabId = 1
+let tabUpdatedListeners = []
+let workspaceStatusSnapshot = null
 
 function makeResponse(status, body) {
   return {
@@ -132,6 +134,18 @@ function getPostMessagePayloads(iframe, startAt = 0) {
   return calls.slice(startAt).map((call) => call.arguments[0])
 }
 
+function textOf(id) {
+  const node = getElementById(id)
+  const texts = []
+  walkTree(node, (child) => {
+    if (typeof child.textContent === 'string' && child.textContent) {
+      texts.push(child.textContent)
+    }
+    return false
+  })
+  return texts.join(' ')
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -141,6 +155,28 @@ function emitStorageChange(areaName, key, oldValue, newValue) {
   storageChangeListener({ [key]: { oldValue, newValue } }, areaName)
 }
 
+function dispatchRuntimeMessage(message, sender = { id: 'test-extension-id' }) {
+  for (const listener of runtimeMessageListeners) {
+    listener(message, sender, () => {})
+  }
+}
+
+function emitTabUpdated(tabId, url) {
+  if (workspaceStatusSnapshot) {
+    workspaceStatusSnapshot = {
+      ...workspaceStatusSnapshot,
+      page: {
+        title: 'New Route',
+        url,
+        summary: 'New route summary'
+      }
+    }
+  }
+  for (const listener of tabUpdatedListeners) {
+    listener(tabId, { url, status: 'complete' }, { id: tabId, url })
+  }
+}
+
 function setupEnvironment() {
   roots = []
   fetchHandler = null
@@ -148,6 +184,21 @@ function setupEnvironment() {
   runtimeMessageListeners = []
   storageChangeListener = null
   activeTabId = 1
+  tabUpdatedListeners = []
+  workspaceStatusSnapshot = {
+    mode: 'live',
+    seo: { label: 'SEO', score: 64, state: 'needs_attention', source: 'heuristic' },
+    accessibility: { label: 'Accessibility', score: 72, state: 'needs_attention', source: 'heuristic' },
+    performance: { verdict: 'mixed', source: 'heuristic' },
+    session: { recording_active: false, screenshot_count: 0, note_count: 0 },
+    audit: { updated_at: null, state: 'idle' },
+    page: {
+      title: 'Tracked Checkout',
+      url: 'https://tracked.example/checkout',
+      summary: 'Tracked checkout summary'
+    },
+    recommendation: 'Run an audit to confirm page health.'
+  }
 
   const body = createElement('body')
   const head = createElement('head')
@@ -204,6 +255,10 @@ function setupEnvironment() {
       id: 'test-extension-id',
       lastError: null,
       sendMessage: mock.fn((message, callback) => {
+        if (message?.type === 'get_workspace_status') {
+          callback?.(workspaceStatusSnapshot)
+          return Promise.resolve(workspaceStatusSnapshot)
+        }
         if (message?.type === 'terminal_panel_write') {
           callback?.({ success: true })
           return Promise.resolve({ success: true })
@@ -228,7 +283,15 @@ function setupEnvironment() {
       close: mock.fn(() => Promise.resolve())
     },
     tabs: {
-      query: mock.fn((_queryInfo) => Promise.resolve([{ id: activeTabId }]))
+      query: mock.fn((_queryInfo) => Promise.resolve([{ id: activeTabId }])),
+      onUpdated: {
+        addListener: mock.fn((listener) => {
+          tabUpdatedListeners.push(listener)
+        }),
+        removeListener: mock.fn((listener) => {
+          tabUpdatedListeners = tabUpdatedListeners.filter((item) => item !== listener)
+        })
+      }
     },
     storage: {
       local: {
@@ -313,8 +376,10 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
+    const terminalRegion = getElementById('kaboom-workspace-terminal-region')
     const header = getElementById('kaboom-terminal-header')
     const iframe = getElementById('kaboom-terminal-iframe')
+    assert.ok(terminalRegion, 'workspace terminal region should be mounted')
     assert.ok(header, 'terminal header should be mounted')
     assert.ok(iframe, 'terminal iframe should be mounted')
     assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'open')
@@ -468,6 +533,7 @@ describe('terminal side panel host', () => {
       origin: 'http://localhost:7891',
       data: { source: 'kaboom-terminal', event: 'connected' }
     })
+    await sleep(720)
     dispatchWindowEvent('message', {
       origin: 'http://localhost:7891',
       data: { source: 'kaboom-terminal', event: 'focus', data: { focused: true } }
@@ -495,6 +561,7 @@ describe('terminal side panel host', () => {
       .filter((payload) => payload?.command === 'write')
       .map((payload) => payload.text)
 
+    assert.ok(flushedPayloads.some((payload) => payload?.command === 'write'), 'queued write should reach the iframe')
     assert.deepStrictEqual(flushedWrites, ['queued command', '\r'])
   })
 
@@ -524,6 +591,7 @@ describe('terminal side panel host', () => {
       origin: 'http://localhost:7891',
       data: { source: 'kaboom-terminal', event: 'focus', data: { focused: false } }
     })
+    await sleep(720)
 
     const callStart = iframe.contentWindow.postMessage.mock.calls.length
     module._terminalPanelForTests.writeToTerminal('submit guard command')
@@ -582,7 +650,7 @@ describe('terminal side panel host', () => {
     assert.strictEqual(sessionStorageData[StorageKey.TERMINAL_UI_STATE], 'open', 'reopen should promote minimized session back to open')
   })
 
-  test('panel mounts only the terminal shell so xterm can use the full panel height', async () => {
+  test('panel mounts the workspace shell around the terminal pane', async () => {
     fetchHandler = ({ url }) => {
       if (url.endsWith('/terminal/start')) {
         return Promise.resolve(makeResponse(200, {
@@ -598,22 +666,30 @@ describe('terminal side panel host', () => {
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
     const root = getElementById('kaboom-terminal-widget')
+    const summaryStrip = getElementById('kaboom-workspace-summary-strip')
+    const actionRow = getElementById('kaboom-workspace-action-row')
+    const statusArea = getElementById('kaboom-workspace-status-area')
+    const terminalRegion = getElementById('kaboom-workspace-terminal-region')
     const header = getElementById('kaboom-terminal-header')
     const iframe = getElementById('kaboom-terminal-iframe')
     const terminalShell = header?.parentElement || null
     const newProjectButton = findButton(root, (node) => node.textContent === 'New Project')
-    const titleNode = walkTree(header, (child) => child.textContent === 'Kaboom Terminal')
+    const titleNode = walkTree(header, (child) => child.textContent === 'KaBOOM! Workspace')
 
     assert.ok(root, 'panel root should exist')
+    assert.ok(summaryStrip, 'workspace summary strip should exist')
+    assert.ok(actionRow, 'workspace action row should exist')
+    assert.ok(statusArea, 'workspace status area should exist')
+    assert.ok(terminalRegion, 'workspace terminal region should exist')
     assert.ok(header, 'terminal header should exist')
     assert.ok(iframe, 'terminal iframe should exist')
     assert.ok(terminalShell, 'terminal shell should wrap the header and iframe')
-    assert.ok(titleNode, 'terminal header should show Kaboom Terminal')
+    assert.ok(titleNode, 'terminal header should show KaBOOM! Workspace')
     assert.strictEqual(newProjectButton, null, 'placeholder palette action should not be rendered')
-    assert.strictEqual(root.children.length, 1, 'terminal shell should be the only top-level panel child')
+    assert.strictEqual(root.children.length, 4, 'workspace shell should render summary, actions, terminal, and status regions')
   })
 
-  test('daemon-unavailable fallback uses Kaboom copy', async () => {
+  test('daemon-unavailable fallback keeps workspace copy and shell chrome', async () => {
     fetchHandler = ({ url }) => {
       if (url.endsWith('/terminal/start')) {
         return Promise.resolve(makeResponse(500, { error: 'daemon_unavailable' }))
@@ -624,16 +700,199 @@ describe('terminal side panel host', () => {
     const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
     await module._terminalPanelForTests.bootTerminalPanel(true)
 
+    const summaryStrip = getElementById('kaboom-workspace-summary-strip')
     const header = getElementById('kaboom-terminal-header')
     const terminalBody = header?.parentElement?.children?.[1] || null
-    const titleNode = walkTree(header, (child) => child.textContent === 'Kaboom Terminal')
+    const titleNode = walkTree(header, (child) => child.textContent === 'KaBOOM! Workspace')
     const fallbackNode = walkTree(terminalBody, (child) =>
-      child.textContent === 'Terminal unavailable. Start the Kaboom daemon and reopen the panel.'
+      child.textContent === 'Terminal unavailable. Start the KaBOOM! daemon and reopen the panel.'
     )
 
+    assert.ok(summaryStrip, 'workspace summary strip should remain visible when terminal boot fails')
     assert.ok(header, 'terminal header should exist')
-    assert.ok(titleNode, 'terminal header should show Kaboom Terminal')
+    assert.ok(titleNode, 'terminal header should show KaBOOM! Workspace')
     assert.ok(terminalBody, 'terminal body should exist')
-    assert.ok(fallbackNode, 'fallback should mention the Kaboom daemon')
+    assert.ok(fallbackNode, 'fallback should mention the KaBOOM! daemon')
+  })
+
+  test('workspace context injects on open, queues route refresh while typing, and sends audit summaries', async () => {
+    fetchHandler = ({ url }) => {
+      if (url.endsWith('/terminal/start')) {
+        return Promise.resolve(makeResponse(200, {
+          session_id: 'session-context',
+          token: 'token-context',
+          pid: 999
+        }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
+
+    const iframe = getElementById('kaboom-terminal-iframe')
+    assert.ok(iframe, 'terminal iframe should exist')
+
+    const initialWrites = getPostMessagePayloads(iframe)
+      .filter((payload) => payload?.command === 'write')
+      .map((payload) => payload.text)
+    assert.ok(initialWrites.some((text) => /Page context/i.test(text)), 'workspace open should inject page context')
+
+    dispatchWindowEvent('message', {
+      origin: 'http://localhost:7891',
+      data: { source: 'kaboom-terminal', event: 'connected' }
+    })
+    await sleep(720)
+    dispatchWindowEvent('message', {
+      origin: 'http://localhost:7891',
+      data: { source: 'kaboom-terminal', event: 'focus', data: { focused: true } }
+    })
+    dispatchWindowEvent('message', {
+      origin: 'http://localhost:7891',
+      data: { source: 'kaboom-terminal', event: 'typing', data: { at: Date.now() } }
+    })
+
+    const queuedStart = iframe.contentWindow.postMessage.mock.calls.length
+    emitTabUpdated(1, 'https://tracked.example/new-route')
+
+    const queuedWrites = getPostMessagePayloads(iframe, queuedStart).filter((payload) => payload?.command === 'write')
+    assert.strictEqual(queuedWrites.length, 0, 'route refresh should defer while the user is typing')
+    assert.match(textOf('kaboom-workspace-status-area'), /queued/i)
+
+    dispatchWindowEvent('message', {
+      origin: 'http://localhost:7891',
+      data: { source: 'kaboom-terminal', event: 'focus', data: { focused: false } }
+    })
+
+    await sleep(1000)
+    const flushedWrites = getPostMessagePayloads(iframe, queuedStart)
+      .filter((payload) => payload?.command === 'write')
+      .map((payload) => payload.text)
+    assert.ok(flushedWrites.some((text) => /new-route/i.test(text)), 'queued route refresh should flush after focus clears')
+
+    const auditStart = iframe.contentWindow.postMessage.mock.calls.length
+    dispatchRuntimeMessage({
+      type: 'workspace_status_updated',
+      host_tab_id: 1,
+      snapshot: {
+        mode: 'audit',
+        seo: { label: 'SEO', score: 91, state: 'healthy', source: 'audit' },
+        accessibility: { label: 'Accessibility', score: 93, state: 'healthy', source: 'audit' },
+        performance: { verdict: 'good', source: 'audit' },
+        session: { recording_active: false, screenshot_count: 3, note_count: 1 },
+        audit: { updated_at: '2026-04-18T12:00:00.000Z', state: 'available' },
+        page: {
+          title: 'New Route',
+          url: 'https://tracked.example/new-route',
+          summary: 'New route summary'
+        },
+        recommendation: 'Audit summary is ready for terminal follow-up.'
+      }
+    })
+
+    await sleep(720)
+
+    const auditWrites = getPostMessagePayloads(iframe, auditStart)
+      .filter((payload) => payload?.command === 'write')
+      .map((payload) => payload.text)
+    assert.ok(auditWrites.some((text) => /audit summary/i.test(text)), 'audit updates should inject a terminal summary')
+  })
+
+  test('workspace status updates require an extension-page sender and matching host tab id', async () => {
+    fetchHandler = ({ url }) => {
+      if (url.endsWith('/terminal/start')) {
+        return Promise.resolve(makeResponse(200, {
+          session_id: 'session-routing',
+          token: 'token-routing',
+          pid: 999
+        }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    await module._terminalPanelForTests.bootTerminalPanel(true)
+
+    assert.match(textOf('kaboom-workspace-summary-strip'), /64/)
+
+    const ignoredSnapshot = {
+      mode: 'audit',
+      seo: { label: 'SEO', score: 12, state: 'needs_attention', source: 'audit' },
+      accessibility: { label: 'Accessibility', score: 20, state: 'needs_attention', source: 'audit' },
+      performance: { verdict: 'poor', source: 'audit' },
+      session: { recording_active: false, screenshot_count: 0, note_count: 0 },
+      audit: { updated_at: '2026-04-18T12:30:00.000Z', state: 'available' },
+      page: {
+        title: 'Wrong Tab',
+        url: 'https://tracked.example/wrong',
+        summary: 'Wrong tab summary'
+      },
+      recommendation: 'Wrong tab recommendation.'
+    }
+
+    dispatchRuntimeMessage(
+      { type: 'workspace_status_updated', host_tab_id: 1, snapshot: ignoredSnapshot },
+      { id: 'test-extension-id', tab: { id: 99 } }
+    )
+    assert.match(textOf('kaboom-workspace-summary-strip'), /64/)
+
+    dispatchRuntimeMessage({ type: 'workspace_status_updated', host_tab_id: 99, snapshot: ignoredSnapshot })
+    assert.match(textOf('kaboom-workspace-summary-strip'), /64/)
+
+    dispatchRuntimeMessage({
+      type: 'workspace_status_updated',
+      host_tab_id: 1,
+      snapshot: {
+        ...ignoredSnapshot,
+        seo: { label: 'SEO', score: 92, state: 'healthy', source: 'audit' },
+        page: {
+          title: 'Tracked Checkout',
+          url: 'https://tracked.example/checkout',
+          summary: 'Tracked checkout summary'
+        }
+      }
+    })
+    assert.match(textOf('kaboom-workspace-summary-strip'), /92/)
+  })
+
+  test('closing during a slow workspace-status refresh does not apply stale boot state', async () => {
+    let resolveWorkspaceStatus
+    chrome.runtime.sendMessage = mock.fn((message, callback) => {
+      if (message?.type === 'get_workspace_status') {
+        return new Promise((resolve) => {
+          resolveWorkspaceStatus = resolve
+        })
+      }
+      callback?.({})
+      return Promise.resolve({})
+    })
+
+    fetchHandler = ({ url }) => {
+      if (url.endsWith('/terminal/start')) {
+        return Promise.resolve(makeResponse(200, {
+          session_id: 'session-slow-status',
+          token: 'token-slow-status',
+          pid: 999
+        }))
+      }
+      if (url.endsWith('/terminal/stop')) {
+        return Promise.resolve(makeResponse(200, { success: true }))
+      }
+      throw new Error(`Unexpected fetch call: ${url}`)
+    }
+
+    const module = await import(`../../extension/sidepanel.js?v=${++importCounter}`)
+    const bootPromise = module._terminalPanelForTests.bootTerminalPanel(true)
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const exitPromise = module._terminalPanelForTests.exitTerminalSession()
+    resolveWorkspaceStatus?.(workspaceStatusSnapshot)
+
+    await exitPromise
+    await bootPromise
+
+    assert.strictEqual(getElementById('kaboom-terminal-widget'), null)
   })
 })

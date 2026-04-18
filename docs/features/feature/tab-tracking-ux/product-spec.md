@@ -9,12 +9,14 @@ created: 2026-01-28
 updated: 2026-01-28
 doc_type: product-spec
 feature_id: feature-tab-tracking-ux
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-04-18
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # Tab Tracking UX Improvements
+
+> Current shipped extension behavior now also includes a tracked-tab hover launcher that opens the KaBOOM! workspace sidebar, hides while the workspace is open, and shares audit/screenshot trigger paths with popup controls.
 
 > Three extension-only UX improvements that make tab tracking state visible, prevent accidental tab switches, and guide recovery when a tracked tab closes.
 

@@ -2,11 +2,11 @@
 doc_type: tech_spec
 feature_id: feature-terminal
 status: shipped
-last_reviewed: 2026-03-28
+last_reviewed: 2026-04-18
 owners:
   - Brenn
-last_verified_version: 0.8.1
-last_verified_date: 2026-03-28
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # Tech Spec
@@ -18,8 +18,15 @@ last_verified_date: 2026-03-28
 - `cmd/browser-agent/terminal_assets/terminal.html`
 - `extension/sidepanel.html`
 - `extension/sidepanel.js`
+- `src/background/workspace-status.ts`
+- `src/content/workspace-status.ts`
+- `src/lib/workspace-actions.ts`
 - `src/background/tab-state.ts`
 - `src/content/ui/terminal-panel-bridge.ts`
+- `src/sidepanel/workspace-context.ts`
+- `src/sidepanel/workspace-shell.ts`
+- `src/sidepanel/workspace-status.ts`
+- `src/sidepanel/workspace-terminal-pane.ts`
 - `internal/pty/manager.go`
 - `internal/pty/session.go`
 - `src/content/ui/terminal-widget-session.ts`
@@ -35,7 +42,10 @@ last_verified_date: 2026-03-28
 - Auto-write queue must defer sends while user typing/focus is active.
 - Queued submit must wait for reconnect if WebSocket is disconnected.
 - Redraw recovery must not terminate PTY session.
-- The current side panel host is terminal-only so the iframe can consume the full available panel height.
+- The sidepanel host is now a workspace shell that keeps the terminal dominant but renders status and action chrome around it.
+- Live workspace status comes from deterministic content heuristics assembled into a typed background snapshot.
+- Popup and hover audit/screenshot/note entrypoints should share `src/lib/workspace-actions.ts`.
+- `src/sidepanel/workspace-context.ts` owns mixed page-context injection so open, route-change, audit-summary, and manual-inject writes all reuse the existing terminal write guard.
 - `open_terminal_panel` must preserve the original user-gesture path while resolving the correct workspace host tab.
 - Power must close the panel and terminate the PTY session; minimize must close the panel but preserve the current PTY session.
 
@@ -53,4 +63,4 @@ last_verified_date: 2026-03-28
 - QA Plan: [qa-plan.md](./qa-plan.md)
 - Feature Index: [index.md](./index.md)
 - Flow Map Pointer: [flow-map.md](./flow-map.md)
-- Canonical Flow Maps: [terminal-side-panel-host.md](../../../architecture/flow-maps/terminal-side-panel-host.md), [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
+- Canonical Flow Maps: [workspace-sidebar-qa-shell.md](../../../architecture/flow-maps/workspace-sidebar-qa-shell.md), [terminal-side-panel-host.md](../../../architecture/flow-maps/terminal-side-panel-host.md), [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)

@@ -5,17 +5,17 @@ ai-priority: high
 tags: [features, navigation, index, lookup]
 relates-to: [FEATURE-INDEX.md, README.md]
 canonical: true
-last-verified: 2026-03-05
-last_reviewed: 2026-04-03
-last_verified_version: 0.8.1
-last_verified_date: 2026-04-03
+last-verified: 2026-04-18
+last_reviewed: 2026-04-18
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # Feature Navigation Index
 
 **For LLM Agents:** Quick lookup to find feature documentation folders and their key files.
 
-**Last updated:** 2026-04-03
+**Last updated:** 2026-04-18
 
 ---
 
@@ -83,8 +83,8 @@ Features with active code implementations referencing their feature docs.
 | security-hardening | `feature/security-hardening/` | product-spec.md, qa-plan.md, tech-spec.md | Security hardening for daemon and extension |
 | self-testing | `feature/self-testing/` | product-spec.md, qa-plan.md, tech-spec.md | Self-testing and health check infrastructure |
 | tab-recording | `feature/tab-recording/` | product-spec.md, qa-plan.md, tech-spec.md | Tab video/audio recording capture |
-| tab-tracking-ux | `feature/tab-tracking-ux/` | product-spec.md, qa-plan.md, tech-spec.md | Tab tracking UX and multi-tab management |
-| terminal | `feature/terminal/` | index.md, flow-map.md | In-browser terminal widget with dedicated server on port+1 |
+| tab-tracking-ux | `feature/tab-tracking-ux/` | product-spec.md, qa-plan.md, tech-spec.md | Tracked-tab hover launcher, workspace opener, and popup parity flows |
+| terminal | `feature/terminal/` | index.md, flow-map.md | QA-first workspace sidebar with PTY terminal, status strip, and dedicated server on port+1 |
 | test-generation | `feature/test-generation/` | product-spec.md, qa-plan.md, tech-spec.md, uat-guide.md | E2E test generation from browser sessions |
 | transient-capture | `feature/transient-capture/` | index.md | Capture transient UI elements (tooltips, toasts) |
 | ttl-retention | `feature/ttl-retention/` | product-spec.md, qa-plan.md, tech-spec.md | TTL-based data retention and eviction |

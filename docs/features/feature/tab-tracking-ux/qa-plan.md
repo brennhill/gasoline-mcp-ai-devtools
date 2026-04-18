@@ -4,15 +4,29 @@ scope: feature/tab-tracking-ux/qa
 ai-priority: medium
 tags: [testing, qa]
 relates-to: [product-spec.md, tech-spec.md]
-last-verified: 2026-03-05
+last-verified: 2026-04-18
 doc_type: qa-plan
 feature_id: feature-tab-tracking-ux
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-04-18
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # QA Plan: Tab Tracking UX Improvements
+
+## Current Workspace Launcher Regression Slice
+
+- `tests/extension/tracked-hover-launcher.test.js`
+- `tests/extension/popup-audit-button.test.js`
+- `tests/extension/request-audit.test.js`
+- `tests/extension/workspace-actions.test.js`
+
+Verify that:
+
+- the hover launcher shows `Workspace — open the QA workspace`
+- the launcher hides only while `TERMINAL_UI_STATE === "open"`
+- popup and hover audit paths both send `open_terminal_panel` followed by `qa_scan_requested`
+- shared screenshot and draw-mode helpers stay aligned across surfaces
 
 > QA plan for the Tab Tracking UX Improvements feature (Badge Indicator, Switch Confirmation, Tab Close Recovery). Covers data leak analysis, LLM clarity, simplicity assessment, code-level testing, and step-by-step UAT verification.
 
