@@ -290,6 +290,9 @@ func TestE2E_AppError_AllCategories(t *testing.T) {
 	}{
 		{"daemon_panic", "internal", "fatal", "daemon"},
 		{"bridge_connection_error", "integration", "error", "bridge"},
+		{"bridge_parse_error", "internal", "error", "bridge"},
+		{"bridge_method_not_found", "integration", "warning", "bridge"},
+		{"bridge_stdin_error", "internal", "error", "bridge"},
 		{"extension_disconnect", "integration", "warning", "extension"},
 		{"install_config_error", "internal", "error", "installer"},
 	}

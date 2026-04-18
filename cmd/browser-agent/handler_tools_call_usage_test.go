@@ -4,10 +4,41 @@ package main
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 )
+
+// TestToolAliasPrecedence_MatchesDispatcherOrder guards against silent drift between
+// the telemetry alias precedence map and each tool's actual dispatcher aliasParams.
+// If a tool adds or reorders an alias, telemetry must follow or it will log a
+// different mode than the one dispatch picked.
+func TestToolAliasPrecedence_MatchesDispatcherOrder(t *testing.T) {
+	cases := []struct {
+		tool    string
+		aliases []modeAlias
+	}{
+		{"observe", defaultModeActionAliases},
+		{"analyze", defaultModeActionAliases},
+		{"configure", configureAliasParams},
+		{"generate", generateAliasParams},
+		{"interact", interactAliasParams},
+	}
+	for _, tc := range cases {
+		t.Run(tc.tool, func(t *testing.T) {
+			want := make([]string, len(tc.aliases))
+			for i, a := range tc.aliases {
+				want[i] = a.JSONField
+			}
+			got := toolAliasPrecedence[tc.tool]
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("toolAliasPrecedence[%q] = %v, want %v (from dispatcher aliasParams)",
+					tc.tool, got, want)
+			}
+		})
+	}
+}
 
 func TestExtractWhatParam(t *testing.T) {
 	tests := []struct {
@@ -52,6 +83,156 @@ func TestExtractWhatParam(t *testing.T) {
 	}
 }
 
+func TestUsageKey_DeprecatedAliases(t *testing.T) {
+	// When callers use deprecated aliases (action/mode/format) instead of "what",
+	// dispatch succeeds but we want the dashboard to distinguish these from callers
+	// using the canonical field, so clients on the old shape can be identified.
+	// Precedence must match each tool's dispatcher order (see toolAliasPrecedence).
+	tests := []struct {
+		name string
+		tool string
+		args json.RawMessage
+		want string
+	}{
+		{
+			name: "interact: action alias",
+			tool: "interact",
+			args: json.RawMessage(`{"action":"click"}`),
+			want: "legacy_action:click",
+		},
+		{
+			name: "configure: mode alias",
+			tool: "configure",
+			args: json.RawMessage(`{"mode":"streaming"}`),
+			want: "legacy_mode:streaming",
+		},
+		{
+			name: "generate: format alias",
+			tool: "generate",
+			args: json.RawMessage(`{"format":"playwright"}`),
+			want: "legacy_format:playwright",
+		},
+		{
+			name: "what takes precedence over action when both present",
+			tool: "interact",
+			args: json.RawMessage(`{"what":"click","action":"type"}`),
+			want: "click",
+		},
+		{
+			name: "configure: mode takes precedence over action (matches dispatcher order)",
+			tool: "configure",
+			args: json.RawMessage(`{"action":"navigate","mode":"streaming"}`),
+			want: "legacy_mode:streaming",
+		},
+		{
+			name: "generate: format takes precedence over action (matches dispatcher order)",
+			tool: "generate",
+			args: json.RawMessage(`{"action":"playwright","format":"har"}`),
+			want: "legacy_format:har",
+		},
+		{
+			name: "interact ignores mode field (not a declared alias for interact)",
+			tool: "interact",
+			args: json.RawMessage(`{"mode":"streaming"}`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "interact ignores format field (not a declared alias for interact)",
+			tool: "interact",
+			args: json.RawMessage(`{"format":"har"}`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "empty what falls through to alias",
+			tool: "interact",
+			args: json.RawMessage(`{"what":"","action":"click"}`),
+			want: "legacy_action:click",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := usageKey(tt.tool, tt.args)
+			if got != tt.want {
+				t.Errorf("usageKey(%q, %s) = %q, want %q", tt.tool, string(tt.args), got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUsageKey_UnknownReasons(t *testing.T) {
+	tests := []struct {
+		name string
+		args json.RawMessage
+		want string
+	}{
+		{
+			name: "nil args -> no_args",
+			args: nil,
+			want: "unknown_no_args",
+		},
+		{
+			name: "empty args -> no_args",
+			args: json.RawMessage(``),
+			want: "unknown_no_args",
+		},
+		{
+			name: "malformed JSON -> parse_error",
+			args: json.RawMessage(`{not valid json`),
+			want: "unknown_parse_error",
+		},
+		{
+			name: "empty object -> missing_what",
+			args: json.RawMessage(`{}`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "object without what or alias field -> missing_what",
+			args: json.RawMessage(`{"unrelated":"value"}`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "what explicitly empty string with no aliases -> missing_what",
+			args: json.RawMessage(`{"what":""}`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "JSON null literal -> missing_what",
+			args: json.RawMessage(`null`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "what is a number (type mismatch) -> missing_what",
+			args: json.RawMessage(`{"what":42}`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "what is an object -> missing_what",
+			args: json.RawMessage(`{"what":{"nested":"value"}}`),
+			want: "unknown_missing_what",
+		},
+		{
+			name: "top-level JSON array -> parse_error",
+			args: json.RawMessage(`[]`),
+			want: "unknown_parse_error",
+		},
+		{
+			name: "top-level JSON string -> parse_error",
+			args: json.RawMessage(`"hello"`),
+			want: "unknown_parse_error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := usageKey("interact", tt.args)
+			if got != tt.want {
+				t.Errorf("usageKey(%s) = %q, want %q", string(tt.args), got, tt.want)
+			}
+		})
+	}
+}
+
 func TestUsageKey_CommandResultMapsToOriginalCommand(t *testing.T) {
 	tests := []struct {
 		name string
@@ -74,6 +255,21 @@ func TestUsageKey_CommandResultMapsToOriginalCommand(t *testing.T) {
 			want: "command_result:draw",
 		},
 		{
+			name: "command_result with execute_js prefix",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"execute_js_1708300000_123"}`),
+			want: "command_result:execute_js",
+		},
+		{
+			name: "command_result with state_restore prefix",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"state_restore_1708300000_123"}`),
+			want: "command_result:state_restore",
+		},
+		{
+			name: "command_result with dom_auto_dismiss_overlays prefix",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"dom_auto_dismiss_overlays_1708300000_123"}`),
+			want: "command_result:dom_auto_dismiss_overlays",
+		},
+		{
 			name: "command_result with ann_ prefix",
 			args: json.RawMessage(`{"what":"command_result","correlation_id":"ann_1708300000_123"}`),
 			want: "command_result:ann",
@@ -94,6 +290,11 @@ func TestUsageKey_CommandResultMapsToOriginalCommand(t *testing.T) {
 			want: "command_result:plainid",
 		},
 		{
+			name: "command_result with nonnumeric underscore suffix keeps full id",
+			args: json.RawMessage(`{"what":"command_result","correlation_id":"execute_js_manual_retry"}`),
+			want: "command_result:execute_js_manual_retry",
+		},
+		{
 			name: "regular what param unaffected",
 			args: json.RawMessage(`{"what":"page","correlation_id":"nav_123"}`),
 			want: "page",
@@ -102,7 +303,7 @@ func TestUsageKey_CommandResultMapsToOriginalCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := usageKey(tt.args)
+			got := usageKey("observe", tt.args)
 			if got != tt.want {
 				t.Errorf("usageKey(%s) = %q, want %q", string(tt.args), got, tt.want)
 			}
@@ -206,7 +407,7 @@ func TestHandleToolCall_IncrementsUsageTracker_NoWhatParam(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	// Call configure with no "what" — should increment "configure:unknown".
+	// Call configure with no "what" — should increment "configure:unknown_missing_what".
 	args := json.RawMessage(`{"key":"value"}`)
 	resp, handled := handler.HandleToolCall(req, "configure", args)
 	if !handled {
@@ -215,8 +416,8 @@ func TestHandleToolCall_IncrementsUsageTracker_NoWhatParam(t *testing.T) {
 	_ = resp
 
 	counts := counter.Peek()
-	if counts["configure:unknown"] != 1 {
-		t.Fatalf("configure:unknown count = %d, want 1", counts["configure:unknown"])
+	if counts["configure:unknown_missing_what"] != 1 {
+		t.Fatalf("configure:unknown_missing_what count = %d, want 1", counts["configure:unknown_missing_what"])
 	}
 }
 
@@ -271,11 +472,11 @@ func TestHandleToolCall_RecordsErrorRate(t *testing.T) {
 	handler.HandleToolCall(req, "interact", args)
 
 	counts := counter.Peek()
-	if counts["interact:unknown"] != 1 {
-		t.Fatalf("interact:unknown = %d, want 1", counts["interact:unknown"])
+	if counts["interact:unknown_missing_what"] != 1 {
+		t.Fatalf("interact:unknown_missing_what = %d, want 1", counts["interact:unknown_missing_what"])
 	}
-	if counts["err:interact:unknown"] != 1 {
-		t.Fatalf("err:interact:unknown = %d, want 1 (missing params = error)", counts["err:interact:unknown"])
+	if counts["err:interact:unknown_missing_what"] != 1 {
+		t.Fatalf("err:interact:unknown_missing_what = %d, want 1 (missing params = error)", counts["err:interact:unknown_missing_what"])
 	}
 }
 

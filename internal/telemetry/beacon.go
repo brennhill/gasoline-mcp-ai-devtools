@@ -76,10 +76,8 @@ func AppError(category string, props map[string]string) {
 
 	// Apply caller props first so contract fields cannot be overwritten.
 	fields := map[string]any{}
-	if props != nil {
-		for k, v := range props {
-			fields[k] = v
-		}
+	for k, v := range props {
+		fields[k] = v
 	}
 
 	// Contract fields applied last — always authoritative.
@@ -111,6 +109,17 @@ func classifyAppError(category string) (errorKind string, severity string, sourc
 	case "bridge_spawn_timeout":
 		return "internal", "error", "bridge", true
 	case "bridge_exit_error":
+		// Retained for backward compat with historical data; no longer emitted.
+		// New emissions use bridge_parse_error, bridge_method_not_found, or bridge_stdin_error.
+		return "internal", "error", "bridge", false
+	case "bridge_parse_error":
+		// Bridge received malformed JSON-RPC from the MCP client. Caller-side defect.
+		return "internal", "error", "bridge", false
+	case "bridge_method_not_found":
+		// Bridge received a JSON-RPC method it does not implement. Client bug or version skew.
+		return "integration", "warning", "bridge", false
+	case "bridge_stdin_error":
+		// Stdin read failed mid-stream (pipe broken, process killed, fd issue). Env/transport.
 		return "internal", "error", "bridge", false
 	case "extension_disconnect":
 		return "integration", "warning", "extension", false

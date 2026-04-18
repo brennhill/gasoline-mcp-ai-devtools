@@ -62,8 +62,19 @@ func bridgeShutdown(wg *sync.WaitGroup, readErr error, responseSent chan bool, s
 		// PRIVACY: beacon props must NOT include readErr or any error messages.
 		// The extra map below (for appendExitDiagnostic) intentionally includes
 		// more detail because it writes to a local file, not to telemetry.
-		if stats.parseErrors > 0 || stats.methodNotFound > 0 || (readErr != nil && !errors.Is(readErr, io.EOF)) {
-			telemetry.AppError("bridge_exit_error", nil)
+		//
+		// Each cause gets a distinct app_error code so dashboards can tell apart
+		// real bridge bugs (parse errors) from caller bugs (unknown methods) from
+		// env/transport failures (stdin read error). Previously all three collapsed
+		// into bridge_exit_error, which made the signal unactionable.
+		if stats.parseErrors > 0 {
+			telemetry.AppError("bridge_parse_error", nil)
+		}
+		if stats.methodNotFound > 0 {
+			telemetry.AppError("bridge_method_not_found", nil)
+		}
+		if readErr != nil && !errors.Is(readErr, io.EOF) {
+			telemetry.AppError("bridge_stdin_error", nil)
 		}
 		reason := "stdin_eof"
 		if readErr != nil && !errors.Is(readErr, io.EOF) {
