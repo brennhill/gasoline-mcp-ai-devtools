@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"runtime"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
 
 var hexPattern = regexp.MustCompile(`^[0-9a-f]{12}$`)
@@ -35,6 +37,63 @@ func TestGetInstallID_PersistsAcrossCalls(t *testing.T) {
 	id2 := GetInstallID()
 	if id1 != id2 {
 		t.Fatalf("GetInstallID() returned different values: %q vs %q", id1, id2)
+	}
+}
+
+func TestGetInstallID_StableAcrossParallelRuntimeStateDirsForSameHome(t *testing.T) {
+	home := t.TempDir()
+	firstRuntimeStateDir := filepath.Join(t.TempDir(), "parallel", "run-1001")
+	secondRuntimeStateDir := filepath.Join(t.TempDir(), "parallel", "run-2002")
+
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv(state.StateDirEnv, firstRuntimeStateDir)
+	resetInstallIDState()
+	resetKaboomDir()
+	defer func() {
+		resetInstallIDState()
+		resetKaboomDir()
+	}()
+
+	root1, err := state.RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	if root1 != firstRuntimeStateDir {
+		t.Fatalf("RootDir() = %q, want %q", root1, firstRuntimeStateDir)
+	}
+
+	id1 := GetInstallID()
+	if !hexPattern.MatchString(id1) {
+		t.Fatalf("GetInstallID() = %q, want 12-char hex string", id1)
+	}
+
+	t.Setenv(state.StateDirEnv, secondRuntimeStateDir)
+	resetInstallIDState()
+	resetKaboomDir()
+
+	root2, err := state.RootDir()
+	if err != nil {
+		t.Fatalf("RootDir() error = %v", err)
+	}
+	if root2 != secondRuntimeStateDir {
+		t.Fatalf("RootDir() = %q, want %q", root2, secondRuntimeStateDir)
+	}
+	if root1 == root2 {
+		t.Fatalf("runtime state dirs should differ across parallel startups, both were %q", root1)
+	}
+
+	id2 := GetInstallID()
+	if id1 != id2 {
+		t.Fatalf("GetInstallID() changed across parallel runtime state dirs: %q vs %q", id1, id2)
+	}
+
+	data, err := os.ReadFile(filepath.Join(home, ".kaboom", "install_id"))
+	if err != nil {
+		t.Fatalf("failed to read persisted install_id: %v", err)
+	}
+	if got := string(data); got != id1 {
+		t.Fatalf("persisted install_id = %q, want %q", got, id1)
 	}
 }
 

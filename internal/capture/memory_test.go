@@ -46,15 +46,6 @@ func makeNetworkBody(reqSize, respSize int) NetworkBody {
 	}
 }
 
-// Helper: create an EnhancedAction
-func makeAction() EnhancedAction {
-	return EnhancedAction{
-		Type:      "click",
-		Timestamp: time.Now().UnixMilli(),
-		URL:       "http://example.com",
-	}
-}
-
 // Helper: recalculate running memory totals from current slices.
 // Must be called with lock held.
 func recalcMemoryTotals(c *Capture) {

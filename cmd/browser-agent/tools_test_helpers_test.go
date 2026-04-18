@@ -154,13 +154,6 @@ func firstText(result MCPToolResult) string {
 // Tool Call Wrappers
 // ============================================
 
-// callToolRaw dispatches through HandleToolCall (goes through validation/audit).
-func callToolRaw(h *ToolHandler, name string, argsJSON string) JSONRPCResponse {
-	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}
-	resp, _ := h.HandleToolCall(req, name, json.RawMessage(argsJSON))
-	return resp
-}
-
 // callObserveRaw invokes toolObserve directly and returns the raw JSONRPCResponse.
 func callObserveRaw(h *ToolHandler, what string) JSONRPCResponse {
 	req := JSONRPCRequest{JSONRPC: "2.0", ID: 1}

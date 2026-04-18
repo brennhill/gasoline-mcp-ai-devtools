@@ -51,12 +51,6 @@ func testUploadSecurityWithDir(t *testing.T, dir string) *UploadSecurity {
 	return uploadhandler.NewSecurity(resolved, nil)
 }
 
-// testUploadSecurityNoDir returns an UploadSecurity with no upload-dir (Stage 1 only).
-func testUploadSecurityNoDir(t *testing.T) *UploadSecurity {
-	t.Helper()
-	return uploadhandler.NewSecurity("", nil)
-}
-
 // ============================================
 // 1. Concurrent form submit (race detector)
 // ============================================

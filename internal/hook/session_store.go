@@ -157,20 +157,6 @@ func FilesEdited(sessionDir string) []string {
 	return files
 }
 
-// LastBashResult returns the most recent Bash command and its summary.
-func LastBashResult(sessionDir string) (command string, summary string, found bool) {
-	entries, err := ReadTouches(sessionDir)
-	if err != nil {
-		return "", "", false
-	}
-	for _, e := range entries {
-		if e.Tool == "Bash" || e.Tool == "run_shell_command" {
-			return e.Summary, "", true
-		}
-	}
-	return "", "", false
-}
-
 // WasFileRead returns true if the file was already read this session, and when.
 func WasFileRead(sessionDir string, filePath string) (bool, time.Time) {
 	entries, err := ReadTouches(sessionDir)

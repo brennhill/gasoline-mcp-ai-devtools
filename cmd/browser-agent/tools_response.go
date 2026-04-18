@@ -33,11 +33,6 @@ func succeed(req JSONRPCRequest, summary string, data any) JSONRPCResponse {
 	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpJSONResponse(summary, data)}
 }
 
-// succeedText builds a success JSONRPCResponse with a plain text payload.
-func succeedText(req JSONRPCRequest, text string) JSONRPCResponse {
-	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: mcpTextResponse(text)}
-}
-
 // succeedRaw builds a success JSONRPCResponse with a pre-built Result payload.
 func succeedRaw(req JSONRPCRequest, result json.RawMessage) JSONRPCResponse {
 	return JSONRPCResponse{JSONRPC: JSONRPCVersion, ID: req.ID, Result: result}

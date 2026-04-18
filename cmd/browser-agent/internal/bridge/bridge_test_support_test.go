@@ -7,58 +7,8 @@ import (
 	"io"
 	"os"
 	"strings"
-	"testing"
-
-	internbridge "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 )
 
-
-// initTestDeps sets up minimal bridge deps for testing.
-func initTestDeps(t *testing.T) {
-	t.Helper()
-	Init(Deps{
-		Version:              "0.0.0-test",
-		MaxPostBodySize:      10 * 1024 * 1024,
-		MCPServerName:        "kaboom",
-		LegacyMCPServerNames: []string{"gasoline"},
-		ServerInstructions:   "test instructions",
-		Stderrf:              func(format string, args ...any) {},
-		Debugf:               func(format string, args ...any) {},
-		WriteMCPPayload: func(payload []byte, framing internbridge.StdioFraming) {
-			out := ActiveMCPTransportWriter()
-			if framing == internbridge.StdioFramingContentLength {
-				_, _ = out.Write([]byte("Content-Length: "))
-				_, _ = out.Write([]byte(strings.Repeat(" ", len(payload))))
-				_, _ = out.Write([]byte("\r\nContent-Type: application/json\r\n\r\n"))
-				_, _ = out.Write(payload)
-			} else {
-				_, _ = out.Write(payload)
-				_, _ = out.Write([]byte("\n"))
-			}
-		},
-		SyncStdoutBestEffort: func() {},
-		SetStderrSink:        func(w io.Writer) {},
-		GetBridgeFraming:     func() internbridge.StdioFraming { return internbridge.StdioFramingLine },
-		StoreBridgeFraming:   func(f internbridge.StdioFraming) {},
-		SetPushClientCapabilities: func(caps push.ClientCapabilities) {},
-		ExtractClientCapabilities: func(rawParams json.RawMessage) push.ClientCapabilities {
-			return push.ClientCapabilities{}
-		},
-		NegotiateProtocolVersion: func(rawParams json.RawMessage) string { return "2024-11-05" },
-		MCPResources:             func() []mcp.MCPResource { return nil },
-		MCPResourceTemplates:     func() []any { return nil },
-		ResolveResourceContent:   func(uri string) (string, string, bool) { return "", "", false },
-		DaemonProcessArgv0:       func(exePath string) string { return exePath },
-		StopServerForUpgrade:     func(port int) bool { return false },
-		FindProcessOnPort:        func(port int) ([]int, error) { return nil, nil },
-		IsProcessAlive:           func(pid int) bool { return false },
-		VersionsMatch:            func(a, b string) bool { return a == b },
-		DecodeHealthMetadata:     func(body []byte) (HealthMeta, bool) { return HealthMeta{}, false },
-		AppendExitDiagnostic:     func(event string, extra map[string]any) string { return "" },
-	})
-}
 
 // Note: resetFastPathResourceReadCounters, resetFastPathCounters,
 // captureBridgeIO, and parseJSONLines are defined in the test files that were moved from main.

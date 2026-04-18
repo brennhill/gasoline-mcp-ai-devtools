@@ -7,12 +7,10 @@ package bridge
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
 	internbridge "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/bridge"
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 )
 
@@ -85,25 +83,3 @@ func relayPushEvent(ev push.PushEvent, framing internbridge.StdioFraming) {
 	deps.Debugf("push relay: sent %s event (page=%s)", ev.Type, ev.PageURL)
 }
 
-// BuildPushNotification creates a lightweight MCP notification for a push event.
-// Used as fallback when sampling is not available.
-func BuildPushNotification(ev push.PushEvent) []byte {
-	notif := map[string]any{
-		"jsonrpc": mcp.JSONRPCVersion,
-		"method":  "notifications/message",
-		"params": map[string]any{
-			"level":  "info",
-			"logger": "kaboom-push",
-			"data": map[string]any{
-				"type":     ev.Type,
-				"page_url": ev.PageURL,
-				"message":  fmt.Sprintf("New %s push from browser", ev.Type),
-			},
-		},
-	}
-	payload, err := json.Marshal(notif)
-	if err != nil {
-		return nil
-	}
-	return payload
-}

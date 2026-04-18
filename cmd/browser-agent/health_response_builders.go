@@ -68,11 +68,6 @@ func buildUpgradeInfo() *health.UpgradeInfo {
 	return health.BuildUpgradeInfo(binaryUpgradeState)
 }
 
-// buildCommandExecutionInfo delegates to the health sub-package.
-func buildCommandExecutionInfo(cap *capture.Store) health.CommandExecutionInfo {
-	return health.BuildCommandExecutionInfo(cap)
-}
-
 // buildCommandExecutionInfoAt delegates to the health sub-package.
 func buildCommandExecutionInfoAt(cap *capture.Store, now time.Time) health.CommandExecutionInfo {
 	return health.BuildCommandExecutionInfoAt(cap, now)

@@ -140,19 +140,3 @@ func stopTestServer(binary string, port int, stateDir string) {
 	removePIDFile(port)
 }
 
-func checkSingleServerProcess(t *testing.T, port int) {
-	t.Helper()
-	cmd := exec.Command("lsof", "-ti", fmt.Sprintf(":%d", port))
-	output, err := cmd.Output()
-	if err != nil {
-		// lsof returns exit status 1 when no process found, which is valid
-		t.Logf("No process found on port %d (lsof returned error: %v)", port, err)
-		return
-	}
-
-	pids := strings.Fields(string(output))
-	if len(pids) != 1 {
-		// Just log this as info - in concurrent tests there might be temporary extra processes
-		t.Logf("Note: Found %d server processes on port %d (PIDs: %v) - expected 1", len(pids), port, pids)
-	}
-}

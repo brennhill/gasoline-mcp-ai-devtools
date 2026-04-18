@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
-	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/queries"
 )
 
 // ============================================
@@ -243,13 +242,3 @@ func TestAnalyze_Dom_TimeoutMs_Respected(t *testing.T) {
 	}
 }
 
-// findPendingCommandByPrefix finds a pending command's correlation ID by prefix
-func findPendingCommandByPrefix(cap *capture.Store, prefix string) *queries.CommandResult {
-	pending := cap.GetPendingCommands()
-	for _, cmd := range pending {
-		if cmd != nil && strings.HasPrefix(cmd.CorrelationID, prefix) {
-			return cmd
-		}
-	}
-	return nil
-}

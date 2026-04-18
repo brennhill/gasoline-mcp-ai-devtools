@@ -4,7 +4,6 @@
 package main
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
@@ -41,11 +40,6 @@ func (h *ToolHandler) GetLogTotalAdded() int64 {
 	h.server.logs.mu.RLock()
 	defer h.server.logs.mu.RUnlock()
 	return h.server.logs.logTotalAdded
-}
-
-// armEvidenceForCommand delegates evidence arming to the interactActionHandler.
-func (h *ToolHandler) armEvidenceForCommand(correlationID, action string, args json.RawMessage, clientID string) {
-	h.interactAction().ArmEvidenceForCommand(correlationID, action, args, clientID)
 }
 
 // getCommandResult returns a command result by correlation ID from the capture store.

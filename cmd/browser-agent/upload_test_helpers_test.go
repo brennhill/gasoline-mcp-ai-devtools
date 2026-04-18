@@ -62,14 +62,3 @@ func (e *uploadTestEnv) handleDialogInject(t *testing.T, req FileDialogInjectReq
 	return handleDialogInjectInternal(req, e.handler.uploadSecurity)
 }
 
-// handleFormSubmit directly calls the form submit handler for unit testing.
-func (e *uploadTestEnv) handleFormSubmit(t *testing.T, req FormSubmitRequest) UploadStageResponse {
-	t.Helper()
-	return handleFormSubmitInternal(req, e.handler.uploadSecurity)
-}
-
-// handleOSAutomation directly calls the OS automation handler for unit testing.
-func (e *uploadTestEnv) handleOSAutomation(t *testing.T, req OSAutomationInjectRequest) UploadStageResponse {
-	t.Helper()
-	return handleOSAutomationInternal(req, e.handler.uploadSecurity)
-}

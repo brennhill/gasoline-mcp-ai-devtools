@@ -201,12 +201,3 @@ func TestGetErrorBundles_ValidScopes_NoHint(t *testing.T) {
 	}
 }
 
-// extractMCPResult parses the MCPToolResult from a response.
-func extractMCPResult(t *testing.T, resp mcp.JSONRPCResponse) mcp.MCPToolResult {
-	t.Helper()
-	var result mcp.MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatalf("unmarshal result: %v", err)
-	}
-	return result
-}

@@ -8,11 +8,6 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/toolobserve"
 )
 
-// prependDisconnectWarning adds a warning to the first content block when the extension is disconnected.
-func (h *ToolHandler) prependDisconnectWarning(resp JSONRPCResponse) JSONRPCResponse {
-	return toolobserve.PrependDisconnectWarning(resp)
-}
-
 // appendAlertsToResponse adds an alerts content block to an existing MCP response.
 func (h *ToolHandler) appendAlertsToResponse(resp JSONRPCResponse, alerts []Alert) JSONRPCResponse {
 	return toolobserve.AppendAlertsToResponse(resp, alerts)

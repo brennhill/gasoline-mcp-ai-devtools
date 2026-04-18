@@ -83,25 +83,11 @@ func buildQueryParams(fields map[string]any) json.RawMessage {
 	return mcp.SafeMarshal(fields, "{}")
 }
 
-// safeMarshal marshals v to JSON, returning fallback on error.
-func safeMarshal(v any, fallback string) json.RawMessage {
-	return mcp.SafeMarshal(v, fallback)
-}
-
 // StructuredError option helpers.
 func withParam(p string) func(*StructuredError)    { return mcp.WithParam(p) }
 func withHint(h string) func(*StructuredError)     { return mcp.WithHint(h) }
 func withAction(a string) func(*StructuredError)   { return mcp.WithAction(a) }
 func withSelector(s string) func(*StructuredError) { return mcp.WithSelector(s) }
-func withRetryable(retryable bool) func(*StructuredError) {
-	return mcp.WithRetryable(retryable)
-}
-func withRetryAfterMs(ms int) func(*StructuredError) { return mcp.WithRetryAfterMs(ms) }
-func withFinal(final bool) func(*StructuredError)    { return mcp.WithFinal(final) }
-func withRecoveryToolCall(toolCall map[string]any) func(*StructuredError) {
-	return mcp.WithRecoveryToolCall(toolCall)
-}
-
 // checkGuards runs guard checks in sequence. First blocker short-circuits.
 func checkGuards(req JSONRPCRequest, guards ...GuardCheck) (JSONRPCResponse, bool) {
 	for _, g := range guards {
@@ -135,11 +121,6 @@ func mutateToolResult(resp JSONRPCResponse, fn func(*MCPToolResult)) JSONRPCResp
 	}
 	resp.Result = json.RawMessage(resultJSON)
 	return resp
-}
-
-// appendWarningsToResponse wraps mcp.AppendWarningsToResponse.
-func appendWarningsToResponse(resp JSONRPCResponse, warnings []string) JSONRPCResponse {
-	return mcp.AppendWarningsToResponse(resp, warnings)
 }
 
 // newCorrelationID generates a unique correlation ID with the given prefix.
