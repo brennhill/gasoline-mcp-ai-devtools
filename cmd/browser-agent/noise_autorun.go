@@ -185,9 +185,7 @@ func (h *ToolHandler) IsConsoleNoise(entry map[string]any) bool {
 func (h *ToolHandler) runNoiseAutoDetect() {
 	h.server.logs.mu.RLock()
 	consoleEntries := make([]noise.LogEntry, len(h.server.logs.entries))
-	for i, e := range h.server.logs.entries {
-		consoleEntries[i] = noise.LogEntry(e)
-	}
+	copy(consoleEntries, h.server.logs.entries)
 	h.server.logs.mu.RUnlock()
 
 	networkBodies := h.capture.GetNetworkBodies()

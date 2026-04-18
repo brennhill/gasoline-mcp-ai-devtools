@@ -27,9 +27,12 @@ func TestExtractGoBuildID(t *testing.T) {
 	}
 }
 
+// NOTE: Neither TestBridgeLaunchFingerprint nor TestBridgeLaunchFingerprint_PathError
+// can use t.Parallel() because both mutate the package-level getBridgeExecutablePath
+// global. When parallel, test A's Cleanup can overwrite test B's mock (or the race
+// detector catches the concurrent writes). Keep these serial until the dependency
+// is refactored to be injectable.
 func TestBridgeLaunchFingerprint(t *testing.T) {
-	t.Parallel()
-
 	tmp := t.TempDir()
 	exePath := tmp + "/kaboom-agentic-browser-test"
 	content := []byte("header" + goBuildIDPrefix + "test-build-id\"tail")
@@ -70,8 +73,7 @@ func TestBridgeLaunchFingerprint(t *testing.T) {
 }
 
 func TestBridgeLaunchFingerprint_PathError(t *testing.T) {
-	t.Parallel()
-
+	// Serial — see comment on TestBridgeLaunchFingerprint.
 	oldGetter := getBridgeExecutablePath
 	t.Cleanup(func() {
 		getBridgeExecutablePath = oldGetter

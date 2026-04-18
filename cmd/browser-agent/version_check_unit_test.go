@@ -76,7 +76,6 @@ func TestCheckGitHubVersionIgnoresOlderOrEqualRelease(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			resetVersionCheckState(t)
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

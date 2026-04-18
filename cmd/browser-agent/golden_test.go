@@ -105,7 +105,7 @@ func TestGoldenInitialize(t *testing.T) {
 	}
 
 	// Marshal the result to JSON
-	data, err := json.MarshalIndent(json.RawMessage(resp.Result), "", "  ")
+	data, err := json.MarshalIndent(resp.Result, "", "  ")
 	if err != nil {
 		t.Fatalf("json.MarshalIndent failed: %v", err)
 	}

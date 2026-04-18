@@ -131,7 +131,7 @@ func FuzzSanitizeForSendKeys(f *testing.F) {
 			}
 		}
 
-		specialChars := "+^%~(){}‌"
+		specialChars := "+^%~(){}\u200c"
 		for _, char := range specialChars {
 			inputCount := strings.Count(input, string(char))
 			if inputCount > 0 {

@@ -228,7 +228,6 @@ func buildInteractHandlers() map[string]ModeHandler {
 		if _, exists := handlers[action]; exists {
 			continue // named handler takes precedence (e.g. wait_for_stable, auto_dismiss_overlays)
 		}
-		action := action // capture for closure
 		handlers[action] = func(th *ToolHandler, req JSONRPCRequest, args json.RawMessage) JSONRPCResponse {
 			return th.interactAction().HandleDOMPrimitive(req, args, action)
 		}

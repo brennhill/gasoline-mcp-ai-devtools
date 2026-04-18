@@ -230,7 +230,6 @@ func TestNewQueryDispatcher_ApplyCommandResult_ErrorFieldForcesErrorStatus(t *te
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

@@ -152,8 +152,9 @@ func TestLuhnValid_DoubledDigitExceedsNine(t *testing.T) {
 	// Digits: 7 9 9 2 7 3 9 8 7 1 0
 	// When doubling from right, position 1 (from right, 0-indexed) = 1*2=2, pos3 = 8*2=16>9 => 16-9=7
 	// This exercises the n-=9 branch.
-	if !luhnValid("79927398710") {
-		// 11 digits is below 13 minimum, this should fail length check
+	// 11 digits is below the 13-digit minimum — expect false from the length check.
+	if luhnValid("79927398710") {
+		t.Error("expected 11-digit input to fail the length check")
 	}
 	// Use a 16-digit Luhn-valid number with high alternate digits: 6011111111111117
 	if !luhnValid("6011111111111117") {

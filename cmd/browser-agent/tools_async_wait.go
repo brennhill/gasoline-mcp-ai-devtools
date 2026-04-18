@@ -71,10 +71,7 @@ func (h *ToolHandler) MaybeWaitForCommand(req JSONRPCRequest, correlationID stri
 	lenientUnmarshal(args, &params)
 
 	// Default to sync unless Background is true or Sync/Wait explicitly set to false
-	isSync := true
-	if params.Background {
-		isSync = false
-	}
+	isSync := !params.Background
 	if params.Sync != nil && !*params.Sync {
 		isSync = false
 	}

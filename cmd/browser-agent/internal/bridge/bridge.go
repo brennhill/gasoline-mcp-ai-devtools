@@ -154,22 +154,19 @@ func StdioToHTTPFast(endpoint string, state *daemonState, port int) {
 		}
 
 		// SLOW PATH: Check daemon status for tools/call and other methods.
-		shouldForward := true
 		if status := checkDaemonStatus(state, req, port); status != "" {
 			if status == "method_not_found" {
 				stats.methodNotFound++
 			}
+			// During startup, tools/call should wait-and-forward rather than
+			// immediately returning a retry envelope to stdio clients. Everything
+			// else returns the retry envelope.
+			shouldForward := false
 			if status == "starting" {
 				stats.starting++
-				// During startup, tools/call should wait-and-forward rather than
-				// immediately returning a retry envelope to stdio clients.
 				if req.Method == "tools/call" {
 					shouldForward = true
-				} else {
-					shouldForward = false
 				}
-			} else {
-				shouldForward = false
 			}
 			if !shouldForward {
 				handleDaemonNotReady(req, status, signalResponseSent, framing)

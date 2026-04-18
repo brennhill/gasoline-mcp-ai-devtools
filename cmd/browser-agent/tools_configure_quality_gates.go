@@ -281,7 +281,7 @@ func containsManagedHooks(settings map[string]any) bool {
 		hooksList, _ := entryMap["hooks"].([]any)
 		for _, h := range hooksList {
 			hMap, _ := h.(map[string]any)
-			if cmd, _ := hMap["command"].(string); strings.Contains(cmd, "kaboom-hooks") || strings.Contains(cmd, "kaboom-hooks") || strings.Contains(cmd, "kaboom hook ") {
+			if cmd, _ := hMap["command"].(string); strings.Contains(cmd, "kaboom-hooks") || strings.Contains(cmd, "kaboom hook ") {
 				return true
 			}
 		}

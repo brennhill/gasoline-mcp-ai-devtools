@@ -340,7 +340,7 @@ func TestRecordingCreateMetadata(t *testing.T) {
 	// Verify recording exists in memory
 	recording := capture.recordingManager.GetInMemoryRecording(recordingID)
 	if recording == nil {
-		t.Errorf("Expected recording to exist in memory")
+		t.Fatal("Expected recording to exist in memory")
 	}
 
 	// Verify metadata fields
