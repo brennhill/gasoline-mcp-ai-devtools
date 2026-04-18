@@ -2,11 +2,11 @@
 doc_type: qa_plan
 feature_id: feature-terminal
 status: shipped
-last_reviewed: 2026-03-21
+last_reviewed: 2026-04-18
 owners:
   - Brenn
-last_verified_version: 0.8.1
-last_verified_date: 2026-03-21
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # QA Plan
@@ -16,15 +16,18 @@ last_verified_date: 2026-03-21
 1. `go test ./cmd/browser-agent -run Terminal -count=1`
 2. `go test ./internal/pty/...`
 3. `node --test tests/extension/sidepanel-terminal.test.js`
-4. `npm run docs:check:strict`
+4. `node --test tests/extension/workspace-sidebar.test.js tests/extension/workspace-status.test.js tests/extension/workspace-actions.test.js`
+5. `npm run docs:check:strict`
 
 ## Manual Checks
 
-1. Open the terminal side panel, minimize the terminal region, restore it, and close the browser side panel.
+1. Open the workspace side panel, verify the QA summary strip renders live values, minimize the terminal region, restore it, and close the browser side panel.
 2. Verify redraw (`↻`) reloads the iframe without killing the session.
 3. Type in terminal while annotation auto-write is triggered and confirm queued behavior.
 4. Simulate WebSocket disconnect during queued submit and confirm submit resumes after reconnect.
-5. Confirm terminal health reports `terminal_port` when running and `0` when unavailable.
+5. Confirm audit/screenshot/note triggers stay aligned between popup and hover launcher.
+6. Confirm workspace open injects page context, route-change context queues while typing, and audit completion injects a short audit summary without interrupting manual terminal input.
+7. Confirm terminal health reports `terminal_port` when running and `0` when unavailable.
 
 ## Regression Focus
 
@@ -32,6 +35,7 @@ last_verified_date: 2026-03-21
 - Frame-write concurrency corruption under ping/output/control traffic.
 - PTY session loss across page refresh.
 - Main daemon stability when terminal bind/start fails.
+- Workspace status fallback when content heuristics are unavailable.
 
 ## Linked Specs
 

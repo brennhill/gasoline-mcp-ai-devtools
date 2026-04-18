@@ -19,6 +19,7 @@ import type { ConnectionStatus } from './state.js'
 import type { BrowserStateSnapshot, StateAction } from './state.js'
 import type { DomQueryResult } from './dom.js'
 import type { A11yAuditResult } from './accessibility.js'
+import type { WorkspaceContentStatusPayload, WorkspaceStatusMode, WorkspaceStatusSnapshot } from './workspace-status.js'
 import type { RuntimeMessageName } from '../lib/constants.js'
 
 // =============================================================================
@@ -245,6 +246,7 @@ export type BackgroundMessage =
   | RecordingGestureDeniedMessage
   | OpenPopupForRecordingMessage
   | OpenTerminalPanelMessage
+  | GetWorkspaceStatusMessage
   | QaScanRequestedMessage
 
 /**
@@ -329,10 +331,20 @@ export interface TerminalPanelWriteMessage {
 }
 
 /**
- * Content script requests the side panel terminal to open.
+ * Sidepanel requests the current workspace status snapshot from background.
  */
-interface OpenTerminalPanelMessage {
-  readonly type: 'open_terminal_panel'
+export interface GetWorkspaceStatusMessage {
+  readonly type: 'get_workspace_status'
+  readonly mode?: WorkspaceStatusMode
+  readonly tab_id?: number
+}
+
+export interface GetWorkspaceStatusResponse extends WorkspaceStatusSnapshot {}
+
+export interface WorkspaceStatusUpdatedMessage {
+  readonly type: 'workspace_status_updated'
+  readonly host_tab_id?: number
+  readonly snapshot: WorkspaceStatusSnapshot
 }
 
 /**
@@ -345,20 +357,21 @@ export interface QaScanRequestedMessage {
 }
 
 /**
- * Runtime message forwarded to the side panel terminal host to write text.
- */
-export interface TerminalPanelWriteMessage {
-  readonly type: 'terminal_panel_write'
-  readonly text: string
-}
-
-/**
  * Toggle chat widget message (background to content).
  */
 interface ToggleChatMessage {
   readonly type: 'kaboom_toggle_chat'
   readonly client_name?: string
 }
+
+/**
+ * Background requests workspace heuristics from the content script.
+ */
+export interface WorkspaceStatusQueryMessage {
+  readonly type: 'kaboom_get_workspace_status'
+}
+
+export interface WorkspaceStatusQueryResponse extends WorkspaceContentStatusPayload {}
 
 // =============================================================================
 // CONTENT SCRIPT MESSAGE TYPES (background to content)
@@ -596,6 +609,7 @@ export type ContentMessage =
   | GetAnnotationsMessage
   | TrackingStateChangedMessage
   | ToggleChatMessage
+  | WorkspaceStatusQueryMessage
   | SetBooleanSettingMessage
   | SetWebSocketCaptureModeMessage
   | SetServerUrlMessage

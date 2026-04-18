@@ -286,7 +286,7 @@ func TestAuth_DifferentLengthKeys_Rejected(t *testing.T) {
 	}
 
 	for _, key := range keys {
-		t.Run("len_"+strings.Replace(key[:min(len(key), 10)], " ", "_", -1), func(t *testing.T) {
+		t.Run("len_"+strings.ReplaceAll(key[:min(len(key), 10)], " ", "_"), func(t *testing.T) {
 			req := httptest.NewRequest("GET", "/api/data", nil)
 			req.Header.Set("X-Kaboom-Key", key)
 			rr := httptest.NewRecorder()
@@ -440,7 +440,7 @@ func TestAuth_SpecialCharacterKeys(t *testing.T) {
 	}
 
 	for i, key := range specialKeys {
-		t.Run("special_"+strings.Replace(key[:min(len(key), 15)], " ", "_", -1), func(t *testing.T) {
+		t.Run("special_"+strings.ReplaceAll(key[:min(len(key), 15)], " ", "_"), func(t *testing.T) {
 			_ = i // avoid unused
 			middleware := AuthMiddleware(key)
 			handler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

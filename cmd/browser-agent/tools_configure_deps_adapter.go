@@ -17,9 +17,7 @@ func (h *ToolHandler) NoiseConfig() *noise.NoiseConfig {
 func (h *ToolHandler) ConsoleEntries() []noise.LogEntry {
 	h.server.logs.mu.RLock()
 	entries := make([]noise.LogEntry, len(h.server.logs.entries))
-	for i, e := range h.server.logs.entries {
-		entries[i] = noise.LogEntry(e)
-	}
+	copy(entries, h.server.logs.entries)
 	h.server.logs.mu.RUnlock()
 	return entries
 }

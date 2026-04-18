@@ -4,11 +4,12 @@ feature_id: feature-tab-tracking-ux
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-04-03
+last_reviewed: 2026-04-18
 code_paths:
   - src/lib/brand.ts
   - src/lib/constants.ts
   - src/lib/request-audit.ts
+  - src/lib/workspace-actions.ts
   - src/types/runtime-messages.ts
   - src/content.ts
   - src/content/tab-tracking.ts
@@ -28,14 +29,15 @@ test_paths:
   - tests/extension/popup-tab-tracking-branding.test.js
   - tests/extension/popup-tab-tracking-sync.test.js
   - tests/extension/request-audit.test.js
+  - tests/extension/workspace-actions.test.js
   - tests/extension/recording-listeners-target-tab.test.js
   - tests/extension/tracked-hover-launcher.test.js
   - tests/extension/logo-motion.test.js
   - tests/extension/content.test.js
   - tests/extension/runtime-log-branding.test.js
   - tests/extension/sidepanel-terminal.test.js
-last_verified_version: 0.8.1
-last_verified_date: 2026-04-03
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # Tab Tracking Ux
@@ -47,9 +49,9 @@ last_verified_date: 2026-04-03
 - Mode/Action: null
 - Location: `docs/features/feature/tab-tracking-ux`
 - When a site is tracked, the popup now exposes an `Audit` CTA that shares the same trigger path as the tracked hover launcher.
-- The hover launcher is shown on tracked workspace tabs and hides only while the Kaboom side panel is open.
+- The hover launcher is shown on tracked workspace tabs and hides only while the KaBOOM! workspace side panel is open.
 - Terminal workspace ownership now targets one Chrome tab group, even though broader tracking flows still use `TRACKED_TAB_ID` during the rollout.
-- The hover launcher now includes an `Audit` action that opens the side panel and then triggers the shared audit bridge.
+- The hover launcher now includes a `Workspace` action plus shared `Audit` and `Screenshot` paths that stay aligned with popup actions.
 - Cloaked-domain disable messaging and popup-driven recording guidance now use Kaboom copy consistently.
 - The hover launcher settings gear now points at `gokaboom.dev/docs` and the Kaboom repo, and tracked-tab-loss guidance tells users to reopen the Kaboom popup.
 - Draw-mode recovery warnings from the hover launcher now use Kaboom copy when the extension was reloaded or the draw bundle is unavailable.

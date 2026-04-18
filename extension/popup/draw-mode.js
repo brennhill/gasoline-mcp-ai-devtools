@@ -7,6 +7,7 @@
  * @fileoverview Draw Mode Button Module for Popup
  * Manages the draw mode activation button and error handling.
  */
+import { requestWorkspaceNoteMode } from '../lib/workspace-actions.js';
 function showDrawModeError(label, message) {
     label.textContent = message;
     label.style.color = '#f85149';
@@ -42,16 +43,21 @@ export function setupDrawModeButton() {
                 return;
             }
             label.textContent = 'Starting...';
-            chrome.tabs.sendMessage(tab.id, { type: 'kaboom_draw_mode_start', started_by: 'user' }, (resp) => {
+            requestWorkspaceNoteMode(tab.id)
+                .then((resp) => {
+                const response = resp;
                 if (chrome.runtime.lastError) {
                     showDrawModeError(label, 'Content script not loaded — try refreshing the page');
                     return;
                 }
-                if (resp?.error) {
-                    showDrawModeError(label, resp.message || 'Draw mode failed');
+                if (response?.error) {
+                    showDrawModeError(label, response.message || 'Draw mode failed');
                     return;
                 }
                 window.close();
+            })
+                .catch(() => {
+                showDrawModeError(label, 'Content script not loaded — try refreshing the page');
             });
         });
     });

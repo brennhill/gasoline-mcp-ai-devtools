@@ -113,28 +113,28 @@ func FormatIssueBody(report IssueReport) string {
 
 	b.WriteString("## Diagnostics\n\n")
 	b.WriteString("### Server\n\n")
-	b.WriteString(fmt.Sprintf("- **Version:** %s\n", report.Diagnostics.Server.Version))
-	b.WriteString(fmt.Sprintf("- **Uptime:** %.0fs\n", report.Diagnostics.Server.UptimeSeconds))
-	b.WriteString(fmt.Sprintf("- **Total calls:** %d\n", report.Diagnostics.Server.TotalCalls))
-	b.WriteString(fmt.Sprintf("- **Total errors:** %d\n", report.Diagnostics.Server.TotalErrors))
-	b.WriteString(fmt.Sprintf("- **Error rate:** %.1f%%\n", report.Diagnostics.Server.ErrorRatePct))
+	fmt.Fprintf(&b, "- **Version:** %s\n", report.Diagnostics.Server.Version)
+	fmt.Fprintf(&b, "- **Uptime:** %.0fs\n", report.Diagnostics.Server.UptimeSeconds)
+	fmt.Fprintf(&b, "- **Total calls:** %d\n", report.Diagnostics.Server.TotalCalls)
+	fmt.Fprintf(&b, "- **Total errors:** %d\n", report.Diagnostics.Server.TotalErrors)
+	fmt.Fprintf(&b, "- **Error rate:** %.1f%%\n", report.Diagnostics.Server.ErrorRatePct)
 
 	b.WriteString("\n### Extension\n\n")
-	b.WriteString(fmt.Sprintf("- **Connected:** %t\n", report.Diagnostics.Extension.Connected))
+	fmt.Fprintf(&b, "- **Connected:** %t\n", report.Diagnostics.Extension.Connected)
 	if report.Diagnostics.Extension.Source != "" {
-		b.WriteString(fmt.Sprintf("- **Source:** %s\n", report.Diagnostics.Extension.Source))
+		fmt.Fprintf(&b, "- **Source:** %s\n", report.Diagnostics.Extension.Source)
 	}
 
 	b.WriteString("\n### Platform\n\n")
-	b.WriteString(fmt.Sprintf("- **OS:** %s/%s\n", report.Diagnostics.Platform.OS, report.Diagnostics.Platform.Arch))
-	b.WriteString(fmt.Sprintf("- **Go:** %s\n", report.Diagnostics.Platform.GoVersion))
+	fmt.Fprintf(&b, "- **OS:** %s/%s\n", report.Diagnostics.Platform.OS, report.Diagnostics.Platform.Arch)
+	fmt.Fprintf(&b, "- **Go:** %s\n", report.Diagnostics.Platform.GoVersion)
 
 	b.WriteString("\n### Buffers\n\n")
-	b.WriteString(fmt.Sprintf("- **Console:** %d entries\n", report.Diagnostics.Buffers.ConsoleEntries))
-	b.WriteString(fmt.Sprintf("- **Network:** %d entries\n", report.Diagnostics.Buffers.NetworkEntries))
-	b.WriteString(fmt.Sprintf("- **Actions:** %d entries\n", report.Diagnostics.Buffers.ActionEntries))
+	fmt.Fprintf(&b, "- **Console:** %d entries\n", report.Diagnostics.Buffers.ConsoleEntries)
+	fmt.Fprintf(&b, "- **Network:** %d entries\n", report.Diagnostics.Buffers.NetworkEntries)
+	fmt.Fprintf(&b, "- **Actions:** %d entries\n", report.Diagnostics.Buffers.ActionEntries)
 
-	b.WriteString(fmt.Sprintf("\n---\n*Filed via `configure(what=\"report_issue\")` | template: %s*\n", report.Template))
+	fmt.Fprintf(&b, "\n---\n*Filed via `configure(what=\"report_issue\")` | template: %s*\n", report.Template)
 
 	return b.String()
 }

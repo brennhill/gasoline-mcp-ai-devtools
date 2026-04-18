@@ -1,20 +1,20 @@
 ---
 doc_type: flow_map
 status: active
-last_reviewed: 2026-03-28
+last_reviewed: 2026-04-18
 owners:
   - Brenn
-last_verified_version: 0.8.1
-last_verified_date: 2026-03-28
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # Terminal Side Panel Host and Launcher Coordination
 
 ## Scope
 
-This flow covers the terminal side panel host, the page hover launcher terminal button, the workspace-group resolver that decides which tab should host the panel, and the bridge that keeps launcher visibility in sync with side panel open/closed state.
+This flow covers the low-level terminal host inside the broader workspace sidebar: terminal-pane boot, PTY lifecycle, workspace-group routing, and the bridge that keeps launcher visibility in sync with side panel open/closed state.
 
-The terminal server isolation flow remains a separate concern and is still documented in [Terminal Server Isolation](./terminal-server-isolation.md).
+The higher-level QA shell around the terminal is documented in [Workspace Sidebar QA Shell](./workspace-sidebar-qa-shell.md). Terminal server isolation remains separate in [Terminal Server Isolation](./terminal-server-isolation.md).
 
 ## Entrypoints
 
@@ -29,14 +29,14 @@ The terminal server isolation flow remains a separate concern and is still docum
 
 ## Primary Flow
 
-1. The user clicks the terminal button in the tracked hover launcher.
+1. The user clicks the workspace button in the tracked hover launcher.
 2. The content script sends `open_terminal_panel` to the background worker.
 3. The background worker resolves the Kaboom work context:
    - if a workspace tab group already exists, it uses that group
    - if the tracked tab is ungrouped, it creates a named Kaboom tab group around it
    - if the request came from outside the workspace group, it activates the main workspace tab and opens there
 4. The background worker calls `chrome.sidePanel.open()` immediately in that same user-gesture path for the resolved workspace host tab; any `setOptions()` work is best-effort and must not block the open call.
-5. The side panel page boots, validates or restores the singleton terminal session, and renders the terminal shell at full panel height.
+5. The side panel page boots, validates or restores the singleton terminal session, mounts the workspace shell, and renders the terminal pane inside the workspace terminal region.
 6. The side panel writes `TERMINAL_UI_STATE` to session storage as `open`, `minimized`, or `closed`.
 7. The launcher bridge observes that state and hides the hover overlay only while the panel is open.
 8. `minimizePanel()` closes the browser side panel but preserves `TERMINAL_SESSION`.
@@ -64,10 +64,15 @@ The terminal server isolation flow remains a separate concern and is still docum
 
 - `src/lib/brand.ts`
 - `src/content/ui/tracked-hover-launcher.ts`
+- `src/lib/workspace-actions.ts`
 - `src/content/ui/terminal-panel-bridge.ts`
 - `src/background/message-handlers.ts`
 - `src/background/tab-state.ts`
+- `src/background/workspace-status.ts`
 - `src/sidepanel.ts`
+- `src/sidepanel/workspace-shell.ts`
+- `src/sidepanel/workspace-status.ts`
+- `src/sidepanel/workspace-terminal-pane.ts`
 - `src/content/ui/terminal-widget-session.ts`
 - `src/content/ui/terminal-widget-types.ts`
 - `src/content/ui/terminal-widget-ui.ts`
@@ -79,6 +84,8 @@ The terminal server isolation flow remains a separate concern and is still docum
 - `tests/extension/brand-metadata.test.js`
 - `tests/extension/tracked-hover-launcher.test.js`
 - `tests/extension/sidepanel-terminal.test.js`
+- `tests/extension/workspace-sidebar.test.js`
+- `tests/extension/workspace-status.test.js`
 - `tests/extension/terminal-widget-session-branding.test.js`
 - `tests/extension/terminal-widget-ui-branding.test.js`
 - `tests/extension/message-handlers.test.js`

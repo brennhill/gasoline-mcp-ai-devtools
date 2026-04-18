@@ -163,7 +163,6 @@ func TestHandleTestPagesSpecialEndpoints(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.path, func(t *testing.T) {
 			t.Parallel()
 			rr := httptest.NewRecorder()

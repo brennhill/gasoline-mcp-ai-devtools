@@ -181,16 +181,7 @@ func detectPeriodicity(groups []LogGroup) {
 }
 
 func logEntryToAnomaly(e logEntryView) LogAnomaly {
-	return LogAnomaly{
-		Level:   e.Level,
-		Message: e.Message,
-		Source:  e.Source,
-		URL:     e.URL,
-		Line:    e.Line,
-		Column:  e.Column,
-		TS:      e.TS,
-		TabID:   e.TabID,
-	}
+	return LogAnomaly(e)
 }
 
 func resolveSources(counts map[string]int) (primary string, all []string) {

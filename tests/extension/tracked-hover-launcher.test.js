@@ -326,6 +326,30 @@ describe('tracked hover launcher', () => {
     assert.ok(sentTypes.includes('capture_screenshot'))
   })
 
+  test('screenshot action shows the failure flash when the shared screenshot helper rejects', async () => {
+    runtimeSendMessage = mock.fn((message, callback) => {
+      if (message?.type === 'capture_screenshot') {
+        callback?.({ success: false })
+        return Promise.reject(new Error('capture failed'))
+      }
+      callback?.({})
+      return Promise.resolve({})
+    })
+    chrome.runtime.sendMessage = runtimeSendMessage
+
+    await setTrackedHoverLauncherEnabled(true)
+
+    const root = elementsById['kaboom-tracked-hover-launcher']
+    const screenshotButton = findElementByTitlePrefix(root, 'Screenshot')
+    assert.ok(screenshotButton, 'expected screenshot button')
+
+    const baselineFlashCount = document.documentElement.appendChild.mock.calls.length
+    screenshotButton.dispatch('click')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    assert.ok(document.documentElement.appendChild.mock.calls.length > baselineFlashCount)
+  })
+
   test('audit action uses Audit wording and opens the shared audit workflow', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
@@ -356,7 +380,7 @@ describe('tracked hover launcher', () => {
     assert.ok(sentTypes.includes('screen_recording_stop'))
   })
 
-  test('annotate action warns with Kaboom copy when extension context is invalidated', async () => {
+  test('annotate action warns with KaBOOM! copy when extension context is invalidated', async () => {
     await setTrackedHoverLauncherEnabled(true)
     const warn = mock.method(console, 'warn', () => {})
     globalThis.chrome.runtime.getURL = undefined
@@ -369,11 +393,11 @@ describe('tracked hover launcher', () => {
 
     assert.strictEqual(warn.mock.calls.length, 1)
     const message = warn.mock.calls[0].arguments[0]
-    assert.match(message, /Kaboom/)
+    assert.match(message, /KaBOOM!/)
     assert.doesNotMatch(message, /Gasoline|STRUM/)
   })
 
-  test('annotate action warns with Kaboom copy when draw-mode module load fails', async () => {
+  test('annotate action warns with KaBOOM! copy when draw-mode module load fails', async () => {
     await setTrackedHoverLauncherEnabled(true)
     const warn = mock.method(console, 'warn', () => {})
 
@@ -386,7 +410,7 @@ describe('tracked hover launcher', () => {
 
     assert.strictEqual(warn.mock.calls.length, 1)
     const message = warn.mock.calls[0].arguments[0]
-    assert.match(message, /Kaboom/)
+    assert.match(message, /KaBOOM!/)
     assert.match(message, /chrome:\/\/extensions/)
     assert.doesNotMatch(message, /Gasoline|STRUM/)
   })
@@ -415,10 +439,10 @@ describe('tracked hover launcher', () => {
     const toggle = elementsById['kaboom-tracked-hover-toggle']
     const settingsButton = findElementByTitlePrefix(root, 'Settings')
     assert.ok(settingsButton)
-    assert.strictEqual(toggle?.title, 'Kaboom quick actions')
+    assert.strictEqual(toggle?.title, 'KaBOOM! quick actions')
     settingsButton.dispatch('click')
 
-    const hideButton = findElementWithChildText(root, 'Hide Kaboom Devtool')
+    const hideButton = findElementWithChildText(root, 'Hide KaBOOM! Devtool')
     assert.ok(hideButton, 'expected hide button')
     hideButton.dispatch('click')
 
@@ -430,30 +454,27 @@ describe('tracked hover launcher', () => {
     assert.strictEqual(storageData[sharedStorageKey], undefined, 'reshow should clear persisted hidden state')
   })
 
-  test('terminal action opens the side panel', async () => {
+  test('workspace action opens the qa workspace through the existing side panel contract', async () => {
     await setTrackedHoverLauncherEnabled(true)
 
     const root = elementsById['kaboom-tracked-hover-launcher']
-    const terminalButton = findElementByTitlePrefix(root, 'Terminal')
-    assert.ok(terminalButton, 'expected terminal button')
+    const workspaceButton = findElementByTitle(root, 'Workspace — open the QA workspace')
+    assert.ok(workspaceButton, 'expected workspace button')
 
-    terminalButton.dispatch('click')
+    workspaceButton.dispatch('click')
 
-    const sentTypes = runtimeSendMessage.mock.calls.map((call) => call.arguments[0]?.type)
-    assert.ok(sentTypes.includes('open_terminal_panel'))
+    assert.deepStrictEqual(runtimeSendMessage.mock.calls[0].arguments[0], { type: 'open_terminal_panel' })
   })
 
-  test('launcher returns when terminal session is minimized and hides only while panel is open', async () => {
+  test('launcher hides while the workspace is open and remounts when it closes', async () => {
     await setTrackedHoverLauncherEnabled(true)
     assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher should start mounted')
 
-    await chrome.storage.session.set({ [terminalUiStateKey]: 'open' })
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    emitStorageChange('session', terminalUiStateKey, 'closed', 'open')
     assert.strictEqual(elementsById['kaboom-tracked-hover-launcher'], undefined, 'launcher should hide while the side panel is open')
 
-    await chrome.storage.session.set({ [terminalUiStateKey]: 'minimized' })
-    await new Promise((resolve) => setTimeout(resolve, 10))
-    assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher should return when the side panel is minimized')
+    emitStorageChange('session', terminalUiStateKey, 'open', 'closed')
+    assert.ok(elementsById['kaboom-tracked-hover-launcher'], 'launcher should remount after the workspace closes')
   })
 
   test('persisted hidden state suppresses launcher after module reload until popup signal', async () => {

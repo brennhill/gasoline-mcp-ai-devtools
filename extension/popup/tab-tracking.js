@@ -69,8 +69,8 @@ function showTrackingState(btn, trackedTabUrl, trackedTabId) {
     if (trackingBarAudit) {
         trackingBarAudit.textContent = 'Audit';
         trackingBarAudit.style.display = 'inline-flex';
-        trackingBarAudit.onclick = () => {
-            void handleAuditClick(trackedTabUrl);
+        trackingBarAudit.onclick = async () => {
+            await handleAuditClick(trackedTabUrl);
         };
     }
     if (trackingBarStop) {

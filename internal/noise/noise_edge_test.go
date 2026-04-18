@@ -497,7 +497,9 @@ func TestListRules_ReturnsCopy(t *testing.T) {
 
 	rules := nc.ListRules()
 	originalLen := len(rules)
-	rules = append(rules, NoiseRule{ID: "injected"})
+	// Intentionally mutate the returned slice to verify ListRules copies — the
+	// appended slice is discarded; we only care about the side-effect (or lack of one).
+	_ = append(rules, NoiseRule{ID: "injected"})
 
 	fresh := nc.ListRules()
 	if len(fresh) != originalLen {

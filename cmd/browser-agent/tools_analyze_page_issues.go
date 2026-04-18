@@ -123,9 +123,7 @@ func (h *ToolHandler) prefetchSharedData(tabURL string) sharedPageData {
 	logEntries := make([]LogEntry, len(h.server.logs.entries))
 	copy(logEntries, h.server.logs.entries)
 	consoleEntries := make([]security.LogEntry, len(h.server.logs.entries))
-	for i, e := range h.server.logs.entries {
-		consoleEntries[i] = security.LogEntry(e)
-	}
+	copy(consoleEntries, h.server.logs.entries)
 	h.server.logs.mu.RUnlock()
 
 	return sharedPageData{

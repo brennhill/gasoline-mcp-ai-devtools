@@ -192,11 +192,7 @@ func (h *ToolHandler) HandleToolCall(req JSONRPCRequest, name string, args json.
 	// Usage tracker: per-call telemetry beaconed immediately + aggregated every 5 min.
 	// Separate from healthMetrics — different lifecycle and purpose.
 	if h.usageTracker != nil {
-		key := usageKey(args)
-		if key == "" {
-			key = "unknown"
-		}
-		h.usageTracker.RecordToolCall(name+":"+key, time.Since(start), resp.Error != nil || resultIsError)
+		h.usageTracker.RecordToolCall(name+":"+usageKey(name, args), time.Since(start), resp.Error != nil || resultIsError)
 	}
 
 	return resp, true
@@ -229,33 +225,110 @@ func extractWhatParam(args json.RawMessage) string {
 	return parsed.What
 }
 
+// toolAliasPrecedence mirrors each tool's deprecated-alias fallback order as declared
+// in its aliasParams (tool_dispatch_helpers.go, tools_configure.go, tools_generate.go,
+// tools_interact_dispatch.go). Telemetry must read aliases in the same order the
+// dispatcher does; otherwise the key we log can name a different mode than the one
+// that actually ran when a caller sends multiple alias fields at once.
+var toolAliasPrecedence = map[string][]string{
+	"observe":   {"mode", "action"},
+	"analyze":   {"mode", "action"},
+	"configure": {"mode", "action"},
+	"generate":  {"format", "action"},
+	"interact":  {"action"},
+}
+
 // usageKey builds the analytics key from tool args.
 // For command_result calls, extracts the original command prefix from correlation_id
 // (e.g. "nav_17083_123" → "command_result:nav") so analytics map back to the original action.
 // For all other calls, returns the "what" param as-is.
-func usageKey(args json.RawMessage) string {
+//
+// Alias handling: the dispatcher accepts deprecated aliases ("action", "mode", "format")
+// in place of "what" for backward compat. The precedence is per-tool (see
+// toolAliasPrecedence); telemetry follows the same order so the recorded mode matches
+// what dispatch actually ran. When a caller uses an alias, we tag the key as
+// "legacy_<alias>:<value>" so the dashboard can identify clients still on the
+// deprecated shape without double-counting into the canonical bucket.
+//
+// When no mode can be determined, returns a reason-tagged sentinel so dashboards
+// can distinguish genuine caller bugs (missing_what) from transport errors (parse_error)
+// or absent payloads (no_args). Previously this returned "" and the caller tagged it
+// as "unknown", which obscured why the signal was missing.
+func usageKey(toolName string, args json.RawMessage) string {
 	if len(args) == 0 {
-		return ""
+		return "unknown_no_args"
 	}
-	var parsed struct {
-		What          string `json:"what"`
-		CorrelationID string `json:"correlation_id"`
+	var parsed map[string]any
+	if err := json.Unmarshal(args, &parsed); err != nil || parsed == nil {
+		// nil parsed handles `null` specifically — valid JSON, no fields.
+		if err != nil {
+			return "unknown_parse_error"
+		}
+		return "unknown_missing_what"
 	}
-	if json.Unmarshal(args, &parsed) != nil {
-		return ""
+	mode, aliasField := stringField(parsed, "what"), ""
+	if mode == "" {
+		for _, field := range toolAliasPrecedence[toolName] {
+			if v := stringField(parsed, field); v != "" {
+				mode, aliasField = v, field
+				break
+			}
+		}
 	}
-	if parsed.What != "command_result" {
-		return parsed.What
+	if mode == "" {
+		return "unknown_missing_what"
 	}
-	// Extract the command prefix from correlation_id (format: prefix_timestamp_random).
-	if parsed.CorrelationID == "" {
+	if mode != "command_result" {
+		if aliasField != "" {
+			return "legacy_" + aliasField + ":" + mode
+		}
+		return mode
+	}
+	// Extract the command prefix from correlation_id.
+	// Format: <prefix>_<timestamp_digits>_<random_digits> where <prefix> may itself
+	// contain underscores (e.g. "execute_js", "dom_auto_dismiss_overlays").
+	// Strategy: strip the trailing two numeric segments; otherwise keep the full id.
+	correlationID := stringField(parsed, "correlation_id")
+	if correlationID == "" {
 		return "command_result"
 	}
-	prefix := parsed.CorrelationID
-	if idx := strings.IndexByte(prefix, '_'); idx > 0 {
-		prefix = prefix[:idx]
+	return "command_result:" + stripCorrelationIDSuffix(correlationID)
+}
+
+// stringField returns the string value for key k in m, or "" if absent or not a string.
+func stringField(m map[string]any, k string) string {
+	if s, ok := m[k].(string); ok {
+		return s
 	}
-	return "command_result:" + prefix
+	return ""
+}
+
+// stripCorrelationIDSuffix removes the trailing "_<digits>_<digits>" suffix used
+// for timestamp+random disambiguation, preserving prefixes that themselves contain
+// underscores. If the trailing segments are not both numeric, returns the id verbatim.
+func stripCorrelationIDSuffix(id string) string {
+	parts := strings.Split(id, "_")
+	if len(parts) < 3 {
+		return id
+	}
+	last := parts[len(parts)-1]
+	secondLast := parts[len(parts)-2]
+	if !isAllDigits(last) || !isAllDigits(secondLast) {
+		return id
+	}
+	return strings.Join(parts[:len(parts)-2], "_")
+}
+
+func isAllDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (h *ToolHandler) ensureToolSchemas() {

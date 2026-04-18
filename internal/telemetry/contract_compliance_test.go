@@ -150,6 +150,9 @@ func TestContract_AppErrorClassifiesNewCategories(t *testing.T) {
 		{"bridge_spawn_start_error", "internal", "fatal", "bridge", false},
 		{"bridge_spawn_timeout", "internal", "error", "bridge", true},
 		{"bridge_exit_error", "internal", "error", "bridge", false},
+		{"bridge_parse_error", "internal", "error", "bridge", false},
+		{"bridge_method_not_found", "integration", "warning", "bridge", false},
+		{"bridge_stdin_error", "internal", "error", "bridge", false},
 		// New: extension/install errors
 		{"extension_disconnect", "integration", "warning", "extension", false},
 		{"install_config_error", "internal", "error", "installer", false},

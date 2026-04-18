@@ -262,7 +262,6 @@ func TestCommandResult_InteractFailureCodesIncludeRecoveryRetryGuidance(t *testi
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			env := newInteractTestEnv(t)
 			env.capture.SetPilotEnabled(true)

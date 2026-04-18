@@ -51,7 +51,6 @@ func runNoCursorPaginationCases[T any](
 ) {
 	t.Helper()
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			result, metadata, err := paginate("", "", tt.limit, false)
 			if err != nil {
@@ -93,7 +92,6 @@ func runAfterCursorPaginationCases[T any](
 ) {
 	t.Helper()
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			result, metadata, err := paginate(tt.afterCursor, "", tt.limit, false)
 			if err != nil {
@@ -128,7 +126,6 @@ func runBeforeCursorPaginationCases[T any](
 ) {
 	t.Helper()
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			result, metadata, err := paginate("", tt.beforeCursor, tt.limit, false)
 			if err != nil {
@@ -193,7 +190,6 @@ func runCursorExpiredPaginationCases[T any](
 ) {
 	t.Helper()
 	for _, tt := range cases {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			result, metadata, err := paginate(tt.afterCursor, "", tt.limit, tt.restartOnEviction)
 

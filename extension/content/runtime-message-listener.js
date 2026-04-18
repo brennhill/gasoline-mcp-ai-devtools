@@ -2,6 +2,7 @@
 import { KABOOM_LOG_PREFIX } from '../lib/brand.js';
 import { SettingName } from '../lib/constants.js';
 import { isValidBackgroundSender, handlePing, handleToggleMessage, forwardHighlightMessage, handleStateCommand, handleExecuteJs, handleExecuteQuery, handleA11yQuery, handleDomQuery, handleGetNetworkWaterfall, handleLinkHealthQuery, handleComputedStylesQuery, handleFormDiscoveryQuery, handleFormStateQuery, handleDataTableQuery, handleGetReadable, handleGetMarkdown, handlePageSummary } from './message-handlers.js';
+import { handleWorkspaceStatusQuery } from './workspace-status.js';
 import { showActionToast } from './ui/toast.js';
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js';
 import { toggleChatWidget } from './ui/chat-widget.js';
@@ -122,7 +123,8 @@ export function initRuntimeMessageListener() {
         data_table_query: (msg, sr) => handleDataTableQuery((msg.params ?? {}), sr),
         kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
         kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
-        kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
+        kaboom_page_summary: (_msg, sr) => handlePageSummary(sr),
+        kaboom_get_workspace_status: (_msg, sr) => handleWorkspaceStatusQuery(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!isValidBackgroundSender(sender)) {

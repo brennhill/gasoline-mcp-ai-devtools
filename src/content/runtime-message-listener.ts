@@ -33,6 +33,7 @@ import {
   handleGetMarkdown,
   handlePageSummary
 } from './message-handlers.js'
+import { handleWorkspaceStatusQuery } from './workspace-status.js'
 import { showActionToast } from './ui/toast.js'
 import { showSubtitle, toggleRecordingWatermark } from './ui/subtitle.js'
 import { toggleChatWidget } from './ui/chat-widget.js'
@@ -168,7 +169,8 @@ export function initRuntimeMessageListener(): void {
     data_table_query: (msg, sr) => handleDataTableQuery((msg.params ?? {}) as Record<string, unknown>, sr),
     kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
     kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
-    kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
+    kaboom_page_summary: (_msg, sr) => handlePageSummary(sr),
+    kaboom_get_workspace_status: (_msg, sr) => handleWorkspaceStatusQuery(sr)
   }
 
   chrome.runtime.onMessage.addListener(

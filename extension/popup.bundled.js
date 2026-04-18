@@ -758,6 +758,24 @@
     });
   }
 
+  // extension/lib/workspace-actions.js
+  async function openWorkspace() {
+    await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+  }
+  async function requestWorkspaceAudit(pageUrl) {
+    try {
+      await openWorkspace();
+    } catch {
+    }
+    await chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: pageUrl });
+  }
+  async function requestWorkspaceNoteMode(tabId) {
+    return await chrome.tabs.sendMessage(tabId, {
+      type: "kaboom_draw_mode_start",
+      started_by: "user"
+    });
+  }
+
   // extension/popup/draw-mode.js
   function showDrawModeError(label, message) {
     label.textContent = message;
@@ -790,16 +808,19 @@
           return;
         }
         label.textContent = "Starting...";
-        chrome.tabs.sendMessage(tab.id, { type: "kaboom_draw_mode_start", started_by: "user" }, (resp) => {
+        requestWorkspaceNoteMode(tab.id).then((resp) => {
+          const response = resp;
           if (chrome.runtime.lastError) {
             showDrawModeError(label, "Content script not loaded \u2014 try refreshing the page");
             return;
           }
-          if (resp?.error) {
-            showDrawModeError(label, resp.message || "Draw mode failed");
+          if (response?.error) {
+            showDrawModeError(label, response.message || "Draw mode failed");
             return;
           }
           window.close();
+        }).catch(() => {
+          showDrawModeError(label, "Content script not loaded \u2014 try refreshing the page");
         });
       });
     });
@@ -1097,11 +1118,7 @@
 
   // extension/lib/request-audit.js
   async function requestAudit(pageUrl) {
-    try {
-      await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
-    } catch {
-    }
-    await chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: pageUrl });
+    await requestWorkspaceAudit(pageUrl);
   }
 
   // extension/popup/tab-tracking-api.js
@@ -1243,8 +1260,8 @@
     if (trackingBarAudit) {
       trackingBarAudit.textContent = "Audit";
       trackingBarAudit.style.display = "inline-flex";
-      trackingBarAudit.onclick = () => {
-        void handleAuditClick(trackedTabUrl);
+      trackingBarAudit.onclick = async () => {
+        await handleAuditClick(trackedTabUrl);
       };
     }
     if (trackingBarStop) {

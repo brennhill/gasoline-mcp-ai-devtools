@@ -2,11 +2,11 @@
 doc_type: product_spec
 feature_id: feature-terminal
 status: shipped
-last_reviewed: 2026-03-28
+last_reviewed: 2026-04-18
 owners:
   - Brenn
-last_verified_version: 0.8.1
-last_verified_date: 2026-03-28
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-18
 ---
 
 # Product Spec
@@ -20,7 +20,8 @@ Provide a reliable terminal side panel for Kaboom users that stays usable during
 - Terminal side panel UI with open/minimized/closed states.
 - One Kaboom work context maps to one Chrome tab group.
 - Hover launcher remains the page overlay for quick actions on tracked workspace pages, but the terminal button opens the side panel on the active workspace tab and hides the launcher only while the panel is open.
-- The current side panel rollout is terminal-only so the terminal can use the full panel height.
+- QA-first workspace shell around the existing terminal: summary strip, shared action row, dominant terminal pane, and lightweight status area.
+- Mixed context injection: page context auto-injects on workspace open and major page changes, audit completion injects a short summary, and a manual inject action stays available in the workspace shell.
 - Dedicated terminal HTTP server on `main_port + 1`.
 - PTY-backed singleton terminal session across tabs.
 - Typing-aware queue guard for auto-writes from annotation workflows.
@@ -29,6 +30,7 @@ Provide a reliable terminal side panel for Kaboom users that stays usable during
 ## User Outcomes
 
 - Users get one consistent Kaboom workspace instead of a terminal that appears attached to unrelated tabs.
+- Users can see lightweight SEO, accessibility, performance, and session state before running a full audit.
 - Users can keep terminal context visible in the side panel while interacting with tabs inside the active workspace group.
 - Auto-generated terminal commands do not interrupt active typing.
 - Terminal sessions survive page refreshes and reconnect cleanly.
@@ -41,7 +43,7 @@ Provide a reliable terminal side panel for Kaboom users that stays usable during
 - Cloud terminal hosting (all terminal behavior is local-first).
 - Replacing full IDE terminal features.
 - Full tab-group migration of every tracked-tab feature in the extension. The initial rollout only moves terminal workspace ownership and panel targeting to the tab-group model.
-- Shipping the action-builder palette in this rollout. The upper panel area is intentionally deferred.
+- Shipping a deep in-panel evidence/history dashboard in this rollout. The shell stays intentionally lightweight.
 
 ## Linked Specs
 
@@ -49,4 +51,4 @@ Provide a reliable terminal side panel for Kaboom users that stays usable during
 - QA Plan: [qa-plan.md](./qa-plan.md)
 - Feature Index: [index.md](./index.md)
 - Flow Map Pointer: [flow-map.md](./flow-map.md)
-- Canonical Flow Map: [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)
+- Canonical Flow Maps: [workspace-sidebar-qa-shell.md](../../../architecture/flow-maps/workspace-sidebar-qa-shell.md), [terminal-server-isolation.md](../../../architecture/flow-maps/terminal-server-isolation.md)

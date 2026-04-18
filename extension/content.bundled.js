@@ -1313,6 +1313,156 @@
     return false;
   }
 
+  // extension/content/workspace-status.js
+  function clampScore(score) {
+    return Math.max(0, Math.min(100, Math.round(score)));
+  }
+  function metricStateFromScore(score) {
+    return score >= 80 ? "healthy" : "needs_attention";
+  }
+  function buildMetric(label, score, source = "heuristic") {
+    const normalized = clampScore(score);
+    return {
+      label,
+      score: normalized,
+      state: metricStateFromScore(normalized),
+      source
+    };
+  }
+  function buildUnavailableMetric(label) {
+    return {
+      label,
+      score: null,
+      state: "unavailable",
+      source: "unavailable"
+    };
+  }
+  function buildUnavailablePerformance() {
+    return {
+      verdict: "not_measured",
+      source: "unavailable"
+    };
+  }
+  function collectSeoMetric(input) {
+    let score = 0;
+    if (input.title.trim())
+      score += 30;
+    if ((input.metaDescription || "").trim())
+      score += 30;
+    if ((input.canonicalUrl || "").trim())
+      score += 20;
+    if (input.headings.some((heading) => heading.trim().length > 0))
+      score += 20;
+    return buildMetric("SEO", score);
+  }
+  function collectAccessibilityMetric(input) {
+    let score = 0;
+    if (input.headings.some((heading) => heading.trim().length > 0))
+      score += 25;
+    const imageCount = input.images.length;
+    const labeledImages = input.images.filter((image) => (image.alt || "").trim().length > 0).length;
+    score += imageCount === 0 ? 35 : 35 * labeledImages / imageCount;
+    const interactiveCount = input.interactiveLabels.length;
+    const labeledInteractive = input.interactiveLabels.filter((label) => label.trim().length > 0).length;
+    score += interactiveCount === 0 ? 40 : 40 * labeledInteractive / interactiveCount;
+    return buildMetric("Accessibility", score);
+  }
+  function collectPerformanceStatus(input) {
+    const domContentLoadedMs = input.navigationTiming?.domContentLoadedMs;
+    const loadMs = input.navigationTiming?.loadMs;
+    if (domContentLoadedMs === void 0 && loadMs === void 0) {
+      return { verdict: "not_measured", source: "unavailable" };
+    }
+    const domMs = domContentLoadedMs ?? loadMs ?? 0;
+    const fullLoadMs = loadMs ?? domMs;
+    if (domMs <= 1500 && fullLoadMs <= 3e3) {
+      return { verdict: "good", source: "heuristic" };
+    }
+    if (domMs <= 3e3 && fullLoadMs <= 5e3) {
+      return { verdict: "mixed", source: "heuristic" };
+    }
+    return { verdict: "poor", source: "heuristic" };
+  }
+  function summarizeRecommendation(seo, accessibility, performance2) {
+    if (seo.state === "healthy" && accessibility.state === "healthy" && performance2.verdict === "good") {
+      return "Run an audit to capture authoritative QA results before shipping.";
+    }
+    if (performance2.verdict === "not_measured") {
+      return "Run an audit to capture performance evidence and confirm page health.";
+    }
+    return "Run an audit to confirm metadata, accessibility, and performance findings.";
+  }
+  function readMetaContent(name) {
+    const selector = `meta[name="${name}"]`;
+    return (document.querySelector(selector)?.getAttribute("content") || "").trim();
+  }
+  function readCanonicalUrl() {
+    return (document.querySelector('link[rel="canonical"]')?.getAttribute("href") || "").trim();
+  }
+  function readHeadingTexts() {
+    return Array.from(document.querySelectorAll("h1, h2, h3")).map((node) => node.textContent || "").map((text) => text.trim()).filter(Boolean);
+  }
+  function readImageAlts() {
+    return Array.from(document.querySelectorAll("img")).map((image) => ({
+      alt: image.getAttribute("alt") || void 0
+    }));
+  }
+  function readInteractiveLabels() {
+    return Array.from(document.querySelectorAll('button, a, input[type="button"], input[type="submit"]')).map((node) => {
+      const explicitLabel = node.getAttribute("aria-label") || node.getAttribute("title") || "";
+      const text = node.textContent || "";
+      return explicitLabel.trim() || text.trim();
+    }).filter(Boolean);
+  }
+  function readNavigationTiming() {
+    const navigationEntry = performance.getEntriesByType("navigation")[0];
+    if (!navigationEntry)
+      return void 0;
+    return {
+      domContentLoadedMs: Math.round(navigationEntry.domContentLoadedEventEnd),
+      loadMs: Math.round(navigationEntry.loadEventEnd)
+    };
+  }
+  function buildInputFromDocument() {
+    return {
+      title: document.title || "",
+      url: location.href,
+      metaDescription: readMetaContent("description"),
+      canonicalUrl: readCanonicalUrl(),
+      headings: readHeadingTexts(),
+      images: readImageAlts(),
+      interactiveLabels: readInteractiveLabels(),
+      navigationTiming: readNavigationTiming()
+    };
+  }
+  function collectWorkspaceStatusHeuristics(input) {
+    const seo = input.url ? collectSeoMetric(input) : buildUnavailableMetric("SEO");
+    const accessibility = input.url ? collectAccessibilityMetric(input) : buildUnavailableMetric("Accessibility");
+    const performance2 = input.url ? collectPerformanceStatus(input) : buildUnavailablePerformance();
+    return {
+      seo,
+      accessibility,
+      performance: performance2,
+      page: {
+        title: input.title,
+        url: input.url,
+        summary: input.headings[0] || input.title || input.url
+      },
+      recommendation: summarizeRecommendation(seo, accessibility, performance2)
+    };
+  }
+  function handleWorkspaceStatusQuery(sendResponse) {
+    try {
+      sendResponse(collectWorkspaceStatusHeuristics(buildInputFromDocument()));
+    } catch (err) {
+      sendResponse({
+        error: "workspace_status_failed",
+        message: errorMessage(err, "Workspace status collection failed")
+      });
+    }
+    return false;
+  }
+
   // extension/content/ui/toast.js
   var TOAST_THEMES = {
     trying: { bg: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)", shadow: "rgba(59, 130, 246, 0.4)" },
@@ -1995,7 +2145,8 @@
       data_table_query: (msg, sr) => handleDataTableQuery(msg.params ?? {}, sr),
       kaboom_get_readable: (_msg, sr) => handleGetReadable(sr),
       kaboom_get_markdown: (_msg, sr) => handleGetMarkdown(sr),
-      kaboom_page_summary: (_msg, sr) => handlePageSummary(sr)
+      kaboom_page_summary: (_msg, sr) => handlePageSummary(sr),
+      kaboom_get_workspace_status: (_msg, sr) => handleWorkspaceStatusQuery(sr)
     };
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (!isValidBackgroundSender(sender)) {
@@ -2114,13 +2265,24 @@
     }
   }
 
-  // extension/lib/request-audit.js
-  async function requestAudit(pageUrl) {
+  // extension/lib/workspace-actions.js
+  async function openWorkspace() {
+    await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+  }
+  async function requestWorkspaceAudit(pageUrl) {
     try {
-      await chrome.runtime.sendMessage({ type: "open_terminal_panel" });
+      await openWorkspace();
     } catch {
     }
     await chrome.runtime.sendMessage({ type: "qa_scan_requested", page_url: pageUrl });
+  }
+  async function requestWorkspaceScreenshot() {
+    return await chrome.runtime.sendMessage({ type: "capture_screenshot" });
+  }
+
+  // extension/lib/request-audit.js
+  async function requestAudit(pageUrl) {
+    await requestWorkspaceAudit(pageUrl);
   }
 
   // extension/content/ui/terminal-panel-bridge.js
@@ -2443,7 +2605,7 @@
     }, 120);
     setTimeout(() => flash.remove(), 450);
   }
-  function runScreenshotCapture() {
+  async function runScreenshotCapture() {
     if (!shutterAudioCtx || shutterAudioCtx.state === "closed") {
       try {
         shutterAudioCtx = new AudioContext();
@@ -2451,13 +2613,12 @@
       }
     }
     try {
-      chrome.runtime.sendMessage({ type: "capture_screenshot" }, (response) => {
-        const err = chrome.runtime.lastError;
-        const success = !err && response !== void 0 && response.success !== false;
-        showScreenshotFlash(success);
-        if (success)
-          playShutterSound();
-      });
+      const response = await requestWorkspaceScreenshot();
+      const result = response;
+      const success = result !== void 0 && result.success !== false;
+      showScreenshotFlash(success);
+      if (success)
+        playShutterSound();
     } catch {
       showScreenshotFlash(false);
     }
@@ -2621,16 +2782,16 @@
     const screenshotButton = createActionButton("\u2316", "Screenshot \u2014 capture the current page and send to AI", () => {
       panelPinned = false;
       setPanelOpen(false);
-      runScreenshotCapture();
+      void runScreenshotCapture();
     });
     screenshotButton.style.fontSize = "26px";
     screenshotButton.style.paddingBottom = "5px";
-    const terminalButton = createActionButton("_\u276F", "Terminal \u2014 open the side panel terminal", () => {
+    const workspaceButton = createActionButton("_\u276F", "Workspace \u2014 open the QA workspace", () => {
       panelPinned = false;
       setPanelOpen(false);
       void openTerminalPanel();
     });
-    terminalButton.style.fontSize = "21px";
+    workspaceButton.style.fontSize = "21px";
     const settingsButton = createActionButton("\u2699", "Settings \u2014 docs, GitHub, hide launcher", () => {
       panelPinned = true;
       setSettingsMenuOpen(!settingsMenuOpen);
@@ -2667,7 +2828,7 @@
     panel.appendChild(stopButton);
     panel.appendChild(screenshotButton);
     panel.appendChild(auditButton);
-    panel.appendChild(terminalButton);
+    panel.appendChild(workspaceButton);
     const dotSep = document.createElement("span");
     dotSep.textContent = "\u22EE";
     Object.assign(dotSep.style, {

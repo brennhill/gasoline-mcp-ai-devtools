@@ -53,7 +53,6 @@ func TestBridgeStartupContention_AllClientsConverge(t *testing.T) {
 		})
 	}
 	for _, client := range clients {
-		client := client
 		t.Cleanup(func() {
 			_ = client.stdin.Close()
 			if client.cmd != nil && client.cmd.Process != nil {
@@ -66,7 +65,6 @@ func TestBridgeStartupContention_AllClientsConverge(t *testing.T) {
 	errCh := make(chan error, clientCount)
 	var wg sync.WaitGroup
 	for _, client := range clients {
-		client := client
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

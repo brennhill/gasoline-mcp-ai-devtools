@@ -7,12 +7,8 @@
  * @fileoverview request-audit.ts - Shared runtime helper for launching the Kaboom audit workflow.
  */
 
-export async function requestAudit(pageUrl?: string): Promise<void> {
-  try {
-    await chrome.runtime.sendMessage({ type: 'open_terminal_panel' })
-  } catch {
-    // Best effort: still request the audit workflow even if the side panel failed to open.
-  }
+import { requestWorkspaceAudit } from './workspace-actions.js'
 
-  await chrome.runtime.sendMessage({ type: 'qa_scan_requested', page_url: pageUrl })
+export async function requestAudit(pageUrl?: string): Promise<void> {
+  await requestWorkspaceAudit(pageUrl)
 }

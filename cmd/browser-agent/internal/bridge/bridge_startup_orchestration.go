@@ -25,12 +25,8 @@ func RunMode(port int, logFile string, maxEntries int) {
 		maxEntries: maxEntries,
 	}
 
-	shouldSpawn := true
-
 	// Phase 1: Check if a compatible server is already running.
-	if tryConnectToExisting(state, port) {
-		shouldSpawn = false
-	}
+	shouldSpawn := !tryConnectToExisting(state, port)
 
 	// Phase 2: No server found. Wait for a peer bridge to finish spawning
 	// before we start our own daemon (avoids multi-bridge spawn races).

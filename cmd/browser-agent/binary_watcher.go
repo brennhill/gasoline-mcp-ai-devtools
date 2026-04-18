@@ -162,9 +162,7 @@ func verifyBinaryVersionWithTimeout(path string, timeout time.Duration) (string,
 // Handles "kaboom v0.8.0", "kaboom 0.8.0", "v0.8.0", and "0.8.0".
 func parseVersionOutput(output string) (string, error) {
 	// Try "kaboom v0.8.0" or "kaboom 0.8.0"
-	if strings.HasPrefix(output, "kaboom ") {
-		output = strings.TrimPrefix(output, "kaboom ")
-	}
+	output = strings.TrimPrefix(output, "kaboom ")
 	output = strings.TrimPrefix(output, "v")
 
 	parts := parseVersionParts(output)

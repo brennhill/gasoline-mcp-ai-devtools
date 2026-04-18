@@ -294,10 +294,7 @@ func TestCheckpointResolveTimestampAndHelpers(t *testing.T) {
 }
 
 func serverSnapshotForTests(entries []map[string]any) server.LogSnapshot {
-	typed := make([]gasTypes.LogEntry, 0, len(entries))
-	for _, entry := range entries {
-		typed = append(typed, entry)
-	}
+	typed := append(make([]gasTypes.LogEntry, 0, len(entries)), entries...)
 	return server.LogSnapshot{
 		Entries:    typed,
 		TotalAdded: int64(len(typed)),

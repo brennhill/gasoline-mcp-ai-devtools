@@ -15,6 +15,7 @@ import type { PerformanceSnapshot } from './performance.js';
 import type { LogLevelFilter } from './telemetry.js';
 import type { ConnectionStatus } from './state.js';
 import type { BrowserStateSnapshot, StateAction } from './state.js';
+import type { WorkspaceContentStatusPayload, WorkspaceStatusMode, WorkspaceStatusSnapshot } from './workspace-status.js';
 import type { RuntimeMessageName } from '../lib/constants.js';
 /**
  * Message to get current tab ID
@@ -167,7 +168,7 @@ export interface VersionMismatchMessage {
 /**
  * Union of all background-bound messages
  */
-export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage | DrawModeCaptureScreenshotMessage | DrawModeCompletedMessage | PushChatMessage | ScreenRecordingStartMessage | ScreenRecordingStopMessage | RecordingGestureGrantedMessage | RecordingGestureDeniedMessage | OpenPopupForRecordingMessage | OpenTerminalPanelMessage | QaScanRequestedMessage;
+export type BackgroundMessage = GetTabIdMessage | WsEventMessage | EnhancedActionMessage | NetworkBodyMessage | PerformanceSnapshotMessage | LogMessage | GetStatusMessage | ClearLogsMessage | SetLogLevelMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | GetAiWebPilotEnabledMessage | GetTrackingStateMessage | GetDiagnosticStateMessage | CaptureScreenshotMessage | GetDebugLogMessage | ClearDebugLogMessage | SetServerUrlMessage | DrawModeCaptureScreenshotMessage | DrawModeCompletedMessage | PushChatMessage | ScreenRecordingStartMessage | ScreenRecordingStopMessage | RecordingGestureGrantedMessage | RecordingGestureDeniedMessage | OpenPopupForRecordingMessage | OpenTerminalPanelMessage | GetWorkspaceStatusMessage | QaScanRequestedMessage;
 /**
  * Draw mode: content script requests screenshot capture
  */
@@ -240,10 +241,19 @@ export interface TerminalPanelWriteMessage {
     readonly text: string;
 }
 /**
- * Content script requests the side panel terminal to open.
+ * Sidepanel requests the current workspace status snapshot from background.
  */
-interface OpenTerminalPanelMessage {
-    readonly type: 'open_terminal_panel';
+export interface GetWorkspaceStatusMessage {
+    readonly type: 'get_workspace_status';
+    readonly mode?: WorkspaceStatusMode;
+    readonly tab_id?: number;
+}
+export interface GetWorkspaceStatusResponse extends WorkspaceStatusSnapshot {
+}
+export interface WorkspaceStatusUpdatedMessage {
+    readonly type: 'workspace_status_updated';
+    readonly host_tab_id?: number;
+    readonly snapshot: WorkspaceStatusSnapshot;
 }
 /**
  * User clicked "Audit" in the tracked-site UI.
@@ -254,18 +264,19 @@ export interface QaScanRequestedMessage {
     readonly page_url?: string;
 }
 /**
- * Runtime message forwarded to the side panel terminal host to write text.
- */
-export interface TerminalPanelWriteMessage {
-    readonly type: 'terminal_panel_write';
-    readonly text: string;
-}
-/**
  * Toggle chat widget message (background to content).
  */
 interface ToggleChatMessage {
     readonly type: 'kaboom_toggle_chat';
     readonly client_name?: string;
+}
+/**
+ * Background requests workspace heuristics from the content script.
+ */
+export interface WorkspaceStatusQueryMessage {
+    readonly type: 'kaboom_get_workspace_status';
+}
+export interface WorkspaceStatusQueryResponse extends WorkspaceContentStatusPayload {
 }
 /**
  * Ping message to check if content script is loaded
@@ -449,7 +460,7 @@ export interface ShowTrackedHoverLauncherMessage {
 /**
  * Union of all content-script-bound messages
  */
-export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ComputedStylesQueryMessage | FormDiscoveryQueryMessage | FormStateQueryMessage | DataTableQueryMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | ShowTrackedHoverLauncherMessage | DrawModeStartMessage | DrawModeStopMessage | GetAnnotationsMessage | TrackingStateChangedMessage | ToggleChatMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
+export type ContentMessage = ContentPingMessage | HighlightMessage | ExecuteJsMessage | ExecuteQueryMessage | DomQueryMessage | A11yQueryMessage | GetNetworkWaterfallMessage | LinkHealthMessage | ComputedStylesQueryMessage | FormDiscoveryQueryMessage | FormStateQueryMessage | DataTableQueryMessage | ManageStateMessage | ActionToastMessage | SubtitleMessage | RecordingWatermarkMessage | ShowTrackedHoverLauncherMessage | DrawModeStartMessage | DrawModeStopMessage | GetAnnotationsMessage | TrackingStateChangedMessage | ToggleChatMessage | WorkspaceStatusQueryMessage | SetBooleanSettingMessage | SetWebSocketCaptureModeMessage | SetServerUrlMessage;
 /**
  * Page to content script messages (postMessage types)
  */

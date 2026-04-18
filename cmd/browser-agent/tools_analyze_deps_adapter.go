@@ -22,9 +22,7 @@ func (h *ToolHandler) NetworkWaterfallEntries() []capture.NetworkWaterfallEntry 
 func (h *ToolHandler) ConsoleSecurityEntries() []security.LogEntry {
 	h.server.logs.mu.RLock()
 	entries := make([]security.LogEntry, len(h.server.logs.entries))
-	for i, e := range h.server.logs.entries {
-		entries[i] = security.LogEntry(e)
-	}
+	copy(entries, h.server.logs.entries)
 	h.server.logs.mu.RUnlock()
 	return entries
 }

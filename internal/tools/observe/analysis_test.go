@@ -75,14 +75,7 @@ func TestWaterfallSummaryEntry_CompactFields(t *testing.T) {
 
 func TestWaterfallSummaryEntry_URLTruncation(t *testing.T) {
 	t.Parallel()
-	longURL := "https://example.com/" + string(make([]byte, 100)) // > 80 chars
-	for i := range longURL {
-		if i >= 20 && longURL[i] == 0 {
-			// Fill with 'a' chars after the prefix
-		}
-	}
-	// Build a URL that's definitely > 80 chars
-	longURL = "https://example.com/api/v1/very/long/path/that/exceeds/eighty/characters/limit/and/keeps/going/further"
+	longURL := "https://example.com/api/v1/very/long/path/that/exceeds/eighty/characters/limit/and/keeps/going/further"
 
 	entry := capture.NetworkWaterfallEntry{
 		URL:           longURL,
