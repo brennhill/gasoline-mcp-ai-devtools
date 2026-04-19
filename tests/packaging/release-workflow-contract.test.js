@@ -54,10 +54,11 @@ test('release workflow fails closed and only uploads public release assets', () 
     'dist/checksums.txt'
   ]
 
+  // Order of entries in the workflow's files: block is cosmetic — compare as sets.
   const actualAssets = extractReleaseAssetList(workflow)
   assert.deepStrictEqual(
-    actualAssets,
-    expectedAssets,
+    [...actualAssets].sort(),
+    [...expectedAssets].sort(),
     'release workflow should publish exactly the documented public asset set'
   )
 })

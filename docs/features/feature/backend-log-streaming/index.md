@@ -4,13 +4,12 @@ feature_id: feature-backend-log-streaming
 status: proposed
 feature_type: feature
 owners: []
-last_reviewed: 2026-04-13
+last_reviewed: 2026-04-19
 code_paths:
   - internal/capture/accessor.go
   - internal/capture/buffer_clear.go
   - internal/capture/buffer-types.go
   - internal/capture/capture-struct.go
-  - internal/capture/circuit_breaker.go
   - internal/capture/constants.go
   - internal/capture/debug_logger.go
   - internal/capture/debug.go
@@ -26,7 +25,6 @@ code_paths:
   - internal/capture/http_debug_redaction.go
   - internal/capture/interfaces.go
   - internal/capture/internal-types.go
-  - internal/capture/log-diff.go
   - internal/capture/memory.go
   - internal/capture/network_bodies.go
   - internal/capture/network_waterfall.go
@@ -36,7 +34,6 @@ code_paths:
   - internal/capture/query_dispatcher.go
   - internal/capture/rate_limit.go
   - internal/capture/recording_manager.go
-  - internal/capture/recording.go
   - internal/capture/security-types.go
   - internal/capture/session-types.go
   - internal/capture/settings.go
@@ -67,8 +64,8 @@ test_paths:
   - tests/extension/sync-client.test.js
   - tests/extension/server.test.js
   - tests/extension/background-batching.test.js
-last_verified_version: 0.8.1
-last_verified_date: 2026-04-13
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-19
 ---
 
 # Backend Log Streaming
