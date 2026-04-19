@@ -4,25 +4,21 @@ feature_id: feature-security-hardening
 status: shipped
 feature_type: feature
 owners: []
-last_reviewed: 2026-03-05
+last_reviewed: 2026-04-19
 code_paths:
-  - internal/security/security_diff.go
-  - internal/security/security_diff_compare.go
-  - internal/security/security_diff_snapshot.go
-  - internal/security/security_diff_helpers_headers_cookies.go
-  - internal/security/security_diff_helpers_maps_urls.go
-  - internal/security/security_diff_helpers_summary.go
-  - internal/security/security_diff_tool.go
-  - internal/security/security_config_policy.go
-  - internal/security/security_config_mode.go
-  - internal/security/security_config_audit.go
+  - cmd/browser-agent/internal/toolanalyze/security.go
+  - cmd/browser-agent/internal/toolanalyze/security_summaries.go
+  - cmd/browser-agent/internal/toolgenerate/artifacts_security_impl.go
+  - cmd/browser-agent/internal/toolconfigure/security_mode.go
+  - internal/security/security_scan.go
+  - internal/security/sri_tooling.go
 test_paths:
-  - internal/security/security_diff_test.go
-  - internal/security/security_config_unit_test.go
-  - internal/security/security_boundary_test.go
-  - internal/security/security_config_path_test.go
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+  - cmd/browser-agent/tools_analyze_security_test.go
+  - cmd/browser-agent/tools_generate_csp_test.go
+  - cmd/browser-agent/tools_configure_security_mode_test.go
+  - internal/security/sri_test.go
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-19
 ---
 
 # Security Hardening
@@ -30,8 +26,8 @@ last_verified_date: 2026-03-05
 ## TL;DR
 
 - Status: shipped
-- Tool: configure
-- Mode/Action: security config
+- Tool: analyze, generate, configure
+- Mode/Action: security_audit, third_party_audit, csp, sri, security_mode
 - Location: `docs/features/feature/security-hardening`
 
 ## Specs
@@ -49,8 +45,9 @@ last_verified_date: 2026-03-05
 
 ## Code and Tests
 
-- `internal/security/security_config_policy.go` — manual-only security config mutation guards (`AddToWhitelist`, `SetMinSeverity`, `ClearWhitelist`) with explicit human-review guidance and in-memory audit events.
-- `internal/security/security_config_mode.go` — MCP-mode and interactive-terminal gating flags.
-- `internal/security/security_config_audit.go` — session-scoped in-memory audit trail for security config actions/attempts.
-- `internal/security/security_config_unit_test.go` — manual-only policy and audit-event behavior.
-- `internal/security/security_diff_test.go` — regression/improvement diff coverage with shared snapshot/compare test helpers for consistent setup.
+- `cmd/browser-agent/internal/toolanalyze/security.go` — live `analyze(what:"security_audit"|"third_party_audit")` entrypoints.
+- `cmd/browser-agent/internal/toolgenerate/artifacts_security_impl.go` — live `generate(what:"csp"|"sri")` handlers.
+- `cmd/browser-agent/internal/toolconfigure/security_mode.go` — live `configure(what:"security_mode")` altered-environment toggle.
+- `cmd/browser-agent/tools_analyze_security_test.go` — security audit and third-party audit summary coverage.
+- `cmd/browser-agent/tools_generate_csp_test.go` — CSP generation handler coverage.
+- `cmd/browser-agent/tools_configure_security_mode_test.go` — security mode toggle and confirmation coverage.

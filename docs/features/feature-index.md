@@ -4,11 +4,11 @@ scope: feature/index
 ai-priority: high
 tags: [feature-index, status, navigation, canonical]
 relates-to: [../README.md, feature/]
-last-verified: 2026-03-05
+last-verified: 2026-04-19
 canonical: true
-last_reviewed: 2026-03-05
-last_verified_version: 0.7.12
-last_verified_date: 2026-03-05
+last_reviewed: 2026-04-19
+last_verified_version: 0.8.2
+last_verified_date: 2026-04-19
 ---
 
 # Feature Index
@@ -64,7 +64,7 @@ last_verified_date: 2026-03-05
 | Redaction Patterns | shipped | configure | (data masking) | 5.0.0 | [feature/redaction-patterns](feature/redaction-patterns/) |
 | Reproduction Enhancements | shipped | generate | reproduction, test_from_context, test_heal | 5.0.0 | [feature/reproduction-enhancements](feature/reproduction-enhancements/) |
 | SARIF Export | shipped | generate | sarif | 5.0.0 | [feature/sarif-export](feature/sarif-export/) |
-| Security Hardening | shipped | configure | (security config) | 5.0.0 | [feature/security-hardening](feature/security-hardening/) |
+| Security Hardening | shipped | analyze, generate, configure | security_audit, third_party_audit, csp, sri, security_mode | 0.8.2 | [feature/security-hardening](feature/security-hardening/) |
 | Self-Healing Tests | proposed | observe, generate | (test auto-repair) | — | [feature/self-healing-tests](feature/self-healing-tests/) |
 | Self-Testing | in-progress | interact, generate | execute_js, test_from_context | — | [feature/self-testing](feature/self-testing/) |
 | SPA Route Measurement | in-progress | analyze, observe | performance, timeline | — | [feature/spa-route-measurement](feature/spa-route-measurement/) |
@@ -91,5 +91,5 @@ last_verified_date: 2026-03-05
 | **observe** | errors, logs, extension_logs, network_waterfall, network_bodies, websocket_events, websocket_status, actions, vitals, page, tabs, pilot, timeline, error_bundles, screenshot, command_result, pending_commands, failed_commands, saved_videos, recordings, recording_actions, playback_results, log_diff_report | Read captured browser state |
 | **analyze** | dom, performance, accessibility, error_clusters, history, security_audit, third_party_audit, link_health, link_validation, page_summary, annotations, annotation_detail, api_validation, draw_history, draw_session | Active analysis and audits |
 | **generate** | reproduction, test, pr_summary, har, csp, sri, sarif, visual_test, annotation_report, annotation_issues, test_from_context, test_heal, test_classify | Produce artifacts from captured data |
-| **configure** | store, load, noise_rule, clear, health, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff, telemetry, diff_sessions, audit_log | Session settings and utilities |
+| **configure** | store, load, noise_rule, clear, health, streaming, test_boundary_start, test_boundary_end, recording_start, recording_stop, playback, log_diff, telemetry, diff_sessions, audit_log, security_mode | Session settings and utilities |
 | **interact** | highlight, subtitle, save_state, load_state, list_states, delete_state, execute_js, navigate, refresh, back, forward, new_tab, screenshot, click, type, select, check, get_text, get_value, get_attribute, set_attribute, focus, scroll_to, wait_for, key_press, paste, list_interactive, record_start, record_stop, upload, draw_mode_start | Browser control and automation |

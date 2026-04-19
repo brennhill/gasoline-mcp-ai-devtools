@@ -7,3 +7,6 @@
 .sass-cache/
 .jekyll-cache/
 .jekyll-metadata
+
+# Superpowers drafts and planning docs
+/superpowers/

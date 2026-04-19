@@ -76,6 +76,7 @@ Each flow map should include:
 - [Push Alert Notification Emission](./push-alert-notification-emission.md)
 - [Push Inbox Screenshot Throttle](./push-inbox-screenshot-throttle.md)
 - [Release Asset Contract and SARIF Distribution](./release-asset-contract-and-sarif-distribution.md)
+- [Security Hardening Active Surfaces](./security-hardening-active-surfaces.md)
 - [Terminal Server Isolation](./terminal-server-isolation.md)
 - [Terminal Side Panel Host and Launcher Coordination](./terminal-side-panel-host.md)
 - [Interact Overlay & Selector Improvements](./interact-overlay-selector-improvements.md)
