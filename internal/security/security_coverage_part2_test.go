@@ -94,36 +94,6 @@ func TestCheckSecurityHeaders_SkipsHSTSForLocalhost(t *testing.T) {
 }
 
 // ============================================
-// Security config — securityConfigEditInstruction
-// ============================================
-
-// NOTE: securityConfigPath tests cannot use t.Parallel() because they mutate package-level state.
-
-func TestSecurityConfigEditInstruction_WithPath(t *testing.T) {
-	// Not parallel — mutates package-level securityConfigPath
-	old := securityConfigPath
-	setSecurityConfigPath("/tmp/test-security.json")
-	defer setSecurityConfigPath(old)
-
-	got := securityConfigEditInstruction()
-	if got != "Edit /tmp/test-security.json manually" {
-		t.Errorf("securityConfigEditInstruction() = %q", got)
-	}
-}
-
-func TestSecurityConfigEditInstruction_EmptyPath(t *testing.T) {
-	// Not parallel — mutates package-level securityConfigPath
-	old := securityConfigPath
-	setSecurityConfigPath("")
-	defer setSecurityConfigPath(old)
-
-	got := securityConfigEditInstruction()
-	if got == "" {
-		t.Error("expected non-empty instruction")
-	}
-}
-
-// ============================================
 // looksLikeCreditCard — Luhn algorithm
 // ============================================
 

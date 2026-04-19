@@ -10,8 +10,6 @@ import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 type NetworkBody = capture.NetworkBody
 
 type (
-	Config     = SecurityConfig
-	AuditEvent = SecurityAuditEvent
 	Finding    = SecurityFinding
 	ScanInput  = SecurityScanInput
 	ScanResult = SecurityScanResult
