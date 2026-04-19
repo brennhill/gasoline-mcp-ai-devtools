@@ -1,11 +1,11 @@
 ---
 doc_type: flow_map_index
 status: active
-last_reviewed: 2026-04-13
+last_reviewed: 2026-04-19
 owners:
   - Brenn
 last_verified_version: 0.8.2
-last_verified_date: 2026-04-13
+last_verified_date: 2026-04-19
 ---
 
 # Flow Maps
@@ -75,6 +75,7 @@ Each flow map should include:
 - [Request Session Client Registry and `/clients` Routes](./request-session-client-registry-and-clients-routes.md)
 - [Push Alert Notification Emission](./push-alert-notification-emission.md)
 - [Push Inbox Screenshot Throttle](./push-inbox-screenshot-throttle.md)
+- [Release Asset Contract and SARIF Distribution](./release-asset-contract-and-sarif-distribution.md)
 - [Terminal Server Isolation](./terminal-server-isolation.md)
 - [Terminal Side Panel Host and Launcher Coordination](./terminal-side-panel-host.md)
 - [Interact Overlay & Selector Improvements](./interact-overlay-selector-improvements.md)

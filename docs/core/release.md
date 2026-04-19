@@ -4,13 +4,15 @@ scope: process/release
 ai-priority: high
 tags: [release, process, quality-gates, deployment]
 relates-to: [known-issues.md, docs/core/uat-v5.3-checklist.md]
-last-verified: 2026-02-04
+last-verified: 2026-04-18
 canonical: true
 ---
 
 # Release Process
 
 Kaboom MCP uses a `UNSTABLE` → `stable` branching model with strict quality gates. Every release goes through automated and manual verification before reaching users.
+
+Canonical flow map: [Release Asset Contract and SARIF Distribution](../architecture/flow-maps/release-asset-contract-and-sarif-distribution.md)
 
 ## Branch Model
 
@@ -270,6 +272,29 @@ git push origin stable --follow-tags
 # Cross-platform binaries
 make build
 ```
+
+## GitHub Release Asset Contract
+
+The GitHub release step publishes a fixed public artifact set and fails closed if any expected file is missing.
+
+Public GitHub Release assets:
+
+- `dist/kaboom-agentic-browser-darwin-arm64`
+- `dist/kaboom-agentic-browser-darwin-x64`
+- `dist/kaboom-agentic-browser-linux-arm64`
+- `dist/kaboom-agentic-browser-linux-x64`
+- `dist/kaboom-agentic-browser-win32-x64.exe`
+- `dist/kaboom-hooks-darwin-arm64`
+- `dist/kaboom-hooks-darwin-x64`
+- `dist/kaboom-hooks-linux-arm64`
+- `dist/kaboom-hooks-linux-x64`
+- `dist/kaboom-hooks-win32-x64.exe`
+- `dist/kaboom-extension-v{version}.zip`
+- `dist/checksums.txt`
+
+The release workflow must keep `fail_on_unmatched_files: true` on `softprops/action-gh-release` so missing artifacts block the release instead of silently publishing a partial bundle.
+
+SARIF reports are not GitHub Release assets. Generate them in CI and upload them to GitHub Code Scanning so findings stay in the review/scanning channel instead of the public release bundle.
 
 **NPM:**
 ```bash
