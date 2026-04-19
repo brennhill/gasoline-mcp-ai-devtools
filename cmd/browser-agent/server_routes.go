@@ -111,6 +111,11 @@ func registerCoreRoutes(mux *http.ServeMux, server *Server, cap *capture.Store) 
 		server.handleHealth(w, r, cap)
 	}))
 
+	// NOT MCP — One-click self-update: extension fetches nonce then POSTs /upgrade/install
+	// with it. Fire-and-forget; the installer kills this daemon and the supervisor respawns.
+	mux.HandleFunc("/upgrade/nonce", corsMiddleware(extensionOnly(server.handleUpgradeNonce)))
+	mux.HandleFunc("/upgrade/install", corsMiddleware(extensionOnly(server.handleUpgradeInstall)))
+
 	// NOT MCP — Last-resort altered-environment proxy for CSP-locked debugging sessions.
 	mux.HandleFunc("/insecure-proxy", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		server.handleInsecureProxy(w, r, cap)

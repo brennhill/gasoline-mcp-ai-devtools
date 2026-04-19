@@ -48,15 +48,14 @@ ORANGE='\033[38;5;208m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color (Reset)
 
-# Anonymous install error beacon (disable: KABOOM_TELEMETRY=off).
-# Fire-and-forget, never blocks, never fails the install.
-beacon_error() {
-    local step="${1:-unknown}"
-    if [ "${KABOOM_TELEMETRY:-}" = "off" ]; then return; fi
-    curl -s --max-time 2 -X POST "https://t.gokaboom.dev/v1/event" \
-        -H "Content-Type: application/json" \
-        -d "{\"event\":\"install_error\",\"v\":\"${VERSION:-unknown}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"step\":\"${step}\",\"method\":\"curl\"}}" \
-        > /dev/null 2>&1 || true
+reject_privileged_install_context() {
+    if [ "${SUDO_USER:-}" != "" ] || [ "$(id -u)" -eq 0 ]; then
+        echo -e "${RED}Do not run the Kaboom installer with sudo or as root.${NC}"
+        echo -e "This installer writes to the current user's home directory."
+        echo -e "A root-owned install forks upgrade state and install identity."
+        echo -e "Re-run the installer as your normal user."
+        exit 1
+    fi
 }
 
 # Cleanup: Ensure temporary files are removed even if the script crashes or is interrupted.
@@ -86,6 +85,8 @@ echo -e "${BLUE}--------------------------------------------------${NC}"
 if [ "$STRICT_CHECKSUM" = "1" ]; then
     echo -e "Strict checksum mode enabled (KABOOM_INSTALL_STRICT=1)"
 fi
+
+reject_privileged_install_context
 
 # ─────────────────────────────────────────────────────────────
 # Prerequisite Checks
@@ -443,7 +444,6 @@ download_and_verify() {
         echo -e "${RED}Download failed after 3 attempts.${NC}"
         echo -e "URL: $dl_url"
         echo -e "Check your network connection, proxy settings, or try again later."
-        beacon_error "download_failed"
         exit 1
     fi
 
@@ -665,6 +665,12 @@ SERVICE
             systemctl --user daemon-reload 2>/dev/null || true
             if systemctl --user enable kaboom.service 2>/dev/null; then
                 echo -e "${GREEN}Registered to start on login (systemd user service).${NC}"
+                # Start (or restart) the service right now so one-click self-update
+                # respawns the daemon inside the same session instead of waiting
+                # for the next login.
+                systemctl --user restart kaboom.service 2>/dev/null \
+                    || systemctl --user start kaboom.service 2>/dev/null \
+                    || true
             else
                 echo -e "${YELLOW}  Could not enable systemd service.${NC}"
                 echo -e "  To start on login manually: systemctl --user enable kaboom.service"
@@ -686,6 +692,10 @@ X-GNOME-Autostart-enabled=true
 DESKTOP
 
             echo -e "${GREEN}Registered to start on login (XDG autostart).${NC}"
+            # No session supervisor on non-systemd Linux — launch now in the
+            # background so one-click self-update brings the daemon back up.
+            nohup "$CANONICAL_KABOOM_BIN" --daemon --port 7890 >/dev/null 2>&1 &
+            disown 2>/dev/null || true
         fi
     fi
 }
@@ -732,17 +742,6 @@ register_path() {
 }
 
 register_path
-
-# ─────────────────────────────────────────────────────────────
-# 13. Anonymous telemetry (disable: KABOOM_TELEMETRY=off)
-# ─────────────────────────────────────────────────────────────
-
-if [ "${KABOOM_TELEMETRY:-}" != "off" ]; then
-    curl -s --max-time 2 -X POST "https://t.gokaboom.dev/v1/event" \
-        -H "Content-Type: application/json" \
-        -d "{\"event\":\"install_complete\",\"v\":\"${VERSION}\",\"os\":\"$(uname -s)-$(uname -m)\",\"props\":{\"method\":\"curl\"}}" \
-        > /dev/null 2>&1 &
-fi
 
 # ─────────────────────────────────────────────────────────────
 # 14. Final summary

@@ -71,6 +71,63 @@
     </div>
 
     <div
+      id="update-available"
+      style="
+        display: none;
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: rgba(9, 105, 218, 0.1);
+        border: 1px solid #0969da;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #58a6ff;
+      "
+    >
+      <span style="font-weight: 600">KaBOOM! update available</span>
+      <p id="update-available-detail" style="margin-top: 4px; color: #aaa"></p>
+      <div id="update-action-idle">
+        <button
+          id="update-now-btn"
+          type="button"
+          style="
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #0969da;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+          "
+        >Update now</button>
+      </div>
+      <p id="update-action-running" style="display: none; margin-top: 8px; color: #aaa">
+        Updating… the daemon will restart automatically.
+      </p>
+      <div id="update-action-reload" style="display: none; margin-top: 8px">
+        <p style="color: #aaa; margin-bottom: 6px">
+          Daemon updated. Reload the extension so the new version takes effect.
+        </p>
+        <button
+          id="update-reload-ext-btn"
+          type="button"
+          style="
+            padding: 6px 12px;
+            background: #0969da;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+          "
+        >Open extensions page</button>
+      </div>
+      <p id="update-action-error" style="display: none; margin-top: 8px; color: #f85149"></p>
+    </div>
+
+    <div
       id="version-mismatch"
       style="
         display: none;

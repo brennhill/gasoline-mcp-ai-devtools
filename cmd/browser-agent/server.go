@@ -14,6 +14,7 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/pty"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/tracking"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/upgrade"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
@@ -60,6 +61,13 @@ type Server struct {
 	// Screenshot rate limiting: prevent DoS by limiting uploads to 1/second per client
 	screenshotRateLimiter map[string]time.Time
 	screenshotRateMu      sync.Mutex
+
+	// Self-update state: per-process nonce guarding /upgrade/install plus a
+	// coarse-grained rate-limiter so accidental double-clicks don't double-launch
+	// the installer. See server_routes_upgrade.go.
+	upgradeNonce       *upgrade.Nonce
+	upgradeMu          sync.Mutex
+	lastUpgradeAttempt time.Time
 }
 
 // NewServer creates a new server instance.
@@ -73,6 +81,7 @@ func NewServer(logFile string, maxEntries int) (*Server, error) {
 		tokenTracker:          tracking.NewTokenTracker(),
 		intentStore:           terminal.NewIntentStore(),
 		screenshotRateLimiter: make(map[string]time.Time),
+		upgradeNonce:          upgrade.NewNonce(),
 	}
 
 	// Create log store with warning callback wired to server

@@ -123,6 +123,88 @@
         }
       }
     },
+    "/upgrade/nonce": {
+      "get": {
+        "tags": [
+          "Control"
+        ],
+        "summary": "Get upgrade install nonce",
+        "description": "Returns the per-process nonce that must be echoed back in POST /upgrade/install. Extension-only; rotates on every daemon start.",
+        "operationId": "getUpgradeNonce",
+        "responses": {
+          "200": {
+            "description": "Current nonce",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "nonce": {
+                      "type": "string",
+                      "description": "64-character hex string to present in /upgrade/install"
+                    }
+                  },
+                  "required": ["nonce"]
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed"
+          }
+        }
+      }
+    },
+    "/upgrade/install": {
+      "post": {
+        "tags": [
+          "Control"
+        ],
+        "summary": "Launch pinned self-update installer",
+        "description": "Fires the pinned install script in a detached process and returns immediately. The running daemon will be killed by the installer once the new binary is staged; the supervisor (launchd/systemd) respawns it. Rate-limited to one attempt per minute. Unix only — Windows returns 501.",
+        "operationId": "postUpgradeInstall",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nonce": {
+                    "type": "string",
+                    "description": "Current nonce from GET /upgrade/nonce"
+                  }
+                },
+                "required": ["nonce"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Installer launched; daemon will restart shortly"
+          },
+          "400": {
+            "description": "Invalid JSON body"
+          },
+          "401": {
+            "description": "Invalid nonce"
+          },
+          "405": {
+            "description": "Method not allowed"
+          },
+          "429": {
+            "description": "Rate-limited; try again after 60 seconds"
+          },
+          "500": {
+            "description": "Failed to launch installer process"
+          },
+          "501": {
+            "description": "Self-update not supported on this platform (Windows)"
+          }
+        }
+      }
+    },
     "/doctor": {
       "get": {
         "tags": [
