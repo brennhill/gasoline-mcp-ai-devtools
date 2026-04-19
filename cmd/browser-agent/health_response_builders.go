@@ -5,8 +5,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
@@ -68,17 +66,3 @@ func buildUpgradeInfo() *health.UpgradeInfo {
 	return health.BuildUpgradeInfo(binaryUpgradeState)
 }
 
-// buildCommandExecutionInfoAt delegates to the health sub-package.
-func buildCommandExecutionInfoAt(cap *capture.Store, now time.Time) health.CommandExecutionInfo {
-	return health.BuildCommandExecutionInfoAt(cap, now)
-}
-
-// calcUtilization delegates to the health sub-package.
-func calcUtilization(entries, capacity int) float64 {
-	return health.CalcUtilization(entries, capacity)
-}
-
-// buildPilotInfo delegates to the health sub-package.
-func buildPilotInfo(cap *capture.Store) health.PilotInfo {
-	return health.BuildPilotInfo(cap)
-}

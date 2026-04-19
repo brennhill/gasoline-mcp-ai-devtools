@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -23,29 +21,6 @@ func newCoverageCapture(t *testing.T) *Capture {
 	c := NewCapture()
 	t.Cleanup(c.Close)
 	return c
-}
-
-func TestCoverageBoost_SetupHelpers(t *testing.T) {
-	c := setupTestCapture(t)
-	if c == nil {
-		t.Fatal("setupTestCapture returned nil")
-	}
-	c.Close()
-
-	srv, logFile := setupTestServer(t)
-	if srv == nil {
-		t.Fatal("setupTestServer returned nil server")
-	}
-	if logFile == "" {
-		t.Fatal("setupTestServer returned empty log file path")
-	}
-	if _, err := os.Stat(filepath.Dir(logFile)); err != nil {
-		t.Fatalf("setupTestServer log dir stat error = %v", err)
-	}
-
-	if got := setupToolHandler(t, srv, NewCapture()); got != nil {
-		t.Fatalf("setupToolHandler() = %v, want nil placeholder", got)
-	}
 }
 
 func TestCoverageBoost_RateLimitHealthHandler(t *testing.T) {

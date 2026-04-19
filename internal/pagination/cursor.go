@@ -134,25 +134,6 @@ func (c Cursor) IsNewer(entryTimestamp string, entrySequence int64) bool {
 	return entrySequence > c.Sequence
 }
 
-// NormalizeTimestamp converts various timestamp formats to RFC3339 string.
-// Handles: int64 (Unix milliseconds), time.Time, string (passthrough).
-func NormalizeTimestamp(ts any) string {
-	switch v := ts.(type) {
-	case string:
-		// Already a string, assume RFC3339 format
-		return v
-	case int64:
-		// Unix milliseconds → RFC3339
-		return time.UnixMilli(v).UTC().Format(time.RFC3339)
-	case time.Time:
-		// Go time.Time → RFC3339
-		return v.UTC().Format(time.RFC3339)
-	default:
-		// Unknown type, return empty
-		return ""
-	}
-}
-
 // CursorPaginationMetadata contains metadata for cursor-based pagination responses.
 type CursorPaginationMetadata struct {
 	Cursor           string `json:"cursor,omitempty"`            // Composite cursor of last returned entry

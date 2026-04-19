@@ -6,7 +6,6 @@ package pagination
 
 import (
 	"testing"
-	"time"
 )
 
 func TestParseCursor(t *testing.T) {
@@ -374,52 +373,6 @@ func TestCursor_IsNewer(t *testing.T) {
 			got := tt.cursor.IsNewer(tt.entryTimestamp, tt.entrySequence)
 			if got != tt.want {
 				t.Errorf("Cursor.IsNewer() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNormalizeTimestamp(t *testing.T) {
-	baseTime := time.Date(2026, 1, 30, 10, 15, 23, 456000000, time.UTC)
-	baseTimeMillis := baseTime.UnixMilli() // Calculate actual Unix milliseconds
-
-	tests := []struct {
-		name  string
-		input any
-		want  string
-	}{
-		{
-			name:  "string passthrough",
-			input: "2026-01-30T10:15:23.456Z",
-			want:  "2026-01-30T10:15:23.456Z",
-		},
-		{
-			name:  "int64 unix milliseconds",
-			input: baseTimeMillis,
-			want:  "2026-01-30T10:15:23Z",
-		},
-		{
-			name:  "time.Time",
-			input: baseTime,
-			want:  "2026-01-30T10:15:23Z",
-		},
-		{
-			name:  "unknown type returns empty",
-			input: 123.456,
-			want:  "",
-		},
-		{
-			name:  "nil returns empty",
-			input: nil,
-			want:  "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := NormalizeTimestamp(tt.input)
-			if got != tt.want {
-				t.Errorf("NormalizeTimestamp() = %v, want %v", got, tt.want)
 			}
 		})
 	}

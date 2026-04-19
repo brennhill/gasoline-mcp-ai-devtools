@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
@@ -151,7 +152,7 @@ func TestBuildPilotInfo_AssumedEnabledStartupState(t *testing.T) {
 	t.Parallel()
 
 	cap := capture.NewCapture()
-	info := buildPilotInfo(cap)
+	info := health.BuildPilotInfo(cap)
 
 	if !info.Enabled {
 		t.Fatalf("enabled = false, want true during startup uncertainty")
@@ -167,7 +168,7 @@ func TestBuildPilotInfo_ExplicitDisableState(t *testing.T) {
 	cap := capture.NewCapture()
 	cap.SetPilotEnabled(false)
 
-	info := buildPilotInfo(cap)
+	info := health.BuildPilotInfo(cap)
 	if info.Enabled {
 		t.Fatalf("enabled = true, want false for explicit disable")
 	}
@@ -179,33 +180,33 @@ func TestBuildPilotInfo_ExplicitDisableState(t *testing.T) {
 func TestCalcUtilization_Normal(t *testing.T) {
 	t.Parallel()
 
-	if got := calcUtilization(50, 100); got != 50.0 {
-		t.Fatalf("calcUtilization(50, 100) = %v, want 50.0", got)
+	if got := health.CalcUtilization(50, 100); got != 50.0 {
+		t.Fatalf("health.CalcUtilization(50, 100) = %v, want 50.0", got)
 	}
-	if got := calcUtilization(0, 100); got != 0.0 {
-		t.Fatalf("calcUtilization(0, 100) = %v, want 0.0", got)
+	if got := health.CalcUtilization(0, 100); got != 0.0 {
+		t.Fatalf("health.CalcUtilization(0, 100) = %v, want 0.0", got)
 	}
-	if got := calcUtilization(100, 100); got != 100.0 {
-		t.Fatalf("calcUtilization(100, 100) = %v, want 100.0", got)
+	if got := health.CalcUtilization(100, 100); got != 100.0 {
+		t.Fatalf("health.CalcUtilization(100, 100) = %v, want 100.0", got)
 	}
 }
 
 func TestCalcUtilization_ZeroCapacity(t *testing.T) {
 	t.Parallel()
 
-	if got := calcUtilization(50, 0); got != 0.0 {
-		t.Fatalf("calcUtilization(50, 0) = %v, want 0.0", got)
+	if got := health.CalcUtilization(50, 0); got != 0.0 {
+		t.Fatalf("health.CalcUtilization(50, 0) = %v, want 0.0", got)
 	}
-	if got := calcUtilization(0, 0); got != 0.0 {
-		t.Fatalf("calcUtilization(0, 0) = %v, want 0.0", got)
+	if got := health.CalcUtilization(0, 0); got != 0.0 {
+		t.Fatalf("health.CalcUtilization(0, 0) = %v, want 0.0", got)
 	}
 }
 
 func TestCalcUtilization_NegativeCapacity(t *testing.T) {
 	t.Parallel()
 
-	if got := calcUtilization(50, -1); got != 0.0 {
-		t.Fatalf("calcUtilization(50, -1) = %v, want 0.0", got)
+	if got := health.CalcUtilization(50, -1); got != 0.0 {
+		t.Fatalf("health.CalcUtilization(50, -1) = %v, want 0.0", got)
 	}
 }
 

@@ -160,9 +160,3 @@ func ApplyCursorPagination[T Sequenced](entries []T, p CursorParams) ([]T, *Curs
 	return entries, metadata, nil
 }
 
-// addNonEmpty adds a key-value pair to the map only if the string value is non-empty.
-func addNonEmpty(m map[string]any, key, value string) {
-	if value != "" {
-		m[key] = value
-	}
-}

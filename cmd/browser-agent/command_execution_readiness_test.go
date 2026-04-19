@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/health"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
 )
 
@@ -34,7 +35,7 @@ func TestCommandExecutionInfo_NoFailuresPass(t *testing.T) {
 	cap := capture.NewCapture()
 	addCommandResultForTest(cap, "ok-1", "complete")
 
-	info := buildCommandExecutionInfoAt(cap, time.Now())
+	info := health.BuildCommandExecutionInfoAt(cap, time.Now())
 	if info.Status != "pass" {
 		t.Fatalf("status = %q, want pass", info.Status)
 	}
@@ -58,7 +59,7 @@ func TestCommandExecutionInfo_SingleFailureWarn(t *testing.T) {
 	cap := capture.NewCapture()
 	addCommandResultForTest(cap, "fail-1", "expired")
 
-	info := buildCommandExecutionInfoAt(cap, time.Now())
+	info := health.BuildCommandExecutionInfoAt(cap, time.Now())
 	if info.Status != "warn" {
 		t.Fatalf("status = %q, want warn", info.Status)
 	}
@@ -84,7 +85,7 @@ func TestCommandExecutionInfo_ThreeFailuresFail(t *testing.T) {
 	addCommandResultForTest(cap, "fail-timeout", "timeout")
 	addCommandResultForTest(cap, "fail-error", "error")
 
-	info := buildCommandExecutionInfoAt(cap, time.Now())
+	info := health.BuildCommandExecutionInfoAt(cap, time.Now())
 	if info.Status != "fail" {
 		t.Fatalf("status = %q, want fail", info.Status)
 	}
