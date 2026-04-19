@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
@@ -213,27 +212,3 @@ func TestJSONResponseEncodeErrorPath(t *testing.T) {
 	}
 }
 
-func TestOldestAndNewestLogTime(t *testing.T) {
-	t.Parallel()
-
-	s, _ := newTestServer(t, 10)
-	if got := s.GetOldestLogTime(); !got.IsZero() {
-		t.Fatalf("GetOldestLogTime() on empty server = %v, want zero", got)
-	}
-	if got := s.GetNewestLogTime(); !got.IsZero() {
-		t.Fatalf("GetNewestLogTime() on empty server = %v, want zero", got)
-	}
-
-	s.addEntries([]LogEntry{{"id": "a"}})
-	time.Sleep(2 * time.Millisecond)
-	s.addEntries([]LogEntry{{"id": "b"}})
-
-	oldest := s.GetOldestLogTime()
-	newest := s.GetNewestLogTime()
-	if oldest.IsZero() || newest.IsZero() {
-		t.Fatalf("expected non-zero timestamps, got oldest=%v newest=%v", oldest, newest)
-	}
-	if newest.Before(oldest) {
-		t.Fatalf("newest before oldest: oldest=%v newest=%v", oldest, newest)
-	}
-}

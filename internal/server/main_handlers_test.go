@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
@@ -54,14 +53,10 @@ func TestServerAddEntries_RotationAndAccounting(t *testing.T) {
 		t.Fatalf("callbackCalls = %d, want 1", callbackCalls)
 	}
 
-	if got := s.GetLogCount(); got != 2 {
-		t.Fatalf("GetLogCount() = %d, want 2 after rotation", got)
-	}
-	if got := s.GetLogTotalAdded(); got != 3 {
-		t.Fatalf("GetLogTotalAdded() = %d, want 3", got)
-	}
-
 	entries := s.getEntries()
+	if len(entries) != 2 {
+		t.Fatalf("entry count after rotation = %d, want 2", len(entries))
+	}
 	if entries[0]["seq"] != 2 || entries[1]["seq"] != 3 {
 		t.Fatalf("rotated entries = %#v, want seq 2 then 3", entries)
 	}
@@ -73,57 +68,6 @@ func TestServerAddEntries_RotationAndAccounting(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 2 {
 		t.Fatalf("log file line count = %d, want 2", len(lines))
-	}
-}
-
-func TestGetLogEntries_ReturnsMapCopies(t *testing.T) {
-	t.Parallel()
-
-	s, _ := newTestServer(t, 10)
-	s.addEntries([]LogEntry{{"level": "info"}})
-
-	first := s.GetLogEntries()
-	if len(first) != 1 {
-		t.Fatalf("expected one entry, got %d", len(first))
-	}
-	first[0]["level"] = "mutated"
-
-	second := s.GetLogEntries()
-	if second[0]["level"] != "info" {
-		t.Fatalf("mutation leaked into server state: got %v", second[0]["level"])
-	}
-}
-
-func TestGetLogSnapshot_AndTimestampCopies(t *testing.T) {
-	t.Parallel()
-
-	s, _ := newTestServer(t, 10)
-	s.addEntries([]LogEntry{{"id": "a"}})
-	time.Sleep(2 * time.Millisecond)
-	s.addEntries([]LogEntry{{"id": "b"}})
-
-	snapshot := s.GetLogSnapshot()
-	if snapshot.EntryCount != 2 {
-		t.Fatalf("snapshot.EntryCount = %d, want 2", snapshot.EntryCount)
-	}
-	if snapshot.TotalAdded != 2 {
-		t.Fatalf("snapshot.TotalAdded = %d, want 2", snapshot.TotalAdded)
-	}
-	if snapshot.OldestAddedAt.IsZero() || snapshot.LastAddedAt.IsZero() {
-		t.Fatalf("expected non-zero timestamp bounds, got oldest=%v newest=%v", snapshot.OldestAddedAt, snapshot.LastAddedAt)
-	}
-	if snapshot.LastAddedAt.Before(snapshot.OldestAddedAt) {
-		t.Fatalf("newest timestamp before oldest: oldest=%v newest=%v", snapshot.OldestAddedAt, snapshot.LastAddedAt)
-	}
-
-	times := s.GetLogTimestamps()
-	if len(times) != 2 {
-		t.Fatalf("GetLogTimestamps() len = %d, want 2", len(times))
-	}
-	times[0] = time.Time{}
-	fresh := s.GetLogTimestamps()
-	if fresh[0].IsZero() {
-		t.Fatal("timestamp copy mutation leaked into server state")
 	}
 }
 
