@@ -49,19 +49,6 @@ func TestReadTouches_EmptyDir(t *testing.T) {
 	}
 }
 
-func TestFilesEdited(t *testing.T) {
-	dir := t.TempDir()
-	_ = AppendTouch(dir, TouchEntry{Timestamp: time.Now(), Tool: "Read", File: "/a.go", Action: "read"})
-	_ = AppendTouch(dir, TouchEntry{Timestamp: time.Now(), Tool: "Edit", File: "/b.go", Action: "edit"})
-	_ = AppendTouch(dir, TouchEntry{Timestamp: time.Now(), Tool: "Write", File: "/c.go", Action: "write"})
-	_ = AppendTouch(dir, TouchEntry{Timestamp: time.Now(), Tool: "Edit", File: "/b.go", Action: "edit"})
-
-	files := FilesEdited(dir)
-	if len(files) != 2 {
-		t.Fatalf("expected 2 unique edited files, got %d: %v", len(files), files)
-	}
-}
-
 func TestWasFileRead(t *testing.T) {
 	dir := t.TempDir()
 	now := time.Now()

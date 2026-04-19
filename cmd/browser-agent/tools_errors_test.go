@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/mcp"
 )
 
 // ============================================
@@ -132,7 +134,7 @@ func TestStructuredError_ActionAndSelector_PresentWhenSet(t *testing.T) {
 
 	result := mcpStructuredError(
 		ErrNoData, "Extension not connected", "Check extension",
-		withAction("click"), withSelector("#submit-btn"),
+		mcp.WithAction("click"), mcp.WithSelector("#submit-btn"),
 	)
 
 	se := extractStructuredErrorJSON(t, result)

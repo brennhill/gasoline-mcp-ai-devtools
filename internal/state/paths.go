@@ -147,20 +147,6 @@ func LegacySettingsFile() (string, error) {
 	return filepath.Join(homeDir, ".kaboom-settings.json"), nil
 }
 
-// SecurityConfigFile returns the security configuration path.
-func SecurityConfigFile() (string, error) {
-	return InRoot("security", "security.json")
-}
-
-// LegacySecurityConfigFile returns the historical security config path.
-func LegacySecurityConfigFile() (string, error) {
-	root, err := LegacyRootDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, "security.json"), nil
-}
-
 // UpgradeMarkerFile returns the path for the binary upgrade marker file.
 func UpgradeMarkerFile() (string, error) {
 	return InRoot("run", "last-upgrade.json")

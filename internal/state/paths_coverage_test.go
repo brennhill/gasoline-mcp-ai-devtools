@@ -324,26 +324,6 @@ func TestLegacyRecordingsDir_Success(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// LegacySecurityConfigFile
-// ---------------------------------------------------------------------------
-
-func TestLegacySecurityConfigFile_Success(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-	t.Setenv("USERPROFILE", home)
-
-	got, err := LegacySecurityConfigFile()
-	if err != nil {
-		t.Fatalf("LegacySecurityConfigFile() error = %v", err)
-	}
-	configDir, _ := os.UserConfigDir()
-	want := filepath.Join(configDir, appName, "security.json")
-	if got != want {
-		t.Fatalf("LegacySecurityConfigFile() = %q, want %q", got, want)
-	}
-}
-
-// ---------------------------------------------------------------------------
 // PIDFile — various ports
 // ---------------------------------------------------------------------------
 
@@ -397,21 +377,6 @@ func TestScreenshotsDirPath(t *testing.T) {
 	}
 	if got != filepath.Join(root, "screenshots") {
 		t.Fatalf("ScreenshotsDir() = %q, want %q", got, filepath.Join(root, "screenshots"))
-	}
-}
-
-func TestSecurityConfigFilePath(t *testing.T) {
-	root := t.TempDir()
-	t.Setenv(StateDirEnv, root)
-	t.Setenv(xdgStateHomeEnv, "")
-
-	got, err := SecurityConfigFile()
-	if err != nil {
-		t.Fatalf("SecurityConfigFile() error = %v", err)
-	}
-	want := filepath.Join(root, "security", "security.json")
-	if got != want {
-		t.Fatalf("SecurityConfigFile() = %q, want %q", got, want)
 	}
 }
 
@@ -617,19 +582,6 @@ func TestLegacyRecordingsDir_ErrorWhenHomeUndefined(t *testing.T) {
 	}
 }
 
-func TestLegacySecurityConfigFile_ErrorWhenHomeUndefined(t *testing.T) {
-	t.Setenv("HOME", "")
-	t.Setenv("USERPROFILE", "")
-
-	_, err := LegacySecurityConfigFile()
-	if err == nil {
-		t.Fatal("LegacySecurityConfigFile() expected error when HOME is empty, got nil")
-	}
-	if !strings.Contains(err.Error(), "config directory") {
-		t.Fatalf("LegacySecurityConfigFile() error = %q, want 'config directory'", err.Error())
-	}
-}
-
 func TestInRoot_ErrorWhenRootDirFails(t *testing.T) {
 	// Force RootDir to fail: no override, no XDG, no HOME
 	t.Setenv(StateDirEnv, "")
@@ -723,18 +675,6 @@ func TestSettingsFile_ErrorPropagation(t *testing.T) {
 	_, err := SettingsFile()
 	if err == nil {
 		t.Fatal("SettingsFile() expected error when RootDir fails, got nil")
-	}
-}
-
-func TestSecurityConfigFile_ErrorPropagation(t *testing.T) {
-	t.Setenv(StateDirEnv, "")
-	t.Setenv(xdgStateHomeEnv, "")
-	t.Setenv("HOME", "")
-	t.Setenv("USERPROFILE", "")
-
-	_, err := SecurityConfigFile()
-	if err == nil {
-		t.Fatal("SecurityConfigFile() expected error when RootDir fails, got nil")
 	}
 }
 

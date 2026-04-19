@@ -37,10 +37,8 @@ func mcpStructuredError(code, message, retry string, opts ...func(*StructuredErr
 	return mcp.StructuredErrorResponse(code, message, retry, opts...)
 }
 
-func withParam(p string) func(*StructuredError)    { return mcp.WithParam(p) }
-func withHint(h string) func(*StructuredError)     { return mcp.WithHint(h) }
-func withAction(a string) func(*StructuredError)   { return mcp.WithAction(a) }
-func withSelector(s string) func(*StructuredError) { return mcp.WithSelector(s) }
+func withParam(p string) func(*StructuredError) { return mcp.WithParam(p) }
+func withHint(h string) func(*StructuredError)  { return mcp.WithHint(h) }
 func withRetryable(retryable bool) func(*StructuredError) {
 	return mcp.WithRetryable(retryable)
 }

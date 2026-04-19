@@ -252,23 +252,3 @@ func TestMapA11yImpact(t *testing.T) {
 	}
 }
 
-func TestExtractIssueMessage_PriorityOrder(t *testing.T) {
-	t.Parallel()
-	// message takes priority
-	issue := map[string]any{"message": "msg", "title": "ttl", "url": "/foo"}
-	if got := extractIssueMessage(issue); got != "msg" {
-		t.Errorf("got %q, want %q", got, "msg")
-	}
-
-	// title if no message
-	issue2 := map[string]any{"title": "ttl", "url": "/foo"}
-	if got := extractIssueMessage(issue2); got != "ttl" {
-		t.Errorf("got %q, want %q", got, "ttl")
-	}
-
-	// empty map
-	issue3 := map[string]any{}
-	if got := extractIssueMessage(issue3); got != "" {
-		t.Errorf("got %q, want empty", got)
-	}
-}

@@ -4,7 +4,6 @@ package main
 import (
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/push"
 )
@@ -27,56 +26,6 @@ func piggybackTestResponse(t *testing.T, h *ToolHandler, baseText string) MCPToo
 		t.Fatal(err)
 	}
 	return outResult
-}
-
-func TestToolObserveInbox_Empty(t *testing.T) {
-	h := newPushTestToolHandler(push.NewPushInbox(10))
-
-	resp := h.toolObserveInbox(JSONRPCRequest{ID: json.RawMessage(`1`)}, nil)
-	if resp.Error != nil {
-		t.Fatalf("unexpected error: %v", resp.Error)
-	}
-	var result MCPToolResult
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		t.Fatal(err)
-	}
-	if len(result.Content) == 0 {
-		t.Fatal("expected at least one content block")
-	}
-}
-
-func TestToolObserveInbox_WithEvents(t *testing.T) {
-	inbox := push.NewPushInbox(10)
-	inbox.Enqueue(push.PushEvent{
-		ID:        "test-1",
-		Type:      "chat",
-		Message:   "hello",
-		Timestamp: time.Now(),
-	})
-	inbox.Enqueue(push.PushEvent{
-		ID:        "test-2",
-		Type:      "screenshot",
-		Timestamp: time.Now(),
-	})
-
-	h := newPushTestToolHandler(inbox)
-	resp := h.toolObserveInbox(JSONRPCRequest{ID: json.RawMessage(`2`)}, nil)
-	if resp.Error != nil {
-		t.Fatalf("unexpected error: %v", resp.Error)
-	}
-
-	// After drain, inbox should be empty
-	if inbox.Len() != 0 {
-		t.Fatal("inbox should be empty after drain")
-	}
-}
-
-func TestToolObserveInbox_NilInbox(t *testing.T) {
-	h := newPushTestToolHandler(nil)
-	resp := h.toolObserveInbox(JSONRPCRequest{ID: json.RawMessage(`3`)}, nil)
-	if resp.Error != nil {
-		t.Fatal("nil inbox should not error")
-	}
 }
 
 func TestAppendPushPiggyback_Empty(t *testing.T) {

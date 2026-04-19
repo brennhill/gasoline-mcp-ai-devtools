@@ -140,23 +140,6 @@ func ReadTouches(sessionDir string) ([]TouchEntry, error) {
 	return entries, nil
 }
 
-// FilesEdited returns file paths edited this session.
-func FilesEdited(sessionDir string) []string {
-	entries, err := ReadTouches(sessionDir)
-	if err != nil {
-		return nil
-	}
-	seen := map[string]bool{}
-	var files []string
-	for _, e := range entries {
-		if (e.Action == "edit" || e.Action == "write") && e.File != "" && !seen[e.File] {
-			seen[e.File] = true
-			files = append(files, e.File)
-		}
-	}
-	return files
-}
-
 // WasFileRead returns true if the file was already read this session, and when.
 func WasFileRead(sessionDir string, filePath string) (bool, time.Time) {
 	entries, err := ReadTouches(sessionDir)
