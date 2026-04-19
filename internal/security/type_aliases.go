@@ -3,18 +3,17 @@
 
 package security
 
+import "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/capture"
+
+// NetworkBody re-exports capture.NetworkBody so test files and helpers can use
+// the unqualified name.
+type NetworkBody = capture.NetworkBody
+
 type (
-	Config             = SecurityConfig
-	AuditEvent         = SecurityAuditEvent
-	DiffManager        = SecurityDiffManager
-	Snapshot           = SecuritySnapshot
-	Cookie             = SecurityCookie
-	DiffResult         = SecurityDiffResult
-	Change             = SecurityChange
-	DiffSummary        = SecurityDiffSummary
-	SnapshotListEntry  = SecuritySnapshotListEntry
-	Finding            = SecurityFinding
-	ScanInput          = SecurityScanInput
-	ScanResult         = SecurityScanResult
-	Scanner            = SecurityScanner
+	Config     = SecurityConfig
+	AuditEvent = SecurityAuditEvent
+	Finding    = SecurityFinding
+	ScanInput  = SecurityScanInput
+	ScanResult = SecurityScanResult
+	Scanner    = SecurityScanner
 )
