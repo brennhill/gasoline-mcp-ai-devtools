@@ -398,7 +398,7 @@
 
   // extension/popup/update-button.js
   var VERSION_POLL_INTERVAL_MS = 2e3;
-  var VERSION_POLL_TIMEOUT_MS = 3e4;
+  var VERSION_POLL_TIMEOUT_MS = 12e4;
   async function getServerUrl() {
     const value = await getLocal(StorageKey.SERVER_URL);
     return value || DEFAULT_SERVER_URL;
@@ -437,19 +437,12 @@
       throw new Error(`install HTTP ${resp.status}`);
     }
   }
-  async function waitForDaemonVersion(serverUrl, target) {
-    const deadline = Date.now() + VERSION_POLL_TIMEOUT_MS;
-    while (Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, VERSION_POLL_INTERVAL_MS));
-      try {
-        const health = await fetchHealth(serverUrl);
-        if (health.version && health.version === target) {
-          return health.version;
-        }
-      } catch {
-      }
+  function setRunningText(seconds) {
+    const running = document.getElementById("update-action-running");
+    if (running) {
+      running.textContent = `Updating\u2026 (${seconds}s)
+The daemon will restart automatically.`;
     }
-    return null;
   }
   function openExtensionsPage() {
     const id = chrome?.runtime?.id;
@@ -474,10 +467,26 @@
   }
   async function runUpgradeFlow(info) {
     showState("running");
+    const startTime = Date.now();
+    setRunningText(0);
     try {
       const nonce = await fetchNonce(info.serverUrl);
       await postInstall(info.serverUrl, nonce);
-      const observed = await waitForDaemonVersion(info.serverUrl, info.availableVersion);
+      const deadline = startTime + VERSION_POLL_TIMEOUT_MS;
+      let observed = null;
+      while (Date.now() < deadline) {
+        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1e3);
+        setRunningText(elapsedSeconds);
+        await new Promise((resolve) => setTimeout(resolve, VERSION_POLL_INTERVAL_MS));
+        try {
+          const health = await fetchHealth(info.serverUrl);
+          if (health.version && health.version === info.availableVersion) {
+            observed = health.version;
+            break;
+          }
+        } catch {
+        }
+      }
       if (observed) {
         showState("reload");
       } else {

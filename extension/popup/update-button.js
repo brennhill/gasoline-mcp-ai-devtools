@@ -6,11 +6,12 @@
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js';
 import { buildDaemonHeaders, postDaemonJSON } from '../lib/daemon-http.js';
 import { getLocal } from '../lib/storage-utils.js';
-// Poll /health every 2s for up to 30s after kicking off the install. The
-// daemon SIGTERMs itself + the supervisor respawns, so a short window is
-// enough to see the version change.
+// Poll /health every 2s for up to 120s after kicking off the install. A
+// realistic self-update (download + checksum + binary swap + daemon respawn)
+// can take 45-90s on slow connections (hotel Wi-Fi, mobile tether), so the
+// 30s window this replaced routinely timed out on real users.
 const VERSION_POLL_INTERVAL_MS = 2000;
-const VERSION_POLL_TIMEOUT_MS = 30000;
+const VERSION_POLL_TIMEOUT_MS = 120000;
 async function getServerUrl() {
     const value = await getLocal(StorageKey.SERVER_URL);
     return value || DEFAULT_SERVER_URL;
@@ -49,23 +50,14 @@ async function postInstall(serverUrl, nonce) {
         throw new Error(`install HTTP ${resp.status}`);
     }
 }
-// Poll /health until the daemon reports a version equal to `target`. Returns
-// the observed version on success, or null on timeout.
-async function waitForDaemonVersion(serverUrl, target) {
-    const deadline = Date.now() + VERSION_POLL_TIMEOUT_MS;
-    while (Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, VERSION_POLL_INTERVAL_MS));
-        try {
-            const health = await fetchHealth(serverUrl);
-            if (health.version && health.version === target) {
-                return health.version;
-            }
-        }
-        catch {
-            // Daemon is restarting — expected during the upgrade window.
-        }
+// Update the running-state paragraph with elapsed seconds so users see the
+// flow is alive during the (potentially long) upgrade window. Uses a real
+// newline; CSS `white-space: pre-line` in popup.html renders it as two lines.
+function setRunningText(seconds) {
+    const running = document.getElementById('update-action-running');
+    if (running) {
+        running.textContent = `Updating… (${seconds}s)\nThe daemon will restart automatically.`;
     }
-    return null;
 }
 function openExtensionsPage() {
     const id = chrome?.runtime?.id;
@@ -90,10 +82,31 @@ function showState(mode, errorMessage) {
 }
 async function runUpgradeFlow(info) {
     showState('running');
+    const startTime = Date.now();
+    setRunningText(0);
     try {
         const nonce = await fetchNonce(info.serverUrl);
         await postInstall(info.serverUrl, nonce);
-        const observed = await waitForDaemonVersion(info.serverUrl, info.availableVersion);
+        // Poll /health until the daemon reports the target version or we hit the
+        // timeout. Loop is inline (not extracted) so each tick can update the
+        // progress text directly without plumbing state through a helper.
+        const deadline = startTime + VERSION_POLL_TIMEOUT_MS;
+        let observed = null;
+        while (Date.now() < deadline) {
+            const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+            setRunningText(elapsedSeconds);
+            await new Promise((resolve) => setTimeout(resolve, VERSION_POLL_INTERVAL_MS));
+            try {
+                const health = await fetchHealth(info.serverUrl);
+                if (health.version && health.version === info.availableVersion) {
+                    observed = health.version;
+                    break;
+                }
+            }
+            catch {
+                // Daemon is restarting — expected during the upgrade window.
+            }
+        }
         if (observed) {
             showState('reload');
         }

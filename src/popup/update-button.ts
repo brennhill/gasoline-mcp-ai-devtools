@@ -8,11 +8,12 @@ import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js'
 import { buildDaemonHeaders, postDaemonJSON } from '../lib/daemon-http.js'
 import { getLocal } from '../lib/storage-utils.js'
 
-// Poll /health every 2s for up to 30s after kicking off the install. The
-// daemon SIGTERMs itself + the supervisor respawns, so a short window is
-// enough to see the version change.
+// Poll /health every 2s for up to 120s after kicking off the install. A
+// realistic self-update (download + checksum + binary swap + daemon respawn)
+// can take 45-90s on slow connections (hotel Wi-Fi, mobile tether), so the
+// 30s window this replaced routinely timed out on real users.
 const VERSION_POLL_INTERVAL_MS = 2000
-const VERSION_POLL_TIMEOUT_MS = 30000
+const VERSION_POLL_TIMEOUT_MS = 120000
 
 interface HealthResponse {
   version?: string
@@ -71,22 +72,14 @@ async function postInstall(serverUrl: string, nonce: string): Promise<void> {
   }
 }
 
-// Poll /health until the daemon reports a version equal to `target`. Returns
-// the observed version on success, or null on timeout.
-async function waitForDaemonVersion(serverUrl: string, target: string): Promise<string | null> {
-  const deadline = Date.now() + VERSION_POLL_TIMEOUT_MS
-  while (Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, VERSION_POLL_INTERVAL_MS))
-    try {
-      const health = await fetchHealth(serverUrl)
-      if (health.version && health.version === target) {
-        return health.version
-      }
-    } catch {
-      // Daemon is restarting — expected during the upgrade window.
-    }
+// Update the running-state paragraph with elapsed seconds so users see the
+// flow is alive during the (potentially long) upgrade window. Uses a real
+// newline; CSS `white-space: pre-line` in popup.html renders it as two lines.
+function setRunningText(seconds: number): void {
+  const running = document.getElementById('update-action-running')
+  if (running) {
+    running.textContent = `Updating… (${seconds}s)\nThe daemon will restart automatically.`
   }
-  return null
 }
 
 function openExtensionsPage(): void {
@@ -95,26 +88,62 @@ function openExtensionsPage(): void {
   chrome.tabs.create({ url })
 }
 
+// Install log path — mirrors scripts/install.sh's KABOOM_SELF_UPDATE log sink.
+// Hard-coded here because the popup has no clean way to ask the daemon for its
+// home dir and "~" is universally understood by macOS/Linux users.
+const INSTALL_LOG_PATH = '~/.kaboom/logs/install.log'
+
 function showState(mode: 'idle' | 'running' | 'reload' | 'error', errorMessage?: string): void {
   const idle = document.getElementById('update-action-idle')
   const running = document.getElementById('update-action-running')
   const reload = document.getElementById('update-action-reload')
   const errorEl = document.getElementById('update-action-error')
+  const errorTextEl = document.getElementById('update-action-error-text')
   if (idle) idle.style.display = mode === 'idle' ? '' : 'none'
   if (running) running.style.display = mode === 'running' ? '' : 'none'
   if (reload) reload.style.display = mode === 'reload' ? '' : 'none'
   if (errorEl) {
     errorEl.style.display = mode === 'error' ? '' : 'none'
-    errorEl.textContent = mode === 'error' && errorMessage ? errorMessage : ''
+  }
+  if (errorTextEl) {
+    errorTextEl.textContent = mode === 'error' && errorMessage ? errorMessage : ''
   }
 }
 
+// Latest UpdateInfo used to launch an upgrade. Held at module scope so the
+// retry button can re-run the same flow without needing to re-render the
+// banner or re-derive versions from /health.
+let lastUpgradeInfo: UpdateInfo | null = null
+
 async function runUpgradeFlow(info: UpdateInfo): Promise<void> {
+  lastUpgradeInfo = info
   showState('running')
+  const startTime = Date.now()
+  setRunningText(0)
   try {
     const nonce = await fetchNonce(info.serverUrl)
     await postInstall(info.serverUrl, nonce)
-    const observed = await waitForDaemonVersion(info.serverUrl, info.availableVersion)
+
+    // Poll /health until the daemon reports the target version or we hit the
+    // timeout. Loop is inline (not extracted) so each tick can update the
+    // progress text directly without plumbing state through a helper.
+    const deadline = startTime + VERSION_POLL_TIMEOUT_MS
+    let observed: string | null = null
+    while (Date.now() < deadline) {
+      const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000)
+      setRunningText(elapsedSeconds)
+      await new Promise((resolve) => setTimeout(resolve, VERSION_POLL_INTERVAL_MS))
+      try {
+        const health = await fetchHealth(info.serverUrl)
+        if (health.version && health.version === info.availableVersion) {
+          observed = health.version
+          break
+        }
+      } catch {
+        // Daemon is restarting — expected during the upgrade window.
+      }
+    }
+
     if (observed) {
       showState('reload')
     } else {
@@ -163,5 +192,38 @@ export async function renderUpdateAvailableBanner(health: HealthResponse): Promi
   if (reloadBtn && !reloadBtn.dataset.wired) {
     reloadBtn.dataset.wired = '1'
     reloadBtn.addEventListener('click', openExtensionsPage)
+  }
+
+  // Retry re-runs the same upgrade flow with the UpdateInfo that was originally
+  // captured. Falls back to the render-time info if nothing has run yet (e.g.
+  // user-triggered retry before any prior click — unlikely but harmless).
+  const retryBtn = document.getElementById('update-retry-btn') as HTMLButtonElement | null
+  if (retryBtn && !retryBtn.dataset.wired) {
+    retryBtn.dataset.wired = '1'
+    retryBtn.addEventListener('click', () => {
+      const info = lastUpgradeInfo ?? { currentVersion: current, availableVersion: next, serverUrl }
+      void runUpgradeFlow(info)
+    })
+  }
+
+  // Copy log path writes the (hard-coded) install log path to the clipboard so
+  // non-technical users can paste it into a support request.
+  const copyLogBtn = document.getElementById('update-copy-log-btn') as HTMLButtonElement | null
+  if (copyLogBtn && !copyLogBtn.dataset.wired) {
+    copyLogBtn.dataset.wired = '1'
+    copyLogBtn.addEventListener('click', () => {
+      const originalText = copyLogBtn.textContent ?? 'Copy log path'
+      void (async () => {
+        try {
+          await navigator.clipboard.writeText(INSTALL_LOG_PATH)
+          copyLogBtn.textContent = 'Copied!'
+        } catch {
+          copyLogBtn.textContent = 'Copy failed'
+        }
+        setTimeout(() => {
+          copyLogBtn.textContent = originalText
+        }, 2000)
+      })()
+    })
   }
 }

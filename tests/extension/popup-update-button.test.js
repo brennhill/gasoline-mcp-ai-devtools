@@ -222,6 +222,53 @@ describe('popup update button', () => {
     })
   })
 
+  test('running text updates with elapsed seconds on each poll tick', async () => {
+    mock.timers.enable({ apis: ['setTimeout', 'Date'] })
+
+    fetchMock.mock.mockImplementation((url) => {
+      if (String(url).endsWith('/upgrade/nonce')) {
+        return Promise.resolve(jsonResponse({ nonce: 'a'.repeat(64) }))
+      }
+      if (String(url).endsWith('/upgrade/install')) {
+        return Promise.resolve(jsonResponse({ status: 'installing' }, 202))
+      }
+      if (String(url).endsWith('/health')) {
+        // Keep returning the old version so the poll loop keeps ticking and
+        // we can observe the elapsed-seconds progress text advancing.
+        return Promise.resolve(jsonResponse({ version: '0.8.2' }))
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${url}`))
+    })
+
+    const { renderUpdateAvailableBanner } = await importUpdateButton()
+    await renderUpdateAvailableBanner({ version: '0.8.2', available_version: '0.9.0' })
+
+    const btn = document.getElementById('update-now-btn')
+    const clickHandler = btn.addEventListener.mock.calls.find((c) => c.arguments[0] === 'click').arguments[1]
+    clickHandler()
+
+    // Drain microtasks so nonce + install fetches settle and the flow reaches
+    // the poll loop with the first setRunningText(0) applied.
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+
+    const running = document.getElementById('update-action-running')
+    // First tick of the loop ran setRunningText(0) before awaiting the poll delay.
+    assert.match(running.textContent, /\(0s\)/, `expected "(0s)" in first-tick text, got: ${running.textContent}`)
+    assert.match(running.textContent, /daemon will restart/i)
+
+    // Advance 2s → next loop iteration → setRunningText(2).
+    mock.timers.tick(2000)
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+    assert.match(running.textContent, /\(2s\)/, `expected "(2s)" after one tick, got: ${running.textContent}`)
+
+    // Advance another 2s → setRunningText(4).
+    mock.timers.tick(2000)
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+    assert.match(running.textContent, /\(4s\)/, `expected "(4s)" after two ticks, got: ${running.textContent}`)
+
+    mock.timers.reset()
+  })
+
   test('handlers wire once per render — repeat render does not double-attach', async () => {
     const { renderUpdateAvailableBanner } = await importUpdateButton()
     await renderUpdateAvailableBanner({ version: '0.8.2', available_version: '0.9.0' })
@@ -230,5 +277,85 @@ describe('popup update button', () => {
     const btn = document.getElementById('update-now-btn')
     const clickCount = btn.addEventListener.mock.calls.filter((c) => c.arguments[0] === 'click').length
     assert.strictEqual(clickCount, 1, 'click handler should be wired exactly once')
+  })
+
+  test('retry button re-runs the upgrade flow', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] })
+
+    // Force install to 429 so the flow reaches the error state quickly without
+    // ever entering the long health-poll loop.
+    fetchMock.mock.mockImplementation((url) => {
+      if (String(url).endsWith('/upgrade/nonce')) return Promise.resolve(jsonResponse({ nonce: 'a'.repeat(64) }))
+      if (String(url).endsWith('/upgrade/install')) return Promise.resolve(jsonResponse({ error: 'rl' }, 429))
+      return Promise.reject(new Error('unexpected'))
+    })
+
+    const { renderUpdateAvailableBanner } = await importUpdateButton()
+    await renderUpdateAvailableBanner({ version: '0.8.2', available_version: '0.9.0' })
+
+    const btn = document.getElementById('update-now-btn')
+    const clickHandler = btn.addEventListener.mock.calls.find((c) => c.arguments[0] === 'click').arguments[1]
+    clickHandler()
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+
+    const fetchesAfterFirstRun = fetchMock.mock.calls.length
+    assert.ok(fetchesAfterFirstRun >= 2, 'first run should fetch nonce + install at least')
+
+    // Retry button is wired; clicking it re-kicks the flow.
+    const retryBtn = document.getElementById('update-retry-btn')
+    const retryClick = retryBtn.addEventListener.mock.calls.find((c) => c.arguments[0] === 'click').arguments[1]
+    retryClick()
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+
+    // Fetch count doubled (retry re-ran nonce + install).
+    assert.strictEqual(
+      fetchMock.mock.calls.length,
+      fetchesAfterFirstRun * 2,
+      'retry should re-run runUpgradeFlow, doubling fetch count'
+    )
+
+    mock.timers.reset()
+  })
+
+  test('copy log path writes to clipboard', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] })
+
+    const writeTextMock = mock.fn(() => Promise.resolve())
+    globalThis.navigator = { clipboard: { writeText: writeTextMock } }
+
+    // Drive the flow to error so the error block (and its buttons) is the
+    // active state. The copy-log button is wired at render time regardless,
+    // but this mirrors the real user flow: hit error, then copy the log path.
+    fetchMock.mock.mockImplementation((url) => {
+      if (String(url).endsWith('/upgrade/nonce')) return Promise.resolve(jsonResponse({ nonce: 'a'.repeat(64) }))
+      if (String(url).endsWith('/upgrade/install')) return Promise.resolve(jsonResponse({ error: 'rl' }, 429))
+      return Promise.reject(new Error('unexpected'))
+    })
+
+    const { renderUpdateAvailableBanner } = await importUpdateButton()
+    await renderUpdateAvailableBanner({ version: '0.8.2', available_version: '0.9.0' })
+
+    const btn = document.getElementById('update-now-btn')
+    const clickHandler = btn.addEventListener.mock.calls.find((c) => c.arguments[0] === 'click').arguments[1]
+    clickHandler()
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+
+    const copyBtn = document.getElementById('update-copy-log-btn')
+    // Seed initial label so the "restore after 2s" behaviour has something to
+    // restore back to.
+    copyBtn.textContent = 'Copy log path'
+    const copyClick = copyBtn.addEventListener.mock.calls.find((c) => c.arguments[0] === 'click').arguments[1]
+    copyClick()
+    for (let i = 0; i < 5; i++) await new Promise((resolve) => setImmediate(resolve))
+
+    assert.strictEqual(writeTextMock.mock.calls.length, 1)
+    assert.strictEqual(writeTextMock.mock.calls[0].arguments[0], '~/.kaboom/logs/install.log')
+    assert.strictEqual(copyBtn.textContent, 'Copied!')
+
+    // After 2s the label should restore.
+    mock.timers.tick(2000)
+    assert.strictEqual(copyBtn.textContent, 'Copy log path')
+
+    mock.timers.reset()
   })
 })
