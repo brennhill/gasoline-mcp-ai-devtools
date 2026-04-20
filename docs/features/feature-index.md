@@ -66,6 +66,7 @@ last_verified_date: 2026-04-19
 | SARIF Export | shipped | generate | sarif | 5.0.0 | [feature/sarif-export](feature/sarif-export/) |
 | Security Hardening | shipped | analyze, generate, configure | security_audit, third_party_audit, csp, sri, security_mode | 0.8.2 | [feature/security-hardening](feature/security-hardening/) |
 | Self-Healing Tests | proposed | observe, generate | (test auto-repair) | — | [feature/self-healing-tests](feature/self-healing-tests/) |
+| Self Update | shipped | — (extension UI) | popup "Update now" | 0.8.2 | [feature/self-update](feature/self-update/) |
 | Self-Testing | in-progress | interact, generate | execute_js, test_from_context | — | [feature/self-testing](feature/self-testing/) |
 | SPA Route Measurement | in-progress | analyze, observe | performance, timeline | — | [feature/spa-route-measurement](feature/spa-route-measurement/) |
 | Temporal Graph | shipped | analyze | history | 5.0.0 | [feature/temporal-graph](feature/temporal-graph/) |

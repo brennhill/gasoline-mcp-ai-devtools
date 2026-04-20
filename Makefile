@@ -283,6 +283,15 @@ lint-hardening:
 lint-js:
 	npx eslint extension/ tests/extension/
 
+lint-shell:
+	@echo "=== Checking shell scripts parse cleanly (bash -n) ==="
+	@for script in scripts/*.sh; do \
+		if [ -f "$$script" ]; then \
+			bash -n "$$script" || { echo "bash -n failed: $$script"; exit 1; }; \
+		fi; \
+	done
+	@echo "All shell scripts parse."
+
 format:
 	@echo "Checking Go formatting..."
 	@test -z "$$(gofmt -l $(CMD_DIR)/)" || (gofmt -l $(CMD_DIR)/ && exit 1)
@@ -295,7 +304,7 @@ format-fix:
 typecheck:
 	npx tsc --noEmit
 
-check: check-file-length lint lint-boundaries lint-json-casing format typecheck check-invariants
+check: check-file-length lint lint-shell lint-boundaries lint-json-casing format typecheck check-invariants
 
 check-wire-drift:
 	@node scripts/generate-wire-types.js --check

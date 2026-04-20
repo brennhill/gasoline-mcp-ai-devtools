@@ -1,6 +1,6 @@
 // Purpose: Startup config discovery helpers.
 // Why: Keeps main.go focused on runtime boot flow by isolating environment/config probing logic.
-// Docs: docs/features/architecture/index.md
+// Docs: docs/features/feature/enhanced-cli-config/index.md
 
 package main
 

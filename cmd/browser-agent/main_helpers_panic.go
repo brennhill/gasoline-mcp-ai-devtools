@@ -1,6 +1,6 @@
 // Purpose: Panic crash logging and crash-file resolution helpers.
 // Why: Isolates crash diagnostics from normal startup/dispatch control flow in main.go.
-// Docs: docs/features/reliability/index.md
+// Docs: docs/core/error-recovery.md
 
 package main
 

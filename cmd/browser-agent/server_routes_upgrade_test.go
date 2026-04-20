@@ -169,6 +169,25 @@ func TestHandleUpgradeInstall_SpawnErrorReturns500(t *testing.T) {
 	}
 }
 
+func TestHandleUpgradeInstall_RejectsLargeBody(t *testing.T) {
+	spawnCalled := false
+	s := newUpgradeTestServer(t, func(string) error {
+		spawnCalled = true
+		return nil
+	})
+	// Body >1KB: MaxBytesReader should cause Decode to fail and handler to 400.
+	oversized := `{"nonce":"` + strings.Repeat("a", 2048) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/upgrade/install", strings.NewReader(oversized))
+	rr := httptest.NewRecorder()
+	s.handleUpgradeInstall(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400", rr.Code)
+	}
+	if spawnCalled {
+		t.Fatal("spawn must not run for oversized body")
+	}
+}
+
 // After the rate-limit window elapses, a second request should succeed again.
 func TestHandleUpgradeInstall_WindowElapses(t *testing.T) {
 	s := newUpgradeTestServer(t, func(string) error { return nil })

@@ -12,14 +12,13 @@ import (
 	"syscall"
 )
 
-// Spawn launches the install script in a new session with fully detached stdio
-// and returns as soon as the child process is started. It is safe for the
-// daemon to exit immediately after — the child survives parent death because
-// Setsid gives it a new session and process group.
-func Spawn(pinnedURL string) error {
+// newInstallCmd builds the detached install Cmd without starting it. Split out
+// from Spawn so tests can assert the Setsid/stdio/env contract without shelling
+// out.
+func newInstallCmd(pinnedURL string) (*exec.Cmd, error) {
 	name, args, err := buildInstallCmd(pinnedURL)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cmd := exec.Command(name, args...) // #nosec G204 -- URL is validated by buildInstallCmd
 	cmd.Stdin = nil
@@ -27,6 +26,18 @@ func Spawn(pinnedURL string) error {
 	cmd.Stderr = nil
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	cmd.Env = append(os.Environ(), "KABOOM_SELF_UPDATE=1")
+	return cmd, nil
+}
+
+// Spawn launches the install script in a new session with fully detached stdio
+// and returns as soon as the child process is started. It is safe for the
+// daemon to exit immediately after — the child survives parent death because
+// Setsid gives it a new session and process group.
+func Spawn(pinnedURL string) error {
+	cmd, err := newInstallCmd(pinnedURL)
+	if err != nil {
+		return err
+	}
 	if err := cmd.Start(); err != nil {
 		return err
 	}

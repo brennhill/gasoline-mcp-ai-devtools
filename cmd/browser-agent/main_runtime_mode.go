@@ -1,6 +1,6 @@
 // Purpose: Runtime mode detection and dispatch for daemon/bridge startup.
 // Why: Keeps main entrypoint small while isolating mode policy and launch behavior.
-// Docs: docs/features/architecture/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 

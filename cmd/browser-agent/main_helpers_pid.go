@@ -1,6 +1,6 @@
 // Purpose: PID file and liveness helpers for daemon lifecycle management.
 // Why: Centralizes process identity operations used by startup/stop flows and lifecycle tests.
-// Docs: docs/features/architecture/index.md
+// Docs: docs/features/feature/mcp-persistent-server/index.md
 
 package main
 
