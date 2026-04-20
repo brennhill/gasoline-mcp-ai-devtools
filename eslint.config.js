@@ -29,6 +29,8 @@ export default [
       'cmd/browser-agent/testpages/_next/**',
       'scripts/smoke-tests/framework-fixtures/next-app/.next/**',
       'scripts/smoke-tests/framework-fixtures/next-app/out/**',
+      // Generated from cmd/browser-agent/openapi.json (do not edit by hand)
+      'src/generated/',
       // Compiled TypeScript output (linted at the .ts source level)
       'extension/background/',
       'extension/content/',

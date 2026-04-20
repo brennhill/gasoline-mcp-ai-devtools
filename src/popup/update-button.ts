@@ -7,6 +7,7 @@
 import { DEFAULT_SERVER_URL, StorageKey } from '../lib/constants.js'
 import { buildDaemonHeaders, postDaemonJSON } from '../lib/daemon-http.js'
 import { getLocal } from '../lib/storage-utils.js'
+import type { components, operations } from '../generated/openapi-types.js'
 
 // Poll /health every 2s for up to 120s after kicking off the install. A
 // realistic self-update (download + checksum + binary swap + daemon respawn)
@@ -15,14 +16,10 @@ import { getLocal } from '../lib/storage-utils.js'
 const VERSION_POLL_INTERVAL_MS = 2000
 const VERSION_POLL_TIMEOUT_MS = 120000
 
-interface HealthResponse {
-  version?: string
-  available_version?: string
-}
-
-interface NonceResponse {
-  nonce?: string
-}
+// Response types are derived from cmd/browser-agent/openapi.json so a typo
+// like `availableVersion` vs `available_version` is caught at compile time.
+type HealthResponse = components['schemas']['HealthResponse']
+type NonceResponse = operations['getUpgradeNonce']['responses']['200']['content']['application/json']
 
 interface UpdateInfo {
   currentVersion: string

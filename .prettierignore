@@ -24,6 +24,7 @@ package-lock.json
 cmd/browser-agent/testdata/
 cmd/browser-agent/*.html
 cmd/browser-agent/openapi.json
+src/generated/
 cmd/browser-agent/testpages/frameworks/*.bundle.js
 cmd/browser-agent/testpages/frameworks/next/
 cmd/browser-agent/testpages/_next/
