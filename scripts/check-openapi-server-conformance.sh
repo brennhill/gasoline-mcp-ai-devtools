@@ -91,9 +91,6 @@ SCHEMATHESIS_BIN="${SCHEMATHESIS_BIN:-schemathesis}"
   --exclude-path '/insecure-proxy' \
   --exclude-path '/shutdown' \
   --exclude-path '/clear' \
-  --exclude-path '/api/status' \
-  --exclude-path '/snapshot' \
-  --exclude-path '/clients/{id}' \
   --checks response_schema_conformance \
   --max-examples 10 \
   --request-timeout 5 \

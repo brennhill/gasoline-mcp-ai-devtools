@@ -47,7 +47,6 @@ mock.module('../../extension/background/communication.js', {
     formatLogEntry: mock.fn((entry) => entry),
     captureScreenshot: mock.fn(async () => null),
     checkServerHealth: mock.fn(async () => ({ ok: true })),
-    sendStatusPing: mock.fn(async () => ({ ok: true })),
     createBatcherWithCircuitBreaker: mock.fn(() => ({ push: mock.fn(), flush: mock.fn() })),
     sendLogsToServer: mock.fn(async () => ({ ok: true })),
     sendWSEventsToServer: mock.fn(async () => ({ ok: true })),

@@ -43,14 +43,7 @@ const EXTS = new Set(['.ts', '.tsx', '.mts', '.cts'])
 // Paths that are intentionally unspec'd (temporary allowlist for known gaps
 // that have an open issue). Keep this list SHORT — each entry is a commitment
 // to either spec the endpoint or remove the caller.
-const KNOWN_UNSPECD_PATHS = new Set([
-  // Tracked by docs/audits/api-audit.md (HIGH-5): extension calls this
-  // standalone endpoint from sendStatusPing (src/background/server.ts) but
-  // the Go server no longer registers a route for it — status is supposed
-  // to ride on /sync (docs/features/sync-endpoint.md). Remove this entry
-  // when the caller is migrated or the spec adds the endpoint.
-  '/api/extension-status'
-])
+const KNOWN_UNSPECD_PATHS = new Set([])
 
 // ---------- IO helpers ----------
 

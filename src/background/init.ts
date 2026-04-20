@@ -27,7 +27,6 @@ import {
   checkConnectionAndUpdate,
   exportDebugLog,
   clearDebugLog,
-  sendStatusPingWrapper,
   DEFAULT_SERVER_URL
 } from './index.js'
 import {
@@ -176,7 +175,8 @@ async function initializeExtensionAsync(): Promise<void> {
         broadcastTrackingState().catch((err) => console.error(`${KABOOM_LOG_PREFIX} Error broadcasting tracking state:`, err))
       },
       onTrackedTabChanged: (newTabId, oldTabId) => {
-        sendStatusPingWrapper()
+        // Tracking state is reflected on the next /sync poll — no separate
+        // status ping needed. (Previously called a non-existent endpoint.)
         if (newTabId !== null) {
           resetSyncClientConnection()
           console.log(`${KABOOM_LOG_PREFIX} Sync client reset due to tracking enabled`)

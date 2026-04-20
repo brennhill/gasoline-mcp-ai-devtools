@@ -2372,15 +2372,42 @@
             }
           },
           "recent_commands": {
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
               "type": "object"
             },
-            "description": "Recent MCP commands from the HTTP debug log"
+            "description": "Recent MCP commands from the HTTP debug log. Null until the MCP debug log is populated."
           },
           "audit": {
             "type": "object",
             "description": "Tool health metrics and audit info (present when MCP handler is active)"
+          },
+          "listen_port": {
+            "type": "integer",
+            "description": "TCP port the daemon is listening on"
+          },
+          "terminal": {
+            "type": "object",
+            "description": "Terminal sub-server state",
+            "properties": {
+              "port": {
+                "type": "integer",
+                "description": "Terminal sub-server port (0 if not running)"
+              },
+              "running": {
+                "type": "boolean",
+                "description": "Whether the terminal sub-server is accepting connections"
+              },
+              "sessions": {
+                "type": "integer",
+                "description": "Number of active PTY sessions"
+              },
+              "session_ids": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "IDs of currently active PTY sessions"
+              }
+            }
           }
         }
       },
@@ -2884,7 +2911,8 @@
       },
       "LogEntry": {
         "type": "object",
-        "description": "Console log entry captured from the browser. Represents a single console.log/warn/error/info/debug call with its arguments and metadata.",
+        "description": "Generic log entry. Backed by map[string]any in Go, so the buffer holds a mix of browser console logs (with `level`, `args`, `ts`, `url`) and daemon lifecycle events (with `event`, `type`, `timestamp`, etc.). The shared properties below are the union of commonly seen fields; additional properties are permitted.",
+        "additionalProperties": true,
         "properties": {
           "level": {
             "type": "string",
@@ -2895,7 +2923,7 @@
               "debug",
               "log"
             ],
-            "description": "Console log level"
+            "description": "Console log level (browser logs only)"
           },
           "args": {
             "description": "Serialized console arguments (strings, objects, arrays)"
@@ -2908,11 +2936,21 @@
           "url": {
             "type": "string",
             "description": "Page URL where the console call originated"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp for daemon lifecycle events (distinct from `ts`)"
+          },
+          "type": {
+            "type": "string",
+            "description": "Entry category (e.g., `lifecycle` for daemon startup events)"
+          },
+          "event": {
+            "type": "string",
+            "description": "Event name for lifecycle entries (e.g., `mode_detection`, `launch_mode_classified`)"
           }
-        },
-        "required": [
-          "level"
-        ]
+        }
       },
       "WaterfallEntry": {
         "type": "object",

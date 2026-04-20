@@ -1089,10 +1089,23 @@ export interface components {
                 /** @description User action buffer max capacity */
                 action_capacity?: number;
             };
-            /** @description Recent MCP commands from the HTTP debug log */
-            recent_commands?: Record<string, never>[];
+            /** @description Recent MCP commands from the HTTP debug log. Null until the MCP debug log is populated. */
+            recent_commands?: Record<string, never>[] | null;
             /** @description Tool health metrics and audit info (present when MCP handler is active) */
             audit?: Record<string, never>;
+            /** @description TCP port the daemon is listening on */
+            listen_port?: number;
+            /** @description Terminal sub-server state */
+            terminal?: {
+                /** @description Terminal sub-server port (0 if not running) */
+                port?: number;
+                /** @description Whether the terminal sub-server is accepting connections */
+                running?: boolean;
+                /** @description Number of active PTY sessions */
+                sessions?: number;
+                /** @description IDs of currently active PTY sessions */
+                session_ids?: string[];
+            };
         };
         /** @description Screenshot upload request from the Chrome extension. Contains the base64 image data and optional correlation metadata for linking to MCP tool invocations. */
         ScreenshotRequest: {
@@ -1340,13 +1353,13 @@ export interface components {
                 message?: string;
             };
         };
-        /** @description Console log entry captured from the browser. Represents a single console.log/warn/error/info/debug call with its arguments and metadata. */
+        /** @description Generic log entry. Backed by map[string]any in Go, so the buffer holds a mix of browser console logs (with `level`, `args`, `ts`, `url`) and daemon lifecycle events (with `event`, `type`, `timestamp`, etc.). The shared properties below are the union of commonly seen fields; additional properties are permitted. */
         LogEntry: {
             /**
-             * @description Console log level
+             * @description Console log level (browser logs only)
              * @enum {string}
              */
-            level: "error" | "warn" | "info" | "debug" | "log";
+            level?: "error" | "warn" | "info" | "debug" | "log";
             /** @description Serialized console arguments (strings, objects, arrays) */
             args?: unknown;
             /**
@@ -1356,6 +1369,17 @@ export interface components {
             ts?: string;
             /** @description Page URL where the console call originated */
             url?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp for daemon lifecycle events (distinct from `ts`)
+             */
+            timestamp?: string;
+            /** @description Entry category (e.g., `lifecycle` for daemon startup events) */
+            type?: string;
+            /** @description Event name for lifecycle entries (e.g., `mode_detection`, `launch_mode_classified`) */
+            event?: string;
+        } & {
+            [key: string]: unknown;
         };
         /** @description Network request timing entry derived from PerformanceResourceTiming. Captures URL, HTTP status, and duration for waterfall visualization and performance analysis. */
         WaterfallEntry: {

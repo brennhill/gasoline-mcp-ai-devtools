@@ -50,8 +50,7 @@ import {
   formatLogEntry,
   captureScreenshot,
   updateBadge,
-  checkServerHealth,
-  sendStatusPing
+  checkServerHealth
 } from './communication.js'
 import { getTrackedTabInfo } from './event-listeners.js'
 import { DebugCategory } from './debug.js'
@@ -408,26 +407,6 @@ export async function checkConnectionAndUpdate(): Promise<void> {
   } finally {
     setConnectionCheckRunning(false)
   }
-}
-
-// =============================================================================
-// STATUS PING (still used for tracked tab change notifications)
-// =============================================================================
-
-export async function sendStatusPingWrapper(): Promise<void> {
-  const trackingInfo = await getTrackedTabInfo()
-
-  const statusMessage = {
-    type: 'status',
-    tracking_enabled: !!trackingInfo.trackedTabId,
-    tracked_tab_id: trackingInfo.trackedTabId,
-    tracked_tab_url: trackingInfo.trackedTabUrl,
-    message: trackingInfo.trackedTabId ? 'tracking enabled' : 'no tab tracking enabled',
-    extension_connected: true,
-    timestamp: new Date().toISOString()
-  }
-
-  await sendStatusPing(getServerUrl(), statusMessage, diagnosticLog)
 }
 
 // =============================================================================

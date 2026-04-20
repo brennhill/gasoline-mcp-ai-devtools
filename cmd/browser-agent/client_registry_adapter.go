@@ -36,7 +36,14 @@ func (a *sessionClientRegistryAdapter) Register(cwd string) any {
 }
 
 func (a *sessionClientRegistryAdapter) Get(id string) any {
-	return a.reg.Get(id)
+	// Return untyped nil (not a typed-nil *ClientState wrapped in an interface)
+	// so callers can use `v == nil` to detect "not found" instead of reflecting
+	// into the interface.
+	cs := a.reg.Get(id)
+	if cs == nil {
+		return nil
+	}
+	return cs
 }
 
 func (a *sessionClientRegistryAdapter) Unregister(id string) bool {
