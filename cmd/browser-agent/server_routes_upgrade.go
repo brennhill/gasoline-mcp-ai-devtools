@@ -30,14 +30,25 @@ type upgradeReqBody struct {
 	Nonce string `json:"nonce"`
 }
 
-// handleUpgradeNonce returns the current per-process nonce. The extension calls
-// this over its authenticated channel before posting /upgrade/install so the
-// install endpoint can reject unauthenticated local callers.
+// handleUpgradeNonce returns the current per-process nonce and pins it to the
+// requesting Origin. The extension calls this over its authenticated channel
+// before posting /upgrade/install so the install endpoint can reject both
+// unauthenticated local callers and a second extension on the same browser
+// that would otherwise replay a nonce it harvested over localhost.
 func (s *Server) handleUpgradeNonce(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		jsonResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "Method not allowed"})
 		return
 	}
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		// Empty Origin defeats the nonce-origin binding. corsMiddleware already
+		// accepts empty Origin (CLI/curl paths) but for this endpoint we must
+		// reject so the nonce is never issued without a matching pin target.
+		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Origin header required"})
+		return
+	}
+	s.upgradeNonce.Pin(origin)
 	jsonResponse(w, http.StatusOK, map[string]string{"nonce": s.upgradeNonce.Current()})
 }
 
@@ -54,7 +65,7 @@ func (s *Server) handleUpgradeInstall(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
-	if !s.upgradeNonce.Verify(body.Nonce) {
+	if !s.upgradeNonce.Verify(body.Nonce, r.Header.Get("Origin")) {
 		jsonResponse(w, http.StatusUnauthorized, map[string]string{"error": "Invalid nonce"})
 		return
 	}

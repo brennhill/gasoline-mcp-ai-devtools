@@ -52,9 +52,12 @@ The installer (`scripts/install.sh`) kills the running daemon, stages the new bi
 1. Localhost-only HTTP (existing daemon constraint).
 2. `Origin: chrome-extension://<id>` and `X-Kaboom-Client` gating via `corsMiddleware(extensionOnly(...))`.
 3. Per-process nonce gates `/upgrade/install` so unauthenticated callers cannot fire the script even if they reach the port.
-4. No caller-supplied URL — the install URL is hardcoded to the STABLE-branch `scripts/install.sh`; the endpoint accepts only the nonce.
-5. Shell-metacharacter rejection in the URL validator so the embedded `'<URL>'` in `curl -sSL '<URL>' | bash` cannot be escaped.
-6. Rate-limit: one attempt per minute, mutated only after nonce validation succeeds.
+4. **Nonce is Origin-bound:** the first fetcher's `Origin` is pinned onto the nonce. Install requests must present the same `Origin`, so a second Chrome extension on the same browser cannot replay a nonce it harvested.
+5. `KABOOM_EXTENSION_ID` (optional) — when set by the installer into the supervisor env, `extensionOnly` scopes Origin matching to our specific extension ID, closing the "any valid extension origin passes" gap.
+6. No caller-supplied URL — the install URL is hardcoded to the STABLE-branch `scripts/install.sh`; the endpoint accepts only the nonce.
+7. Shell-metacharacter rejection in the URL validator so the embedded `'<URL>'` in `curl -sSL '<URL>' | bash` cannot be escaped.
+8. Strict checksum verification is forced when `KABOOM_SELF_UPDATE=1` regardless of user env, so a compromised or flaky `checksums.txt` cannot slip a bad binary past the installer.
+9. Rate-limit: one attempt per minute, mutated only after nonce validation succeeds.
 
 ## Code and Tests
 

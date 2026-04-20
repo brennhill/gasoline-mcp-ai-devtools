@@ -43,6 +43,14 @@ if [ "${KABOOM_SELF_UPDATE:-}" = "1" ]; then
 else
     STRICT_CHECKSUM="${KABOOM_INSTALL_STRICT:-0}"
 fi
+# KABOOM_EXTENSION_ID: when set, the installer propagates it into the launchd
+# plist EnvironmentVariables, the systemd user unit's Environment=, and the XDG
+# autostart Exec= line so the daemon's existing extensionOnly middleware scopes
+# origin matching to that specific Chrome extension ID. Empty by default because
+# unpacked-extension IDs are path-dependent and can't be computed here; power
+# users and CRX/Web-Store installs can set this before running the installer.
+KABOOM_EXTENSION_ID="${KABOOM_EXTENSION_ID:-}"
+
 # Minimum plausible binary sizes. Catches truncated downloads and HTML error pages.
 MIN_BINARY_BYTES=5000000
 MIN_HOOKS_BINARY_BYTES=2000000
@@ -631,6 +639,23 @@ fi
 # ─────────────────────────────────────────────────────────────
 
 register_autostart() {
+    # Optional extension-ID env block, rendered once and reused by each
+    # supervisor path below. Empty when KABOOM_EXTENSION_ID is unset so we
+    # don't write a blank env var that would scope the daemon to the empty ID.
+    local plist_env_block=""
+    local systemd_env_line=""
+    local desktop_exec_prefix=""
+    if [ -n "$KABOOM_EXTENSION_ID" ]; then
+        plist_env_block="    <key>EnvironmentVariables</key>
+    <dict>
+        <key>KABOOM_EXTENSION_ID</key>
+        <string>$KABOOM_EXTENSION_ID</string>
+    </dict>
+"
+        systemd_env_line="Environment=KABOOM_EXTENSION_ID=$KABOOM_EXTENSION_ID"
+        desktop_exec_prefix="env KABOOM_EXTENSION_ID=$KABOOM_EXTENSION_ID "
+    fi
+
     if [ "$PLATFORM" = "darwin" ]; then
         local plist_dir="$HOME/Library/LaunchAgents"
         local plist_path="$plist_dir/com.kaboom.daemon.plist"
@@ -652,7 +677,7 @@ register_autostart() {
     </array>
     <key>RunAtLoad</key>
     <true/>
-    <key>StandardOutPath</key>
+${plist_env_block}    <key>StandardOutPath</key>
     <string>/dev/null</string>
     <key>StandardErrorPath</key>
     <string>/dev/null</string>
@@ -684,6 +709,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=$CANONICAL_KABOOM_BIN --daemon --port 7890
+$systemd_env_line
 Restart=on-failure
 RestartSec=5
 
@@ -714,7 +740,7 @@ SERVICE
 [Desktop Entry]
 Type=Application
 Name=KaBOOM! Daemon
-Exec=$CANONICAL_KABOOM_BIN --daemon --port 7890
+Exec=${desktop_exec_prefix}$CANONICAL_KABOOM_BIN --daemon --port 7890
 Hidden=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
@@ -723,7 +749,11 @@ DESKTOP
             echo -e "${GREEN}Registered to start on login (XDG autostart).${NC}"
             # No session supervisor on non-systemd Linux — launch now in the
             # background so one-click self-update brings the daemon back up.
-            nohup "$CANONICAL_KABOOM_BIN" --daemon --port 7890 >/dev/null 2>&1 &
+            if [ -n "$KABOOM_EXTENSION_ID" ]; then
+                KABOOM_EXTENSION_ID="$KABOOM_EXTENSION_ID" nohup "$CANONICAL_KABOOM_BIN" --daemon --port 7890 >/dev/null 2>&1 &
+            else
+                nohup "$CANONICAL_KABOOM_BIN" --daemon --port 7890 >/dev/null 2>&1 &
+            fi
             disown 2>/dev/null || true
         fi
     fi

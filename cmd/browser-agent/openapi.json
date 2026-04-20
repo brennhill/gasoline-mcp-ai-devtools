@@ -129,7 +129,7 @@
           "Control"
         ],
         "summary": "Get upgrade install nonce",
-        "description": "Returns the per-process nonce that must be echoed back in POST /upgrade/install. Extension-only; rotates on every daemon start.",
+        "description": "Returns the per-process nonce that must be echoed back in POST /upgrade/install. Extension-only; rotates on every daemon start. On the first call, the nonce is pinned to the requesting Origin — subsequent POST /upgrade/install calls must come from the same Origin. A missing Origin header returns 400.",
         "operationId": "getUpgradeNonce",
         "responses": {
           "200": {
@@ -161,7 +161,7 @@
           "Control"
         ],
         "summary": "Launch pinned self-update installer",
-        "description": "Fires the pinned install script in a detached process and returns immediately. The running daemon will be killed by the installer once the new binary is staged; the supervisor (launchd/systemd) respawns it. Rate-limited to one attempt per minute. Unix only — Windows returns 501.",
+        "description": "Fires the pinned install script in a detached process and returns immediately. The running daemon will be killed by the installer once the new binary is staged; the supervisor (launchd/systemd) respawns it. Rate-limited to one attempt per minute. Unix only — Windows returns 501. The request Origin must match the Origin that first fetched /upgrade/nonce; otherwise 401.",
         "operationId": "postUpgradeInstall",
         "requestBody": {
           "required": true,
