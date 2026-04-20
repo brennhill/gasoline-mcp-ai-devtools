@@ -216,7 +216,7 @@ export function initPopup(): void {
       const serverUrl = stored && stored.length > 0 ? stored : DEFAULT_SERVER_URL
       const resp = await fetch(`${serverUrl}/health`, { headers: buildDaemonHeaders() })
       if (!resp.ok) return
-      const health = (await resp.json()) as { version?: string; availableVersion?: string }
+      const health = (await resp.json()) as { version?: string; available_version?: string }
       await renderUpdateAvailableBanner(health)
     } catch {
       // Daemon unreachable — banner stays hidden; the connection-status

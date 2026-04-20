@@ -16,7 +16,7 @@ const VERSION_POLL_TIMEOUT_MS = 30000
 
 interface HealthResponse {
   version?: string
-  availableVersion?: string
+  available_version?: string
 }
 
 interface NonceResponse {
@@ -136,7 +136,7 @@ export async function renderUpdateAvailableBanner(health: HealthResponse): Promi
   if (!container) return
 
   const current = health.version ?? ''
-  const next = health.availableVersion ?? ''
+  const next = health.available_version ?? ''
   const isNewer = next && current && next !== current
 
   if (!isNewer) {

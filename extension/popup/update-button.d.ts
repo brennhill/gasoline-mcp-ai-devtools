@@ -5,7 +5,7 @@
  */
 interface HealthResponse {
     version?: string;
-    availableVersion?: string;
+    available_version?: string;
 }
 /**
  * Render the update-available banner based on latest health. No-op if no

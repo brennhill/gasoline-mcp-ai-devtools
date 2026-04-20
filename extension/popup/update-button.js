@@ -116,7 +116,7 @@ export async function renderUpdateAvailableBanner(health) {
     if (!container)
         return;
     const current = health.version ?? '';
-    const next = health.availableVersion ?? '';
+    const next = health.available_version ?? '';
     const isNewer = next && current && next !== current;
     if (!isNewer) {
         container.style.display = 'none';
