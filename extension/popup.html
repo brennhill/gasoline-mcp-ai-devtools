@@ -124,7 +124,39 @@
           "
         >Open extensions page</button>
       </div>
-      <p id="update-action-error" style="display: none; margin-top: 8px; color: #f85149"></p>
+      <div id="update-action-error" style="display: none; margin-top: 8px">
+        <span id="update-action-error-text" style="color: #f85149"></span>
+        <div style="margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap">
+          <button
+            id="update-retry-btn"
+            type="button"
+            style="
+              padding: 6px 12px;
+              background: #0969da;
+              color: #fff;
+              border: none;
+              border-radius: 4px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+            "
+          >Retry</button>
+          <button
+            id="update-copy-log-btn"
+            type="button"
+            style="
+              padding: 6px 12px;
+              background: #30363d;
+              color: #fff;
+              border: none;
+              border-radius: 4px;
+              font-size: 12px;
+              font-weight: 600;
+              cursor: pointer;
+            "
+          >Copy log path</button>
+        </div>
+      </div>
     </div>
 
     <div

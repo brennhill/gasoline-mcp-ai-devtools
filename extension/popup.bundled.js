@@ -449,11 +449,13 @@ The daemon will restart automatically.`;
     const url = id ? `chrome://extensions/?id=${id}` : "chrome://extensions";
     chrome.tabs.create({ url });
   }
+  var INSTALL_LOG_PATH = "~/.kaboom/logs/install.log";
   function showState(mode, errorMessage2) {
     const idle = document.getElementById("update-action-idle");
     const running = document.getElementById("update-action-running");
     const reload = document.getElementById("update-action-reload");
     const errorEl = document.getElementById("update-action-error");
+    const errorTextEl = document.getElementById("update-action-error-text");
     if (idle)
       idle.style.display = mode === "idle" ? "" : "none";
     if (running)
@@ -462,10 +464,14 @@ The daemon will restart automatically.`;
       reload.style.display = mode === "reload" ? "" : "none";
     if (errorEl) {
       errorEl.style.display = mode === "error" ? "" : "none";
-      errorEl.textContent = mode === "error" && errorMessage2 ? errorMessage2 : "";
+    }
+    if (errorTextEl) {
+      errorTextEl.textContent = mode === "error" && errorMessage2 ? errorMessage2 : "";
     }
   }
+  var lastUpgradeInfo = null;
   async function runUpgradeFlow(info) {
+    lastUpgradeInfo = info;
     showState("running");
     const startTime = Date.now();
     setRunningText(0);
@@ -526,6 +532,32 @@ The daemon will restart automatically.`;
     if (reloadBtn && !reloadBtn.dataset.wired) {
       reloadBtn.dataset.wired = "1";
       reloadBtn.addEventListener("click", openExtensionsPage);
+    }
+    const retryBtn = document.getElementById("update-retry-btn");
+    if (retryBtn && !retryBtn.dataset.wired) {
+      retryBtn.dataset.wired = "1";
+      retryBtn.addEventListener("click", () => {
+        const info = lastUpgradeInfo ?? { currentVersion: current, availableVersion: next, serverUrl };
+        void runUpgradeFlow(info);
+      });
+    }
+    const copyLogBtn = document.getElementById("update-copy-log-btn");
+    if (copyLogBtn && !copyLogBtn.dataset.wired) {
+      copyLogBtn.dataset.wired = "1";
+      copyLogBtn.addEventListener("click", () => {
+        const originalText = copyLogBtn.textContent ?? "Copy log path";
+        void (async () => {
+          try {
+            await navigator.clipboard.writeText(INSTALL_LOG_PATH);
+            copyLogBtn.textContent = "Copied!";
+          } catch {
+            copyLogBtn.textContent = "Copy failed";
+          }
+          setTimeout(() => {
+            copyLogBtn.textContent = originalText;
+          }, 2e3);
+        })();
+      });
     }
   }
 

@@ -34,7 +34,15 @@ STAGE_EXT_DIR="$INSTALL_DIR/.extension-stage-$$"
 BACKUP_EXT_DIR="$INSTALL_DIR/.extension-backup-$$"
 # The VERSION file on the STABLE branch is the source of truth for the latest release.
 VERSION_URL="https://raw.githubusercontent.com/$REPO/STABLE/VERSION"
-STRICT_CHECKSUM="${KABOOM_INSTALL_STRICT:-0}"
+# KABOOM_INSTALL_STRICT=1 forces checksum verification failure to abort the install.
+# Default 0 keeps interactive curl|bash installs tolerant of CDN hiccups, but we
+# force strict mode on daemon-triggered self-updates (KABOOM_SELF_UPDATE=1) so
+# a compromised or flaky STABLE checksums.txt cannot slip a bad binary past.
+if [ "${KABOOM_SELF_UPDATE:-}" = "1" ]; then
+    STRICT_CHECKSUM=1
+else
+    STRICT_CHECKSUM="${KABOOM_INSTALL_STRICT:-0}"
+fi
 # Minimum plausible binary sizes. Catches truncated downloads and HTML error pages.
 MIN_BINARY_BYTES=5000000
 MIN_HOOKS_BINARY_BYTES=2000000
@@ -57,6 +65,24 @@ reject_privileged_install_context() {
         exit 1
     fi
 }
+
+# When invoked by the daemon-triggered self-update flow, redirect all output
+# to ~/.kaboom/logs/install.log so non-technical users (who never see the
+# terminal in this path) have something to attach to a support request. We
+# append rather than truncate so the last few runs' tails are preserved, and
+# a date-stamped header per run makes the boundaries obvious.
+if [ "${KABOOM_SELF_UPDATE:-}" = "1" ]; then
+    INSTALL_LOG_DIR="$HOME/.kaboom/logs"
+    mkdir -p "$INSTALL_LOG_DIR" 2>/dev/null || true
+    INSTALL_LOG="$INSTALL_LOG_DIR/install.log"
+    {
+        echo ""
+        echo "=========================================="
+        echo "Self-update run: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        echo "=========================================="
+    } >> "$INSTALL_LOG" 2>/dev/null || true
+    exec >> "$INSTALL_LOG" 2>&1
+fi
 
 # Cleanup: Ensure temporary files are removed even if the script crashes or is interrupted.
 # Uses mktemp to prevent predictable filename attacks.
@@ -82,6 +108,9 @@ else
     echo -e "${ORANGE}${BOLD}KaBOOM! Installer${NC}"
 fi
 echo -e "${BLUE}--------------------------------------------------${NC}"
+if [ "${KABOOM_SELF_UPDATE:-}" = "1" ]; then
+    echo -e "${GREEN}Self-update mode: strict checksum verification enabled${NC}"
+fi
 if [ "$STRICT_CHECKSUM" = "1" ]; then
     echo -e "Strict checksum mode enabled (KABOOM_INSTALL_STRICT=1)"
 fi

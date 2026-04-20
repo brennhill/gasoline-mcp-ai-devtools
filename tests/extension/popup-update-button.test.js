@@ -185,7 +185,10 @@ describe('popup update button', () => {
 
     const errorEl = document.getElementById('update-action-error')
     assert.strictEqual(errorEl.style.display, '')
-    assert.match(errorEl.textContent, /recently|minute/i)
+    // Error text now lives in a dedicated span so the retry/copy buttons can
+    // sit alongside it in the same container.
+    const errorTextEl = document.getElementById('update-action-error-text')
+    assert.match(errorTextEl.textContent, /recently|minute/i)
   })
 
   test('install 501 surfaces unsupported-platform error', async () => {
@@ -205,7 +208,8 @@ describe('popup update button', () => {
 
     const errorEl = document.getElementById('update-action-error')
     assert.strictEqual(errorEl.style.display, '')
-    assert.match(errorEl.textContent, /not supported|re-run the installer/i)
+    const errorTextEl = document.getElementById('update-action-error-text')
+    assert.match(errorTextEl.textContent, /not supported|re-run the installer/i)
   })
 
   test('reload button opens chrome extensions page with runtime.id', async () => {
@@ -321,7 +325,13 @@ describe('popup update button', () => {
     mock.timers.enable({ apis: ['setTimeout'] })
 
     const writeTextMock = mock.fn(() => Promise.resolve())
-    globalThis.navigator = { clipboard: { writeText: writeTextMock } }
+    // Node's globalThis.navigator is a non-writable getter; use
+    // Object.defineProperty so tests can stub clipboard without ReadOnly errors.
+    Object.defineProperty(globalThis, 'navigator', {
+      value: { clipboard: { writeText: writeTextMock } },
+      configurable: true,
+      writable: true
+    })
 
     // Drive the flow to error so the error block (and its buttons) is the
     // active state. The copy-log button is wired at render time regardless,

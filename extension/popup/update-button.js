@@ -64,11 +64,16 @@ function openExtensionsPage() {
     const url = id ? `chrome://extensions/?id=${id}` : 'chrome://extensions';
     chrome.tabs.create({ url });
 }
+// Install log path — mirrors scripts/install.sh's KABOOM_SELF_UPDATE log sink.
+// Hard-coded here because the popup has no clean way to ask the daemon for its
+// home dir and "~" is universally understood by macOS/Linux users.
+const INSTALL_LOG_PATH = '~/.kaboom/logs/install.log';
 function showState(mode, errorMessage) {
     const idle = document.getElementById('update-action-idle');
     const running = document.getElementById('update-action-running');
     const reload = document.getElementById('update-action-reload');
     const errorEl = document.getElementById('update-action-error');
+    const errorTextEl = document.getElementById('update-action-error-text');
     if (idle)
         idle.style.display = mode === 'idle' ? '' : 'none';
     if (running)
@@ -77,10 +82,17 @@ function showState(mode, errorMessage) {
         reload.style.display = mode === 'reload' ? '' : 'none';
     if (errorEl) {
         errorEl.style.display = mode === 'error' ? '' : 'none';
-        errorEl.textContent = mode === 'error' && errorMessage ? errorMessage : '';
+    }
+    if (errorTextEl) {
+        errorTextEl.textContent = mode === 'error' && errorMessage ? errorMessage : '';
     }
 }
+// Latest UpdateInfo used to launch an upgrade. Held at module scope so the
+// retry button can re-run the same flow without needing to re-render the
+// banner or re-derive versions from /health.
+let lastUpgradeInfo = null;
 async function runUpgradeFlow(info) {
+    lastUpgradeInfo = info;
     showState('running');
     const startTime = Date.now();
     setRunningText(0);
@@ -152,6 +164,38 @@ export async function renderUpdateAvailableBanner(health) {
     if (reloadBtn && !reloadBtn.dataset.wired) {
         reloadBtn.dataset.wired = '1';
         reloadBtn.addEventListener('click', openExtensionsPage);
+    }
+    // Retry re-runs the same upgrade flow with the UpdateInfo that was originally
+    // captured. Falls back to the render-time info if nothing has run yet (e.g.
+    // user-triggered retry before any prior click — unlikely but harmless).
+    const retryBtn = document.getElementById('update-retry-btn');
+    if (retryBtn && !retryBtn.dataset.wired) {
+        retryBtn.dataset.wired = '1';
+        retryBtn.addEventListener('click', () => {
+            const info = lastUpgradeInfo ?? { currentVersion: current, availableVersion: next, serverUrl };
+            void runUpgradeFlow(info);
+        });
+    }
+    // Copy log path writes the (hard-coded) install log path to the clipboard so
+    // non-technical users can paste it into a support request.
+    const copyLogBtn = document.getElementById('update-copy-log-btn');
+    if (copyLogBtn && !copyLogBtn.dataset.wired) {
+        copyLogBtn.dataset.wired = '1';
+        copyLogBtn.addEventListener('click', () => {
+            const originalText = copyLogBtn.textContent ?? 'Copy log path';
+            void (async () => {
+                try {
+                    await navigator.clipboard.writeText(INSTALL_LOG_PATH);
+                    copyLogBtn.textContent = 'Copied!';
+                }
+                catch {
+                    copyLogBtn.textContent = 'Copy failed';
+                }
+                setTimeout(() => {
+                    copyLogBtn.textContent = originalText;
+                }, 2000);
+            })();
+        });
     }
 }
 //# sourceMappingURL=update-button.js.map
