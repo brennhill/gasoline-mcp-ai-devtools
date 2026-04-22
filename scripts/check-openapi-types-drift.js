@@ -24,10 +24,21 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-types-drift-'))
 const fresh = path.join(tmp, 'openapi-types.ts')
 
 try {
-  execSync(`node_modules/.bin/openapi-typescript ${SPEC} -o ${fresh}`, {
-    cwd: REPO_ROOT,
-    stdio: ['ignore', 'pipe', 'pipe']
-  })
+  try {
+    execSync(`node_modules/.bin/openapi-typescript ${SPEC} -o ${fresh}`, {
+      cwd: REPO_ROOT,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+  } catch (err) {
+    // Surface the likely root cause instead of a raw spawn/parse error.
+    const stderr = err && err.stderr ? err.stderr.toString() : ''
+    const stdout = err && err.stdout ? err.stdout.toString() : ''
+    console.error('FAIL: openapi-typescript could not generate types from cmd/browser-agent/openapi.json')
+    if (stderr) console.error(stderr)
+    if (stdout) console.error(stdout)
+    console.error('Common causes: duplicate path keys, malformed $ref, missing `npm ci`.')
+    process.exit(1)
+  }
 
   if (!fs.existsSync(CURRENT)) {
     console.error(`FAIL: ${path.relative(REPO_ROOT, CURRENT)} is missing`)

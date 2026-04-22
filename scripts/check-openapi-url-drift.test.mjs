@@ -25,6 +25,18 @@ describe('readPathLiteral', () => {
     assert.equal(readPathLiteral('/clients/${id}`'), '/clients/{param}')
   })
 
+  test('handles nested braces inside ${...}', () => {
+    // Regression: a plain indexOf("}") on `${foo({a:1})}/extra` stops at the
+    // inner `}` and truncates the suffix. Brace-depth tracking keeps the whole
+    // interpolation and preserves the trailing path segment.
+    assert.equal(readPathLiteral('/clients/${foo({a:1})}/extra`'), '/clients/{param}/extra')
+    assert.equal(readPathLiteral('/a/${x({})}/b`'), '/a/{param}/b')
+  })
+
+  test('returns null on unbalanced ${...}', () => {
+    assert.equal(readPathLiteral('/clients/${unterminated`'), null)
+  })
+
   test('strips trailing sentence punctuation', () => {
     assert.equal(readPathLiteral('/api/foo.\`'), '/api/foo')
     assert.equal(readPathLiteral('/api/foo, and more'), '/api/foo')

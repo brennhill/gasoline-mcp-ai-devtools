@@ -40,9 +40,12 @@ const SCAN_DIRS = ['src']
 // File extensions treated as source.
 const EXTS = new Set(['.ts', '.tsx', '.mts', '.cts'])
 
-// Paths that are intentionally unspec'd (temporary allowlist for known gaps
-// that have an open issue). Keep this list SHORT — each entry is a commitment
-// to either spec the endpoint or remove the caller.
+// Paths that are intentionally unspec'd — baseline-skip allowlist mirroring
+// the schemathesis baseline-skip list. Adding an entry here REQUIRES adding
+// a matching row to docs/audits/openapi-drift-backlog.md with a linked issue.
+// The goal is for this list to stay empty. Each entry blocks real drift
+// detection for that path, so adding one is a deliberate tradeoff, not a
+// silencer for noise.
 const KNOWN_UNSPECD_PATHS = new Set([])
 
 // ---------- IO helpers ----------
@@ -117,10 +120,19 @@ function readPathLiteral(rest) {
     if (ch === '?' || ch === '#') break
     if (ch === ' ' || ch === '\t' || ch === ',' || ch === ')') break
     if (ch === '$' && rest[i + 1] === '{') {
-      const close = rest.indexOf('}', i + 2)
-      if (close === -1) return null
+      // Track brace depth so nested expressions like `${foo({a:1})}` close on
+      // the correct `}` — a plain indexOf would stop at the inner `}` and
+      // truncate the path suffix. Returns null if braces are unbalanced.
+      let depth = 1
+      let j = i + 2
+      while (j < rest.length && depth > 0) {
+        if (rest[j] === '{') depth++
+        else if (rest[j] === '}') depth--
+        j++
+      }
+      if (depth !== 0) return null
       out += '{param}'
-      i = close + 1
+      i = j
       continue
     }
     out += ch

@@ -1,7 +1,7 @@
 // @ts-nocheck
 /**
  * @fileoverview sync-manager.test.js — Tests for sync client lifecycle management.
- * Covers startSyncClient, stopSyncClient, resetSyncClientConnection, and
+ * Covers startSyncClient, resetSyncClientConnection, and
  * idempotent start behavior.
  *
  * Run: node --experimental-test-module-mocks --test tests/extension/sync-manager.test.js
@@ -116,8 +116,7 @@ function createMockDeps(overrides = {}) {
 
 // ---------------------------------------------------------------------------
 // Tests — ordered to account for module-level syncClient state.
-// The module holds a single syncClient variable. Once created, stopSyncClient
-// does NOT null it out, so startSyncClient remains idempotent.
+// The module holds a single syncClient variable; startSyncClient is idempotent.
 // We import a fresh module per describe block using dynamic import + unique
 // cache-busting query strings.
 // ---------------------------------------------------------------------------
@@ -175,39 +174,6 @@ describe('startSyncClient', () => {
 
     assert.strictEqual(mockCreateSyncClient.mock.calls.length, 1, 'Should only create once')
     assert.strictEqual(mockSyncClientInstance.start.mock.calls.length, 1, 'Should only start once')
-  })
-})
-
-describe('stopSyncClient', () => {
-  beforeEach(() => {
-    mockCreateSyncClient.mock.resetCalls()
-    mockSyncClientInstance.start.mock.resetCalls()
-    mockSyncClientInstance.stop.mock.resetCalls()
-  })
-
-  test('stops the running sync client and logs', async () => {
-    const { startSyncClient, stopSyncClient } = await freshImport()
-    const deps = createMockDeps()
-    startSyncClient(deps)
-
-    mockSyncClientInstance.stop.mock.resetCalls()
-
-    const debugLog = mock.fn()
-    stopSyncClient(debugLog)
-
-    assert.strictEqual(mockSyncClientInstance.stop.mock.calls.length, 1, 'Should call stop()')
-    const stopLog = debugLog.mock.calls.find(c =>
-      typeof c.arguments[1] === 'string' && c.arguments[1].includes('Sync client stopped')
-    )
-    assert.ok(stopLog, 'Should log sync client stopped')
-  })
-
-  test('is a no-op when no client has been created', async () => {
-    const { stopSyncClient } = await freshImport()
-    const debugLog = mock.fn()
-    stopSyncClient(debugLog)
-
-    assert.strictEqual(debugLog.mock.calls.length, 0, 'Should not log when no client exists')
   })
 })
 

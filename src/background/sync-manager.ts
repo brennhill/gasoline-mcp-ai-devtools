@@ -229,16 +229,6 @@ export function startSyncClient(deps: SyncManagerDeps): void {
 }
 
 /**
- * Stop the sync client
- */
-function stopSyncClient(debugLog: DebugLogFn): void {
-  if (syncClient) {
-    syncClient.stop()
-    debugLog(DebugCategory.CONNECTION, 'Sync client stopped')
-  }
-}
-
-/**
  * Reset sync client connection (call when user enables pilot/tracking)
  */
 export function resetSyncClientConnection(debugLog: DebugLogFn): void {

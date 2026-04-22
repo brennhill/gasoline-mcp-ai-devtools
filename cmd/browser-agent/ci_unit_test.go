@@ -145,6 +145,63 @@ func TestHandleSnapshot_SinceFilter(t *testing.T) {
 	}
 }
 
+// TestHandleSnapshot_LogEntriesWithoutLevelSurvive pins the openapi.json
+// LogEntry schema relaxation. The daemon log buffer holds a mix of browser
+// console logs (with `level`) and lifecycle events (with `event`, `type`, no
+// `level`). A prior spec required `level` on every entry, which didn't match
+// reality — the Go type is map[string]any and lifecycle entries flow through.
+// This test seeds a lifecycle-shaped entry and confirms /snapshot returns it
+// verbatim without the handler discarding or mangling it.
+func TestHandleSnapshot_LogEntriesWithoutLevelSurvive(t *testing.T) {
+	t.Parallel()
+
+	srv := newTestServerForHandlers(t)
+	cap := capture.NewCapture()
+
+	ts := time.Now().UTC().Format(time.RFC3339Nano)
+	srv.logs.addEntries([]LogEntry{
+		// Lifecycle event — no `level`, but a `type` and `event` discriminator.
+		{"type": "lifecycle", "event": "boot", "timestamp": ts, "pid": 1234},
+		// Browser console log — has `level`.
+		{"level": "error", "message": "boom", "ts": ts},
+	})
+
+	handler := handleSnapshot(srv, cap)
+	req := httptest.NewRequest(http.MethodGet, "/snapshot", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	var resp SnapshotResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if len(resp.Logs) != 2 {
+		t.Fatalf("logs len = %d, want 2", len(resp.Logs))
+	}
+
+	var sawLifecycle, sawBrowser bool
+	for _, entry := range resp.Logs {
+		if entry["type"] == "lifecycle" && entry["event"] == "boot" {
+			sawLifecycle = true
+			if _, hasLevel := entry["level"]; hasLevel {
+				t.Errorf("lifecycle entry should not have `level` field, got %v", entry)
+			}
+		}
+		if entry["level"] == "error" && entry["message"] == "boom" {
+			sawBrowser = true
+		}
+	}
+	if !sawLifecycle {
+		t.Error("lifecycle entry missing from /snapshot response")
+	}
+	if !sawBrowser {
+		t.Error("browser console entry missing from /snapshot response")
+	}
+}
+
 func TestHandleClearAndTestBoundaryHandlers(t *testing.T) {
 	t.Parallel()
 

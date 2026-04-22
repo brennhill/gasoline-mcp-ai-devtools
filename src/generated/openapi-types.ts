@@ -1270,7 +1270,32 @@ export interface components {
                 available?: boolean;
                 /** @description Whether AI Web Pilot is enabled in the extension settings */
                 pilot_enabled?: boolean;
+                /** @description Detailed pilot state (e.g., `assumed_enabled`, `confirmed`) */
+                pilot_state?: string;
+                /** @description Whether an extension has recently pinged /sync */
+                extension_connected?: boolean;
+                /** @description RFC3339 timestamp of last extension /sync activity (empty if never seen) */
+                extension_last_seen?: string;
+                /** @description Opaque client identifier stamped by the extension */
+                extension_client_id?: string;
+                /** @description Current security posture (`normal`, `strict`, …) */
+                security_mode?: string;
+                /** @description True when the daemon is running in production-parity mode */
+                production_parity?: boolean;
+                /** @description Number of insecure URL rewrites performed; null before first measurement */
+                insecure_rewrites?: number | null;
             };
+            /** @description Bridge fast-path telemetry counters */
+            bridge_fastpath?: {
+                resources_read_failure?: number;
+                resources_read_success?: number;
+            };
+            /** @description Daemon service name (e.g., `kaboom-browser-devtools`) */
+            name?: string;
+            /** @description Alias of `name` (kept for backward compatibility) */
+            "service-name"?: string;
+            /** @description Terminal sub-server port (0 if not running) */
+            terminal_port?: number;
         };
         /** @description Comprehensive diagnostic report for bug reports and troubleshooting. Includes system info, buffer fill levels, and extension state. Designed to be copy-pasted into GitHub issues. */
         DiagnosticsResponse: {
@@ -1353,13 +1378,13 @@ export interface components {
                 message?: string;
             };
         };
-        /** @description Generic log entry. Backed by map[string]any in Go, so the buffer holds a mix of browser console logs (with `level`, `args`, `ts`, `url`) and daemon lifecycle events (with `event`, `type`, `timestamp`, etc.). The shared properties below are the union of commonly seen fields; additional properties are permitted. */
-        LogEntry: {
+        /** @description Console log entry captured from the browser — a single console.log/warn/error/info/debug call. Variant discriminator: presence of `level` with one of the enum values. */
+        BrowserLogEntry: {
             /**
-             * @description Console log level (browser logs only)
+             * @description Console log level
              * @enum {string}
              */
-            level?: "error" | "warn" | "info" | "debug" | "log";
+            level: "error" | "warn" | "info" | "debug" | "log";
             /** @description Serialized console arguments (strings, objects, arrays) */
             args?: unknown;
             /**
@@ -1369,18 +1394,29 @@ export interface components {
             ts?: string;
             /** @description Page URL where the console call originated */
             url?: string;
-            /**
-             * Format: date-time
-             * @description Timestamp for daemon lifecycle events (distinct from `ts`)
-             */
-            timestamp?: string;
-            /** @description Entry category (e.g., `lifecycle` for daemon startup events) */
-            type?: string;
-            /** @description Event name for lifecycle entries (e.g., `mode_detection`, `launch_mode_classified`) */
-            event?: string;
+            /** @description Rendered log message */
+            message?: string;
         } & {
             [key: string]: unknown;
         };
+        /** @description Daemon lifecycle event captured during startup, mode detection, or runtime state transitions. Variant discriminator: presence of both `type` and `event`. */
+        LifecycleLogEntry: {
+            /** @description Entry category (e.g., `lifecycle` for daemon startup events) */
+            type: string;
+            /** @description Event name (e.g., `mode_detection`, `launch_mode_classified`) */
+            event: string;
+            /**
+             * Format: date-time
+             * @description RFC3339 timestamp for the event
+             */
+            timestamp?: string;
+            /** @description Daemon process ID at event time */
+            pid?: number;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description Union of log-entry shapes the daemon stores in a single map[string]any buffer. Schemathesis validates every entry against at least one variant, which preserves meaningful type checking without forcing every emitter to stamp a shared discriminator field. */
+        LogEntry: components["schemas"]["BrowserLogEntry"] | components["schemas"]["LifecycleLogEntry"];
         /** @description Network request timing entry derived from PerformanceResourceTiming. Captures URL, HTTP status, and duration for waterfall visualization and performance analysis. */
         WaterfallEntry: {
             /** @description Request URL */

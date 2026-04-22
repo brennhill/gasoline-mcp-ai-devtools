@@ -237,7 +237,10 @@ jobs:
 
       - name: Install Schemathesis
         run: |
-          pip install --quiet schemathesis
+          # Pin schemathesis so a future release that tightens JSON Schema
+          # interpretation can't break unrelated PRs. Bump deliberately when
+          # upgrading — dependabot/renovate should propose the bump.
+          pip install --quiet 'schemathesis==4.15.2'
           schemathesis --version
 
       - name: Boot daemon + run server conformance

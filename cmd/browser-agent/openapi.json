@@ -2734,8 +2734,56 @@
               "pilot_enabled": {
                 "type": "boolean",
                 "description": "Whether AI Web Pilot is enabled in the extension settings"
+              },
+              "pilot_state": {
+                "type": "string",
+                "description": "Detailed pilot state (e.g., `assumed_enabled`, `confirmed`)"
+              },
+              "extension_connected": {
+                "type": "boolean",
+                "description": "Whether an extension has recently pinged /sync"
+              },
+              "extension_last_seen": {
+                "type": "string",
+                "description": "RFC3339 timestamp of last extension /sync activity (empty if never seen)"
+              },
+              "extension_client_id": {
+                "type": "string",
+                "description": "Opaque client identifier stamped by the extension"
+              },
+              "security_mode": {
+                "type": "string",
+                "description": "Current security posture (`normal`, `strict`, …)"
+              },
+              "production_parity": {
+                "type": "boolean",
+                "description": "True when the daemon is running in production-parity mode"
+              },
+              "insecure_rewrites": {
+                "type": ["integer", "null"],
+                "description": "Number of insecure URL rewrites performed; null before first measurement"
               }
             }
+          },
+          "bridge_fastpath": {
+            "type": "object",
+            "description": "Bridge fast-path telemetry counters",
+            "properties": {
+              "resources_read_failure": { "type": "integer" },
+              "resources_read_success": { "type": "integer" }
+            }
+          },
+          "name": {
+            "type": "string",
+            "description": "Daemon service name (e.g., `kaboom-browser-devtools`)"
+          },
+          "service-name": {
+            "type": "string",
+            "description": "Alias of `name` (kept for backward compatibility)"
+          },
+          "terminal_port": {
+            "type": "integer",
+            "description": "Terminal sub-server port (0 if not running)"
           }
         }
       },
@@ -2909,21 +2957,16 @@
           }
         }
       },
-      "LogEntry": {
+      "BrowserLogEntry": {
         "type": "object",
-        "description": "Generic log entry. Backed by map[string]any in Go, so the buffer holds a mix of browser console logs (with `level`, `args`, `ts`, `url`) and daemon lifecycle events (with `event`, `type`, `timestamp`, etc.). The shared properties below are the union of commonly seen fields; additional properties are permitted.",
+        "description": "Console log entry captured from the browser — a single console.log/warn/error/info/debug call. Variant discriminator: presence of `level` with one of the enum values.",
         "additionalProperties": true,
+        "required": ["level"],
         "properties": {
           "level": {
             "type": "string",
-            "enum": [
-              "error",
-              "warn",
-              "info",
-              "debug",
-              "log"
-            ],
-            "description": "Console log level (browser logs only)"
+            "enum": ["error", "warn", "info", "debug", "log"],
+            "description": "Console log level"
           },
           "args": {
             "description": "Serialized console arguments (strings, objects, arrays)"
@@ -2937,20 +2980,43 @@
             "type": "string",
             "description": "Page URL where the console call originated"
           },
-          "timestamp": {
+          "message": {
             "type": "string",
-            "format": "date-time",
-            "description": "Timestamp for daemon lifecycle events (distinct from `ts`)"
-          },
+            "description": "Rendered log message"
+          }
+        }
+      },
+      "LifecycleLogEntry": {
+        "type": "object",
+        "description": "Daemon lifecycle event captured during startup, mode detection, or runtime state transitions. Variant discriminator: presence of both `type` and `event`.",
+        "additionalProperties": true,
+        "required": ["type", "event"],
+        "properties": {
           "type": {
             "type": "string",
             "description": "Entry category (e.g., `lifecycle` for daemon startup events)"
           },
           "event": {
             "type": "string",
-            "description": "Event name for lifecycle entries (e.g., `mode_detection`, `launch_mode_classified`)"
+            "description": "Event name (e.g., `mode_detection`, `launch_mode_classified`)"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "RFC3339 timestamp for the event"
+          },
+          "pid": {
+            "type": "integer",
+            "description": "Daemon process ID at event time"
           }
         }
+      },
+      "LogEntry": {
+        "description": "Union of log-entry shapes the daemon stores in a single map[string]any buffer. Schemathesis validates every entry against at least one variant, which preserves meaningful type checking without forcing every emitter to stamp a shared discriminator field.",
+        "oneOf": [
+          { "$ref": "#/components/schemas/BrowserLogEntry" },
+          { "$ref": "#/components/schemas/LifecycleLogEntry" }
+        ]
       },
       "WaterfallEntry": {
         "type": "object",

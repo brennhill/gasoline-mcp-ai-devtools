@@ -39,7 +39,7 @@ cleanup() {
   fi
   rm -rf "$STATE_DIR" "$DAEMON_LOG"
 }
-trap cleanup EXIT
+trap cleanup EXIT INT TERM
 
 # Start daemon in background.
 echo "▶ Booting Kaboom daemon on :${PORT} (state-dir=${STATE_DIR})"
@@ -64,17 +64,31 @@ until curl -sf "${BASE_URL}/health" -H "X-Kaboom-Client: ${EXT_CLIENT}" >/dev/nu
 done
 echo "✓ Daemon healthy"
 
-# Run schemathesis. Exclusions fall into three buckets:
+# Sanity probe: verify the synthetic extension identity still bypasses
+# extensionOnly middleware. If the middleware tightens its Origin regex in
+# the future, this fails loudly here instead of silently giving schemathesis
+# empty coverage (every endpoint returning 403).
+if ! curl -sf "${BASE_URL}/api/status" \
+     -H "Origin: ${EXT_ORIGIN}" \
+     -H "X-Kaboom-Client: ${EXT_CLIENT}" \
+     -o /dev/null; then
+  echo "✗ Synthetic extension identity rejected by extensionOnly middleware."
+  echo "  Update EXT_ORIGIN/EXT_CLIENT to satisfy cmd/browser-agent/server_routes.go."
+  exit 1
+fi
+echo "✓ Synthetic extension identity accepted"
+
+# Run schemathesis. Exclusions fall into two buckets:
 #
-# (1) Non-API paths — HTML viewers, websocket test endpoints, setup wizards.
-#     These aren't JSON endpoints and can't meaningfully fuzz.
-# (2) Side-effect paths — /shutdown kills the daemon, /upgrade/install fires
-#     the installer, /clear wipes buffers. Running schemathesis against them
-#     would either break the test run or trigger real state changes.
-# (3) Baseline-skip — endpoints with pre-existing drift that we'd need to
-#     either fix in the spec or fix in the Go handler. Track these as open
-#     issues; remove from the exclusion list once fixed. Adding a NEW path
-#     here requires justification.
+# PERMANENT — endpoints that will never be fuzz-safe:
+#   - Non-API paths (HTML viewers, websocket test pages, setup wizard).
+#   - Side-effect paths (/shutdown kills the daemon, /upgrade/install fires
+#     the installer, /clear wipes buffers).
+#
+# BASELINE-SKIP — endpoints with pre-existing drift the fuzzer would flag.
+#   Tracked per-entry in docs/audits/openapi-drift-backlog.md. Currently
+#   empty — the goal is to keep it that way. Adding an entry here requires
+#   adding a matching row to the backlog with a linked issue.
 
 SCHEMATHESIS_BIN="${SCHEMATHESIS_BIN:-schemathesis}"
 
@@ -83,6 +97,7 @@ SCHEMATHESIS_BIN="${SCHEMATHESIS_BIN:-schemathesis}"
   -H "Origin: ${EXT_ORIGIN}" \
   -H "X-Kaboom-Client: ${EXT_CLIENT}" \
   --include-method GET \
+  `# ---- PERMANENT EXCLUDES ----` \
   --exclude-path-regex '^/tests' \
   --exclude-path '/logs.html' \
   --exclude-path '/docs' \
@@ -91,6 +106,7 @@ SCHEMATHESIS_BIN="${SCHEMATHESIS_BIN:-schemathesis}"
   --exclude-path '/insecure-proxy' \
   --exclude-path '/shutdown' \
   --exclude-path '/clear' \
+  `# ---- BASELINE-SKIP (see docs/audits/openapi-drift-backlog.md) ----` \
   --checks response_schema_conformance \
   --max-examples 10 \
   --request-timeout 5 \

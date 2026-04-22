@@ -328,9 +328,9 @@ export function isConnectionCheckRunning(): boolean {
 }
 
 // #lizard forgives
-function updateVersionFromHealthSafe(health: { version?: string; availableVersion?: string }): void {
+function updateVersionFromHealthSafe(health: { version?: string; available_version?: string }): void {
   try {
-    updateVersionFromHealth({ version: health.version, availableVersion: health.availableVersion }, debugLog)
+    updateVersionFromHealth({ version: health.version, available_version: health.available_version }, debugLog)
   } catch (err) {
     debugLog(DebugCategory.CONNECTION, 'Failed to update version info', { error: errorMessage(err) })
   }

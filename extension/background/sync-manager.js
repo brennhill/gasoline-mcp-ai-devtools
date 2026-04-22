@@ -160,15 +160,6 @@ export function startSyncClient(deps) {
     deps.debugLog(DebugCategory.CONNECTION, 'Sync client started');
 }
 /**
- * Stop the sync client
- */
-function stopSyncClient(debugLog) {
-    if (syncClient) {
-        syncClient.stop();
-        debugLog(DebugCategory.CONNECTION, 'Sync client stopped');
-    }
-}
-/**
  * Reset sync client connection (call when user enables pilot/tracking)
  */
 export function resetSyncClientConnection(debugLog) {

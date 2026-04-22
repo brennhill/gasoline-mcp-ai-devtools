@@ -16,36 +16,22 @@ import type {
   PerformanceSnapshot,
   ConnectionStatus
 } from '../types/index.js'
+import type { components } from '../generated/openapi-types.js'
 import { KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import { getExtensionVersion } from './version-check.js'
 import { errorMessage } from '../lib/error-utils.js'
 import { buildDaemonHeaders } from '../lib/daemon-http.js'
 
 /**
- * Server health response
+ * Server health response — union of the generated spec shape and the two
+ * extension-side fields (`connected`, `error`) that this wrapper adds on top
+ * of the raw server response. Using the generated HealthResponse ensures that
+ * field names (e.g., `available_version`) stay snake_case in lockstep with
+ * what the Go daemon actually emits.
  */
-export interface ServerHealthResponse {
+export type ServerHealthResponse = components['schemas']['HealthResponse'] & {
   connected: boolean
   error?: string
-  version?: string
-  availableVersion?: string
-  capture?: {
-    available?: boolean
-    pilot_enabled?: boolean
-    pilot_state?: string
-    extension_connected?: boolean
-    extension_last_seen?: string
-    extension_client_id?: string
-    security_mode?: string
-    production_parity?: boolean
-    insecure_rewrites?: number
-  }
-  logs?: {
-    logFile?: string
-    logFileSize?: number
-    entries?: number
-    maxEntries?: number
-  }
 }
 
 function buildHeartbeatStatusError(capture: ServerHealthResponse['capture']): string {

@@ -49,7 +49,6 @@ export declare function handleClearLogs(): Promise<{
  */
 export declare function isConnectionCheckRunning(): boolean;
 export declare function checkConnectionAndUpdate(): Promise<void>;
-export declare function sendStatusPingWrapper(): Promise<void>;
 /**
  * Reset sync client connection (call when user enables pilot/tracking)
  */

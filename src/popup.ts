@@ -16,6 +16,7 @@
  */
 
 import type { WebSocketCaptureMode } from './types/index.js'
+import type { components } from './generated/openapi-types.js'
 import type { PopupConnectionStatus, ToggleWarningConfig } from './popup/types.js'
 import type { ShowTrackedHoverLauncherMessage } from './types/runtime-messages.js'
 import { RuntimeMessageName, StorageKey } from './lib/constants.js'
@@ -216,7 +217,7 @@ export function initPopup(): void {
       const serverUrl = stored && stored.length > 0 ? stored : DEFAULT_SERVER_URL
       const resp = await fetch(`${serverUrl}/health`, { headers: buildDaemonHeaders() })
       if (!resp.ok) return
-      const health = (await resp.json()) as { version?: string; available_version?: string }
+      const health = (await resp.json()) as components['schemas']['HealthResponse']
       await renderUpdateAvailableBanner(health)
     } catch {
       // Daemon unreachable — banner stays hidden; the connection-status
