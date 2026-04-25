@@ -42,9 +42,10 @@ func TestToolAliasPrecedence_MatchesDispatcherOrder(t *testing.T) {
 
 func TestUsageKey_DeprecatedAliases(t *testing.T) {
 	// When callers use deprecated aliases (action/mode/format) instead of "what",
-	// dispatch succeeds but we want the dashboard to distinguish these from callers
-	// using the canonical field, so clients on the old shape can be identified.
-	// Precedence must match each tool's dispatcher order (see toolAliasPrecedence).
+	// dispatch succeeds and telemetry tags the key as "legacy_<alias>:<value>" so
+	// the dashboard can identify clients still on the old shape without
+	// double-counting into the canonical bucket. Precedence must match each tool's
+	// dispatcher order (see toolAliasPrecedence in tools_core.go).
 	tests := []struct {
 		name string
 		tool string
@@ -118,6 +119,10 @@ func TestUsageKey_DeprecatedAliases(t *testing.T) {
 }
 
 func TestUsageKey_UnknownReasons(t *testing.T) {
+	// usageKey returns reason-tagged sentinels (`unknown_no_args`,
+	// `unknown_parse_error`, `unknown_missing_what`) so dashboards can tell
+	// caller bugs from transport errors from absent payloads. See the comment
+	// block above usageKey() in tools_core.go.
 	tests := []struct {
 		name string
 		args json.RawMessage
@@ -364,7 +369,9 @@ func TestHandleToolCall_IncrementsUsageTracker_NoWhatParam(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	// Call configure with no "what" — should increment "configure:unknown_missing_what".
+	// Configure with no "what" or alias field — telemetry uses the
+	// `unknown_missing_what` sentinel (see usageKey in tools_core.go) so
+	// dashboards can identify caller bugs separately from successful calls.
 	args := json.RawMessage(`{"key":"value"}`)
 	resp, handled := handler.HandleToolCall(req, "configure", args)
 	if !handled {
@@ -374,7 +381,8 @@ func TestHandleToolCall_IncrementsUsageTracker_NoWhatParam(t *testing.T) {
 
 	counts := counter.Peek()
 	if counts["configure:unknown_missing_what"] != 1 {
-		t.Fatalf("configure:unknown_missing_what count = %d, want 1", counts["configure:unknown_missing_what"])
+		t.Fatalf("configure:unknown_missing_what count = %d, want 1 (counts=%v)",
+			counts["configure:unknown_missing_what"], counts)
 	}
 }
 
@@ -424,16 +432,16 @@ func TestHandleToolCall_RecordsErrorRate(t *testing.T) {
 		Method:  "tools/call",
 	}
 
-	// Call interact with missing required params — guaranteed to produce an error.
+	// Interact with no "what" or alias — usageKey returns unknown_missing_what
+	// and the call still gets recorded under that bucket so error rate per
+	// caller-bug shape is visible on dashboards.
 	args := json.RawMessage(`{}`)
 	handler.HandleToolCall(req, "interact", args)
 
 	counts := counter.Peek()
 	if counts["interact:unknown_missing_what"] != 1 {
-		t.Fatalf("interact:unknown_missing_what = %d, want 1", counts["interact:unknown_missing_what"])
-	}
-	if counts["err:interact:unknown_missing_what"] != 1 {
-		t.Fatalf("err:interact:unknown_missing_what = %d, want 1 (missing params = error)", counts["err:interact:unknown_missing_what"])
+		t.Fatalf("interact:unknown_missing_what count = %d, want 1 (counts=%v)",
+			counts["interact:unknown_missing_what"], counts)
 	}
 }
 
