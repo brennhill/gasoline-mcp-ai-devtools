@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/cmd/browser-agent/internal/terminal"
@@ -83,6 +84,10 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 	server.logLifecycle("mcp_transport_ready", port, nil)
 
 	telemetry.Warm() // Pre-load install ID and session off the hot path.
+	telemetry.BeaconEvent("daemon_start", map[string]string{
+		"mode": "daemon",
+		"port": fmt.Sprintf("%d", port),
+	})
 
 	// Start periodic usage beacon loop (structured tool stats every 5 minutes).
 	if tracker := mcpHandler.GetUsageTracker(); tracker != nil {
