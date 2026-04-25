@@ -1,4 +1,16 @@
 // bridge_startup_state.go -- Daemon startup state and respawn synchronization for bridge fast-start.
+//
+// Metrics emitted from this file (all via telemetry.AppError):
+//   - bridge_spawn_build_error  — go build failed before spawning daemon.
+//                                 Classified internal/fatal — local toolchain
+//                                 broken; we cannot recover.
+//   - bridge_spawn_start_error  — exec.Start returned an error (binary
+//                                 missing, permissions). internal/fatal.
+//   - bridge_spawn_timeout      — daemon failed health check inside the
+//                                 startup deadline. internal/error.
+//
+// Wire contract: docs/core/app-metrics.md (classifyAppErrorEvent in
+// internal/telemetry/beacon.go owns the kind/severity assignment).
 
 package bridge
 

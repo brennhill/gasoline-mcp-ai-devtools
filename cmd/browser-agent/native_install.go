@@ -1,5 +1,14 @@
 // Purpose: Auto-detects and configures MCP client integrations (Claude Code, Cursor, Windsurf, etc.) during --install.
 // Why: Provides zero-config onboarding by writing the correct JSON config for each supported MCP client.
+//
+// Metrics emitted from this file:
+//   - telemetry.AppError("install_config_error", …) — fires when writing
+//     or merging an MCP client config fails. Classified internal/error,
+//     source=installer. Lands as `event=app_error,
+//     error_code=INSTALL_CONFIG_ERROR`. Used to detect install-flow
+//     regressions across client versions.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package main
 
@@ -71,8 +80,24 @@ func printInstallerPanel(title string, lines []string) {
 	stderrf("\033[1;36m%s\033[0m\n", border)
 }
 
+func shouldRefusePrivilegedNativeInstall(goos string, euid int, sudoUser string) bool {
+	if goos == "windows" {
+		return false
+	}
+	if strings.TrimSpace(sudoUser) != "" {
+		return true
+	}
+	return euid == 0
+}
+
 // runNativeInstall detects and configures all supported MCP clients.
 func runNativeInstall() {
+	if shouldRefusePrivilegedNativeInstall(runtime.GOOS, os.Geteuid(), os.Getenv("SUDO_USER")) {
+		stderrf("❌ Refusing privileged install.\n")
+		stderrf("   Run kaboom-agentic-browser --install as your normal user so Kaboom keeps one user-scoped install identity.\n")
+		os.Exit(1)
+	}
+
 	// 1. Silent Reset (Kill stale instances)
 	// We do this first to ensure config files aren't being held open
 	// and no old versions are interfering.

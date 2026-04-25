@@ -1,6 +1,14 @@
 // Purpose: Panic crash logging and crash-file resolution helpers.
 // Why: Isolates crash diagnostics from normal startup/dispatch control flow in main.go.
 // Docs: docs/core/error-recovery.md
+//
+// Metrics emitted from this file:
+//   - telemetry.AppError("daemon_panic", …) — fires from the deferred
+//     recover() handler when the daemon main goroutine panics.
+//     Classified internal/fatal. Lands as `event=app_error,
+//     error_code=DAEMON_PANIC`. Dashboards alarm on any non-zero count.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package main
 

@@ -1,5 +1,15 @@
 // Purpose: Manages daemon lock file, process liveness checks, and stale-daemon cleanup for singleton enforcement.
 // Why: Prevents port conflicts and zombie daemons by coordinating lifecycle via PID-based lock records.
+//
+// Metrics emitted from this file (all via logLifecycle):
+//   - daemon_lock_reclaimed_stale_mismatch — we found a lock file whose
+//                                            PID is alive but isn't the
+//                                            recorded owner; reclaiming.
+//   - daemon_takeover                      — successfully claimed the
+//                                            singleton lock from a stale
+//                                            predecessor.
+//
+// These are local-only structured logs.
 
 package main
 

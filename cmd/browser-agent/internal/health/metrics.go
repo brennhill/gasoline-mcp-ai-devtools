@@ -1,6 +1,23 @@
 // metrics.go — Tracks per-tool request/error counters and uptime snapshots for health reporting.
 // Why: Isolates mutable health state and synchronization from response assembly logic.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
+//
+// Metrics: in-process only — these counters DO NOT fire telemetry beacons.
+// They surface to MCP clients via the get_health tool and to dashboards via
+// /api/status (audit field). For app-telemetry beaconing see
+// internal/telemetry/usage_counter.go.
+//
+//   - IncrementRequest(tool)  → request_count[tool]
+//   - IncrementError(tool)    → error_count[tool]; error_rate_pct
+//                                computed at read-time
+//   - BuildAuditInfo()        → snapshot consumed by GET /api/status
+//                                (DashboardStatus.audit) and
+//                                tools_configure.report_issue
+//
+// Adding a new counter here requires updating:
+//   - cmd/browser-agent/internal/health/response_builders.go (BuildAuditInfo)
+//   - cmd/browser-agent/openapi.json DashboardStatus.audit shape
+//   - docs/features/feature/mcp-persistent-server/index.md
 
 package health
 

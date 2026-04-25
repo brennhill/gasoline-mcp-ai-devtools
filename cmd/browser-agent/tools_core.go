@@ -1,5 +1,24 @@
 // Purpose: Defines the ToolHandler struct, shared state (capture, AI client, sequence store), and tool dispatch infrastructure.
 // Why: All five MCP tools share a common handler that owns capture state, extension connectivity, and session context.
+//
+// Metrics emitted from this file (every tools/call passes through here):
+//   - healthMetrics.IncrementRequest(name)         — local request counter
+//                                                    surfaced via /api/status.
+//   - healthMetrics.IncrementError(name)           — local error counter,
+//                                                    same surface.
+//   - usageTracker.RecordToolCall(name+":"+key,
+//                                 latency, isErr)  — fires three downstream
+//                                                    beacons via fireStructuredBeacon
+//                                                    in internal/telemetry/usage_counter.go:
+//                                                    session_start (once),
+//                                                    first_tool_call (once),
+//                                                    tool_call (every call).
+//
+// The `key` half of the tool key comes from usageKey() (this file). When
+// the args are malformed we tag with telemetry.UsageKey* sentinels rather
+// than an empty bucket so dashboards can quantify caller bugs separately.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package main
 

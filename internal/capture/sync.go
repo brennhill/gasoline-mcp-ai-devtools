@@ -2,6 +2,16 @@
 // Why: Consolidates extension-daemon synchronization into a single resilient protocol surface.
 // Docs: docs/features/feature/backend-log-streaming/index.md
 // Docs: docs/features/feature/query-service/index.md
+//
+// Metrics emitted from this file:
+//   - telemetry.BeaconEvent("extension_connect", {browser})  — first /sync
+//     poll from a new ext_session_id; tags the connecting browser family.
+//   - telemetry.AppError("extension_disconnect", {reason, last_seen}) —
+//     fires when the extension stops polling /sync past the disconnect
+//     deadline. Classified `integration/warning` (caller-side, not a
+//     daemon defect). Dashboards correlate with active-session counts.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package capture
 

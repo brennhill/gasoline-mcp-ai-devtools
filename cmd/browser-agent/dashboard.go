@@ -1,5 +1,13 @@
 // Purpose: Serves embedded HTML dashboard, diagnostics, logs, setup, and docs pages at browser-accessible routes.
 // Why: Provides a local web UI for inspecting server state without requiring MCP client tooling.
+//
+// Metrics consumed from this file:
+//   - healthMetrics.BuildAuditInfo() — embedded into the GET /api/status
+//     response (DashboardStatus.audit field). The wire shape is pinned by
+//     cmd/browser-agent/dashboard_status_api_test.go and documented in
+//     cmd/browser-agent/openapi.json.
+//
+// This file READS metrics; it does not fire app-telemetry beacons.
 
 package main
 

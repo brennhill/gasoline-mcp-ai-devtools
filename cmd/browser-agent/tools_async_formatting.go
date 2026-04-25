@@ -1,5 +1,14 @@
 // Purpose: Formats async command results into stable MCP response envelopes.
 // Why: Keep lifecycle polling separate from payload shaping and error semantics.
+//
+// Metrics emitted from this file:
+//   - usageTracker.RecordAsyncOutcome(status) — increments the async
+//     outcome counter for terminal lifecycle states (status_done,
+//     status_canceled, status_timeout, etc). Drained by the periodic
+//     usage_summary beacon (internal/telemetry/usage_beacon.go) into the
+//     async_outcomes map.
+//
+// Wire contract: docs/core/app-metrics.md (usage_summary.async_outcomes).
 
 package main
 

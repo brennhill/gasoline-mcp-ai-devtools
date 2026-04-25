@@ -1,5 +1,16 @@
 // Purpose: Binary-upgrade detection wiring for MCP daemon startup.
 // Why: Keeps upgrade monitoring and marker handoff separate from core MCP boot flow.
+//
+// Metrics emitted from this file (all via logLifecycle):
+//   - binary_upgrade_detected   — installer wrote a new binary alongside
+//                                 the running daemon; respawn pending.
+//   - binary_upgrade_shutdown   — we initiated the supervisor-mediated
+//                                 restart.
+//   - binary_upgrade_complete   — successor daemon reported healthy.
+//
+// These are local-only structured logs. Self-update beacons (fired from
+// the popup-driven flow) are unrelated and live in
+// cmd/browser-agent/server_routes_upgrade.go.
 
 package main
 

@@ -1,5 +1,17 @@
 // bridge_transport_helpers.go -- Bridge transport support helpers (stdio framing, error envelopes, restart fast path, and shutdown stats).
 // Why: Keeps forwarding core focused while helper concerns remain reusable and independently testable.
+//
+// Metrics emitted from this file (all via telemetry.AppError):
+//   - bridge_parse_error        — stdin contained malformed JSON-RPC.
+//                                 Classified integration/warning since
+//                                 the defect is on the MCP client side.
+//   - bridge_method_not_found   — JSON-RPC method we don't implement.
+//                                 integration/warning (client/version
+//                                 skew).
+//   - bridge_stdin_error        — read from stdin failed mid-stream.
+//                                 internal/error (transport/env issue).
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package bridge
 

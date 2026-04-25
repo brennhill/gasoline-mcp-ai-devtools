@@ -1,6 +1,6 @@
 # Kaboom App Telemetry Contract
 
-Date: 2026-04-15
+Date: 2026-04-20
 
 This document is the canonical telemetry contract for Kaboom app analytics sent to `POST /v1/event`.
 
@@ -66,9 +66,15 @@ Notes:
 
 - Kaboom is the only producer. There is no `app` field.
 - `iid` must remain stable for one install across launches and upgrades.
+- Generate `iid` only when it can be durably persisted to `~/.kaboom/install_id`.
+- `iid` creation must be serialized across concurrent daemon startups so one fresh install cannot mint multiple IDs.
+- If a stable install ID cannot be read or written, drop telemetry instead of minting a replacement ID.
+- `first_tool_call` claiming must be serialized across concurrent daemon startups so one install activates exactly once.
 - `sid` must remain stable for one session and rotate on session boundaries.
 - `sid` is normalized as lowercase hex by the ingest service.
 - `ts` is the app event time. Analytics Engine write time must not be used as a substitute.
+- `/v1/event` is daemon-owned. Installers, wrapper scripts, and extension service workers must not emit direct analytics rows.
+- Privileged installers must not auto-start the daemon or write user-scoped analytics state on behalf of another home directory.
 
 ## Tool Identity
 
@@ -104,8 +110,49 @@ The supported event set is:
 - `session_end`
 - `usage_summary`
 - `app_error`
+- `daemon_start` — operational anchor (see below)
 
 In addition to those producer event types, the ingest service may write a storage-only row type named `malformed` for debugging invalid payloads.
+
+### Operational events
+
+`daemon_start` is emitted once per successful daemon boot from
+`cmd/browser-agent/main_connection_mcp.go` via `telemetry.BeaconEvent`.
+It anchors session-level correlation in observability tooling and
+signals "the install is alive."
+
+Producers MUST NOT add new top-level event names. Failure cases — panic,
+boot failure, rate limit, parse error, etc. — belong in `app_error`
+(see classifyAppError in `internal/telemetry/beacon.go` for the full
+classification table).
+
+### `app_error` codes used in production
+
+`telemetry.AppError(code, props)` re-routes every call through the
+`app_error` event with `error_code = uppercase(code)`. The full set of
+codes currently in use:
+
+| Code | Kind | Severity | Source | Emitter |
+|------|------|----------|--------|---------|
+| `daemon_panic` | internal | fatal | daemon | `cmd/browser-agent/main_helpers_panic.go` |
+| `daemon_start_failed` | internal | error | daemon | `cmd/browser-agent/main_runtime_mode.go` |
+| `tool_rate_limited` | integration | warning | daemon | `cmd/browser-agent/handler_tools_call.go` |
+| `install_config_error` | internal | error | installer | `cmd/browser-agent/native_install.go` |
+| `extension_disconnect` | integration | warning | extension | `internal/capture/sync.go` |
+| `bridge_parse_error` | integration | warning | bridge | `cmd/browser-agent/internal/bridge/bridge_transport_helpers.go` |
+| `bridge_method_not_found` | integration | warning | bridge | same |
+| `bridge_stdin_error` | internal | error | bridge | same |
+| `bridge_connection_error` | network | error | bridge | `cmd/browser-agent/internal/bridge/bridge_forward.go` |
+| `bridge_port_blocked` | integration | error | bridge | `cmd/browser-agent/internal/bridge/bridge_startup_orchestration.go` |
+| `bridge_spawn_build_error` | internal | fatal | bridge | `cmd/browser-agent/internal/bridge/bridge_startup_state.go` |
+| `bridge_spawn_start_error` | internal | fatal | bridge | same |
+| `bridge_spawn_timeout` | internal | error | bridge | same (retryable) |
+
+Adding a new code: extend `classifyAppError` in
+`internal/telemetry/beacon.go` AND this table in the same change.
+Tests in `internal/telemetry/contract_compliance_test.go` and
+`internal/telemetry/e2e_reporting_test.go` enforce the kind/severity
+mapping.
 
 ### `tool_call`
 
@@ -339,7 +386,8 @@ Example:
 ### Install identity
 
 - Generate `iid` once per install.
-- Persist it locally.
+- Persist it locally before emitting telemetry.
+- If local persistence or readback fails, emit no telemetry until a stable `iid` is available.
 - Keep it stable across launches and upgrades.
 
 ### Session identity
@@ -356,6 +404,7 @@ Example:
 - Emit `session_end` when the session closes.
 - Emit `usage_summary` every 5 minutes when there has been activity in the window.
 - Emit `app_error` only for runtime/product failures that are not one ordinary failed tool call.
+- Do not emit installer, upgrade, or hooks-only analytics rows. Activation and adoption should be derived from canonical daemon events such as `first_tool_call`.
 
 ### Privacy
 

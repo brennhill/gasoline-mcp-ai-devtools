@@ -1,6 +1,17 @@
 // response_builders.go — Assembles get_health payloads from runtime state, capture snapshots, and process metadata.
 // Why: Keeps response composition logic cohesive and independent from mutation/handler paths.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
+//
+// Metrics: BuildAuditInfo() snapshots the in-process per-tool health
+// counters (request_count, error_count, error_rate_pct, calls_per_tool)
+// for two consumers:
+//   - GET /api/status      (DashboardStatus.audit) — wire shape pinned
+//                           by cmd/browser-agent/dashboard_status_api_test.go
+//   - tools_configure
+//     report_issue          — diagnostic dump for support workflows
+//
+// These counters are not part of the app-telemetry contract
+// (docs/core/app-metrics.md) — they're a local-only health surface.
 
 package health
 

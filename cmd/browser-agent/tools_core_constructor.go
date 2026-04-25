@@ -1,5 +1,12 @@
 // Purpose: ToolHandler constructor and startup-time defaults.
 // Why: Isolates initialization policy from dispatch/type definitions.
+//
+// Metrics emitted from this file:
+//   - usageTracker.RecordToolCall("ext:"+key, …) — extension-side tool
+//     invocations (recorded under the `ext:<key>` namespace so they
+//     don't collide with daemon tool buckets).
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package main
 

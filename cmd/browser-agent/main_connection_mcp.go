@@ -1,5 +1,22 @@
 // Purpose: Orchestrates MCP daemon startup wiring and runtime lifecycle.
 // Why: Keeps top-level daemon flow readable while delegating setup/shutdown details to focused modules.
+//
+// Metrics emitted from this file:
+//   - telemetry.BeaconEvent("daemon_start", {mode, port})    — once per
+//     successful daemon boot, after install ID is warmed.
+//   - telemetry.StartUsageBeaconLoop                          — kicks the
+//     5-minute periodic usage_summary aggregator (see
+//     internal/telemetry/usage_beacon.go).
+//   - logLifecycle("startup", port, …)                        — daemon
+//     reached steady state.
+//   - logLifecycle("mcp_transport_ready")                     — stdio
+//     transport is accepting traffic.
+//   - logLifecycle("terminal_server_started"
+//                 |"terminal_server_bind_failed"
+//                 |"terminal_server_died")                    — terminal
+//     sub-server lifecycle.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package main
 

@@ -1,5 +1,18 @@
 // Purpose: Validates and executes MCP tools/call, then applies response guards.
 // Why: Isolates tool-call lifecycle concerns from transport and generic method dispatch.
+//
+// Metrics emitted from this file:
+//   - telemetry.AppError("tool_rate_limited", …) — fires when a tool call
+//     is rejected by the per-tool rate limiter. Classified
+//     integration/warning so dashboards can quantify abusive callers
+//     separately from organic errors. Lands as `event=app_error,
+//     error_code=TOOL_RATE_LIMITED`.
+//
+// Per-call usage telemetry (tool_call/session_start/first_tool_call) is
+// fired downstream in tools_core.go via UsageTracker.RecordToolCall — not
+// from this file.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package main
 

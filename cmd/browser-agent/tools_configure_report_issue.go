@@ -1,6 +1,12 @@
 // tools_configure_report_issue.go — Handler for configure(what="report_issue").
 // Provides list_templates, preview, and submit operations for filing sanitized bug reports.
 // Docs: docs/features/feature/issue-reporting/index.md
+//
+// Metrics consumed from this file:
+//   - healthMetrics.BuildAuditInfo() — embedded into the issue payload so
+//     support tickets carry per-tool request/error counts. This is a READ
+//     of the local health surface, not a beacon — no app-telemetry fires
+//     from here.
 
 package main
 

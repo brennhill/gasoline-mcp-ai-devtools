@@ -1,4 +1,23 @@
 // usage_counter.go — Structured tool usage tracking for telemetry beacons.
+//
+// Every MCP tool call passes through UsageTracker.RecordToolCall, which
+// (a) updates per-tool aggregate counters (count, errors, latency)
+// surfaced to dashboards via SwapAndReset/Peek, and (b) fires the
+// following per-call beacons via fireStructuredBeacon:
+//
+//   - session_start    — once per session on the first tool call.
+//   - first_tool_call  — once per session, named with the tool key.
+//   - tool_call        — every call, with tool name + latency + error.
+//   - session_end      — emitted by EmitSessionEnd at shutdown.
+//
+// RecordAsyncOutcome funnels async-flow outcomes (status_done/canceled/
+// timeout/etc.) into the asyncOutcomes map; the periodic usage_summary
+// beacon (usage_beacon.go) drains it.
+//
+// Wire-visible sentinels for unclassifiable usage keys are exported from
+// this file (UsageKey* constants); dashboards consume them as strings.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package telemetry
 

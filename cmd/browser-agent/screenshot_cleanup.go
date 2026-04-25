@@ -1,6 +1,21 @@
 // screenshot_cleanup.go — Background retention for screenshots written to
 // state.ScreenshotsDir(). Each capture is a multi-MB JPEG/PNG; without this
 // sweep the state directory grows without bound on daily use.
+//
+// Metrics emitted from this file (all via logLifecycle):
+//   - screenshot_cleanup_swept       {removed, failed, max_age} — every
+//                                    sweep that found work.
+//   - screenshot_cleanup_dir_error   {error}                    — first
+//                                    occurrence of a failure to resolve
+//                                    state.ScreenshotsDir() (deduped).
+//   - screenshot_cleanup_read_error  {dir, error}               — first
+//                                    occurrence of a directory-read
+//                                    failure (deduped).
+//   - screenshot_cleanup_recovered   {prior_error}              — fires on
+//                                    the transition from a sustained
+//                                    error state back to healthy.
+//
+// These are local-only structured logs. No app-telemetry beacons.
 
 package main
 

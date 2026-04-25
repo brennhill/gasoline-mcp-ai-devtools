@@ -1,4 +1,11 @@
 // bridge_startup_orchestration.go -- Bridge daemon startup orchestration and peer-race handling.
+//
+// Metrics emitted from this file:
+//   - telemetry.AppError("bridge_port_blocked", {port, peer_pid}) —
+//     fires when the configured port is held by an unrecoverable peer
+//     (not a stale daemon we can replace). integration/error.
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package bridge
 

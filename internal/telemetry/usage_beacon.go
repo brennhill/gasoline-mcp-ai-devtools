@@ -1,4 +1,19 @@
 // usage_beacon.go — Periodic aggregated usage beacon.
+//
+// StartUsageBeaconLoop spawns a 5-minute ticker that drains the
+// UsageTracker via SwapAndReset and fires a single `usage_summary` event
+// summarising the window. The summary contains:
+//
+//   - tool_stats[]     — per-tool count, error_count, latency_avg_ms,
+//                        latency_max_ms.
+//   - async_outcomes   — counter map keyed by outcome name.
+//   - session_depth    — total RecordToolCall invocations this session.
+//
+// No per-call beacons fire from this file — those live in
+// usage_counter.go::fireStructuredBeacon. This file only emits the
+// aggregated rollup.
+//
+// Wire contract: docs/core/app-metrics.md (`usage_summary` schema).
 
 package telemetry
 

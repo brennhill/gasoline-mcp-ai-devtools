@@ -1,6 +1,19 @@
 // Purpose: Runtime mode detection and dispatch for daemon/bridge startup.
 // Why: Keeps main entrypoint small while isolating mode policy and launch behavior.
 // Docs: docs/features/feature/mcp-persistent-server/index.md
+//
+// Metrics emitted from this file:
+//   - telemetry.AppError("daemon_start_failed", …) — fires when
+//     runMCPMode returns a non-nil error. Classified internal/error.
+//     Lands as `event=app_error, error_code=DAEMON_START_FAILED`. Mirrors
+//     daemon_start so a successful-vs-failed boot ratio is computable.
+//   - logLifecycle("mode_detection", port, {has_mcp_config, is_tty,
+//                  selected_runtime, parent_process, stdin_mode})
+//   - logLifecycle("launch_mode_classified",
+//                  port, {launch_mode, launch_reason, strict_required, …})
+//   - logLifecycle("daemon_mode_start" | "bridge_mode_start", port, …)
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package main
 

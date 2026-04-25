@@ -1,6 +1,14 @@
 // bridge_forward.go -- Forwards JSON-RPC requests from bridge stdin to the daemon HTTP endpoint and writes responses to stdout.
 // Why: Keeps the core HTTP-forwarding path isolated from transport/error helper machinery.
 // Docs: docs/features/feature/bridge-restart/index.md
+//
+// Metrics emitted from this file:
+//   - telemetry.AppError("bridge_connection_error", {error}) — fires
+//     when the bridge cannot reach the daemon HTTP endpoint after the
+//     spawn step nominally succeeded. Distinguishes "spawned but
+//     unreachable" from "spawn failed" (see bridge_startup_state.go).
+//
+// Wire contract: docs/core/app-metrics.md.
 
 package bridge
 

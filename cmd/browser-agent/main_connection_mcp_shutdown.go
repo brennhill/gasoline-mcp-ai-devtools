@@ -1,5 +1,16 @@
 // Purpose: Shutdown and signal handling for MCP daemon runtime.
 // Why: Isolates termination semantics and cleanup sequence from startup orchestration.
+//
+// Metrics emitted from this file (all via logLifecycle):
+//   - shutdown                  — normal termination start.
+//   - terminal_shutdown_error   — terminal sub-server failed to drain
+//                                 within the deadline.
+//   - http_shutdown_error       — main HTTP server failed to drain
+//                                 within the deadline.
+//
+// These are local-only structured logs. The session_end app-telemetry
+// beacon fires from internal/telemetry/usage_counter.go::EmitSessionEnd
+// before this code path runs.
 
 package main
 

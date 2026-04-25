@@ -1,5 +1,24 @@
 // Purpose: MCP daemon bootstrap helpers for capture, preflight checks, and HTTP listener startup.
 // Why: Separates runtime setup mechanics from high-level MCP orchestration flow.
+//
+// Metrics emitted from this file (all via logLifecycle):
+//   - loading_settings, settings_loaded            — capture init phase.
+//   - port_conflict_detected                       — bind preflight or
+//                                                    PID-file owner check
+//                                                    found a live process
+//                                                    holding our port.
+//   - stale_pid_owner_mismatch,
+//     stale_pid_port_lookup_failed,
+//     stale_pid_remove_failed,
+//     stale_pid_removed                            — PID-file cleanup
+//                                                    decisions.
+//   - http_bind_failed, http_bind_success          — HTTP listener boot.
+//   - pid_file_error,
+//     daemon_lock_write_failed                     — runtime-state
+//                                                    persistence errors.
+//
+// These are local-only structured logs, NOT app-telemetry beacons. For
+// wire-bound metrics see internal/telemetry/.
 
 package main
 

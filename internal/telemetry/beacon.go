@@ -1,4 +1,23 @@
 // beacon.go — Anonymous telemetry beacons. Disable with KABOOM_TELEMETRY=off.
+//
+// Defines the metric-emission infrastructure that every other emitter in
+// the codebase calls into:
+//   - BeaconEvent(name, fields)       — fire-and-forget single event.
+//   - AppError(category, kind, ...)   — structured error telemetry.
+//   - Warm()                          — pre-load install ID + session ID
+//                                        off the hot path.
+//   - buildEnvelope(event)            — stamps the contract envelope
+//                                        (event/v/os/iid/sid/llm) onto
+//                                        every payload; drops the beacon
+//                                        when no install ID exists.
+//
+// Wire contract: docs/core/app-metrics.md (POST /v1/event).
+// Producer audit (every emission site in the codebase): see the bridge
+// classifier in this file's classifyAppErrorEvent and grep for
+// `telemetry.BeaconEvent` / `telemetry.AppError`.
+//
+// Adding a new event name here REQUIRES updating docs/core/app-metrics.md
+// (the contract dashboards consume) and the calling file's header.
 
 package telemetry
 
