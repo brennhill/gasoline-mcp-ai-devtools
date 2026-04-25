@@ -152,6 +152,12 @@ func classifyAppError(category string) (errorKind string, severity string, sourc
 		return "integration", "warning", "extension", false
 	case "install_config_error":
 		return "internal", "error", "installer", false
+	case "install_id_migrated":
+		// Identity-lineage marker: the persisted install ID differs from the
+		// deterministic derivation (hostname/uid/machine_id changed). Not an
+		// error — informational so analytics can stitch a single install
+		// across the change. integration/warning so dashboards don't page.
+		return "integration", "warning", "daemon", false
 	default:
 		return "unknown", "error", "daemon", false
 	}

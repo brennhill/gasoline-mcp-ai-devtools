@@ -1,8 +1,23 @@
 // install_id.go — Stable install ID for anonymous session correlation.
-// Writes are atomic (temp + Sync + Rename) so a crash mid-write cannot leave
-// a zero-length file. If the id file is missing/corrupt, loadOrGenerateInstallID
-// first tries a deterministic HMAC derivation from (machine_id, uid, hostname)
-// so recoverable environments get the same ID back instead of a fresh random.
+//
+// Hardening layers (in priority order on read):
+//   1. Format validation — only `^[0-9a-f]{12}$` is accepted as a valid ID.
+//      A corrupted file (zero-length, truncated, non-hex) is treated as
+//      missing and falls through to backup/secondary/derive.
+//   2. Backup file — every successful write also writes `install_id.bak`
+//      next to the primary so a single accidental delete is recoverable.
+//   3. Secondary location — a platform-stable mirror outside `~/.kaboom/`
+//      (Application Support / XDG_STATE_HOME / %LOCALAPPDATA%) survives
+//      home-dir migrations and rsync exclusions.
+//   4. Drift detection — when a stored ID differs from the deterministic
+//      derivation (e.g., hostname rename), the registered drift logger
+//      fires once. Stored value always wins; drift is observability only.
+//
+// Writes remain atomic (temp + Sync + Rename) so a crash mid-write cannot
+// leave a zero-length file. If all four locations are missing/corrupt,
+// loadOrGenerateInstallID tries a deterministic HMAC derivation from
+// (machine_id, uid, hostname) so recoverable environments get the same ID
+// back instead of a fresh random.
 
 package telemetry
 
@@ -19,6 +34,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 // kaboomDir is the directory where install_id is persisted. Overridable for tests.
@@ -41,6 +57,36 @@ var cachedFirstToolCallInstallID string
 
 // readMachineID is a package-level indirection so tests can stub the OS lookup.
 var readMachineID = readMachineIDFromOS
+
+// secondaryDirOverride lets tests redirect (or disable) the platform-stable
+// mirror. Empty means "compute from runtime.GOOS + UserHomeDir"; the
+// disabledSecondaryDir sentinel disables the mirror entirely (used by
+// existing tests that pre-date the cross-location feature).
+var secondaryDirOverride string
+
+const disabledSecondaryDir = "\x00disabled"
+
+// installIDDriftLogFn is fired (at most once per process) when the persisted
+// install ID differs from the deterministic derivation. Set via
+// SetInstallIDDriftLogFn from the host package; nil disables logging.
+var installIDDriftLogFn func(stored, derived string)
+
+// SetInstallIDDriftLogFn registers a callback the install_id loader invokes
+// when stored and derived IDs disagree (e.g., hostname change). Stored wins
+// regardless — this is observability only.
+func SetInstallIDDriftLogFn(fn func(stored, derived string)) {
+	installIDDriftLogFn = fn
+}
+
+// Test hooks block just before persistence so concurrency tests can force races.
+var installIDBeforePersistHook func()
+var firstToolCallBeforePersistHook func()
+
+const (
+	installStateLockTimeout = 2 * time.Second
+	installStateLockPoll    = 10 * time.Millisecond
+	installStateLockStale   = 10 * time.Second
+)
 
 func defaultKaboomDir() string {
 	home, err := os.UserHomeDir()
@@ -72,46 +118,179 @@ func loadOrGenerateInstallID() string {
 		return ""
 	}
 
-	idPath := filepath.Join(kaboomDir, "install_id")
+	locations := installIDLocations()
 
-	// Try to read existing file.
-	data, err := os.ReadFile(idPath)
-	if err == nil {
-		id := strings.TrimSpace(string(data))
-		if id != "" {
+	// Fast path: try every known location without taking the lock.
+	// First valid (12-char lowercase hex) win.
+	for _, path := range locations {
+		if id := tryReadValidID(path); id != "" {
+			healMissingLocations(id, locations)
+			checkInstallIDDrift(id)
 			return id
 		}
-		// Whitespace-only content: fall through to derive/random self-heal path.
-	} else if !os.IsNotExist(err) {
-		return ""
 	}
 
-	// Ensure dir exists before any persist attempt.
+	// Slow path: nothing on disk. Take the lock, re-check (covers
+	// concurrent daemon races), then derive or randomize.
 	if err := os.MkdirAll(kaboomDir, 0o700); err != nil {
 		return ""
 	}
 
-	// Prefer deterministic derivation so wiped/restored environments recover
-	// the same ID instead of appearing as a new install.
-	if derived, ok := deriveInstallID(); ok {
-		if err := writeInstallIDAtomic(idPath, derived); err != nil {
-			return derived
+	var stableID string
+	if err := withKaboomStateLock("install_id.lock", func() error {
+		for _, path := range locations {
+			if id := tryReadValidID(path); id != "" {
+				stableID = id
+				return nil
+			}
 		}
-		return derived
+
+		// Prefer deterministic derivation so wiped/restored environments recover
+		// the same ID instead of appearing as a new install.
+		candidate, ok := deriveInstallID()
+		if !ok {
+			candidate = generateRandomID()
+		}
+		if installIDBeforePersistHook != nil {
+			installIDBeforePersistHook()
+		}
+		// Primary write must succeed; secondary/backup writes are best-effort
+		// (handled by healMissingLocations after the lock is released).
+		if err := writeTokenAtomic(locations[0], candidate); err != nil {
+			return err
+		}
+		stableID = candidate
+		return nil
+	}); err != nil {
+		return ""
 	}
 
-	// Fall back to a fresh random ID.
-	id := generateRandomID()
-	if err := writeInstallIDAtomic(idPath, id); err != nil {
-		return id
+	healMissingLocations(stableID, locations)
+	checkInstallIDDrift(stableID)
+	return stableID
+}
+
+// installIDLocations returns the file paths the install_id may live at, in
+// priority order: primary, primary.bak, secondary, secondary.bak. Read tries
+// them in order; write fans out to all four.
+func installIDLocations() []string {
+	primary := filepath.Join(kaboomDir, "install_id")
+	locs := []string{primary, primary + ".bak"}
+	if sec := secondaryKaboomDir(); sec != "" {
+		secPath := filepath.Join(sec, "install_id")
+		locs = append(locs, secPath, secPath+".bak")
+	}
+	return locs
+}
+
+// secondaryKaboomDir returns the platform-stable mirror directory or "" if
+// no usable home dir / unsupported OS / explicitly disabled. Tests override
+// via secondaryDirOverride.
+func secondaryKaboomDir() string {
+	if secondaryDirOverride == disabledSecondaryDir {
+		return ""
+	}
+	if secondaryDirOverride != "" {
+		return secondaryDirOverride
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || strings.TrimSpace(home) == "" {
+		return ""
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		return filepath.Join(home, "Library", "Application Support", "Kaboom")
+	case "linux":
+		if x := strings.TrimSpace(os.Getenv("XDG_STATE_HOME")); x != "" {
+			return filepath.Join(x, "kaboom")
+		}
+		return filepath.Join(home, ".local", "state", "kaboom")
+	case "windows":
+		if x := strings.TrimSpace(os.Getenv("LOCALAPPDATA")); x != "" {
+			return filepath.Join(x, "Kaboom")
+		}
+		return filepath.Join(home, "AppData", "Local", "Kaboom")
+	default:
+		return ""
+	}
+}
+
+// tryReadValidID reads `path` and returns the trimmed content only if it
+// matches `^[0-9a-f]{12}$`. Anything else (missing, IO error, garbage) maps
+// to "" so the caller falls through to the next location or derivation.
+func tryReadValidID(path string) string {
+	id, err := readTrimmedFile(path)
+	if err != nil {
+		return ""
+	}
+	if !validInstallID(id) {
+		return ""
 	}
 	return id
 }
 
-// writeInstallIDAtomic writes id to idPath atomically: temp file in the same
+// validInstallID enforces the wire format: exactly 12 lowercase hex chars.
+// Stricter than `len(s) > 0` so corrupted files don't propagate as IDs.
+func validInstallID(s string) bool {
+	if len(s) != 12 {
+		return false
+	}
+	for _, r := range s {
+		switch {
+		case r >= '0' && r <= '9':
+		case r >= 'a' && r <= 'f':
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// healMissingLocations writes id to every location whose current content
+// disagrees. Best-effort: a failure on one path doesn't stop the others.
+// This is the self-repair pass that makes "delete the primary file"
+// recoverable on the next read.
+func healMissingLocations(id string, locations []string) {
+	for _, path := range locations {
+		if existing, err := readTrimmedFile(path); err == nil && existing == id {
+			continue
+		}
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			continue
+		}
+		_ = writeTokenAtomic(path, id)
+	}
+}
+
+// checkInstallIDDrift fires the registered drift logger AND emits an
+// `install_id_migrated` app_error beacon when the stored ID differs from
+// the deterministic derivation. Stored always wins as the install identity
+// — the beacon exists so analytics can link a hostname/uid/machine change
+// (which would produce a new derived ID) back to the original install,
+// preserving the single-install lineage.
+//
+// The beacon is dispatched on a background goroutine because this function
+// runs INSIDE the GetInstallID sync.Once Do — calling AppError synchronously
+// would re-enter buildEnvelope → GetInstallID and deadlock. The beacon path
+// itself is already fire-and-forget, so the extra hop is safe.
+func checkInstallIDDrift(stored string) {
+	derived, ok := deriveInstallID()
+	if !ok || derived == stored {
+		return
+	}
+	if fn := installIDDriftLogFn; fn != nil {
+		fn(stored, derived)
+	}
+	go AppError("install_id_migrated", map[string]string{
+		"derived_iid": derived,
+	})
+}
+
+// writeTokenAtomic writes id to idPath atomically: temp file in the same
 // directory, Sync, Close, Rename. On any error the temp file is removed so
 // we never leak partially-written state.
-func writeInstallIDAtomic(idPath, id string) (retErr error) {
+func writeTokenAtomic(idPath, id string) (retErr error) {
 	dir := filepath.Dir(idPath)
 	tmp, err := os.CreateTemp(dir, "install_id.*")
 	if err != nil {
@@ -145,6 +324,53 @@ func writeInstallIDAtomic(idPath, id string) (retErr error) {
 		return err
 	}
 	return nil
+}
+
+func writeInstallIDAtomic(idPath, id string) error {
+	return writeTokenAtomic(idPath, id)
+}
+
+func withKaboomStateLock(lockName string, fn func() error) error {
+	lockPath := filepath.Join(kaboomDir, lockName)
+	deadline := time.Now().Add(installStateLockTimeout)
+	for {
+		lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			if closeErr := lockFile.Close(); closeErr != nil {
+				_ = os.Remove(lockPath)
+				return closeErr
+			}
+			defer os.Remove(lockPath)
+			return fn()
+		}
+		if !os.IsExist(err) {
+			return err
+		}
+		if staleLock(lockPath) {
+			_ = os.Remove(lockPath)
+			continue
+		}
+		if time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(installStateLockPoll)
+	}
+}
+
+func staleLock(lockPath string) bool {
+	info, err := os.Stat(lockPath)
+	if err != nil {
+		return false
+	}
+	return time.Since(info.ModTime()) > installStateLockStale
+}
+
+func readTrimmedFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
 }
 
 // deriveInstallID attempts to derive a stable 12-hex install id from
@@ -271,11 +497,41 @@ func loadFirstToolCallInstallID() string {
 	if strings.TrimSpace(kaboomDir) == "" {
 		return ""
 	}
-	data, err := os.ReadFile(filepath.Join(kaboomDir, "first_tool_call_install_id"))
+	id, err := readTrimmedFile(filepath.Join(kaboomDir, "first_tool_call_install_id"))
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(data))
+	return id
+}
+
+func claimFirstToolCallInstallID(installID string) (bool, error) {
+	if strings.TrimSpace(kaboomDir) == "" || strings.TrimSpace(installID) == "" {
+		return false, nil
+	}
+	if err := os.MkdirAll(kaboomDir, 0o700); err != nil {
+		return false, err
+	}
+
+	markerPath := filepath.Join(kaboomDir, "first_tool_call_install_id")
+	claimed := false
+	err := withKaboomStateLock("first_tool_call_install_id.lock", func() error {
+		current, err := readTrimmedFile(markerPath)
+		if err == nil && current == installID {
+			return nil
+		}
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if firstToolCallBeforePersistHook != nil {
+			firstToolCallBeforePersistHook()
+		}
+		if err := writeTokenAtomic(markerPath, installID); err != nil {
+			return err
+		}
+		claimed = true
+		return nil
+	})
+	return claimed, err
 }
 
 // markFirstToolCallEmittedForInstall persists first-tool state and returns true
@@ -296,19 +552,12 @@ func markFirstToolCallEmittedForInstall() bool {
 		return false
 	}
 
-	if err := os.MkdirAll(kaboomDir, 0o700); err != nil {
-		return false
-	}
-	if err := os.WriteFile(
-		filepath.Join(kaboomDir, "first_tool_call_install_id"),
-		[]byte(installID),
-		0o600,
-	); err != nil {
+	claimed, err := claimFirstToolCallInstallID(installID)
+	if err != nil {
 		return false
 	}
 	cachedFirstToolCallInstallID = installID
-
-	return true
+	return claimed
 }
 
 func generateRandomID() string {
@@ -320,14 +569,24 @@ func generateRandomID() string {
 	return hex.EncodeToString(b)
 }
 
-// overrideKaboomDir sets a custom directory for testing.
+// overrideKaboomDir sets a custom directory for testing. Also disables the
+// platform-stable secondary mirror so tests retain single-location semantics
+// unless they explicitly opt in via overrideSecondaryDir.
 func overrideKaboomDir(dir string) {
 	kaboomDir = dir
+	secondaryDirOverride = disabledSecondaryDir
+}
+
+// overrideSecondaryDir enables the secondary mirror at the given path for
+// tests that exercise the cross-location feature.
+func overrideSecondaryDir(dir string) {
+	secondaryDirOverride = dir
 }
 
 // resetKaboomDir restores the default Kaboom directory after testing.
 func resetKaboomDir() {
 	kaboomDir = defaultKaboomDir()
+	secondaryDirOverride = ""
 }
 
 // resetInstallIDState clears the cached install ID and sync.Once for testing.

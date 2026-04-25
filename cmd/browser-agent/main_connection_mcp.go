@@ -100,6 +100,16 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 	})
 	server.logLifecycle("mcp_transport_ready", port, nil)
 
+	// Surface install-id drift (host rename, machine_id change) into the
+	// lifecycle log so operators can see when a stored ID stopped matching
+	// the deterministic derivation. install_id.go also fires an
+	// `install_id_migrated` app_error so analytics can stitch the lineage.
+	telemetry.SetInstallIDDriftLogFn(func(stored, derived string) {
+		server.logLifecycle("install_id_drift", port, map[string]any{
+			"stored_iid":  stored,
+			"derived_iid": derived,
+		})
+	})
 	telemetry.Warm() // Pre-load install ID and session off the hot path.
 	telemetry.BeaconEvent("daemon_start", map[string]string{
 		"mode": "daemon",
