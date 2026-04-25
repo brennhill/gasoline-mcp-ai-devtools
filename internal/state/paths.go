@@ -120,8 +120,28 @@ func RecordingsDir() (string, error) {
 }
 
 // ScreenshotsDir returns the screenshots directory.
+//
+// LAYOUT INVARIANT: flat — no subdirectories. Both the standard capture flow
+// (server_routes_media_screenshots.go writes `<host>-<ts>-<corr>.jpg`) and
+// the draw-mode flow (server_routes_media_draw_mode.go writes
+// `draw_<ts>_tab<id>_<rand>.png`) write directly into this directory. The
+// retention sweep in cmd/browser-agent/screenshot_cleanup.go is non-recursive
+// and relies on this; if a future feature wants subdirs, update the sweep
+// first.
 func ScreenshotsDir() (string, error) {
 	return InRoot("screenshots")
+}
+
+// ScreenshotImageExts is the set of file extensions written by screenshot
+// producers and managed by the retention sweep. Keep extensions lowercase;
+// callers that match against this set should normalize via strings.ToLower.
+// Adding a producer that writes a new format (WebP, AVIF, HEIC) MUST add the
+// matching extension here so the sweep retires it on the same retention
+// schedule as JPEG/PNG.
+var ScreenshotImageExts = map[string]struct{}{
+	".jpg":  {},
+	".jpeg": {},
+	".png":  {},
 }
 
 // LegacyRecordingsDir returns the historical recordings directory.

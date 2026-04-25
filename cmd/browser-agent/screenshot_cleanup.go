@@ -6,11 +6,13 @@ package main
 
 import (
 	"context"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
@@ -18,20 +20,10 @@ import (
 // because screenshots aren't long-lived user artifacts (they're captured
 // on-demand for AI tooling and become stale as the page state changes).
 const (
-	screenshotMaxAge           = 72 * time.Hour // 3 days
-	screenshotCleanupInterval  = 1 * time.Hour
+	screenshotMaxAge              = 72 * time.Hour // 3 days
+	screenshotCleanupInterval     = 1 * time.Hour
 	screenshotCleanupStartupDelay = 30 * time.Second // avoid hammering disk at boot
 )
-
-// Image extensions we own and will remove. Anything else a user drops in the
-// screenshots directory (notes, exports, etc.) is left alone. Extensions are
-// matched case-insensitively so macOS's JPG-uppercase and Chrome's lowercase
-// both match.
-var screenshotImageExts = map[string]struct{}{
-	".jpg":  {},
-	".jpeg": {},
-	".png":  {},
-}
 
 // cleanupOldScreenshots removes image files in `dir` with ModTime strictly
 // older than `now - maxAge`. Returns (removed, failed, err):
@@ -45,6 +37,15 @@ var screenshotImageExts = map[string]struct{}{
 // Subdirectories are ignored entirely (no recursion). The draw-mode flow
 // and standard screenshot flow both write flat into this directory, so
 // recursion would surprise future features that add subdirs on purpose.
+//
+// File-set is gated by state.ScreenshotImageExts so a future producer adding
+// a new format (e.g. WebP) is retired on the same schedule once the
+// extension is registered there.
+//
+// TOCTOU: between Info() and Remove() a writer could overwrite the file with
+// fresh content. The window is microseconds; producers always write to a
+// freshly-named file (BuildScreenshotFilename uses ts+correlation_id as a
+// uniqueness key) so name reuse is essentially impossible.
 func cleanupOldScreenshots(dir string, maxAge time.Duration, now time.Time) (removed, failed int, err error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -60,7 +61,7 @@ func cleanupOldScreenshots(dir string, maxAge time.Duration, now time.Time) (rem
 		}
 		name := entry.Name()
 		ext := strings.ToLower(filepath.Ext(name))
-		if _, ok := screenshotImageExts[ext]; !ok {
+		if _, ok := state.ScreenshotImageExts[ext]; !ok {
 			continue
 		}
 		info, statErr := entry.Info()
@@ -80,6 +81,91 @@ func cleanupOldScreenshots(dir string, maxAge time.Duration, now time.Time) (rem
 	return removed, failed, nil
 }
 
+// screenshotCleanupConfig is the injectable surface of the cleanup goroutine.
+// Tests pass fakes for `now`, `dirFn`, `startupDelay`, and `tickerC` so the
+// cancel-from-startup-delay and cancel-from-ticker paths are covered without
+// real-time waits. Production wiring (startScreenshotDiskCleanup) plumbs
+// real implementations.
+type screenshotCleanupConfig struct {
+	dirFn        func() (string, error)
+	now          func() time.Time
+	startupDelay <-chan time.Time
+	tickerC      <-chan time.Time
+	tickerStop   func()
+	maxAge       time.Duration
+	logEvent     func(event string, fields map[string]any)
+}
+
+// runScreenshotCleanupLoop drives the sweep until ctx is canceled. It is
+// the unit-testable core of startScreenshotDiskCleanup; production callers
+// should use the latter.
+//
+// Error dedup: identical consecutive errors are logged once. When the error
+// clears (or changes), a `_recovered` event fires so dashboards can see the
+// transition. Without this, a permanent permission-denied state would log
+// every hour forever.
+func runScreenshotCleanupLoop(ctx context.Context, cfg screenshotCleanupConfig) {
+	if cfg.tickerStop != nil {
+		defer cfg.tickerStop()
+	}
+
+	var lastErr string // empty means "last sweep was healthy"
+
+	sweep := func() {
+		dir, dirErr := cfg.dirFn()
+		if dirErr != nil {
+			emitDedupedError(cfg, "screenshot_cleanup_dir_error", &lastErr, dirErr.Error(), nil)
+			return
+		}
+		removed, failed, err := cleanupOldScreenshots(dir, cfg.maxAge, cfg.now())
+		if err != nil {
+			emitDedupedError(cfg, "screenshot_cleanup_read_error", &lastErr, err.Error(), map[string]any{"dir": dir})
+			return
+		}
+		// Healthy sweep: log recovery on the transition out of an error state,
+		// then emit the result only when there's something to report.
+		if lastErr != "" {
+			cfg.logEvent("screenshot_cleanup_recovered", map[string]any{"prior_error": lastErr})
+			lastErr = ""
+		}
+		if removed > 0 || failed > 0 {
+			cfg.logEvent("screenshot_cleanup_swept", map[string]any{
+				"removed": removed,
+				"failed":  failed,
+				"max_age": cfg.maxAge.String(),
+			})
+		}
+	}
+
+	select {
+	case <-ctx.Done():
+		return
+	case <-cfg.startupDelay:
+	}
+
+	sweep()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-cfg.tickerC:
+			sweep()
+		}
+	}
+}
+
+// emitDedupedError logs only if the error message differs from the previous
+// one. lastErr is updated by reference so the caller's state moves forward.
+func emitDedupedError(cfg screenshotCleanupConfig, event string, lastErr *string, msg string, extras map[string]any) {
+	if *lastErr == msg {
+		return
+	}
+	fields := map[string]any{"error": msg}
+	maps.Copy(fields, extras)
+	cfg.logEvent(event, fields)
+	*lastErr = msg
+}
+
 // startScreenshotDiskCleanup runs a background goroutine that sweeps the
 // screenshots directory once per screenshotCleanupInterval and removes any
 // image older than screenshotMaxAge. Exits when ctx is canceled.
@@ -88,48 +174,17 @@ func cleanupOldScreenshots(dir string, maxAge time.Duration, now time.Time) (rem
 // write and keeps boot-time disk I/O quiet.
 func (s *Server) startScreenshotDiskCleanup(ctx context.Context) {
 	util.SafeGo(func() {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(screenshotCleanupStartupDelay):
-		}
-
-		runSweep := func() {
-			dir, dirErr := screenshotsDir()
-			if dirErr != nil {
-				s.logLifecycle("screenshot_cleanup_dir_error", 0, map[string]any{
-					"error": dirErr.Error(),
-				})
-				return
-			}
-			removed, failed, err := cleanupOldScreenshots(dir, screenshotMaxAge, time.Now())
-			if err != nil {
-				s.logLifecycle("screenshot_cleanup_read_error", 0, map[string]any{
-					"dir":   dir,
-					"error": err.Error(),
-				})
-				return
-			}
-			if removed > 0 || failed > 0 {
-				s.logLifecycle("screenshot_cleanup_swept", 0, map[string]any{
-					"removed": removed,
-					"failed":  failed,
-					"max_age": screenshotMaxAge.String(),
-				})
-			}
-		}
-
-		runSweep()
-
 		ticker := time.NewTicker(screenshotCleanupInterval)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				runSweep()
-			}
-		}
+		runScreenshotCleanupLoop(ctx, screenshotCleanupConfig{
+			dirFn:        screenshotsDir,
+			now:          time.Now,
+			startupDelay: time.After(screenshotCleanupStartupDelay),
+			tickerC:      ticker.C,
+			tickerStop:   ticker.Stop,
+			maxAge:       screenshotMaxAge,
+			logEvent: func(event string, fields map[string]any) {
+				s.logLifecycle(event, 0, fields)
+			},
+		})
 	})
 }

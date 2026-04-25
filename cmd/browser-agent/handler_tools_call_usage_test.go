@@ -56,19 +56,19 @@ func TestUsageKey_DeprecatedAliases(t *testing.T) {
 			name: "interact: action alias",
 			tool: "interact",
 			args: json.RawMessage(`{"action":"click"}`),
-			want: "legacy_action:click",
+			want: telemetry.UsageKeyLegacyAliasPrefix + "action:click",
 		},
 		{
 			name: "configure: mode alias",
 			tool: "configure",
 			args: json.RawMessage(`{"mode":"streaming"}`),
-			want: "legacy_mode:streaming",
+			want: telemetry.UsageKeyLegacyAliasPrefix + "mode:streaming",
 		},
 		{
 			name: "generate: format alias",
 			tool: "generate",
 			args: json.RawMessage(`{"format":"playwright"}`),
-			want: "legacy_format:playwright",
+			want: telemetry.UsageKeyLegacyAliasPrefix + "format:playwright",
 		},
 		{
 			name: "what takes precedence over action when both present",
@@ -80,31 +80,31 @@ func TestUsageKey_DeprecatedAliases(t *testing.T) {
 			name: "configure: mode takes precedence over action (matches dispatcher order)",
 			tool: "configure",
 			args: json.RawMessage(`{"action":"navigate","mode":"streaming"}`),
-			want: "legacy_mode:streaming",
+			want: telemetry.UsageKeyLegacyAliasPrefix + "mode:streaming",
 		},
 		{
 			name: "generate: format takes precedence over action (matches dispatcher order)",
 			tool: "generate",
 			args: json.RawMessage(`{"action":"playwright","format":"har"}`),
-			want: "legacy_format:har",
+			want: telemetry.UsageKeyLegacyAliasPrefix + "format:har",
 		},
 		{
 			name: "interact ignores mode field (not a declared alias for interact)",
 			tool: "interact",
 			args: json.RawMessage(`{"mode":"streaming"}`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "interact ignores format field (not a declared alias for interact)",
 			tool: "interact",
 			args: json.RawMessage(`{"format":"har"}`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "empty what falls through to alias",
 			tool: "interact",
 			args: json.RawMessage(`{"what":"","action":"click"}`),
-			want: "legacy_action:click",
+			want: telemetry.UsageKeyLegacyAliasPrefix + "action:click",
 		},
 	}
 
@@ -131,57 +131,57 @@ func TestUsageKey_UnknownReasons(t *testing.T) {
 		{
 			name: "nil args -> no_args",
 			args: nil,
-			want: "unknown_no_args",
+			want: telemetry.UsageKeyUnknownNoArgs,
 		},
 		{
 			name: "empty args -> no_args",
 			args: json.RawMessage(``),
-			want: "unknown_no_args",
+			want: telemetry.UsageKeyUnknownNoArgs,
 		},
 		{
 			name: "malformed JSON -> parse_error",
 			args: json.RawMessage(`{not valid json`),
-			want: "unknown_parse_error",
+			want: telemetry.UsageKeyUnknownParseError,
 		},
 		{
 			name: "empty object -> missing_what",
 			args: json.RawMessage(`{}`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "object without what or alias field -> missing_what",
 			args: json.RawMessage(`{"unrelated":"value"}`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "what explicitly empty string with no aliases -> missing_what",
 			args: json.RawMessage(`{"what":""}`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "JSON null literal -> missing_what",
 			args: json.RawMessage(`null`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "what is a number (type mismatch) -> missing_what",
 			args: json.RawMessage(`{"what":42}`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "what is an object -> missing_what",
 			args: json.RawMessage(`{"what":{"nested":"value"}}`),
-			want: "unknown_missing_what",
+			want: telemetry.UsageKeyUnknownMissingWhat,
 		},
 		{
 			name: "top-level JSON array -> parse_error",
 			args: json.RawMessage(`[]`),
-			want: "unknown_parse_error",
+			want: telemetry.UsageKeyUnknownParseError,
 		},
 		{
 			name: "top-level JSON string -> parse_error",
 			args: json.RawMessage(`"hello"`),
-			want: "unknown_parse_error",
+			want: telemetry.UsageKeyUnknownParseError,
 		},
 	}
 
@@ -380,9 +380,9 @@ func TestHandleToolCall_IncrementsUsageTracker_NoWhatParam(t *testing.T) {
 	_ = resp
 
 	counts := counter.Peek()
-	if counts["configure:unknown_missing_what"] != 1 {
+	if counts["configure:" + telemetry.UsageKeyUnknownMissingWhat] != 1 {
 		t.Fatalf("configure:unknown_missing_what count = %d, want 1 (counts=%v)",
-			counts["configure:unknown_missing_what"], counts)
+			counts["configure:" + telemetry.UsageKeyUnknownMissingWhat], counts)
 	}
 }
 
@@ -439,9 +439,9 @@ func TestHandleToolCall_RecordsErrorRate(t *testing.T) {
 	handler.HandleToolCall(req, "interact", args)
 
 	counts := counter.Peek()
-	if counts["interact:unknown_missing_what"] != 1 {
+	if counts["interact:" + telemetry.UsageKeyUnknownMissingWhat] != 1 {
 		t.Fatalf("interact:unknown_missing_what count = %d, want 1 (counts=%v)",
-			counts["interact:unknown_missing_what"], counts)
+			counts["interact:" + telemetry.UsageKeyUnknownMissingWhat], counts)
 	}
 }
 

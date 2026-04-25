@@ -11,6 +11,31 @@ import (
 // Channel is the release channel (e.g., "stable", "beta", "dev").
 var Channel = "dev"
 
+// Usage-key sentinels exposed on the telemetry wire when a tool call cannot
+// be classified into a normal mode bucket. Dashboards consume these strings
+// directly — renaming any of them is a breaking telemetry change.
+//
+// Producer: cmd/browser-agent/tools_core.go::usageKey().
+// Tests:    cmd/browser-agent/handler_tools_call_usage_test.go.
+const (
+	// UsageKeyUnknownNoArgs is recorded when the caller passes nil/empty args.
+	UsageKeyUnknownNoArgs = "unknown_no_args"
+
+	// UsageKeyUnknownParseError is recorded when args are non-empty but cannot
+	// be parsed into a JSON object (malformed JSON, top-level array/string).
+	UsageKeyUnknownParseError = "unknown_parse_error"
+
+	// UsageKeyUnknownMissingWhat is recorded when args parse but produce no
+	// usable mode (no `what`, no recognised alias, JSON null, type mismatch).
+	UsageKeyUnknownMissingWhat = "unknown_missing_what"
+
+	// UsageKeyLegacyAliasPrefix tags calls that landed via a deprecated alias
+	// instead of the canonical `what` field. Format: "<prefix><alias>:<value>"
+	// (e.g. "legacy_action:click"). Lets dashboards count old-shape clients
+	// without polluting the canonical bucket.
+	UsageKeyLegacyAliasPrefix = "legacy_"
+)
+
 // ToolStat holds per-tool aggregated metrics for one beacon window.
 type ToolStat struct {
 	Tool         string `json:"tool"`   // "observe:page"
@@ -240,7 +265,11 @@ func fireStructuredBeacon(fields map[string]any) {
 	if !ok || event == "" {
 		return // silently drop malformed beacon
 	}
-	payload := buildEnvelope(event)
+	payload, ok := buildEnvelope(event)
+	if !ok {
+		callOnFireBeacon(false)
+		return
+	}
 	payload["ts"] = time.Now().UTC().Format(time.RFC3339)
 	payload["channel"] = Channel
 	for k, v := range fields {

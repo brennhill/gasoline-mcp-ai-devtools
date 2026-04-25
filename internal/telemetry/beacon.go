@@ -51,22 +51,28 @@ var beaconClient = &http.Client{Timeout: 2 * time.Second}
 
 // buildEnvelope returns the base fields included in every beacon.
 // Only includes fields defined in the Counterscale contract shared envelope.
-func buildEnvelope(event string) map[string]any {
+// Beacons are dropped entirely when a stable install ID is unavailable.
+func buildEnvelope(event string) (map[string]any, bool) {
 	beaconMu.RLock()
 	llm := llmName
 	beaconMu.RUnlock()
+
+	installID := GetInstallID()
+	if installID == "" {
+		return nil, false
+	}
 
 	env := map[string]any{
 		"event": event,
 		"v":     Version,
 		"os":    runtime.GOOS + "-" + runtime.GOARCH,
-		"iid":   GetInstallID(),
+		"iid":   installID,
 		"sid":   GetSessionID(),
 	}
 	if llm != "" {
 		env["llm"] = llm
 	}
-	return env
+	return env, true
 }
 
 // AppError fires a structured app_error event.
@@ -113,8 +119,10 @@ func classifyAppError(category string) (errorKind string, severity string, sourc
 		// New emissions use bridge_parse_error, bridge_method_not_found, or bridge_stdin_error.
 		return "internal", "error", "bridge", false
 	case "bridge_parse_error":
-		// Bridge received malformed JSON-RPC from the MCP client. Caller-side defect.
-		return "internal", "error", "bridge", false
+		// Bridge received malformed JSON-RPC from the MCP client. Caller-side
+		// defect — classify as integration/warning so dashboards don't page
+		// us for client bugs we can't fix.
+		return "integration", "warning", "bridge", false
 	case "bridge_method_not_found":
 		// Bridge received a JSON-RPC method it does not implement. Client bug or version skew.
 		return "integration", "warning", "bridge", false
@@ -156,7 +164,10 @@ func BuildUsageSummaryPayload(windowMinutes int, snapshot *UsageSnapshot) map[st
 	if snapshot == nil {
 		return nil
 	}
-	payload := buildEnvelope("usage_summary")
+	payload, ok := buildEnvelope("usage_summary")
+	if !ok {
+		return nil
+	}
 	payload["ts"] = time.Now().UTC().Format(time.RFC3339)
 	payload["channel"] = Channel
 	payload["window_m"] = windowMinutes
@@ -168,7 +179,11 @@ func BuildUsageSummaryPayload(windowMinutes int, snapshot *UsageSnapshot) map[st
 }
 
 func sendBeacon(event string, props map[string]string) {
-	payload := buildEnvelope(event)
+	payload, ok := buildEnvelope(event)
+	if !ok {
+		callOnFireBeacon(false)
+		return
+	}
 	if props != nil {
 		payload["props"] = props
 	}

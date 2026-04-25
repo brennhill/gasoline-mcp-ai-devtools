@@ -241,15 +241,15 @@ var toolAliasPrecedence = map[string][]string{
 // as "unknown", which obscured why the signal was missing.
 func usageKey(toolName string, args json.RawMessage) string {
 	if len(args) == 0 {
-		return "unknown_no_args"
+		return telemetry.UsageKeyUnknownNoArgs
 	}
 	var parsed map[string]any
 	if err := json.Unmarshal(args, &parsed); err != nil || parsed == nil {
 		// nil parsed handles `null` specifically — valid JSON, no fields.
 		if err != nil {
-			return "unknown_parse_error"
+			return telemetry.UsageKeyUnknownParseError
 		}
-		return "unknown_missing_what"
+		return telemetry.UsageKeyUnknownMissingWhat
 	}
 	mode, aliasField := stringField(parsed, "what"), ""
 	if mode == "" {
@@ -261,11 +261,11 @@ func usageKey(toolName string, args json.RawMessage) string {
 		}
 	}
 	if mode == "" {
-		return "unknown_missing_what"
+		return telemetry.UsageKeyUnknownMissingWhat
 	}
 	if mode != "command_result" {
 		if aliasField != "" {
-			return "legacy_" + aliasField + ":" + mode
+			return telemetry.UsageKeyLegacyAliasPrefix + aliasField + ":" + mode
 		}
 		return mode
 	}

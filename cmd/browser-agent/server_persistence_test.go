@@ -28,8 +28,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"sort"
 	"testing"
 	"time"
 
@@ -99,10 +101,19 @@ func TestServerPersistence_StaysAliveWithOpenStdin(t *testing.T) {
 	t.Logf("✅ Server survived %v with open stdin (no data sent)", testDuration)
 }
 
-// TestServerPersistence_HealthResponseTime verifies health endpoint responds quickly
-// at any point during the session.
+// TestServerPersistence_HealthResponseTime verifies the health endpoint
+// stays fast across a session — `fast` measured as p99 latency over a 5s
+// sample.
 //
-// Invariant: Health endpoint MUST respond within 100ms at all times.
+// Why p99 and not a per-request hard cap: the original test used a 100ms
+// hard timeout per request. That fails the whole test on any single OS
+// scheduler hiccup (GC, swap, parallel CI subprocess) even when the daemon
+// is healthy. p99 over a 50-request sample catches sustained slowness
+// (which is what we care about) without flaking on isolated jitter.
+//
+// Hard ceiling: an individual request timing out beyond 1s is still treated
+// as a real degradation — a broken daemon hangs every request, and 1s is
+// enough headroom that healthy daemons under CI load never trip it.
 func TestServerPersistence_HealthResponseTime(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping persistence test in short mode")
@@ -131,32 +142,28 @@ func TestServerPersistence_HealthResponseTime(t *testing.T) {
 
 	// Warm-up: first request after subprocess boot can hit cold-path latency
 	// (TCP connect to a freshly-bound socket, Go HTTP mux init, JIT cache
-	// fill). Discard one before the measurement loop so we measure
-	// steady-state response time, not first-request stall.
+	// fill). Drain + close so the keep-alive connection is reused by the
+	// measurement loop — otherwise every measured request opens a fresh
+	// TCP connection and we measure connection setup, not handler latency.
 	warmupClient := &http.Client{Timeout: 2 * time.Second}
 	if resp, err := warmupClient.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port)); err == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
 
-	// Per-request timeout is 500ms (was 100ms). The original threshold was
-	// fragile under CI parallelism: a single OS-scheduler hiccup on a
-	// healthy daemon would tank the test. Local p99 is ~3ms; 500ms is
-	// generous enough to absorb GC and load-induced jitter while still
-	// catching a daemon that's actually slow.
-	maxResponseTime := 500 * time.Millisecond
-	// We tolerate up to maxOutliers transient timeouts across the loop
-	// before declaring the daemon unhealthy. A single missed deadline isn't
-	// a health regression — sustained slowness is. The loop fires ~50
-	// requests in 5 seconds; 5 outliers ≈ 10%, which still surfaces real
-	// degradation (a truly broken daemon will time out every request).
-	const maxOutliers = 5
-	client := &http.Client{Timeout: maxResponseTime}
+	// Hard per-request ceiling — anything past this is treated as a real
+	// failure even if p99 looks fine. 1s is generous; a broken daemon
+	// trips it instantly.
+	const requestCeiling = 1 * time.Second
+	// p99 budget — sustained-latency invariant. Local p99 is ~3ms; 250ms
+	// absorbs GC and CI load while still surfacing real regression.
+	const p99Budget = 250 * time.Millisecond
+	client := &http.Client{Timeout: requestCeiling}
 	testDuration := 5 * time.Second
 	startTime := time.Now()
 
-	var slowestResponse time.Duration
-	var requestCount int
-	var outliers int
+	latencies := make([]time.Duration, 0, 64)
+	var ceilingHits int
 
 	for time.Since(startTime) < testDuration {
 		reqStart := time.Now()
@@ -164,26 +171,35 @@ func TestServerPersistence_HealthResponseTime(t *testing.T) {
 		responseTime := time.Since(reqStart)
 
 		if err != nil {
-			outliers++
-			if outliers > maxOutliers {
-				t.Fatalf("INVARIANT VIOLATION: Health request failed %d times (limit %d, timeout=%v): last error: %v",
-					outliers, maxOutliers, maxResponseTime, err)
-			}
-			t.Logf("transient timeout %d/%d: %v", outliers, maxOutliers, err)
+			ceilingHits++
+			t.Logf("hard-ceiling timeout (>%v): %v", requestCeiling, err)
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
+		_, _ = io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
-
-		if responseTime > slowestResponse {
-			slowestResponse = responseTime
-		}
-		requestCount++
-
+		latencies = append(latencies, responseTime)
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	t.Logf("✅ %d health checks completed, slowest: %v (limit: %v)", requestCount, slowestResponse, maxResponseTime)
+	if ceilingHits > 0 {
+		t.Fatalf("INVARIANT VIOLATION: %d health requests exceeded the %v hard ceiling — daemon is genuinely slow",
+			ceilingHits, requestCeiling)
+	}
+	if len(latencies) == 0 {
+		t.Fatal("no successful requests recorded — daemon never responded")
+	}
+
+	sort.Slice(latencies, func(i, j int) bool { return latencies[i] < latencies[j] })
+	p99 := latencies[len(latencies)*99/100]
+	maxLatency := latencies[len(latencies)-1]
+
+	if p99 > p99Budget {
+		t.Fatalf("INVARIANT VIOLATION: p99 latency = %v over %d requests, want < %v (max=%v)",
+			p99, len(latencies), p99Budget, maxLatency)
+	}
+	t.Logf("✅ %d health checks completed: p99=%v max=%v (budget %v)",
+		len(latencies), p99, maxLatency, p99Budget)
 }
 
 // TestServerPersistence_SurvivesStdinClose verifies server stays alive even when
