@@ -450,3 +450,154 @@ func TestInstallID_ReadsFromSecondaryWhenPrimaryDirGone(t *testing.T) {
 		t.Fatalf("primary should be healed from secondary; got data=%q err=%v", string(healed), err)
 	}
 }
+
+// TestInstallIDLocationsPriorityOrder pins the read-priority contract
+// [primary, primary.bak, secondary, secondary.bak]. Reordering this list
+// silently changes which file wins; a test that seeds distinct valid IDs
+// at each location and asserts primary wins guards against that.
+func TestInstallIDLocationsPriorityOrder(t *testing.T) {
+	primary := t.TempDir()
+	secondary := t.TempDir()
+	resetInstallIDState()
+	overrideKaboomDir(primary)
+	overrideSecondaryDir(secondary)
+	defer resetKaboomDir()
+
+	const primaryID = "111111111111"
+	const primaryBakID = "222222222222"
+	const secondaryID = "333333333333"
+	const secondaryBakID = "444444444444"
+
+	if err := os.WriteFile(filepath.Join(primary, "install_id"), []byte(primaryID), 0o600); err != nil {
+		t.Fatalf("seed primary: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(primary, "install_id.bak"), []byte(primaryBakID), 0o600); err != nil {
+		t.Fatalf("seed primary.bak: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(secondary, "install_id"), []byte(secondaryID), 0o600); err != nil {
+		t.Fatalf("seed secondary: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(secondary, "install_id.bak"), []byte(secondaryBakID), 0o600); err != nil {
+		t.Fatalf("seed secondary.bak: %v", err)
+	}
+
+	got := GetInstallID()
+	if got != primaryID {
+		t.Fatalf("priority order broken: got %q, want primary %q", got, primaryID)
+	}
+}
+
+// TestValidInstallID covers the format-rejection branches table-driven so
+// new corruption modes only need a row, not a new test.
+func TestValidInstallID(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want bool
+	}{
+		{"happy 12 lowercase hex", "abcdef012345", true},
+		{"empty string", "", false},
+		{"11 chars", "abcdef01234", false},
+		{"13 chars", "abcdef0123456", false},
+		{"uppercase", "AABBCCDDEEFF", false},
+		{"mixed case", "AaBbCcDdEeFf", false},
+		{"non-hex shaped", "ggggggggggg1", false},
+		{"with whitespace", " bcdef0123456", false},
+		{"trailing newline (untrimmed)", "abcdef012345\n", false},
+		{"unicode", "abcdef01234é", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := validInstallID(tt.in); got != tt.want {
+				t.Errorf("validInstallID(%q) = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestCheckInstallIDDrift_NoOpWhenStoredEqualsDerived confirms that when
+// the persisted ID matches what we'd derive right now, CheckInstallIDDrift
+// is silent — no log fires, no beacon emits.
+func TestCheckInstallIDDrift_NoOpWhenStoredEqualsDerived(t *testing.T) {
+	dir := t.TempDir()
+	resetInstallIDState()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
+
+	// Force derivation to return the same value the stored file has.
+	const knownID = "abcdef012345"
+	prevReadMachine := readMachineID
+	defer func() { readMachineID = prevReadMachine }()
+	// We need machine_id such that derive == knownID. Easier: seed the
+	// file with what derive will produce, then check no drift logged.
+	readMachineID = func() (string, bool) { return "stub-machine", true }
+
+	id := GetInstallID() // generates via derive (no file yet)
+	if id == "" {
+		t.Fatal("GetInstallID returned empty")
+	}
+
+	var logged bool
+	SetInstallIDDriftLogFn(func(stored, derived string) { logged = true })
+	defer SetInstallIDDriftLogFn(nil)
+
+	CheckInstallIDDrift()
+	if logged {
+		t.Errorf("drift logger fired when stored == derived")
+	}
+	_ = knownID
+}
+
+// TestCheckInstallIDDrift_FiresWhenDerivedChanges confirms that a stored ID
+// (held over from a previous host) different from the current derivation
+// triggers the drift logger AND persists install_id_lineage.
+func TestCheckInstallIDDrift_FiresWhenDerivedChanges(t *testing.T) {
+	dir := t.TempDir()
+	resetInstallIDState()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
+
+	const stored = "111111111111"
+	if err := os.WriteFile(filepath.Join(dir, "install_id"), []byte(stored), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// Force derive to yield a different value.
+	prevReadMachine := readMachineID
+	defer func() { readMachineID = prevReadMachine }()
+	readMachineID = func() (string, bool) { return "new-machine", true }
+
+	var fired int
+	var loggedStored, loggedDerived string
+	SetInstallIDDriftLogFn(func(s, d string) {
+		fired++
+		loggedStored, loggedDerived = s, d
+	})
+	defer SetInstallIDDriftLogFn(nil)
+
+	CheckInstallIDDrift()
+	if fired != 1 {
+		t.Errorf("drift logger fired %d times, want 1", fired)
+	}
+	if loggedStored != stored {
+		t.Errorf("logged stored = %q, want %q", loggedStored, stored)
+	}
+	if loggedDerived == "" || loggedDerived == stored {
+		t.Errorf("logged derived = %q, want non-empty and != stored", loggedDerived)
+	}
+
+	// Cadence guard: second call with same derivation should NOT re-fire.
+	CheckInstallIDDrift()
+	if fired != 1 {
+		t.Errorf("drift logger fired %d times after dedupe, want 1", fired)
+	}
+
+	// Verify lineage file was persisted.
+	lineage, err := os.ReadFile(filepath.Join(dir, "install_id_lineage"))
+	if err != nil {
+		t.Fatalf("lineage file missing: %v", err)
+	}
+	if string(lineage) != loggedDerived {
+		t.Errorf("lineage = %q, want %q", string(lineage), loggedDerived)
+	}
+}

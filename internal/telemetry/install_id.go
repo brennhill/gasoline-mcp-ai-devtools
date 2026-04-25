@@ -58,13 +58,17 @@ var cachedFirstToolCallInstallID string
 // readMachineID is a package-level indirection so tests can stub the OS lookup.
 var readMachineID = readMachineIDFromOS
 
-// secondaryDirOverride lets tests redirect (or disable) the platform-stable
-// mirror. Empty means "compute from runtime.GOOS + UserHomeDir"; the
-// disabledSecondaryDir sentinel disables the mirror entirely (used by
-// existing tests that pre-date the cross-location feature).
+// secondaryDirOverride lets tests redirect the platform-stable mirror.
+// Empty means "compute from runtime.GOOS + UserHomeDir". A non-empty value
+// is used directly. The mirror is disabled entirely when secondaryDirDisabled
+// is set (by overrideKaboomDir for tests written against single-location
+// semantics).
 var secondaryDirOverride string
 
-const disabledSecondaryDir = "\x00disabled"
+// secondaryDirDisabled disables the cross-location mirror regardless of
+// secondaryDirOverride. Set by overrideKaboomDir for back-compat with tests
+// that pre-date the four-location feature.
+var secondaryDirDisabled bool
 
 // installIDDriftLogFn is fired (at most once per process) when the persisted
 // install ID differs from the deterministic derivation. Set via
@@ -121,11 +125,12 @@ func loadOrGenerateInstallID() string {
 	locations := installIDLocations()
 
 	// Fast path: try every known location without taking the lock.
-	// First valid (12-char lowercase hex) win.
+	// First valid (12-char lowercase hex) win. Drift detection runs OUT
+	// of this function (CheckInstallIDDrift, called post-Warm) to avoid
+	// re-entering GetInstallID's sync.Once via AppError → buildEnvelope.
 	for _, path := range locations {
 		if id := tryReadValidID(path); id != "" {
 			healMissingLocations(id, locations)
-			checkInstallIDDrift(id)
 			return id
 		}
 	}
@@ -166,7 +171,6 @@ func loadOrGenerateInstallID() string {
 	}
 
 	healMissingLocations(stableID, locations)
-	checkInstallIDDrift(stableID)
 	return stableID
 }
 
@@ -185,9 +189,9 @@ func installIDLocations() []string {
 
 // secondaryKaboomDir returns the platform-stable mirror directory or "" if
 // no usable home dir / unsupported OS / explicitly disabled. Tests override
-// via secondaryDirOverride.
+// via secondaryDirOverride or secondaryDirDisabled.
 func secondaryKaboomDir() string {
-	if secondaryDirOverride == disabledSecondaryDir {
+	if secondaryDirDisabled {
 		return ""
 	}
 	if secondaryDirOverride != "" {
@@ -263,28 +267,64 @@ func healMissingLocations(id string, locations []string) {
 	}
 }
 
-// checkInstallIDDrift fires the registered drift logger AND emits an
+// CheckInstallIDDrift fires the registered drift logger AND emits an
 // `install_id_migrated` app_error beacon when the stored ID differs from
 // the deterministic derivation. Stored always wins as the install identity
 // — the beacon exists so analytics can link a hostname/uid/machine change
 // (which would produce a new derived ID) back to the original install,
 // preserving the single-install lineage.
 //
-// The beacon is dispatched on a background goroutine because this function
-// runs INSIDE the GetInstallID sync.Once Do — calling AppError synchronously
-// would re-enter buildEnvelope → GetInstallID and deadlock. The beacon path
-// itself is already fire-and-forget, so the extra hop is safe.
-func checkInstallIDDrift(stored string) {
+// MUST be called AFTER Warm() (or after at least one GetInstallID call).
+// Running inside the GetInstallID sync.Once would re-enter buildEnvelope →
+// GetInstallID and deadlock; the prior implementation worked around that
+// with a goroutine, which raced with test cleanup. This synchronous form
+// removes both hazards.
+//
+// Cadence: a previously-seen derived ID is persisted at
+// `~/.kaboom/install_id_lineage`. The beacon fires only when the current
+// derivation differs from the last persisted one — so a permanently-renamed
+// host emits exactly one beacon across all subsequent daemon starts, not one
+// per process.
+func CheckInstallIDDrift() {
+	stored := GetInstallID()
+	if stored == "" {
+		return
+	}
 	derived, ok := deriveInstallID()
 	if !ok || derived == stored {
 		return
 	}
+	if last := readLastDerivedSeen(); last == derived {
+		return
+	}
+
 	if fn := installIDDriftLogFn; fn != nil {
 		fn(stored, derived)
 	}
-	go AppError("install_id_migrated", map[string]string{
+	AppError("install_id_migrated", map[string]string{
 		"derived_iid": derived,
 	})
+	persistLastDerivedSeen(derived)
+}
+
+// readLastDerivedSeen returns the last derived ID we beaconed for, or "".
+// Used to dedupe the migration beacon across daemon starts.
+func readLastDerivedSeen() string {
+	if strings.TrimSpace(kaboomDir) == "" {
+		return ""
+	}
+	return tryReadValidID(filepath.Join(kaboomDir, "install_id_lineage"))
+}
+
+// persistLastDerivedSeen records derived as the most-recently-emitted
+// migration target. Best-effort; failure to persist means the next daemon
+// start may re-emit the beacon (acceptable — analytics dedupes by lineage).
+func persistLastDerivedSeen(derived string) {
+	if strings.TrimSpace(kaboomDir) == "" {
+		return
+	}
+	_ = os.MkdirAll(kaboomDir, 0o700)
+	_ = writeTokenAtomic(filepath.Join(kaboomDir, "install_id_lineage"), derived)
 }
 
 // writeTokenAtomic writes id to idPath atomically: temp file in the same
@@ -574,19 +614,23 @@ func generateRandomID() string {
 // unless they explicitly opt in via overrideSecondaryDir.
 func overrideKaboomDir(dir string) {
 	kaboomDir = dir
-	secondaryDirOverride = disabledSecondaryDir
+	secondaryDirOverride = ""
+	secondaryDirDisabled = true
 }
 
 // overrideSecondaryDir enables the secondary mirror at the given path for
-// tests that exercise the cross-location feature.
+// tests that exercise the cross-location feature. Must be called AFTER
+// overrideKaboomDir (which disables the secondary by default).
 func overrideSecondaryDir(dir string) {
 	secondaryDirOverride = dir
+	secondaryDirDisabled = false
 }
 
 // resetKaboomDir restores the default Kaboom directory after testing.
 func resetKaboomDir() {
 	kaboomDir = defaultKaboomDir()
 	secondaryDirOverride = ""
+	secondaryDirDisabled = false
 }
 
 // resetInstallIDState clears the cached install ID and sync.Once for testing.

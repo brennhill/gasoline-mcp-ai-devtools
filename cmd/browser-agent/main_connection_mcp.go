@@ -115,6 +115,11 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 		"mode": "daemon",
 		"port": fmt.Sprintf("%d", port),
 	})
+	// Drift check runs AFTER Warm so GetInstallID's sync.Once has already
+	// returned — synchronous AppError is safe here, no recursion hazard.
+	// Cadence is bounded by ~/.kaboom/install_id_lineage so this beacons at
+	// most once per actual identity change across all daemon starts.
+	telemetry.CheckInstallIDDrift()
 
 	// Start periodic usage beacon loop (structured tool stats every 5 minutes).
 	if tracker := mcpHandler.GetUsageTracker(); tracker != nil {
