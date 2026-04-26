@@ -257,18 +257,31 @@ func drainSem() {
 // every slot (so any in-flight goroutine must release before we proceed),
 // then releases. Deterministic alternative to time.Sleep when a test needs
 // stale goroutines from prior subtests to finish before installing a hook.
-// Bails with t.Fatalf if a slot can't be acquired within 5s — a stuck beacon
-// goroutine would otherwise hang the whole test binary until -timeout fires.
+// Bails with t.Fatalf if total acquisition exceeds quiesceSemTimeout — a
+// stuck beacon goroutine would otherwise hang the whole test binary until
+// `go test -timeout` fires. The deadline is overall, not per-slot.
+const quiesceSemTimeout = 5 * time.Second
+
 func quiesceSem(t *testing.T) {
 	t.Helper()
-	const perSlotDeadline = 5 * time.Second
-	for i := range maxConcurrentBeacons {
-		select {
-		case sem <- struct{}{}:
-		case <-time.After(perSlotDeadline):
-			t.Fatalf("quiesceSem: slot %d not acquired within %s — leaked beacon goroutine?", i, perSlotDeadline)
+
+	acquired := make(chan struct{})
+	go func() {
+		for range maxConcurrentBeacons {
+			sem <- struct{}{}
 		}
+		close(acquired)
+	}()
+
+	select {
+	case <-acquired:
+	case <-time.After(quiesceSemTimeout):
+		// Drain whatever the helper goroutine pushed so the next test
+		// doesn't see a saturated semaphore.
+		drainSem()
+		t.Fatalf("quiesceSem: full acquisition not completed within %s — leaked beacon goroutine?", quiesceSemTimeout)
 	}
+
 	for range maxConcurrentBeacons {
 		<-sem
 	}

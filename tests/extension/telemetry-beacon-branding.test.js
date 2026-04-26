@@ -32,12 +32,51 @@ describe('extension telemetry isolation', () => {
     assert.doesNotMatch(syncSource, /\bbeacon\(/, 'sync-client.ts must not fire raw telemetry beacons')
   })
 
-  test('extension lib does not ship a telemetry-beacon module', () => {
-    const compiledShim = path.join(__dirname, '..', '..', 'extension', 'lib', 'telemetry-beacon.js')
-    assert.strictEqual(
-      fs.existsSync(compiledShim),
-      false,
-      `${compiledShim} should not exist; remote analytics are daemon-owned`
+  test('extension lib does not ship any telemetry-beacon module under any name', () => {
+    const libDir = path.join(__dirname, '..', '..', 'extension', 'lib')
+    const re = /(telemetry.*beacon|beacon.*telemetry)/i
+    const offenders = []
+
+    function scan(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          scan(full)
+          continue
+        }
+        if (re.test(entry.name)) offenders.push(full)
+      }
+    }
+    scan(libDir)
+
+    assert.deepStrictEqual(
+      offenders,
+      [],
+      `extension/lib must not ship telemetry-beacon files (found: ${offenders.join(', ')}); remote analytics are daemon-owned`
+    )
+  })
+
+  test('extension source tree does not introduce a beacon helper', () => {
+    const srcDir = path.join(__dirname, '..', '..', 'src')
+    const re = /(telemetry.*beacon|beacon.*telemetry)/i
+    const offenders = []
+
+    function scan(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          scan(full)
+          continue
+        }
+        if (re.test(entry.name)) offenders.push(full)
+      }
+    }
+    scan(srcDir)
+
+    assert.deepStrictEqual(
+      offenders,
+      [],
+      `src/ must not contain telemetry-beacon files (found: ${offenders.join(', ')}); the daemon owns remote analytics`
     )
   })
 })

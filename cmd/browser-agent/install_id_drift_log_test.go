@@ -1,8 +1,15 @@
 // install_id_drift_log_test.go — Pins the lifecycle-log field-shape contract
-// for the install_id_drift event. Exercises the real production wiring fn
-// (newInstallIDDriftLogger) so a rename of stored_iid / derived_iid map keys
-// or the lifecycle event name is caught at this layer. Also pins that
-// runMCPMode actually registers the wiring fn through telemetry.
+// and the registration wiring for the install_id_drift event. Three tests
+// together pin the end-to-end path:
+//   1. TestNewInstallIDDriftLogger_LogShape exercises the real wiring fn
+//      (no copy-paste) and confirms (stored, derived) → lifecycle map keys.
+//   2. TestWireInstallIDDriftLogger_RegistersThroughTelemetry calls the same
+//      registration helper runMCPMode invokes, asserting it leaves a non-nil
+//      callback at the telemetry public API.
+//   3. TestRunMCPMode_CallsWireInstallIDDriftLogger source-greps
+//      main_connection_mcp.go to enforce that runMCPMode actually invokes
+//      wireInstallIDDriftLogger — catches a refactor that silently drops
+//      the registration call.
 //
 // The complementary contract — that telemetry.CheckInstallIDDrift actually
 // invokes the registered callback when stored != derived — lives in
@@ -11,6 +18,10 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
@@ -45,18 +56,40 @@ func TestNewInstallIDDriftLogger_LogShape(t *testing.T) {
 	if got := found["type"]; got != "lifecycle" {
 		t.Errorf("type = %v, want lifecycle", got)
 	}
+	if got := found["port"]; got != port {
+		t.Errorf("port = %v, want %d", got, port)
+	}
 }
 
-// TestSetInstallIDDriftLogFn_RegistersThroughPublicAPI confirms that calling
-// SetInstallIDDriftLogFn(newInstallIDDriftLogger(...)) — the wiring runMCPMode
-// performs at boot — leaves a non-nil callback registered with telemetry.
-// A future refactor that drops the registration call would fail this test.
-func TestSetInstallIDDriftLogFn_RegistersThroughPublicAPI(t *testing.T) {
+// TestWireInstallIDDriftLogger_RegistersThroughTelemetry confirms that the
+// single helper runMCPMode calls (wireInstallIDDriftLogger) leaves a non-nil
+// callback registered with telemetry. Combined with the source-grep test
+// below, this pins both the helper's contract AND the call site.
+func TestWireInstallIDDriftLogger_RegistersThroughTelemetry(t *testing.T) {
 	srv := newTestServerForHandlers(t)
-	telemetry.SetInstallIDDriftLogFn(newInstallIDDriftLogger(srv, 7892))
 	t.Cleanup(func() { telemetry.SetInstallIDDriftLogFn(nil) })
 
-	if !telemetry.HasInstallIDDriftLogFn() {
-		t.Fatal("SetInstallIDDriftLogFn did not register a callback through the public API")
+	wireInstallIDDriftLogger(srv, 7892)
+
+	if !telemetry.HasInstallIDDriftLogFnForTest() {
+		t.Fatal("wireInstallIDDriftLogger did not register a callback through the public API")
+	}
+}
+
+// TestRunMCPMode_CallsWireInstallIDDriftLogger asserts the source of
+// runMCPMode contains a call to wireInstallIDDriftLogger. Cheap regression
+// guard — a refactor that drops this call (turning the daemon into one that
+// no longer surfaces install-id drift) fails fast at test time.
+func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed — cannot locate source for grep")
+	}
+	source, err := os.ReadFile(filepath.Join(filepath.Dir(thisFile), "main_connection_mcp.go"))
+	if err != nil {
+		t.Fatalf("read main_connection_mcp.go: %v", err)
+	}
+	if !strings.Contains(string(source), "wireInstallIDDriftLogger(server, port)") {
+		t.Fatal("main_connection_mcp.go must call wireInstallIDDriftLogger(server, port) so install_id_drift surfaces in lifecycle logs")
 	}
 }

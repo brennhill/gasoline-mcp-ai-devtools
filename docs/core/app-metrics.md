@@ -139,7 +139,7 @@ codes currently in use:
 | `daemon_start_failed` | internal | error | daemon | `cmd/browser-agent/main_runtime_mode.go` |
 | `tool_rate_limited` | integration | warning | daemon | `cmd/browser-agent/handler_tools_call.go` |
 | `install_config_error` | internal | error | installer | `cmd/browser-agent/native_install.go` |
-| `install_id_migrated` | integration | warning | daemon | `internal/telemetry/install_id.go` (carries `derived_iid` prop linking the new derivation back to the canonical stored `iid`) |
+| `install_id_migrated` | integration | warning | daemon | `internal/telemetry/install_id_drift.go` (carries `derived_iid` prop linking the new derivation back to the canonical stored `iid`; cadence-bounded by the on-disk lineage marker `~/.kaboom/install_id_lineage` so a permanently-renamed host emits exactly once across all subsequent daemon starts) |
 | `extension_disconnect` | integration | warning | extension | `internal/capture/sync.go` |
 | `bridge_parse_error` | integration | warning | bridge | `cmd/browser-agent/internal/bridge/bridge_transport_helpers.go` |
 | `bridge_method_not_found` | integration | warning | bridge | same |

@@ -12,6 +12,7 @@
 package telemetry
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 )
@@ -42,11 +43,15 @@ func resetKaboomDir() {
 
 // resetInstallIDState clears the cached install ID for testing. Race-safe
 // with parallel GetInstallID callers via installIDLoadMu — even a stale
-// goroutine still inside the slow path will not see torn state.
+// goroutine still inside the slow path will not see torn state. Also
+// clears installIDLoadInFlight so a subsequent test does not inherit a
+// stale singleflight op pointer (the prior leader's `done` channel was
+// already closed when its load completed; just zero the pointer).
 func resetInstallIDState() {
 	installIDLoadMu.Lock()
 	defer installIDLoadMu.Unlock()
 	cachedInstallIDPtr.Store(nil)
+	installIDLoadInFlight = nil
 }
 
 // resetFirstToolCallState clears the cached first-tool-call state for testing.
@@ -83,9 +88,16 @@ func setOnFireBeacon(fn func(sent bool)) {
 // (e.g., installIDBeforePersistHook, firstToolCallBeforePersistHook). The
 // first goroutine to reach the hook signals `entered`; subsequent goroutines
 // pass through immediately. Call `release()` to let the first goroutine
-// proceed past the hook. The returned cleanup is registered as t.Cleanup
-// and clears the underlying hook var so state does not leak into the next
-// test.
+// proceed past the hook.
+//
+// Leak-safety: t.Cleanup always closes `gate` (via sync.Once so an explicit
+// release() does not double-close) and nils the hook var. So a t.Fatal
+// before release() does NOT leak the parked writer — cleanup unblocks it
+// and lets it complete its persist + return its result, freeing the file
+// lock for downstream tests.
+//
+// Misuse guard: panics if hookVar already points at a gate (re-installing
+// would orphan the prior gate). Each test should install at most one.
 //
 // Usage:
 //
@@ -96,8 +108,14 @@ func setOnFireBeacon(fn func(sent bool)) {
 //	release()                  // let goroutine 1 proceed
 func firstWriterGate(t *testing.T, hookVar *func()) (<-chan struct{}, func()) {
 	t.Helper()
+	if *hookVar != nil {
+		t.Fatal("firstWriterGate: hookVar already set — install at most one gate per test")
+	}
 	entered := make(chan struct{}, 1)
 	gate := make(chan struct{})
+	var releaseOnce sync.Once
+	releaseGate := func() { releaseOnce.Do(func() { close(gate) }) }
+
 	var calls atomic.Int32
 	*hookVar = func() {
 		if calls.Add(1) != 1 {
@@ -106,7 +124,9 @@ func firstWriterGate(t *testing.T, hookVar *func()) (<-chan struct{}, func()) {
 		entered <- struct{}{}
 		<-gate
 	}
-	t.Cleanup(func() { *hookVar = nil })
-	release := func() { close(gate) }
-	return entered, release
+	t.Cleanup(func() {
+		releaseGate() // unblock parked writer if test failed before release()
+		*hookVar = nil
+	})
+	return entered, releaseGate
 }

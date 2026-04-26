@@ -43,6 +43,15 @@ func newInstallIDDriftLogger(srv *Server, port int) func(stored, derived string)
 	}
 }
 
+// wireInstallIDDriftLogger is the single registration point runMCPMode and
+// drift-log regression tests both call. Bundling factory + register lets a
+// regression test invoke the same code path runMCPMode does, so a refactor
+// that removes the test-side call AND the runMCPMode call (or removes only
+// one) is caught by the source-grep contract in main_connection_mcp_wiring_test.go.
+func wireInstallIDDriftLogger(srv *Server, port int) {
+	telemetry.SetInstallIDDriftLogFn(newInstallIDDriftLogger(srv, port))
+}
+
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
 // - MCP protocol runs over stdin/stdout (for Claude Code)
@@ -117,7 +126,7 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 	// lifecycle log so operators can see when a stored ID stopped matching
 	// the deterministic derivation. install_id_drift.go also fires an
 	// `install_id_migrated` app_error so analytics can stitch the lineage.
-	telemetry.SetInstallIDDriftLogFn(newInstallIDDriftLogger(server, port))
+	wireInstallIDDriftLogger(server, port)
 	telemetry.Warm() // Pre-load install ID and session off the hot path.
 	telemetry.BeaconEvent("daemon_start", map[string]string{
 		"mode": "daemon",

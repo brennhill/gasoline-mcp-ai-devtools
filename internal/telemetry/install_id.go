@@ -47,10 +47,23 @@ var kaboomDir = defaultKaboomDir()
 // when prior-test goroutines are still mid-load.
 var cachedInstallIDPtr atomic.Pointer[string]
 
-// installIDLoadMu serializes the install-ID load path so concurrent first
-// callers see exactly one loadOrGenerateInstallID invocation, and tests can
-// reset state safely while a load is in flight.
+// installIDLoadMu guards installIDLoadInFlight ONLY — never the slow I/O.
+// Followers register against an in-flight load and wait on its `done`
+// channel without holding the mutex. This prevents a stuck withKaboomStateLock
+// (2s file-lock contention) from blocking every beacon emission via the
+// buildEnvelope → GetInstallID path.
 var installIDLoadMu sync.Mutex
+
+// installIDLoadInFlight tracks a single in-flight load. nil means no
+// goroutine is currently loading; non-nil means one leader goroutine is
+// doing the I/O and others should wait on `done`. Reset to nil after the
+// leader stores cachedInstallIDPtr.
+var installIDLoadInFlight *installIDLoadOp
+
+type installIDLoadOp struct {
+	done chan struct{}
+	id   string
+}
 
 // firstToolCallMu protects first-tool-call state across goroutines.
 var firstToolCallMu sync.Mutex
@@ -84,7 +97,10 @@ var secondaryDirDisabled bool
 var installIDBeforePersistHook func()
 var firstToolCallBeforePersistHook func()
 
-const (
+// Lock budget vars (not consts) so tests can shrink them and exercise the
+// timeout-exhausted and stale-lock-removal branches without burning seconds.
+// Production values are restored by the test cleanup helper.
+var (
 	installStateLockTimeout = 2 * time.Second
 	installStateLockPoll    = 10 * time.Millisecond
 	installStateLockStale   = 10 * time.Second
@@ -107,21 +123,41 @@ func Warm() {
 
 // GetInstallID returns the persistent anonymous install ID.
 // On first call, reads from ~/.kaboom/install_id or generates a new 12-char hex string.
-// Thread-safe: lock-free fast path via atomic.Pointer; the slow path serializes
-// concurrent first-load callers behind installIDLoadMu. Returns empty string
-// if a stable install ID cannot be read or persisted.
+// Thread-safe and beacon-friendly: a singleflight pattern ensures one leader
+// goroutine performs the (potentially slow) I/O while followers wait on a
+// channel — no caller holds installIDLoadMu through filesystem locks, so a
+// stuck install_id.lock cannot stall in-flight telemetry.
+// Returns empty string if a stable install ID cannot be read or persisted.
 func GetInstallID() string {
 	if p := cachedInstallIDPtr.Load(); p != nil {
 		return *p
 	}
+
 	installIDLoadMu.Lock()
-	defer installIDLoadMu.Unlock()
 	if p := cachedInstallIDPtr.Load(); p != nil {
+		installIDLoadMu.Unlock()
 		return *p
 	}
-	id := loadOrGenerateInstallID()
-	cachedInstallIDPtr.Store(&id)
-	return id
+	if op := installIDLoadInFlight; op != nil {
+		installIDLoadMu.Unlock()
+		<-op.done
+		return op.id
+	}
+	op := &installIDLoadOp{done: make(chan struct{})}
+	installIDLoadInFlight = op
+	installIDLoadMu.Unlock()
+
+	op.id = loadOrGenerateInstallID()
+	if op.id != "" {
+		idCopy := op.id
+		cachedInstallIDPtr.Store(&idCopy)
+	}
+
+	installIDLoadMu.Lock()
+	installIDLoadInFlight = nil
+	installIDLoadMu.Unlock()
+	close(op.done)
+	return op.id
 }
 
 func loadOrGenerateInstallID() string {
@@ -208,16 +244,24 @@ func secondaryKaboomDir() string {
 	if err != nil || strings.TrimSpace(home) == "" {
 		return ""
 	}
-	switch runtime.GOOS {
+	return secondaryKaboomDirForOS(runtime.GOOS, home, os.Getenv)
+}
+
+// secondaryKaboomDirForOS is a pure resolver — exposed for table-driven
+// cross-platform tests. Production passes runtime.GOOS, os.UserHomeDir(),
+// and os.Getenv, but tests can drive linux/windows branches deterministically
+// from a darwin CI host. Returns "" for unsupported GOOS.
+func secondaryKaboomDirForOS(goos, home string, env func(string) string) string {
+	switch goos {
 	case "darwin":
 		return filepath.Join(home, "Library", "Application Support", "Kaboom")
 	case "linux":
-		if x := strings.TrimSpace(os.Getenv("XDG_STATE_HOME")); x != "" {
+		if x := strings.TrimSpace(env("XDG_STATE_HOME")); x != "" {
 			return filepath.Join(x, "kaboom")
 		}
 		return filepath.Join(home, ".local", "state", "kaboom")
 	case "windows":
-		if x := strings.TrimSpace(os.Getenv("LOCALAPPDATA")); x != "" {
+		if x := strings.TrimSpace(env("LOCALAPPDATA")); x != "" {
 			return filepath.Join(x, "Kaboom")
 		}
 		return filepath.Join(home, "AppData", "Local", "Kaboom")

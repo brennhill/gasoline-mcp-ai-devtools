@@ -54,10 +54,15 @@ func loadInstallIDDriftLogFn() func(stored, derived string) {
 	return *p
 }
 
-// HasInstallIDDriftLogFn reports whether SetInstallIDDriftLogFn has
-// installed a non-nil callback. Used by registration regression tests in
-// other packages (cmd/browser-agent) that cannot import unexported symbols.
-func HasInstallIDDriftLogFn() bool {
+// HasInstallIDDriftLogFnForTest reports whether SetInstallIDDriftLogFn has
+// installed a non-nil callback. The "ForTest" suffix marks it as a test-only
+// introspection seam — production code has no business reading registration
+// state and should treat this function as if it did not exist. The function
+// must remain on the public API only because cross-package tests in
+// cmd/browser-agent cannot link against unexported symbols and Go's
+// export_test.go pattern only crosses the same-package external test
+// boundary, not arbitrary downstream packages.
+func HasInstallIDDriftLogFnForTest() bool {
 	return loadInstallIDDriftLogFn() != nil
 }
 
@@ -78,6 +83,14 @@ func HasInstallIDDriftLogFn() bool {
 // derivation differs from the last persisted one — so a permanently-renamed
 // host emits exactly one beacon across all subsequent daemon starts, not one
 // per process.
+//
+// Concurrency: the drift log fn is snapshotted exactly once at function
+// entry, so a concurrent SetInstallIDDriftLogFn affects only the NEXT call.
+// The AppError beacon and lineage persist run unconditionally after the
+// snapshot — so if a caller registered a logger but rotated to nil mid-call,
+// the original logger still receives this drift event AND the beacon fires.
+// The cadence guard above prevents the beacon from re-emitting for the same
+// derivation across daemon starts.
 func CheckInstallIDDrift() {
 	stored := GetInstallID()
 	if stored == "" {
@@ -91,8 +104,9 @@ func CheckInstallIDDrift() {
 		return
 	}
 
-	if fn := loadInstallIDDriftLogFn(); fn != nil {
-		fn(stored, derived)
+	logFnSnapshot := loadInstallIDDriftLogFn() // single load — see comment above.
+	if logFnSnapshot != nil {
+		logFnSnapshot(stored, derived)
 	}
 	AppError("install_id_migrated", map[string]string{
 		"derived_iid": derived,

@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -237,6 +240,27 @@ func TestContract_DefaultEndpointPinned(t *testing.T) {
 	const want = "https://t.gokaboom.dev/v1/event"
 	if defaultEndpoint != want {
 		t.Errorf("defaultEndpoint = %q, want %q (wire contract)", defaultEndpoint, want)
+	}
+}
+
+// TestContract_DefaultEndpointMatchesDocs cross-pins the daemon's endpoint
+// against the docs (`docs/core/app-metrics.md`) so a developer who updates
+// only one side of the contract trips the test. The agent doc lists the
+// canonical ingest URL on a code-block line; we grep for it as a substring
+// rather than parsing the doc.
+func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	repoRoot := filepath.Clean(filepath.Join(wd, "..", ".."))
+	docPath := filepath.Join(repoRoot, "docs", "core", "app-metrics.md")
+	body, err := os.ReadFile(docPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", docPath, err)
+	}
+	if !strings.Contains(string(body), defaultEndpoint) {
+		t.Errorf("%s does not mention defaultEndpoint %q — code/doc drift in wire contract", docPath, defaultEndpoint)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -352,6 +353,184 @@ func TestClaimFirstToolCallInstallID_ConcurrentClaimsEmitOnce(t *testing.T) {
 	}
 }
 
+// TestSecondaryKaboomDirForOS covers the cross-platform branches of the
+// secondary mirror resolver. Without this table-driven test, only the host
+// CI's GOOS branch was reachable, leaving linux XDG / windows LOCALAPPDATA
+// fallbacks dead-code on darwin runners.
+//
+// Path separators are produced by filepath.Join (host-OS dependent), so the
+// expected paths use filepath.Join too — we are pinning the choice of path
+// COMPONENTS, not the rendering. (On Windows hosts the windows branch's
+// `filepath.Join` produces backslashes; on darwin/linux hosts it produces
+// forward slashes. Either way the same components must appear.)
+func TestSecondaryKaboomDirForOS(t *testing.T) {
+	noEnv := func(string) string { return "" }
+	xdgEnv := func(k string) string {
+		if k == "XDG_STATE_HOME" {
+			return filepath.Join("/", "custom", "xdg")
+		}
+		return ""
+	}
+	winEnv := func(k string) string {
+		if k == "LOCALAPPDATA" {
+			return filepath.Join("C:", "Users", "test", "AppData", "Local")
+		}
+		return ""
+	}
+
+	homeUnix := filepath.Join("/", "home", "test")
+	homeMac := filepath.Join("/", "Users", "test")
+	homeWin := filepath.Join("C:", "Users", "test")
+
+	cases := []struct {
+		name string
+		goos string
+		home string
+		env  func(string) string
+		want string
+	}{
+		{"darwin", "darwin", homeMac, noEnv,
+			filepath.Join(homeMac, "Library", "Application Support", "Kaboom")},
+		{"linux default", "linux", homeUnix, noEnv,
+			filepath.Join(homeUnix, ".local", "state", "kaboom")},
+		{"linux XDG_STATE_HOME", "linux", homeUnix, xdgEnv,
+			filepath.Join(filepath.Join("/", "custom", "xdg"), "kaboom")},
+		{"windows LOCALAPPDATA", "windows", homeWin, winEnv,
+			filepath.Join(filepath.Join("C:", "Users", "test", "AppData", "Local"), "Kaboom")},
+		{"windows fallback", "windows", homeWin, noEnv,
+			filepath.Join(homeWin, "AppData", "Local", "Kaboom")},
+		{"unsupported GOOS", "plan9", filepath.Join("/", "usr", "test"), noEnv, ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := secondaryKaboomDirForOS(tc.goos, tc.home, tc.env)
+			if got != tc.want {
+				t.Errorf("secondaryKaboomDirForOS(%q, %q, ...) = %q, want %q",
+					tc.goos, tc.home, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestWithKaboomStateLock_TimeoutExhausted pins the timeout branch: when a
+// lock file already exists and is not stale, withKaboomStateLock waits up
+// to installStateLockTimeout and then returns the original os.IsExist error.
+// We shrink the timeout to keep the test fast.
+func TestWithKaboomStateLock_TimeoutExhausted(t *testing.T) {
+	dir := t.TempDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
+
+	defer func(t, p, s time.Duration) {
+		installStateLockTimeout, installStateLockPoll, installStateLockStale = t, p, s
+	}(installStateLockTimeout, installStateLockPoll, installStateLockStale)
+	installStateLockTimeout = 50 * time.Millisecond
+	installStateLockPoll = 5 * time.Millisecond
+	installStateLockStale = 10 * time.Second // keep stale window large so existing lock isn't reaped
+
+	lockPath := filepath.Join(dir, "test.lock")
+	if err := os.WriteFile(lockPath, []byte{}, 0o600); err != nil {
+		t.Fatalf("seed lock: %v", err)
+	}
+
+	start := time.Now()
+	err := withKaboomStateLock("test.lock", func() error {
+		t.Fatal("fn should not run when lock is held")
+		return nil
+	})
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatal("expected error when lock is held to timeout, got nil")
+	}
+	// Allow generous slack for CI scheduling jitter; the upper bound just
+	// confirms we did not fall through to fn.
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("withKaboomStateLock took %s; expected ~50ms timeout", elapsed)
+	}
+}
+
+// TestWithKaboomStateLock_StaleLockReclaimed pins the stale-lock branch: a
+// lock file with mtime older than installStateLockStale is removed and the
+// caller proceeds. Uses os.Chtimes to fabricate a stale mtime — no sleep.
+func TestWithKaboomStateLock_StaleLockReclaimed(t *testing.T) {
+	dir := t.TempDir()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
+
+	defer func(t, p, s time.Duration) {
+		installStateLockTimeout, installStateLockPoll, installStateLockStale = t, p, s
+	}(installStateLockTimeout, installStateLockPoll, installStateLockStale)
+	installStateLockTimeout = 50 * time.Millisecond
+	installStateLockPoll = 5 * time.Millisecond
+	installStateLockStale = 100 * time.Millisecond
+
+	lockPath := filepath.Join(dir, "test.lock")
+	if err := os.WriteFile(lockPath, []byte{}, 0o600); err != nil {
+		t.Fatalf("seed lock: %v", err)
+	}
+	staleTime := time.Now().Add(-1 * time.Hour)
+	if err := os.Chtimes(lockPath, staleTime, staleTime); err != nil {
+		t.Fatalf("chtime: %v", err)
+	}
+
+	called := false
+	if err := withKaboomStateLock("test.lock", func() error {
+		called = true
+		return nil
+	}); err != nil {
+		t.Fatalf("withKaboomStateLock: %v", err)
+	}
+	if !called {
+		t.Fatal("fn was not invoked after stale lock was reclaimed")
+	}
+}
+
+// TestMarkFirstToolCallEmittedForInstall_CacheSticksAcrossFileDeletion pins
+// the once-load semantics of cachedFirstToolCallLoaded: after the in-memory
+// cache is hydrated from disk, deleting the marker file does NOT cause a
+// re-read on the next call. The test seeds the marker matching the current
+// install ID (so the first call sees "already emitted"), deletes the file,
+// then verifies the second call still returns false. If the cache flag did
+// not stick, the second call would re-read disk → find no marker → attempt
+// to claim → return true.
+func TestMarkFirstToolCallEmittedForInstall_CacheSticksAcrossFileDeletion(t *testing.T) {
+	dir := t.TempDir()
+	resetInstallIDState()
+	resetFirstToolCallState()
+	overrideKaboomDir(dir)
+	defer resetKaboomDir()
+
+	originalReadMachineID := readMachineID
+	readMachineID = func() (string, bool) { return "stub-machine", true }
+	defer func() { readMachineID = originalReadMachineID }()
+
+	installID := GetInstallID()
+	if installID == "" {
+		t.Fatal("GetInstallID returned empty")
+	}
+
+	if err := os.WriteFile(
+		filepath.Join(dir, "first_tool_call_install_id"),
+		[]byte(installID),
+		0o600,
+	); err != nil {
+		t.Fatalf("seed marker: %v", err)
+	}
+
+	if got := markFirstToolCallEmittedForInstall(); got {
+		t.Fatal("first call returned true; expected false because the seeded marker matches install ID")
+	}
+
+	if err := os.Remove(filepath.Join(dir, "first_tool_call_install_id")); err != nil {
+		t.Fatalf("delete marker: %v", err)
+	}
+
+	if got := markFirstToolCallEmittedForInstall(); got {
+		t.Fatal("second call returned true after file deletion; cachedFirstToolCallLoaded did not gate the disk read")
+	}
+}
+
 // TestInstallID_RejectsCorruptedFile pins format validation: a non-hex
 // content in the primary file is treated as missing and the loader
 // re-derives instead of returning the garbage as a usable ID.
@@ -573,6 +752,46 @@ func TestCheckInstallIDDrift_FiresWhenDerivedChanges(t *testing.T) {
 	if string(lineage) != loggedDerived {
 		t.Errorf("lineage = %q, want %q", string(lineage), loggedDerived)
 	}
+}
+
+// TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree pins that the
+// atomic.Pointer[func] pattern allows arbitrary interleaving of Set + Load
+// without data races. 50 setters rotate the registered fn while 50 loaders
+// read it; with -race -count=N this fails fast if the pattern regresses
+// (e.g., someone replaces atomic.Pointer with a plain var).
+func TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree(t *testing.T) {
+	t.Cleanup(func() { SetInstallIDDriftLogFn(nil) })
+
+	const goroutines = 50
+	const iterations = 200
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 2)
+
+	noop := func(stored, derived string) {}
+	other := func(stored, derived string) {}
+
+	for i := range goroutines {
+		fn := noop
+		if i%2 == 0 {
+			fn = other
+		}
+		go func() {
+			defer wg.Done()
+			for range iterations {
+				SetInstallIDDriftLogFn(fn)
+			}
+		}()
+	}
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			for range iterations {
+				_ = loadInstallIDDriftLogFn()
+			}
+		}()
+	}
+
+	wg.Wait()
 }
 
 // TestLoadOrGenerateInstallID_ConcurrentFourLocationWritersConverge
