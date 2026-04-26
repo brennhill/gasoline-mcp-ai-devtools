@@ -150,7 +150,7 @@ func TestContract_AppErrorClassifiesNewCategories(t *testing.T) {
 		{"bridge_spawn_start_error", "internal", "fatal", "bridge", false},
 		{"bridge_spawn_timeout", "internal", "error", "bridge", true},
 		{"bridge_exit_error", "internal", "error", "bridge", false},
-		{"bridge_parse_error", "internal", "error", "bridge", false},
+		{"bridge_parse_error", "integration", "warning", "bridge", false},
 		{"bridge_method_not_found", "integration", "warning", "bridge", false},
 		{"bridge_stdin_error", "internal", "error", "bridge", false},
 		// New: extension/install errors
@@ -226,6 +226,17 @@ func TestContract_AppErrorSendsAllRequiredFields(t *testing.T) {
 	}
 	if body["retryable"] != true {
 		t.Errorf("retryable = %v, want true", body["retryable"])
+	}
+}
+
+// TestContract_DefaultEndpointPinned pins the canonical telemetry ingest URL.
+// The daemon is the source of truth for this endpoint — extension code does
+// not ship a telemetry beacon helper. A change to this URL is a wire-contract
+// break: dashboard/ingest infra must be updated in the same change.
+func TestContract_DefaultEndpointPinned(t *testing.T) {
+	const want = "https://t.gokaboom.dev/v1/event"
+	if defaultEndpoint != want {
+		t.Errorf("defaultEndpoint = %q, want %q (wire contract)", defaultEndpoint, want)
 	}
 }
 

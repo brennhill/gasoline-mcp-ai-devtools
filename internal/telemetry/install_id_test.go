@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -118,7 +117,7 @@ func TestGetInstallID_ReadsFromFile(t *testing.T) {
 }
 
 func TestGetInstallID_CreatesDirectory(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "nested", ".strum")
+	dir := filepath.Join(t.TempDir(), "nested", ".kaboom")
 	resetInstallIDState()
 	overrideKaboomDir(dir)
 	defer resetKaboomDir()
@@ -254,20 +253,7 @@ func TestLoadOrGenerateInstallID_ConcurrentFreshWritersShareOneInstallID(t *test
 		readMachineID = originalReadMachineID
 	}()
 
-	defer func() {
-		installIDBeforePersistHook = nil
-	}()
-
-	firstWriterEntered := make(chan struct{}, 1)
-	releaseFirstWriter := make(chan struct{})
-	var persistCalls atomic.Int32
-	installIDBeforePersistHook = func() {
-		if persistCalls.Add(1) != 1 {
-			return
-		}
-		firstWriterEntered <- struct{}{}
-		<-releaseFirstWriter
-	}
+	entered, release := firstWriterGate(t, &installIDBeforePersistHook)
 
 	firstResult := make(chan string, 1)
 	secondResult := make(chan string, 1)
@@ -277,7 +263,7 @@ func TestLoadOrGenerateInstallID_ConcurrentFreshWritersShareOneInstallID(t *test
 	}()
 
 	select {
-	case <-firstWriterEntered:
+	case <-entered:
 	case <-time.After(2 * time.Second):
 		t.Fatal("first install_id writer did not reach persist hook")
 	}
@@ -286,7 +272,7 @@ func TestLoadOrGenerateInstallID_ConcurrentFreshWritersShareOneInstallID(t *test
 		secondResult <- loadOrGenerateInstallID()
 	}()
 
-	close(releaseFirstWriter)
+	release()
 
 	id1 := <-firstResult
 	id2 := <-secondResult
@@ -315,20 +301,7 @@ func TestClaimFirstToolCallInstallID_ConcurrentClaimsEmitOnce(t *testing.T) {
 
 	installID := "aabbccddeeff"
 
-	defer func() {
-		firstToolCallBeforePersistHook = nil
-	}()
-
-	firstWriterEntered := make(chan struct{}, 1)
-	releaseFirstWriter := make(chan struct{})
-	var persistCalls atomic.Int32
-	firstToolCallBeforePersistHook = func() {
-		if persistCalls.Add(1) != 1 {
-			return
-		}
-		firstWriterEntered <- struct{}{}
-		<-releaseFirstWriter
-	}
+	entered, release := firstWriterGate(t, &firstToolCallBeforePersistHook)
 
 	type claimResult struct {
 		claimed bool
@@ -343,7 +316,7 @@ func TestClaimFirstToolCallInstallID_ConcurrentClaimsEmitOnce(t *testing.T) {
 	}()
 
 	select {
-	case <-firstWriterEntered:
+	case <-entered:
 	case <-time.After(2 * time.Second):
 		t.Fatal("first first_tool_call claim did not reach persist hook")
 	}
@@ -353,7 +326,7 @@ func TestClaimFirstToolCallInstallID_ConcurrentClaimsEmitOnce(t *testing.T) {
 		secondResult <- claimResult{claimed: claimed, err: err}
 	}()
 
-	close(releaseFirstWriter)
+	release()
 
 	first := <-firstResult
 	second := <-secondResult
@@ -599,5 +572,68 @@ func TestCheckInstallIDDrift_FiresWhenDerivedChanges(t *testing.T) {
 	}
 	if string(lineage) != loggedDerived {
 		t.Errorf("lineage = %q, want %q", string(lineage), loggedDerived)
+	}
+}
+
+// TestLoadOrGenerateInstallID_ConcurrentFourLocationWritersConverge
+// extends the original concurrent-writers test to the new four-location
+// world. The persist hook blocks the first goroutine inside the slow path
+// while the second goroutine starts and contends for the install_id.lock,
+// guaranteeing the lock + re-check path is exercised (not the fast read
+// path). The lock guarantees both share one ID, AND the heal pass
+// propagates that ID to ALL four locations (primary + .bak + secondary + .bak).
+func TestLoadOrGenerateInstallID_ConcurrentFourLocationWritersConverge(t *testing.T) {
+	primary := t.TempDir()
+	secondary := t.TempDir()
+	resetInstallIDState()
+	overrideKaboomDir(primary)
+	overrideSecondaryDir(secondary)
+	defer resetKaboomDir()
+
+	originalReadMachineID := readMachineID
+	readMachineID = func() (string, bool) { return "", false }
+	defer func() { readMachineID = originalReadMachineID }()
+
+	entered, release := firstWriterGate(t, &installIDBeforePersistHook)
+
+	firstResult := make(chan string, 1)
+	secondResult := make(chan string, 1)
+
+	go func() { firstResult <- loadOrGenerateInstallID() }()
+
+	select {
+	case <-entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("first install_id writer did not reach persist hook")
+	}
+
+	go func() { secondResult <- loadOrGenerateInstallID() }()
+
+	release()
+
+	id1 := <-firstResult
+	id2 := <-secondResult
+	if id1 == "" || id2 == "" {
+		t.Fatalf("loadOrGenerateInstallID() returned empty: id1=%q id2=%q", id1, id2)
+	}
+	if id1 != id2 {
+		t.Fatalf("concurrent writers diverged: id1=%q id2=%q", id1, id2)
+	}
+
+	// All four locations must hold the same valid ID after heal.
+	for _, p := range []string{
+		filepath.Join(primary, "install_id"),
+		filepath.Join(primary, "install_id.bak"),
+		filepath.Join(secondary, "install_id"),
+		filepath.Join(secondary, "install_id.bak"),
+	} {
+		got, err := os.ReadFile(p)
+		if err != nil {
+			t.Errorf("location %s missing after heal: %v", p, err)
+			continue
+		}
+		if string(got) != id1 {
+			t.Errorf("location %s = %q, want %q", p, string(got), id1)
+		}
 	}
 }

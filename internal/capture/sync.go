@@ -4,8 +4,6 @@
 // Docs: docs/features/feature/query-service/index.md
 //
 // Metrics emitted from this file:
-//   - telemetry.BeaconEvent("extension_connect", {browser})  — first /sync
-//     poll from a new ext_session_id; tags the connecting browser family.
 //   - telemetry.AppError("extension_disconnect", {reason, last_seen}) —
 //     fires when the extension stops polling /sync past the disconnect
 //     deadline. Classified `integration/warning` (caller-side, not a
@@ -18,32 +16,11 @@ package capture
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
-
-// extractBrowserName returns a generic browser name from a User-Agent string.
-// Only the browser family is returned — no version, OS, or device details.
-func extractBrowserName(ua string) string {
-	ua = strings.ToLower(ua)
-	switch {
-	case strings.Contains(ua, "brave"):
-		return "brave"
-	case strings.Contains(ua, "edg/"):
-		return "edge"
-	case strings.Contains(ua, "chrome"):
-		return "chrome"
-	case strings.Contains(ua, "firefox"):
-		return "firefox"
-	case strings.Contains(ua, "safari"):
-		return "safari"
-	default:
-		return "unknown"
-	}
-}
 
 // =============================================================================
 // Request/Response Types
@@ -219,7 +196,6 @@ func (c *Capture) HandleSync(w http.ResponseWriter, r *http.Request) {
 	state := c.updateSyncConnectionState(req, clientID, now)
 
 	if !state.wasConnected || state.isReconnect {
-		telemetry.BeaconEvent("extension_connect", map[string]string{"browser": extractBrowserName(r.Header.Get("User-Agent"))})
 		util.SafeGo(func() {
 			c.emitLifecycleEvent("extension_connected", map[string]any{
 				"ext_session_id":     state.extSessionID,

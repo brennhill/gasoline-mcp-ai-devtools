@@ -66,6 +66,7 @@ Notes:
 
 - Kaboom is the only producer. There is no `app` field.
 - `iid` must remain stable for one install across launches and upgrades.
+- `iid` is **install-stable for life** — there is no rotation API. The daemon prefers a stored ID over any deterministic re-derivation when both are present (a stale `.bak` won't resurrect a value, but it also won't be discarded in favor of a fresh derivation). If you need a "new install" identity, the user must wipe `~/.kaboom/` AND the platform-stable mirror together.
 - Generate `iid` only when it can be durably persisted to `~/.kaboom/install_id`.
 - `iid` creation must be serialized across concurrent daemon startups so one fresh install cannot mint multiple IDs.
 - If a stable install ID cannot be read or written, drop telemetry instead of minting a replacement ID.

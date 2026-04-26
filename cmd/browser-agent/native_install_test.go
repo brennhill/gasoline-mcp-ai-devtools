@@ -65,3 +65,26 @@ func TestInstallerLegacyServerKeys_IncludeKaboomAndKaboomVariants(t *testing.T) 
 		}
 	}
 }
+
+func TestShouldRefusePrivilegedNativeInstall(t *testing.T) {
+	tests := []struct {
+		name     string
+		goos     string
+		euid     int
+		sudoUser string
+		want     bool
+	}{
+		{name: "linux root", goos: "linux", euid: 0, want: true},
+		{name: "linux sudo", goos: "linux", euid: 501, sudoUser: "brenn", want: true},
+		{name: "linux user", goos: "linux", euid: 501, want: false},
+		{name: "windows", goos: "windows", euid: -1, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldRefusePrivilegedNativeInstall(tt.goos, tt.euid, tt.sudoUser); got != tt.want {
+				t.Fatalf("shouldRefusePrivilegedNativeInstall(%q, %d, %q) = %v, want %v", tt.goos, tt.euid, tt.sudoUser, got, tt.want)
+			}
+		})
+	}
+}

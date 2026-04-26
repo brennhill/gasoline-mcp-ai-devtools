@@ -127,11 +127,11 @@ func TestLoadOrGenerateInstallID_WipedFileFallsBackToRandomWhenDeriveFails(t *te
 	}
 }
 
-func TestWriteInstallIDAtomic_NoPartialWrite(t *testing.T) {
+func TestWriteTokenAtomic_NoPartialWrite(t *testing.T) {
 	dir := t.TempDir()
 	idPath := filepath.Join(dir, "install_id")
-	if err := writeInstallIDAtomic(idPath, "aabbccddeeff"); err != nil {
-		t.Fatalf("writeInstallIDAtomic: %v", err)
+	if err := writeTokenAtomic(idPath, "aabbccddeeff"); err != nil {
+		t.Fatalf("writeTokenAtomic: %v", err)
 	}
 
 	info, err := os.Stat(idPath)
@@ -170,14 +170,14 @@ func TestWriteInstallIDAtomic_NoPartialWrite(t *testing.T) {
 	}
 }
 
-func TestWriteInstallIDAtomic_OverwritesExisting(t *testing.T) {
+func TestWriteTokenAtomic_OverwritesExisting(t *testing.T) {
 	dir := t.TempDir()
 	idPath := filepath.Join(dir, "install_id")
 	if err := os.WriteFile(idPath, []byte("111111111111"), 0o600); err != nil {
 		t.Fatalf("seed write: %v", err)
 	}
-	if err := writeInstallIDAtomic(idPath, "222222222222"); err != nil {
-		t.Fatalf("writeInstallIDAtomic: %v", err)
+	if err := writeTokenAtomic(idPath, "222222222222"); err != nil {
+		t.Fatalf("writeTokenAtomic: %v", err)
 	}
 	data, err := os.ReadFile(idPath)
 	if err != nil {

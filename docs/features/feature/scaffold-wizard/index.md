@@ -1524,13 +1524,13 @@ Product telemetry to understand adoption and usage without tracking individuals.
 
 1. **No PII.** No IP addresses stored, no email, no machine fingerprints, no names, no URLs.
 2. **No cookies.** Server-side event counting only.
-3. **Random install ID only.** A random hex string (`iid`) generated once at install time, stored at `~/.kaboom/install_id`. Not derived from hardware, username, or any machine property. Cannot be reversed to identify a person. Allows tracking usage patterns per install over time without knowing who the install belongs to.
+3. **Random install ID only.** A random hex string (`iid`) generated during daemon startup, stored at `~/.kaboom/install_id` only when it can be persisted durably. Not derived from hardware, username, or any machine property. Cannot be reversed to identify a person. Allows tracking usage patterns per install over time without knowing who the install belongs to.
 4. **Opt-out available.** `KABOOM_TELEMETRY=off` env var disables all beacons. Documented in CLAUDE.md.
 5. **Transparent.** Every beacon call is visible in source code, never hidden.
 
 ### Install ID Generation
 
-Generated once during first daemon startup. Never changes. Pure random, not derived from anything:
+Generated once during first daemon startup. Never changes. Pure random, not derived from anything. If Kaboom cannot persist it, telemetry is dropped instead of inventing a new ID:
 
 ```go
 // On first startup, if ~/.kaboom/install_id doesn't exist:
@@ -1538,13 +1538,15 @@ func generateInstallID() string {
     b := make([]byte, 6) // 12 hex chars
     rand.Read(b)
     id := hex.EncodeToString(b)
-    os.WriteFile(filepath.Join(kaboomDir, "install_id"), []byte(id), 0600)
+    if err := os.WriteFile(filepath.Join(kaboomDir, "install_id"), []byte(id), 0600); err != nil {
+        return ""
+    }
     return id
 }
 ```
 
 The `iid` field is included in every beacon event (not just usage_summary) so all events from the same install can be correlated:
-- "This install scaffolded 3 projects, uses observe:errors most, upgraded from 0.8.1 to 0.9.0"
+- "This install activated via first_tool_call and uses observe:errors most"
 - NOT: "This person at this IP with this email did X"
 
 ### Telemetry Endpoint
@@ -1617,6 +1619,7 @@ func fireStructuredBeacon(fields map[string]any) {
 ```
 
 Kaboom telemetry is daemon-owned. The daemon emits the canonical event set with the shared envelope and install/session identity.
+Installers and extension runtime helpers must not POST directly to the telemetry ingest endpoint.
 
 ### Analytics Dashboard
 

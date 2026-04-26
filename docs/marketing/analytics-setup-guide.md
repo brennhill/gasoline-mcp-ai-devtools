@@ -1,7 +1,7 @@
 ---
 doc_type: legacy_doc
 status: reference
-last_reviewed: 2026-02-16
+last_reviewed: 2026-04-20
 ---
 
 # Analytics Setup Guide for Kaboom MCP
@@ -16,9 +16,9 @@ We'll set up the following analytics tools:
 
 1. **Google Analytics 4 (GA4)** - Primary analytics platform ✅ **Already configured (G-BDRZ2Z24M7)**
 2. **GitHub Analytics** - Repository traffic and engagement
-3. **NPM/PyPI Download Tracking** - Package installation metrics
+3. **NPM/PyPI Download Tracking** - Package download and acquisition signals
 4. **Social Media Analytics** - Twitter/X, LinkedIn, Reddit engagement
-5. **Extension Install Tracking** - Chrome Web Store metrics
+5. **Extension Store Metrics** - Chrome Web Store download and active-user signals
 
 ---
 
@@ -237,19 +237,19 @@ Consider using:
 1. Go to [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)
 2. Select your extension
 3. View:
-   - Install count
+   - Download count
    - Active users
    - Ratings and reviews
    - Uninstall rate
    - Geographic distribution
 
-### Track Installs
+### Track Extension Acquisition
 
 Set up a goal in GA4 for extension installs:
 
 1. Create a custom event for extension downloads
 2. Mark as conversion
-3. Track over time
+3. Track acquisition over time, but do not treat store downloads as unique installs
 
 ---
 
@@ -259,7 +259,7 @@ Set up a goal in GA4 for extension installs:
 - **Website visitors** (GA4)
 - **GitHub stars** (GitHub API)
 - **Social media followers** (Platform analytics)
-- **Extension installs** (Chrome Web Store)
+- **Extension downloads** (Chrome Web Store)
 
 ### Acquisition Metrics
 - **NPM/PyPI downloads** (Package registries)
@@ -276,7 +276,7 @@ Set up a goal in GA4 for extension installs:
 ### Retention Metrics
 - **Returning visitors** (GA4)
 - **Extension active users** (Chrome Web Store)
-- **Repeat downloads** (NPM/PyPI)
+- **Repeat downloads** (NPM/PyPI, not unique installs)
 
 ---
 

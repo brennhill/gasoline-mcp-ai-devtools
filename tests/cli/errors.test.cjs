@@ -43,6 +43,17 @@ test('PermissionError has correct properties', () => {
   assert.ok(err.format().includes('❌'), 'Formatted should have error emoji')
 })
 
+test('PermissionError does not recommend sudo for install fixes', () => {
+  const err = new PermissionError('/home/user/.claude.json')
+
+  assert.doesNotMatch(err.recovery, /sudo/i, 'Recovery text should not recommend sudo')
+  assert.match(
+    err.recovery,
+    /normal user|permissions|ownership/i,
+    'Recovery text should steer toward repairing permissions or rerunning as the normal user'
+  )
+})
+
 test('InvalidJSONError has correct properties', () => {
   const err = new InvalidJSONError('/path/to/file.json')
 

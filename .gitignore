@@ -11,6 +11,7 @@ dist/
 .mcp.json
 .env
 .npmrc
+/ideas/
 
 # Dependencies
 node_modules/
@@ -80,6 +81,9 @@ docs/marketing-plan.md
 gokaboom.dev/node_modules/
 gokaboom.dev/dist/
 gokaboom.dev/.astro/
+
+# Generated OpenAPI types (regenerated from openapi.json on demand)
+extension/generated/
 
 # Generated framework smoke fixtures
 cmd/browser-agent/testpages/frameworks/

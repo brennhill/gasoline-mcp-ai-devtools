@@ -2,13 +2,13 @@
 title: Privacy & Data Collection
 description: Kaboom Privacy Policy — what we collect, what we don't, and how to opt out
 last_verified_version: 0.9.0
-last_verified_date: 2026-03-21
+last_verified_date: 2026-04-19
 normalized_tags: ['privacy']
 ---
 
 # Privacy & Data Collection
 
-**Last updated:** March 21, 2026
+**Last updated:** April 19, 2026
 
 ## TL;DR
 
@@ -45,9 +45,8 @@ We collect anonymous usage counters to understand how Kaboom is used:
 | What we collect | Example | Why |
 |----------------|---------|-----|
 | Random install ID | `f7a2c1e9b4d8` | Correlate usage over time without identifying you |
-| Tool usage counts | `observe:errors: 12` | Know which features matter |
+| Tool usage and activation events | `first_tool_call`, `usage_summary` | Know which features matter and whether installs activate |
 | OS and version | `darwin-arm64`, `0.8.1` | Know what to support |
-| Install/scaffold outcomes | `install_complete`, `scaffold_complete` | Measure onboarding success |
 | Error categories | `bridge_connection_error` | Fix common failure patterns |
 
 **What we DON'T collect:**
@@ -67,34 +66,45 @@ We collect anonymous usage counters to understand how Kaboom is used:
 
 ## The Install ID
 
-When Kaboom first starts, it generates a random 12-character hex string (e.g., `f7a2c1e9b4d8`) and saves it at `~/.kaboom/install_id`. This is:
+When the Kaboom daemon first starts, it generates a random 12-character hex string (e.g., `f7a2c1e9b4d8`) and saves it at `~/.kaboom/install_id`. This is:
 
 - **Randomly generated** — `crypto/rand`, not derived from your machine, username, or IP
 - **Not reversible** — cannot be traced back to you
 - **Used for** — "this install uses observe:errors a lot" not "this person does X"
+- **Fail-closed** — if Kaboom cannot read or durably persist that file, it suppresses product metrics instead of minting a fresh replacement ID
 
 ---
 
 ## Usage Summary Beacon
 
-Every 10 minutes (if there was activity), Kaboom sends one aggregated event:
+When there is activity, Kaboom sends canonical daemon-owned events such as `first_tool_call`, `session_start`, `session_end`, `usage_summary`, and `app_error`.
+
+One `usage_summary` event looks like:
 
 ```json
 {
   "event": "usage_summary",
-  "v": "0.8.1",
-  "os": "darwin-arm64",
   "iid": "f7a2c1e9b4d8",
-  "props": {
-    "window_m": "10",
-    "observe:errors": "12",
-    "interact:click": "24",
-    "analyze:accessibility": "1"
-  }
+  "sid": "8510f6ce8ca743c2",
+  "ts": "2026-04-19T08:10:00Z",
+  "v": "0.8.2",
+  "os": "darwin-arm64",
+  "channel": "stable",
+  "window_m": 5,
+  "tool_stats": [
+    {
+      "tool": "observe:errors",
+      "family": "observe",
+      "name": "errors",
+      "count": 12
+    }
+  ]
 }
 ```
 
 That's it. Tool names and counts. No URLs, no selectors, no content. If Kaboom is idle, no beacon is sent.
+
+The installer and browser extension do not post product metrics directly; the daemon is the only analytics emitter.
 
 ---
 
@@ -185,7 +195,7 @@ Everything is auditable:
 - **Extension manifest:** [extension/manifest.json](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/blob/UNSTABLE/extension/manifest.json)
 - **Redaction logic:** [extension/lib/serialize.js](https://github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/blob/UNSTABLE/extension/lib/serialize.js)
 
-**Don't take our word for it.** Read the source. The telemetry code is ~80 lines of Go. Every beacon call site is searchable with `grep -rn 'BeaconEvent\|BeaconError'`.
+**Don't take our word for it.** Read the source. The telemetry code is small and auditable. Every daemon beacon call site is searchable with `grep -rn 'BeaconEvent\|AppError\|fireStructuredBeacon'`.
 
 ---
 

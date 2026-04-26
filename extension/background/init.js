@@ -7,9 +7,8 @@
  * Handles startup logic: loading settings, installing listeners, and initial connection setup.
  * Uses async/await for cleaner control flow (replaces callback nesting).
  */
-import { beacon } from '../lib/telemetry-beacon.js';
 import { getTrackedTabLostToastDetail, KABOOM_LOG_PREFIX } from '../lib/brand.js';
-import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, sendStatusPingWrapper, DEFAULT_SERVER_URL } from './index.js';
+import { debugLog, DebugCategory, setDebugMode, resetSyncClientConnection, sharedServerCircuitBreaker, logBatcher, wsBatcher, enhancedActionBatcher, networkBodyBatcher, perfBatcher, handleLogMessage, handleClearLogs, checkConnectionAndUpdate, exportDebugLog, clearDebugLog, DEFAULT_SERVER_URL } from './index.js';
 import { getServerUrl, getConnectionStatus, isDebugMode, isScreenshotOnError, getCurrentLogLevel, isAiWebPilotEnabled, isAiWebPilotCacheInitialized, getPilotInitCallback, markInitComplete, setServerUrl, setCurrentLogLevel, setScreenshotOnError, setAiWebPilotEnabledCache, setAiWebPilotCacheInitialized, setPilotInitCallback } from './state.js';
 import { isSourceMapEnabled, setSourceMapEnabled, canTakeScreenshot, recordScreenshot, clearSourceMapCache, getContextWarning, getMemoryPressureState, isNetworkBodyCaptureDisabled, flushErrorGroups, cleanupStaleErrorGroups, clearScreenshotTimestamps } from './state-manager.js';
 import { loadDebugModeState, installStartupListener, loadAiWebPilotState, loadSavedSettings, installStorageChangeListener, setupChromeAlarms, installAlarmListener, installTabRemovedListener, installTabUpdatedListener, installDrawModeCommandListener, installRecordingShortcutCommandListener, installScreenRecordingCommandListener, installContextMenus, saveSetting, forwardToAllContentScripts, getActiveTab, sendTabToast, handleTrackedTabClosed, handleTrackedTabUrlChange } from './event-listeners.js';
@@ -40,8 +39,6 @@ export function initializeExtension() {
  */
 async function initializeExtensionAsync() {
     try {
-        // Anonymous telemetry: service worker activation (once per session)
-        beacon('extension_start');
         // ============= STEP 1: Check service worker restart =============
         const wasRestarted = await wasServiceWorkerRestarted();
         if (wasRestarted) {
@@ -94,7 +91,8 @@ async function initializeExtensionAsync() {
                 broadcastTrackingState().catch((err) => console.error(`${KABOOM_LOG_PREFIX} Error broadcasting tracking state:`, err));
             },
             onTrackedTabChanged: (newTabId, oldTabId) => {
-                sendStatusPingWrapper();
+                // Tracking state is reflected on the next /sync poll — no separate
+                // status ping needed. (Previously called a non-existent endpoint.)
                 if (newTabId !== null) {
                     resetSyncClientConnection();
                     console.log(`${KABOOM_LOG_PREFIX} Sync client reset due to tracking enabled`);

@@ -1,75 +1,43 @@
 // @ts-nocheck
 /**
- * @fileoverview telemetry-beacon-branding.test.js — Verifies Kaboom telemetry host and opt-out keys.
+ * @fileoverview telemetry-beacon-branding.test.js — Pins that extension code
+ * does not import or call any extension-side telemetry beacon helper. Remote
+ * analytics are owned by the daemon (internal/telemetry/beacon.go); this test
+ * keeps the extension out of that contract.
  */
 
-import { beforeEach, describe, mock, test } from 'node:test'
+import { describe, test } from 'node:test'
 import assert from 'node:assert'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-import { createMockChrome } from './helpers.js'
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-let importCounter = 0
+describe('extension telemetry isolation', () => {
+  test('background startup paths do not import or call extension telemetry beacons', () => {
+    const initSource = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'src', 'background', 'init.ts'),
+      'utf8'
+    )
+    const syncSource = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'src', 'background', 'sync-client.ts'),
+      'utf8'
+    )
 
-describe('telemetry beacon branding', () => {
-  let sendBeacon
-  let storageGet
-  let onChangedListener
-
-  beforeEach(() => {
-    sendBeacon = mock.fn(() => true)
-    storageGet = mock.fn((key, callback) => callback({ kaboom_telemetry_off: false }))
-    onChangedListener = undefined
-
-    globalThis.chrome = createMockChrome({
-      runtime: {
-        getManifest: () => ({ version: '9.9.9' })
-      },
-      storage: {
-        local: {
-          get: storageGet,
-          set: mock.fn(),
-          remove: mock.fn()
-        },
-        onChanged: {
-          addListener: mock.fn((listener) => {
-            onChangedListener = listener
-          })
-        }
-      }
-    })
-
-    Object.defineProperty(globalThis, 'navigator', {
-      configurable: true,
-      writable: true,
-      value: {
-        sendBeacon
-      }
-    })
+    assert.doesNotMatch(initSource, /telemetry-beacon/, 'init.ts must not import a telemetry beacon helper')
+    assert.doesNotMatch(initSource, /\bbeacon\(/, 'init.ts must not fire raw telemetry beacons')
+    assert.doesNotMatch(syncSource, /telemetry-beacon/, 'sync-client.ts must not import a telemetry beacon helper')
+    assert.doesNotMatch(syncSource, /\bbeacon\(/, 'sync-client.ts must not fire raw telemetry beacons')
   })
 
-  test('uses Kaboom telemetry endpoint and kaboom storage opt-out key', async () => {
-    const mod = await import(`../../extension/lib/telemetry-beacon.js?v=${++importCounter}`)
-
-    mod.beacon('extension_start', { source: 'test' })
-
-    assert.strictEqual(storageGet.mock.calls[0].arguments[0], 'kaboom_telemetry_off')
-    assert.strictEqual(sendBeacon.mock.calls.length, 1)
-    assert.strictEqual(sendBeacon.mock.calls[0].arguments[0], 'https://t.gokaboom.dev/v1/event')
-
-    const payload = JSON.parse(await sendBeacon.mock.calls[0].arguments[1].text())
-    assert.deepStrictEqual(payload, {
-      event: 'extension_start',
-      v: '9.9.9',
-      props: { source: 'test' }
-    })
-  })
-
-  test('respects kaboom runtime opt-out updates', async () => {
-    const mod = await import(`../../extension/lib/telemetry-beacon.js?v=${++importCounter}`)
-
-    onChangedListener({ kaboom_telemetry_off: { newValue: true } }, 'local')
-    mod.beacon('extension_start')
-
-    assert.strictEqual(sendBeacon.mock.calls.length, 0)
+  test('extension lib does not ship a telemetry-beacon module', () => {
+    const compiledShim = path.join(__dirname, '..', '..', 'extension', 'lib', 'telemetry-beacon.js')
+    assert.strictEqual(
+      fs.existsSync(compiledShim),
+      false,
+      `${compiledShim} should not exist; remote analytics are daemon-owned`
+    )
   })
 })

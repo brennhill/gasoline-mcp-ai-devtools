@@ -1,7 +1,7 @@
 ---
 doc_type: flow_map_pointer
 status: active
-last_reviewed: 2026-03-28
+last_reviewed: 2026-04-20
 canonical_flow_map: ../../../architecture/flow-maps/installer-binary-path-and-manual-extension-handoff.md
 ---
 
@@ -22,3 +22,7 @@ Notable coverage:
 - Installer defaults unpacked extension output to `~/KaboomAgenticDevtoolExtension` (overridable via `KABOOM_EXTENSION_DIR`) so users can select it in Chrome without enabling hidden files.
 - CRX fallback packaging in `scripts/build-crx.js` archives the full `extension/` directory to prevent missing MV3 module imports.
 - Startup integrity regression checks assert manifest file paths and service worker import graph resolve before release.
+- Shell installer rejects `sudo`/root execution so home-scoped install state and daemon install identity stay stable.
+- Installer entrypoints no longer emit direct analytics beacons; onboarding is counted from daemon-owned canonical events only.
+- Native `--install` also refuses privileged execution, npm postinstall skips elevated daemon auto-start, and install analytics state is file-locked so concurrent startups cannot mint duplicate installs or duplicate `first_tool_call`.
+- Daemon startup and extension reconnect lifecycle signals remain local diagnostics and are not sent as raw analytics rows.

@@ -9,7 +9,6 @@
  * Uses async/await for cleaner control flow (replaces callback nesting).
  */
 
-import { beacon } from '../lib/telemetry-beacon.js'
 import { getTrackedTabLostToastDetail, KABOOM_LOG_PREFIX } from '../lib/brand.js'
 import {
   debugLog,
@@ -111,9 +110,6 @@ export function initializeExtension(): void {
  */
 async function initializeExtensionAsync(): Promise<void> {
   try {
-    // Anonymous telemetry: service worker activation (once per session)
-    beacon('extension_start')
-
     // ============= STEP 1: Check service worker restart =============
     const wasRestarted = await wasServiceWorkerRestarted()
     if (wasRestarted) {

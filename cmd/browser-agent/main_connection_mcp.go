@@ -30,6 +30,19 @@ import (
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/util"
 )
 
+// newInstallIDDriftLogger returns the callback registered with
+// telemetry.SetInstallIDDriftLogFn. Extracted so tests can exercise the
+// translation from (stored, derived) callback args to the lifecycle log
+// shape without copy-pasting the body.
+func newInstallIDDriftLogger(srv *Server, port int) func(stored, derived string) {
+	return func(stored, derived string) {
+		srv.logLifecycle("install_id_drift", port, map[string]any{
+			"stored_iid":  stored,
+			"derived_iid": derived,
+		})
+	}
+}
+
 // runMCPMode runs the server in MCP mode:
 // - HTTP server runs in a goroutine (for browser extension)
 // - MCP protocol runs over stdin/stdout (for Claude Code)
@@ -102,23 +115,18 @@ func runMCPMode(server *Server, port int, apiKey string, opts daemonLaunchOption
 
 	// Surface install-id drift (host rename, machine_id change) into the
 	// lifecycle log so operators can see when a stored ID stopped matching
-	// the deterministic derivation. install_id.go also fires an
+	// the deterministic derivation. install_id_drift.go also fires an
 	// `install_id_migrated` app_error so analytics can stitch the lineage.
-	telemetry.SetInstallIDDriftLogFn(func(stored, derived string) {
-		server.logLifecycle("install_id_drift", port, map[string]any{
-			"stored_iid":  stored,
-			"derived_iid": derived,
-		})
-	})
+	telemetry.SetInstallIDDriftLogFn(newInstallIDDriftLogger(server, port))
 	telemetry.Warm() // Pre-load install ID and session off the hot path.
 	telemetry.BeaconEvent("daemon_start", map[string]string{
 		"mode": "daemon",
 		"port": fmt.Sprintf("%d", port),
 	})
-	// Drift check runs AFTER Warm so GetInstallID's sync.Once has already
-	// returned — synchronous AppError is safe here, no recursion hazard.
-	// Cadence is bounded by ~/.kaboom/install_id_lineage so this beacons at
-	// most once per actual identity change across all daemon starts.
+	// Drift check runs AFTER Warm so GetInstallID has already returned —
+	// synchronous AppError is safe here, no recursion hazard. Cadence is
+	// bounded by ~/.kaboom/install_id_lineage so this beacons at most once
+	// per actual identity change across all daemon starts.
 	telemetry.CheckInstallIDDrift()
 
 	// Start periodic usage beacon loop (structured tool stats every 5 minutes).

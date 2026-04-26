@@ -229,12 +229,7 @@ var onFireBeaconMu sync.Mutex
 // When nil (production), no notification is sent. The bool arg is true if sent, false if dropped.
 var onFireBeacon func(sent bool)
 
-// setOnFireBeacon sets the test hook (use nil to clear).
-func setOnFireBeacon(fn func(sent bool)) {
-	onFireBeaconMu.Lock()
-	onFireBeacon = fn
-	onFireBeaconMu.Unlock()
-}
+// setOnFireBeacon test helper lives in helpers_test.go.
 
 func callOnFireBeacon(sent bool) {
 	onFireBeaconMu.Lock()
@@ -281,16 +276,4 @@ func fireBeacon(payload map[string]any) {
 	}
 }
 
-// overrideEndpoint sets a custom endpoint for testing.
-func overrideEndpoint(url string) {
-	beaconMu.Lock()
-	endpoint = url
-	beaconMu.Unlock()
-}
-
-// resetEndpoint restores the default endpoint after testing.
-func resetEndpoint() {
-	beaconMu.Lock()
-	endpoint = defaultEndpoint
-	beaconMu.Unlock()
-}
+// overrideEndpoint / resetEndpoint test helpers live in helpers_test.go.

@@ -274,6 +274,13 @@ function installStagedBinary(stagedPath, livePath) {
   }
 }
 
+function isPrivilegedInstallContext() {
+  if (process.platform === 'win32') {
+    return false
+  }
+  return process.getuid?.() === 0 || Boolean(process.env.SUDO_USER)
+}
+
 /**
  * Start the Kaboom server in the background
  * Returns true if server started successfully
@@ -505,7 +512,13 @@ async function main() {
   verifyVersion(binaryPath)
 
   // Auto-start the server so extension reconnects immediately
-  await autoStartServer(binaryPath)
+  if (isPrivilegedInstallContext()) {
+    console.warn(
+      'Skipping background auto-start because install is running with elevated privileges. Re-run Kaboom as your normal user to start the daemon and keep one user-scoped install identity.'
+    )
+  } else {
+    await autoStartServer(binaryPath)
+  }
 
   console.log('Kaboom installed successfully!')
   const extensionDir = process.env.KABOOM_EXTENSION_DIR || path.join(os.homedir(), 'KaboomAgenticDevtoolExtension')

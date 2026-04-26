@@ -9,6 +9,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
 	"time"
@@ -175,6 +177,54 @@ func TestBeaconEvent_IncludesVersion(t *testing.T) {
 	}
 }
 
+func TestBeacon_DropsWhenStableInstallIDUnavailable(t *testing.T) {
+	resetInstallIDState()
+	resetFirstToolCallState()
+	resetSessionState()
+
+	dir := t.TempDir()
+	blockedPath := filepath.Join(dir, "blocked")
+	if err := os.WriteFile(blockedPath, []byte("not a directory"), 0600); err != nil {
+		t.Fatalf("failed to create blocking file: %v", err)
+	}
+	overrideKaboomDir(blockedPath)
+	defer resetKaboomDir()
+
+	fired := make(chan bool, 1)
+	setOnFireBeacon(func(sent bool) {
+		select {
+		case fired <- sent:
+		default:
+		}
+	})
+	defer setOnFireBeacon(nil)
+
+	var called bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	overrideEndpoint(srv.URL)
+	defer resetEndpoint()
+
+	BeaconEvent("test_event", nil)
+
+	select {
+	case sent := <-fired:
+		if sent {
+			t.Fatal("beacon was sent without a stable install ID")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("onFireBeacon hook not called")
+	}
+
+	if called {
+		t.Fatal("HTTP endpoint should not have been called without a stable install ID")
+	}
+}
+
 func TestBeacon_IgnoresHTTPFailure(t *testing.T) {
 	drainSem() // ensure clean semaphore from prior tests
 	// Point at a closed server — should not panic or block the caller.
@@ -200,6 +250,27 @@ func drainSem() {
 		default:
 			return
 		}
+	}
+}
+
+// quiesceSem blocks until no in-flight beacon goroutines remain. Acquires
+// every slot (so any in-flight goroutine must release before we proceed),
+// then releases. Deterministic alternative to time.Sleep when a test needs
+// stale goroutines from prior subtests to finish before installing a hook.
+// Bails with t.Fatalf if a slot can't be acquired within 5s — a stuck beacon
+// goroutine would otherwise hang the whole test binary until -timeout fires.
+func quiesceSem(t *testing.T) {
+	t.Helper()
+	const perSlotDeadline = 5 * time.Second
+	for i := range maxConcurrentBeacons {
+		select {
+		case sem <- struct{}{}:
+		case <-time.After(perSlotDeadline):
+			t.Fatalf("quiesceSem: slot %d not acquired within %s — leaked beacon goroutine?", i, perSlotDeadline)
+		}
+	}
+	for range maxConcurrentBeacons {
+		<-sem
 	}
 }
 
@@ -299,8 +370,7 @@ func TestBeacon_LLMFieldInEnvelope(t *testing.T) {
 // #14: Opt-out tests for BeaconEvent and BeaconUsageSummary.
 func TestBeaconEvent_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
-	drainSem()
-	time.Sleep(10 * time.Millisecond) // let stale goroutines finish
+	quiesceSem(t) // block until any prior-test beacon goroutines finish
 
 	fired := make(chan bool, 1)
 	setOnFireBeacon(func(sent bool) {
@@ -328,8 +398,7 @@ func TestBeaconEvent_DisabledByEnv(t *testing.T) {
 
 func TestBeaconUsageSummary_DisabledByEnv(t *testing.T) {
 	t.Setenv("KABOOM_TELEMETRY", "off")
-	drainSem()
-	time.Sleep(10 * time.Millisecond) // let stale goroutines finish
+	quiesceSem(t) // block until any prior-test beacon goroutines finish
 
 	fired := make(chan bool, 1)
 	setOnFireBeacon(func(sent bool) {

@@ -49,3 +49,23 @@ test('server postinstall validates existing daemon identity/version when port is
     'install.js should surface mismatch warning when port owner is not the expected daemon'
   )
 })
+
+test('server postinstall skips daemon auto-start in privileged contexts', () => {
+  const script = readInstallScript()
+
+  assert.match(
+    script,
+    /function isPrivilegedInstallContext\(/,
+    'install.js should define an explicit elevated-privilege guard'
+  )
+  assert.match(
+    script,
+    /process\.getuid\?\.\(\) === 0|process\.env\.SUDO_USER/,
+    'install.js should detect root or sudo execution contexts'
+  )
+  assert.match(
+    script,
+    /Skipping background auto-start because install is running with elevated privileges/,
+    'install.js should warn instead of auto-starting a privileged daemon'
+  )
+})

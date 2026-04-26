@@ -52,6 +52,23 @@ test('shell installer skips extension and daemon for hooks-only', () => {
   assert.match(source, /HOOKS_ONLY.*guard/, 'expected HOOKS_ONLY guard comment')
 })
 
+test('shell installer keeps install counting daemon-owned and rejects sudo contexts', () => {
+  const source = fs.readFileSync(path.join(__dirname, 'install.sh'), 'utf8')
+  assert.match(
+    source,
+    /reject_privileged_install_context\s*\(\)\s*\{/,
+    'expected reject_privileged_install_context() function definition in install.sh'
+  )
+  assert.match(
+    source,
+    /\bSUDO_USER\b/,
+    'expected privilege-guard to inspect SUDO_USER (catches drop-priv flows)'
+  )
+  assert.doesNotMatch(source, /install_complete/, 'expected install.sh to stop emitting install_complete telemetry')
+  assert.doesNotMatch(source, /install_error/, 'expected install.sh to stop emitting install_error telemetry')
+  assert.doesNotMatch(source, /t\.gokaboom\.dev/, 'expected install.sh to stop posting analytics directly')
+})
+
 test('npm wrapper exposes only Kaboom commands', () => {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(__dirname, '..', 'npm', 'kaboom-agentic-browser', 'package.json'), 'utf8')

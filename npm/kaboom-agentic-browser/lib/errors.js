@@ -27,9 +27,10 @@ class KaboomError extends Error {
 
 class PermissionError extends KaboomError {
   constructor(path) {
+    const parentDir = path.split('/').slice(0, -1).join('/') || path;
     super(
       `Permission denied writing ${path}`,
-      `Try: sudo kaboom-agentic-browser --install\nOr: Check permissions with: ls -la ${path.split('/').slice(0, -1).join('/')}`
+      `Repair permissions or ownership for ${parentDir}, then rerun kaboom-agentic-browser --install as your normal user.\nCheck with: ls -la ${parentDir}`
     );
     this.name = 'PermissionError';
   }

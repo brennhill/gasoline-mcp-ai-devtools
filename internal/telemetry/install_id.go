@@ -34,23 +34,30 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 // kaboomDir is the directory where install_id is persisted. Overridable for tests.
 var kaboomDir = defaultKaboomDir()
 
-// cachedInstallID holds the in-memory cached value after first load.
-var cachedInstallID string
+// cachedInstallIDPtr holds the in-memory cached value after first load.
+// atomic.Pointer + installIDLoadMu replace the prior sync.Once pattern so
+// resetInstallIDState (test-only) is race-safe under -race -count=N even
+// when prior-test goroutines are still mid-load.
+var cachedInstallIDPtr atomic.Pointer[string]
 
-// installIDOnce ensures the install ID is loaded/generated exactly once.
-var installIDOnce sync.Once
+// installIDLoadMu serializes the install-ID load path so concurrent first
+// callers see exactly one loadOrGenerateInstallID invocation, and tests can
+// reset state safely while a load is in flight.
+var installIDLoadMu sync.Mutex
 
 // firstToolCallMu protects first-tool-call state across goroutines.
 var firstToolCallMu sync.Mutex
 
-// firstToolCallOnce ensures the persisted state is loaded once per process.
-var firstToolCallOnce sync.Once
+// cachedFirstToolCallLoaded gates the persisted-state load so reset can
+// re-arm it without racing sync.Once replacement.
+var cachedFirstToolCallLoaded bool
 
 // cachedFirstToolCallInstallID is the install ID that has already emitted first_tool_call.
 var cachedFirstToolCallInstallID string
@@ -70,17 +77,8 @@ var secondaryDirOverride string
 // that pre-date the four-location feature.
 var secondaryDirDisabled bool
 
-// installIDDriftLogFn is fired (at most once per process) when the persisted
-// install ID differs from the deterministic derivation. Set via
-// SetInstallIDDriftLogFn from the host package; nil disables logging.
-var installIDDriftLogFn func(stored, derived string)
-
-// SetInstallIDDriftLogFn registers a callback the install_id loader invokes
-// when stored and derived IDs disagree (e.g., hostname change). Stored wins
-// regardless — this is observability only.
-func SetInstallIDDriftLogFn(fn func(stored, derived string)) {
-	installIDDriftLogFn = fn
-}
+// Drift detection (CheckInstallIDDrift, SetInstallIDDriftLogFn, lineage
+// persistence) lives in install_id_drift.go.
 
 // Test hooks block just before persistence so concurrency tests can force races.
 var installIDBeforePersistHook func()
@@ -109,12 +107,21 @@ func Warm() {
 
 // GetInstallID returns the persistent anonymous install ID.
 // On first call, reads from ~/.kaboom/install_id or generates a new 12-char hex string.
-// Thread-safe via sync.Once. Returns empty string if a stable install ID cannot be read or persisted.
+// Thread-safe: lock-free fast path via atomic.Pointer; the slow path serializes
+// concurrent first-load callers behind installIDLoadMu. Returns empty string
+// if a stable install ID cannot be read or persisted.
 func GetInstallID() string {
-	installIDOnce.Do(func() {
-		cachedInstallID = loadOrGenerateInstallID()
-	})
-	return cachedInstallID
+	if p := cachedInstallIDPtr.Load(); p != nil {
+		return *p
+	}
+	installIDLoadMu.Lock()
+	defer installIDLoadMu.Unlock()
+	if p := cachedInstallIDPtr.Load(); p != nil {
+		return *p
+	}
+	id := loadOrGenerateInstallID()
+	cachedInstallIDPtr.Store(&id)
+	return id
 }
 
 func loadOrGenerateInstallID() string {
@@ -267,66 +274,6 @@ func healMissingLocations(id string, locations []string) {
 	}
 }
 
-// CheckInstallIDDrift fires the registered drift logger AND emits an
-// `install_id_migrated` app_error beacon when the stored ID differs from
-// the deterministic derivation. Stored always wins as the install identity
-// — the beacon exists so analytics can link a hostname/uid/machine change
-// (which would produce a new derived ID) back to the original install,
-// preserving the single-install lineage.
-//
-// MUST be called AFTER Warm() (or after at least one GetInstallID call).
-// Running inside the GetInstallID sync.Once would re-enter buildEnvelope →
-// GetInstallID and deadlock; the prior implementation worked around that
-// with a goroutine, which raced with test cleanup. This synchronous form
-// removes both hazards.
-//
-// Cadence: a previously-seen derived ID is persisted at
-// `~/.kaboom/install_id_lineage`. The beacon fires only when the current
-// derivation differs from the last persisted one — so a permanently-renamed
-// host emits exactly one beacon across all subsequent daemon starts, not one
-// per process.
-func CheckInstallIDDrift() {
-	stored := GetInstallID()
-	if stored == "" {
-		return
-	}
-	derived, ok := deriveInstallID()
-	if !ok || derived == stored {
-		return
-	}
-	if last := readLastDerivedSeen(); last == derived {
-		return
-	}
-
-	if fn := installIDDriftLogFn; fn != nil {
-		fn(stored, derived)
-	}
-	AppError("install_id_migrated", map[string]string{
-		"derived_iid": derived,
-	})
-	persistLastDerivedSeen(derived)
-}
-
-// readLastDerivedSeen returns the last derived ID we beaconed for, or "".
-// Used to dedupe the migration beacon across daemon starts.
-func readLastDerivedSeen() string {
-	if strings.TrimSpace(kaboomDir) == "" {
-		return ""
-	}
-	return tryReadValidID(filepath.Join(kaboomDir, "install_id_lineage"))
-}
-
-// persistLastDerivedSeen records derived as the most-recently-emitted
-// migration target. Best-effort; failure to persist means the next daemon
-// start may re-emit the beacon (acceptable — analytics dedupes by lineage).
-func persistLastDerivedSeen(derived string) {
-	if strings.TrimSpace(kaboomDir) == "" {
-		return
-	}
-	_ = os.MkdirAll(kaboomDir, 0o700)
-	_ = writeTokenAtomic(filepath.Join(kaboomDir, "install_id_lineage"), derived)
-}
-
 // writeTokenAtomic writes id to idPath atomically: temp file in the same
 // directory, Sync, Close, Rename. On any error the temp file is removed so
 // we never leak partially-written state.
@@ -364,10 +311,6 @@ func writeTokenAtomic(idPath, id string) (retErr error) {
 		return err
 	}
 	return nil
-}
-
-func writeInstallIDAtomic(idPath, id string) error {
-	return writeTokenAtomic(idPath, id)
 }
 
 func withKaboomStateLock(lockName string, fn func() error) error {
@@ -580,9 +523,10 @@ func markFirstToolCallEmittedForInstall() bool {
 	firstToolCallMu.Lock()
 	defer firstToolCallMu.Unlock()
 
-	firstToolCallOnce.Do(func() {
+	if !cachedFirstToolCallLoaded {
 		cachedFirstToolCallInstallID = loadFirstToolCallInstallID()
-	})
+		cachedFirstToolCallLoaded = true
+	}
 
 	installID := GetInstallID()
 	if installID == "" {
@@ -609,38 +553,5 @@ func generateRandomID() string {
 	return hex.EncodeToString(b)
 }
 
-// overrideKaboomDir sets a custom directory for testing. Also disables the
-// platform-stable secondary mirror so tests retain single-location semantics
-// unless they explicitly opt in via overrideSecondaryDir.
-func overrideKaboomDir(dir string) {
-	kaboomDir = dir
-	secondaryDirOverride = ""
-	secondaryDirDisabled = true
-}
-
-// overrideSecondaryDir enables the secondary mirror at the given path for
-// tests that exercise the cross-location feature. Must be called AFTER
-// overrideKaboomDir (which disables the secondary by default).
-func overrideSecondaryDir(dir string) {
-	secondaryDirOverride = dir
-	secondaryDirDisabled = false
-}
-
-// resetKaboomDir restores the default Kaboom directory after testing.
-func resetKaboomDir() {
-	kaboomDir = defaultKaboomDir()
-	secondaryDirOverride = ""
-	secondaryDirDisabled = false
-}
-
-// resetInstallIDState clears the cached install ID and sync.Once for testing.
-func resetInstallIDState() {
-	installIDOnce = sync.Once{}
-	cachedInstallID = ""
-}
-
-// resetFirstToolCallState clears the cached first-tool-call state for testing.
-func resetFirstToolCallState() {
-	firstToolCallOnce = sync.Once{}
-	cachedFirstToolCallInstallID = ""
-}
+// Test helpers (overrideKaboomDir, overrideSecondaryDir, resetKaboomDir,
+// resetInstallIDState, resetFirstToolCallState) live in helpers_test.go.

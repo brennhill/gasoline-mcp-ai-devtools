@@ -2,7 +2,7 @@
 doc_type: flow_map
 flow_id: installer-binary-path-and-manual-extension-handoff
 status: active
-last_reviewed: 2026-03-28
+last_reviewed: 2026-04-20
 owners:
   - Brenn
 entrypoints:
@@ -10,6 +10,10 @@ entrypoints:
   - scripts/install.ps1
   - scripts/build-crx.js
   - cmd/browser-agent/native_install.go:runNativeInstall
+  - cmd/browser-agent/main_connection_mcp.go:runMCPMode
+  - internal/capture/sync.go:HandleSync
+  - internal/telemetry/install_id.go:GetInstallID
+  - internal/telemetry/install_id.go:markFirstToolCallEmittedForInstall
   - npm/kaboom-agentic-browser/lib/install.js:executeInstall
   - pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py:run_install
 code_paths:
@@ -19,18 +23,26 @@ code_paths:
   - scripts/install.ps1
   - server/scripts/install.js
   - cmd/browser-agent/native_install.go
+  - cmd/browser-agent/main_connection_mcp.go
+  - internal/capture/sync.go
+  - internal/telemetry/install_id.go
   - npm/kaboom-agentic-browser/lib/config.js
+  - npm/kaboom-agentic-browser/lib/errors.js
   - npm/kaboom-agentic-browser/lib/install.js
   - npm/kaboom-agentic-browser/lib/uninstall.js
   - pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py
   - pypi/kaboom-agentic-browser/kaboom_agentic_browser/platform.py
   - docs/mcp-install-guide.md
 test_paths:
+  - scripts/install-upgrade-regression.contract.test.mjs
   - cmd/browser-agent/native_install_test.go
+  - internal/telemetry/install_id_test.go
   - npm/kaboom-agentic-browser/lib/config.test.js
   - npm/kaboom-agentic-browser/lib/install.test.js
   - npm/kaboom-agentic-browser/lib/uninstall.test.js
   - pypi/kaboom-agentic-browser/tests/test_install.py
+  - tests/cli/errors.test.cjs
+  - tests/cli/install-analytics-contract.test.cjs
   - tests/extension/release-extension-zip.test.js
   - tests/extension/release-extension-crx-fallback.test.js
   - tests/extension/manifest-startup-integrity.test.js
@@ -49,6 +61,8 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 5. CRX fallback packaging must include the full `extension/` tree (no allowlist packaging).
 6. Extension refresh is atomic (stage + validate + promote) so failed upgrades do not destroy a previously working extension install.
 7. Installers support strict checksum enforcement (`KABOOM_INSTALL_STRICT=1`) for fail-closed install workflows.
+8. Install counting remains daemon-owned; installer entrypoints must not emit direct analytics events.
+9. Fresh installs must claim both `install_id` and `first_tool_call` state atomically so concurrent daemon startups cannot double count one install.
 
 ## Entrypoints
 
@@ -59,20 +73,22 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 ## Primary Flow
 
 1. Installer resolves platform and downloads/stages binary + extension artifacts.
-2. Extension release packaging (`make extension-zip` and `scripts/build-crx.js` fallback zip) archives the entire `extension/` directory.
-3. Binary installers verify SHA-256 against release `checksums.txt` (or fail immediately in strict mode).
-4. Extension is extracted into a staging directory and validated for required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`, `theme-bootstrap.js`).
-5. If the release extension zip is incomplete, installer falls back to source-zip extraction and validates again.
-6. Only validated staging directories are promoted atomically to `~/KaboomAgenticDevtoolExtension`; prior extension state is restored on promotion failure.
-7. Wrapper/native install writes MCP client configs.
-8. Config entries prefer resolved binary paths over transient launchers.
-9. Installer prints explicit manual extension checklist:
+2. Shell installer rejects `sudo`/root execution before mutating user-home install state.
+3. Extension release packaging (`make extension-zip` and `scripts/build-crx.js` fallback zip) archives the entire `extension/` directory.
+4. Binary installers verify SHA-256 against release `checksums.txt` (or fail immediately in strict mode).
+5. Extension is extracted into a staging directory and validated for required module files (`manifest.json`, `background/init.js`, `content/script-injection.js`, `inject/index.js`, `theme-bootstrap.js`).
+6. If the release extension zip is incomplete, installer falls back to source-zip extraction and validates again.
+7. Only validated staging directories are promoted atomically to `~/KaboomAgenticDevtoolExtension`; prior extension state is restored on promotion failure.
+8. Wrapper/native install writes MCP client configs.
+9. Native `--install` refuses privileged/root execution, and npm postinstall skips background daemon auto-start when elevated.
+10. Config entries prefer resolved binary paths over transient launchers.
+11. Installer prints explicit manual extension checklist:
    - open extensions page
    - enable developer mode
    - load unpacked extension folder
    - pin extension
    - click Track This Tab
-10. Installer surfaces a branded panel-style summary at completion with the resolved binary path.
+12. Installer surfaces a branded panel-style summary at completion with the resolved binary path.
 
 ## Error and Recovery Paths
 
@@ -83,6 +99,9 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 5. npm postinstall validates existing `/health` identity/version when port is already in use and refuses false-positive success for non-Kaboom services.
 6. If extension cannot be side-loaded automatically, installer still succeeds but instructs user on manual steps.
 7. Missing client config directories are skipped without aborting install.
+8. Shell installer fails closed when run via `sudo` or as root so install state, file ownership, and daemon install identity stay user-scoped.
+9. Native `--install` also fails closed in privileged contexts, while npm postinstall completes the binary install but does not auto-start a privileged daemon.
+10. Concurrent daemon startups take an exclusive lock before creating `~/.kaboom/install_id` or claiming `first_tool_call`, so one install yields one `iid` and one activation row.
 
 ## State and Contracts
 
@@ -94,6 +113,8 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 6. In strict mode, checksum verification is mandatory for release binary downloads.
 7. Existing-daemon reuse on port checks requires service identity and version parity.
 8. Extension unpacked path defaults to `~/KaboomAgenticDevtoolExtension` (overridable with `KABOOM_EXTENSION_DIR`).
+9. Installers and wrappers must not POST direct analytics rows; activation is measured from daemon-owned canonical events such as `first_tool_call`.
+10. Daemon startup and extension reconnect lifecycle logs stay local; they must not emit raw `daemon_start` or `extension_connect` analytics rows.
 
 ## Code Paths
 
@@ -103,7 +124,11 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 - `scripts/install.ps1`
 - `server/scripts/install.js`
 - `cmd/browser-agent/native_install.go`
+- `cmd/browser-agent/main_connection_mcp.go`
+- `internal/capture/sync.go`
+- `internal/telemetry/install_id.go`
 - `npm/kaboom-agentic-browser/lib/config.js`
+- `npm/kaboom-agentic-browser/lib/errors.js`
 - `npm/kaboom-agentic-browser/lib/install.js`
 - `npm/kaboom-agentic-browser/lib/uninstall.js`
 - `pypi/kaboom-agentic-browser/kaboom_agentic_browser/install.py`
@@ -113,6 +138,7 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 ## Test Paths
 
 - `cmd/browser-agent/native_install_test.go`
+- `internal/telemetry/install_id_test.go`
 - `npm/kaboom-agentic-browser/lib/config.test.js`
 - `npm/kaboom-agentic-browser/lib/install.test.js`
 - `npm/kaboom-agentic-browser/lib/uninstall.test.js`
@@ -121,6 +147,9 @@ Covers installer behavior for shell, PowerShell, npm wrapper, and PyPI wrapper t
 - `tests/extension/release-extension-crx-fallback.test.js`
 - `tests/extension/manifest-startup-integrity.test.js`
 - `tests/extension/install-script-extension-source.test.js`
+- `scripts/install-upgrade-regression.contract.test.mjs`
+- `tests/cli/errors.test.cjs`
+- `tests/cli/install-analytics-contract.test.cjs`
 - `tests/cli/server-install-hardening.test.cjs`
 - `tests/cli/install.test.cjs`
 - `tests/cli/uninstall.test.cjs`
