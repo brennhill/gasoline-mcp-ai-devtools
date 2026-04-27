@@ -94,46 +94,81 @@ func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 		t.Fatalf("parse %s: %v", srcPath, err)
 	}
 
-	var runMCPMode *ast.FuncDecl
+	// Collect ALL declarations matching by name regardless of receiver: a
+	// future refactor that makes runMCPMode a method on *Server should
+	// still trip this regression guard. If somehow both a free function
+	// and a method coexist with the same name, fail with explicit
+	// disambiguation guidance instead of silently picking one.
+	var runMCPModes []*ast.FuncDecl
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
-		// Match by name regardless of receiver: a future refactor that
-		// makes runMCPMode a method on *Server should still trip this
-		// regression guard.
 		if fn.Name.Name == "runMCPMode" {
-			runMCPMode = fn
-			break
+			runMCPModes = append(runMCPModes, fn)
 		}
 	}
-	if runMCPMode == nil {
+	if len(runMCPModes) == 0 {
 		t.Fatal("runMCPMode function not found in main_connection_mcp.go")
 	}
+	if len(runMCPModes) > 1 {
+		t.Fatalf("ambiguous runMCPMode — %d declarations found; refactor the test or rename one binding", len(runMCPModes))
+	}
+	runMCPMode := runMCPModes[0]
 
-	// Match calls by callee name only — handle both bare identifier
-	// (`wireInstallIDDriftLogger(...)`) and selector form
-	// (`helpers.wireInstallIDDriftLogger(...)`) so a sub-package extraction
-	// remains a benign refactor.
+	// Whitelist for selector-call qualifiers. Bare-identifier calls are
+	// always accepted; selectors are accepted only when their package
+	// qualifier is in this set so a stray import (or a struct method on an
+	// unrelated type) does not falsely satisfy the contract.
+	allowedSelectorQualifiers := map[string]bool{
+		"helpers":   true,
+		"telemetry": true,
+		"main":      true,
+	}
+
+	// Recursively peel ParenExpr/IndexExpr/IndexListExpr wrappers so the
+	// underlying call ident or selector is reachable. Matters for generic
+	// instantiation (`wireInstallIDDriftLogger[T](...)`) and parenthesized
+	// calls.
+	var unwrap func(ast.Expr) ast.Expr
+	unwrap = func(e ast.Expr) ast.Expr {
+		switch x := e.(type) {
+		case *ast.ParenExpr:
+			return unwrap(x.X)
+		case *ast.IndexExpr:
+			return unwrap(x.X)
+		case *ast.IndexListExpr:
+			return unwrap(x.X)
+		default:
+			return e
+		}
+	}
+
 	found := false
 	ast.Inspect(runMCPMode.Body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
 		}
-		var name string
-		switch fun := call.Fun.(type) {
+		switch fun := unwrap(call.Fun).(type) {
 		case *ast.Ident:
-			name = fun.Name
+			if fun.Name == "wireInstallIDDriftLogger" {
+				found = true
+				return false
+			}
 		case *ast.SelectorExpr:
-			name = fun.Sel.Name
-		default:
-			return true
-		}
-		if name == "wireInstallIDDriftLogger" {
-			found = true
-			return false
+			if fun.Sel.Name != "wireInstallIDDriftLogger" {
+				return true
+			}
+			qual, ok := unwrap(fun.X).(*ast.Ident)
+			if !ok {
+				return true
+			}
+			if allowedSelectorQualifiers[qual.Name] {
+				found = true
+				return false
+			}
 		}
 		return true
 	})

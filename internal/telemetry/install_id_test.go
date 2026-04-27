@@ -244,19 +244,12 @@ func TestMarkFirstToolCallEmittedForInstall_NoStableInstallID(t *testing.T) {
 // TestLoadOrGenerateInstallID_ConcurrentFourLocationWritersConverge)
 // live in install_id_concurrency_test.go.
 
-// TestSecondaryKaboomDir_HomeFailureBranches covers the wrapper's two
-// failure modes that the pure resolver can't reach: UserHomeDir returning
-// an error, and UserHomeDir returning empty/whitespace. Both must fall
-// through to "" so a daemon on a misconfigured host doesn't crash.
+// TestSecondaryKaboomDir_HomeFailureBranches covers the wrapper's three
+// home-resolution failure modes that the pure resolver can't reach:
+// UserHomeDir returning an error, returning whitespace, or returning empty.
+// All must fall through to "" so a daemon on a misconfigured host doesn't crash.
 func TestSecondaryKaboomDir_HomeFailureBranches(t *testing.T) {
-	prevDisabled := secondaryDirDisabled
-	prevOverride := secondaryDirOverride
-	defer func() {
-		secondaryDirDisabled = prevDisabled
-		secondaryDirOverride = prevOverride
-	}()
-	secondaryDirDisabled = false
-	secondaryDirOverride = ""
+	withSecondaryDirState(t, false, "")
 
 	cases := []struct {
 		name string

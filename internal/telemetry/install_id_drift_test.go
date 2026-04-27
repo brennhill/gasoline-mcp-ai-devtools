@@ -121,10 +121,13 @@ func TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree(t *testing.T) {
 	noop := func(stored, derived string) { noopCalls.Add(1) }
 	other := func(stored, derived string) { otherCalls.Add(1) }
 
-	// Seed the registered fn so the first loader iteration observes a
-	// non-nil pointer regardless of how the scheduler interleaves
-	// setters and loaders. Happens-before via SetInstallIDDriftLogFn's
-	// atomic store.
+	// Seed the registered fn so loaders observe a non-nil pointer
+	// regardless of scheduler interleaving. The happens-before edge that
+	// guarantees visibility is the `go` statement establishing the loader
+	// goroutines AFTER this Set returns; SetInstallIDDriftLogFn's atomic
+	// store ensures the value is durably published. Setters in the loop
+	// also never store nil, so the non-nil invariant is preserved across
+	// every observable state thereafter.
 	SetInstallIDDriftLogFn(noop)
 
 	for i := range goroutines {

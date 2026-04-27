@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -249,11 +250,7 @@ func TestContract_DefaultEndpointPinned(t *testing.T) {
 // artifacts" table. A new artifact added to the code without a doc row
 // (or vice versa) trips this test.
 func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Getwd: %v", err)
-	}
-	repoRoot := filepath.Clean(filepath.Join(wd, "..", ".."))
+	repoRoot := repoRootForTest(t)
 	docPath := filepath.Join(repoRoot, "docs", "core", "app-metrics.md")
 	docBody, err := os.ReadFile(docPath)
 	if err != nil {
@@ -273,10 +270,11 @@ func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
 
 	// Each artifact must be backtick-quoted in the doc table to count as a
 	// canonical pin (the table uses Markdown inline code).
+	const docSection = "Daemon-owned on-disk artifacts"
 	for _, name := range expected {
 		needle := "`" + name + "`"
 		if !strings.Contains(string(docBody), needle) {
-			t.Errorf("%s missing artifact pin %s — code/doc drift", docPath, needle)
+			t.Errorf("%s missing artifact pin %s — add a row to the %q table at %s", docPath, needle, docSection, docPath)
 		}
 	}
 
@@ -302,19 +300,50 @@ func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
 		prodSrc.WriteByte('\n')
 	}
 	src := prodSrc.String()
+	// Compositional names: production code joins them at runtime via a
+	// variable (e.g., `primary + ".bak"` where `primary` is a previously
+	// computed `filepath.Join(kaboomDir, "<base>")`). The most robust
+	// signal of "still composed" is the suffix literal `".bak"` being
+	// present AND the base literal `"<base>"` being present in the same
+	// production source. We use a proximity regex that tolerates the
+	// variable-binding pattern: `+ ".bak"` adjacent to a path-Join of the
+	// base literal.
 	for _, name := range expected {
-		// Compositional names: base + ".bak" suffix concatenated at
-		// runtime. Verify both halves appear in source.
 		if strings.HasSuffix(name, ".bak") {
 			base := strings.TrimSuffix(name, ".bak")
-			if !strings.Contains(src, `"`+base+`"`) || !strings.Contains(src, `".bak"`) {
-				t.Errorf("artifact %q is compositional but base %q or suffix \".bak\" missing from production source — stale doc row?", name, base)
+			// Proximity check: the `+ ".bak"` concatenation must appear AND
+			// the base literal `"<base>"` must appear in a Join near the top
+			// of the file (filepath.Join(...,"<base>") or similar).
+			suffixPattern := regexp.MustCompile(`\+\s*"\.bak"`)
+			basePattern := regexp.MustCompile(`filepath\.Join\([^)]*"` + regexp.QuoteMeta(base) + `"`)
+			if !suffixPattern.MatchString(src) {
+				t.Errorf("artifact %q: no `+ \".bak\"` concatenation found in production source — stale doc row in %q?", name, docSection)
+			}
+			if !basePattern.MatchString(src) {
+				t.Errorf("artifact %q: base literal %q not found inside any filepath.Join — stale doc row in %q?", name, base, docSection)
 			}
 			continue
 		}
 		quoted := `"` + name + `"`
 		if !strings.Contains(src, quoted) {
-			t.Errorf("artifact %q listed in app-metrics.md is no longer referenced in production telemetry source — stale doc row?", name)
+			t.Errorf("artifact %q listed in app-metrics.md is no longer referenced in production telemetry source — stale doc row in %q?", name, docSection)
+		}
+	}
+
+	// Direct source→doc symmetry: scan production source for filename-shaped
+	// string literals that look like daemon artifacts (passed to
+	// withKaboomStateLock or filepath.Join(kaboomDir, ...)) and assert
+	// each is in the expected set. Catches the inverse drift — a new code
+	// artifact landing without ever updating the doc table.
+	literalPat := regexp.MustCompile(`\b(?:withKaboomStateLock\(|filepath\.Join\(kaboomDir,\s*)"([^"]+)"`)
+	expectedSet := make(map[string]bool, len(expected))
+	for _, name := range expected {
+		expectedSet[name] = true
+	}
+	for _, m := range literalPat.FindAllStringSubmatch(src, -1) {
+		name := m[1]
+		if !expectedSet[name] {
+			t.Errorf("production source references on-disk artifact %q (via call site %q) that is NOT documented in the %q table; add a row to %s", name, strings.TrimSuffix(m[0], `"`+name+`"`), docSection, docPath)
 		}
 	}
 }
@@ -328,11 +357,7 @@ func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
 // old URL: ...". The fenced-block requirement signals the URL is a
 // canonical pin, not prose.
 func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Getwd: %v", err)
-	}
-	repoRoot := filepath.Clean(filepath.Join(wd, "..", ".."))
+	repoRoot := repoRootForTest(t)
 	docPath := filepath.Join(repoRoot, "docs", "core", "app-metrics.md")
 	body, err := os.ReadFile(docPath)
 	if err != nil {
@@ -350,15 +375,15 @@ func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
 	pinned := false
 	for _, line := range strings.Split(string(body), "\n") {
 		trimmed := strings.TrimLeft(line, " \t")
-		if op, ch := fenceOpenInfo(trimmed); op {
+		if op, ch := markdownFenceOpenInfo(trimmed); op {
 			if !inFence {
 				inFence = true
 				fenceChar = ch
-				fenceLen = countLeading(trimmed, ch)
+				fenceLen = markdownCountLeadingByte(trimmed, ch)
 				continue
 			}
 			// Closing fence requires same char and at least the same length.
-			if ch == fenceChar && countLeading(trimmed, ch) >= fenceLen {
+			if ch == fenceChar && markdownCountLeadingByte(trimmed, ch) >= fenceLen {
 				inFence = false
 				fenceChar = 0
 				fenceLen = 0
@@ -375,23 +400,72 @@ func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
 	}
 }
 
-// fenceOpenInfo reports whether trimmed starts with 3+ of '`' or '~' and
+// markdownFenceOpenInfo reports whether trimmed starts with 3+ of '`' or '~' and
 // returns the fence character.
-func fenceOpenInfo(trimmed string) (bool, byte) {
+func markdownFenceOpenInfo(trimmed string) (bool, byte) {
 	for _, ch := range []byte{'`', '~'} {
-		if countLeading(trimmed, ch) >= 3 {
+		if markdownCountLeadingByte(trimmed, ch) >= 3 {
 			return true, ch
 		}
 	}
 	return false, 0
 }
 
-func countLeading(s string, ch byte) int {
+func markdownCountLeadingByte(s string, ch byte) int {
 	n := 0
 	for n < len(s) && s[n] == ch {
 		n++
 	}
 	return n
+}
+
+func TestMarkdownCountLeadingByte(t *testing.T) {
+	cases := []struct {
+		s    string
+		ch   byte
+		want int
+	}{
+		{"", '`', 0},
+		{"x", '`', 0},
+		{"`", '`', 1},
+		{"```", '`', 3},
+		{"````x", '`', 4},
+		{"```~~~", '~', 0},
+		{"~~~", '~', 3},
+	}
+	for _, tc := range cases {
+		if got := markdownCountLeadingByte(tc.s, tc.ch); got != tc.want {
+			t.Errorf("markdownCountLeadingByte(%q, %q) = %d, want %d", tc.s, tc.ch, got, tc.want)
+		}
+	}
+}
+
+func TestMarkdownFenceOpenInfo(t *testing.T) {
+	cases := []struct {
+		name    string
+		s       string
+		wantOK  bool
+		wantCh  byte
+	}{
+		{"empty", "", false, 0},
+		{"two backticks", "``", false, 0},
+		{"three backticks", "```", true, '`'},
+		{"four backticks", "````", true, '`'},
+		{"three backticks with info", "```go", true, '`'},
+		{"three tildes", "~~~", true, '~'},
+		{"five tildes", "~~~~~", true, '~'},
+		{"two tildes", "~~", false, 0},
+		{"mixed prefix", "`~~", false, 0},
+		{"plain text", "hello", false, 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ok, ch := markdownFenceOpenInfo(tc.s)
+			if ok != tc.wantOK || ch != tc.wantCh {
+				t.Errorf("markdownFenceOpenInfo(%q) = (%v, %q), want (%v, %q)", tc.s, ok, ch, tc.wantOK, tc.wantCh)
+			}
+		})
+	}
 }
 
 // TestContract_FireStructuredBeaconDefensiveCheck verifies fireStructuredBeacon
