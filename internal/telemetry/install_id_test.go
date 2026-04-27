@@ -8,9 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/state"
 )
@@ -239,117 +237,55 @@ func TestMarkFirstToolCallEmittedForInstall_NoStableInstallID(t *testing.T) {
 	}
 }
 
-func TestLoadOrGenerateInstallID_ConcurrentFreshWritersShareOneInstallID(t *testing.T) {
-	dir := t.TempDir()
-	resetInstallIDState()
-	resetFirstToolCallState()
-	overrideKaboomDir(dir)
-	defer resetKaboomDir()
+// TestGetInstallID_ResetDuringInFlightLeaderDoesNotClobberSuccessor pins
+// the singleflight invariant: when resetInstallIDState fires while a
+// leader is mid-I/O, the leader's post-load cleanup must NOT clear the
+// successor op installed by the next caller. Otherwise two leaders run
+// the slow path concurrently — the very condition singleflight prevents.
+//
+// Implementation: leader A is parked inside the persist hook. While A is
+// parked we (a) reset state, (b) install a sentinel op pointer in
+// installIDLoadInFlight directly to simulate the successor B that has
+// taken the in-memory mutex but is now blocked on the file lock A still
+// holds. Releasing A then exercises A's post-load cleanup. Without the
+// `if installIDLoadInFlight == op { … }` guard, A would clobber the
+// sentinel; with the guard, the sentinel survives.
+// Concurrency tests
+// (TestGetInstallID_ResetDuringInFlightLeaderDoesNotClobberSuccessor,
+// TestLoadOrGenerateInstallID_ConcurrentFreshWritersShareOneInstallID,
+// TestClaimFirstToolCallInstallID_ConcurrentClaimsEmitOnce,
+// TestLoadOrGenerateInstallID_ConcurrentFourLocationWritersConverge)
+// live in install_id_concurrency_test.go.
 
-	originalReadMachineID := readMachineID
-	readMachineID = func() (string, bool) {
-		return "", false
-	}
+// TestSecondaryKaboomDir_HomeFailureBranches covers the wrapper's two
+// failure modes that the pure resolver can't reach: UserHomeDir returning
+// an error, and UserHomeDir returning empty/whitespace. Both must fall
+// through to "" so a daemon on a misconfigured host doesn't crash.
+func TestSecondaryKaboomDir_HomeFailureBranches(t *testing.T) {
+	prevFn := userHomeDirFn
+	prevDisabled := secondaryDirDisabled
+	prevOverride := secondaryDirOverride
 	defer func() {
-		readMachineID = originalReadMachineID
+		userHomeDirFn = prevFn
+		secondaryDirDisabled = prevDisabled
+		secondaryDirOverride = prevOverride
 	}()
+	secondaryDirDisabled = false
+	secondaryDirOverride = ""
 
-	entered, release := firstWriterGate(t, &installIDBeforePersistHook)
-
-	firstResult := make(chan string, 1)
-	secondResult := make(chan string, 1)
-
-	go func() {
-		firstResult <- loadOrGenerateInstallID()
-	}()
-
-	select {
-	case <-entered:
-	case <-time.After(2 * time.Second):
-		t.Fatal("first install_id writer did not reach persist hook")
+	userHomeDirFn = func() (string, error) { return "", os.ErrNotExist }
+	if got := secondaryKaboomDir(); got != "" {
+		t.Errorf("secondaryKaboomDir() with errored home = %q, want \"\"", got)
 	}
 
-	go func() {
-		secondResult <- loadOrGenerateInstallID()
-	}()
-
-	release()
-
-	id1 := <-firstResult
-	id2 := <-secondResult
-	if id1 == "" || id2 == "" {
-		t.Fatalf("loadOrGenerateInstallID() returned empty ids: %q, %q", id1, id2)
-	}
-	if id1 != id2 {
-		t.Fatalf("concurrent fresh writers returned different install ids: %q vs %q", id1, id2)
+	userHomeDirFn = func() (string, error) { return "   ", nil }
+	if got := secondaryKaboomDir(); got != "" {
+		t.Errorf("secondaryKaboomDir() with whitespace home = %q, want \"\"", got)
 	}
 
-	data, err := os.ReadFile(filepath.Join(dir, "install_id"))
-	if err != nil {
-		t.Fatalf("failed to read persisted install_id: %v", err)
-	}
-	if got := string(data); got != id1 {
-		t.Fatalf("persisted install_id = %q, want %q", got, id1)
-	}
-}
-
-func TestClaimFirstToolCallInstallID_ConcurrentClaimsEmitOnce(t *testing.T) {
-	dir := t.TempDir()
-	resetInstallIDState()
-	resetFirstToolCallState()
-	overrideKaboomDir(dir)
-	defer resetKaboomDir()
-
-	installID := "aabbccddeeff"
-
-	entered, release := firstWriterGate(t, &firstToolCallBeforePersistHook)
-
-	type claimResult struct {
-		claimed bool
-		err     error
-	}
-	firstResult := make(chan claimResult, 1)
-	secondResult := make(chan claimResult, 1)
-
-	go func() {
-		claimed, err := claimFirstToolCallInstallID(installID)
-		firstResult <- claimResult{claimed: claimed, err: err}
-	}()
-
-	select {
-	case <-entered:
-	case <-time.After(2 * time.Second):
-		t.Fatal("first first_tool_call claim did not reach persist hook")
-	}
-
-	go func() {
-		claimed, err := claimFirstToolCallInstallID(installID)
-		secondResult <- claimResult{claimed: claimed, err: err}
-	}()
-
-	release()
-
-	first := <-firstResult
-	second := <-secondResult
-	if first.err != nil {
-		t.Fatalf("first claimFirstToolCallInstallID() error = %v", first.err)
-	}
-	if second.err != nil {
-		t.Fatalf("second claimFirstToolCallInstallID() error = %v", second.err)
-	}
-	if !first.claimed && !second.claimed {
-		t.Fatal("claimFirstToolCallInstallID() never claimed the first_tool_call marker")
-	}
-	if first.claimed == second.claimed {
-		t.Fatalf("expected exactly one successful first_tool_call claim, got first=%v second=%v", first.claimed, second.claimed)
-	}
-
-	data, err := os.ReadFile(filepath.Join(dir, "first_tool_call_install_id"))
-	if err != nil {
-		t.Fatalf("failed to read persisted first_tool_call marker: %v", err)
-	}
-	if got := string(data); got != installID {
-		t.Fatalf("persisted first_tool_call marker = %q, want %q", got, installID)
+	userHomeDirFn = func() (string, error) { return "", nil }
+	if got := secondaryKaboomDir(); got != "" {
+		t.Errorf("secondaryKaboomDir() with empty home = %q, want \"\"", got)
 	}
 }
 
@@ -371,9 +307,13 @@ func TestSecondaryKaboomDirForOS(t *testing.T) {
 		}
 		return ""
 	}
+	// Distinct LOCALAPPDATA root so the LOCALAPPDATA branch and the
+	// fallback branch produce DIFFERENT paths — otherwise a regression
+	// that swaps the two branches' bodies would be undetectable.
+	winLocalAppData := filepath.Join("D:", "CustomAppData")
 	winEnv := func(k string) string {
 		if k == "LOCALAPPDATA" {
-			return filepath.Join("C:", "Users", "test", "AppData", "Local")
+			return winLocalAppData
 		}
 		return ""
 	}
@@ -396,7 +336,7 @@ func TestSecondaryKaboomDirForOS(t *testing.T) {
 		{"linux XDG_STATE_HOME", "linux", homeUnix, xdgEnv,
 			filepath.Join(filepath.Join("/", "custom", "xdg"), "kaboom")},
 		{"windows LOCALAPPDATA", "windows", homeWin, winEnv,
-			filepath.Join(filepath.Join("C:", "Users", "test", "AppData", "Local"), "Kaboom")},
+			filepath.Join(winLocalAppData, "Kaboom")},
 		{"windows fallback", "windows", homeWin, noEnv,
 			filepath.Join(homeWin, "AppData", "Local", "Kaboom")},
 		{"unsupported GOOS", "plan9", filepath.Join("/", "usr", "test"), noEnv, ""},
@@ -413,76 +353,31 @@ func TestSecondaryKaboomDirForOS(t *testing.T) {
 	}
 }
 
-// TestWithKaboomStateLock_TimeoutExhausted pins the timeout branch: when a
-// lock file already exists and is not stale, withKaboomStateLock waits up
-// to installStateLockTimeout and then returns the original os.IsExist error.
-// We shrink the timeout to keep the test fast.
-func TestWithKaboomStateLock_TimeoutExhausted(t *testing.T) {
+// Locking tests (TestWithKaboomStateLock_TimeoutExhausted,
+// TestWithKaboomStateLock_StaleLockReclaimed) live in install_id_locking_test.go.
+
+// TestMarkFirstToolCallEmittedForInstall_ClaimsAndDedupesInverse pins the
+// other half of the cache state machine: when the marker file does NOT
+// exist, the first call returns true (claim succeeded), and the second
+// call returns false (already emitted, served from cache without disk re-read).
+// Together with the ...CacheSticksAcrossFileDeletion sibling, this pins both
+// directions of the cachedFirstToolCallLoaded contract.
+func TestMarkFirstToolCallEmittedForInstall_ClaimsAndDedupesInverse(t *testing.T) {
 	dir := t.TempDir()
+	resetInstallIDState()
+	resetFirstToolCallState()
 	overrideKaboomDir(dir)
 	defer resetKaboomDir()
 
-	defer func(t, p, s time.Duration) {
-		installStateLockTimeout, installStateLockPoll, installStateLockStale = t, p, s
-	}(installStateLockTimeout, installStateLockPoll, installStateLockStale)
-	installStateLockTimeout = 50 * time.Millisecond
-	installStateLockPoll = 5 * time.Millisecond
-	installStateLockStale = 10 * time.Second // keep stale window large so existing lock isn't reaped
+	originalReadMachineID := readMachineID
+	readMachineID = func() (string, bool) { return "stub-machine", true }
+	defer func() { readMachineID = originalReadMachineID }()
 
-	lockPath := filepath.Join(dir, "test.lock")
-	if err := os.WriteFile(lockPath, []byte{}, 0o600); err != nil {
-		t.Fatalf("seed lock: %v", err)
+	if got := markFirstToolCallEmittedForInstall(); !got {
+		t.Fatal("first call returned false; expected true (no marker, claim should succeed)")
 	}
-
-	start := time.Now()
-	err := withKaboomStateLock("test.lock", func() error {
-		t.Fatal("fn should not run when lock is held")
-		return nil
-	})
-	elapsed := time.Since(start)
-	if err == nil {
-		t.Fatal("expected error when lock is held to timeout, got nil")
-	}
-	// Allow generous slack for CI scheduling jitter; the upper bound just
-	// confirms we did not fall through to fn.
-	if elapsed > 500*time.Millisecond {
-		t.Errorf("withKaboomStateLock took %s; expected ~50ms timeout", elapsed)
-	}
-}
-
-// TestWithKaboomStateLock_StaleLockReclaimed pins the stale-lock branch: a
-// lock file with mtime older than installStateLockStale is removed and the
-// caller proceeds. Uses os.Chtimes to fabricate a stale mtime — no sleep.
-func TestWithKaboomStateLock_StaleLockReclaimed(t *testing.T) {
-	dir := t.TempDir()
-	overrideKaboomDir(dir)
-	defer resetKaboomDir()
-
-	defer func(t, p, s time.Duration) {
-		installStateLockTimeout, installStateLockPoll, installStateLockStale = t, p, s
-	}(installStateLockTimeout, installStateLockPoll, installStateLockStale)
-	installStateLockTimeout = 50 * time.Millisecond
-	installStateLockPoll = 5 * time.Millisecond
-	installStateLockStale = 100 * time.Millisecond
-
-	lockPath := filepath.Join(dir, "test.lock")
-	if err := os.WriteFile(lockPath, []byte{}, 0o600); err != nil {
-		t.Fatalf("seed lock: %v", err)
-	}
-	staleTime := time.Now().Add(-1 * time.Hour)
-	if err := os.Chtimes(lockPath, staleTime, staleTime); err != nil {
-		t.Fatalf("chtime: %v", err)
-	}
-
-	called := false
-	if err := withKaboomStateLock("test.lock", func() error {
-		called = true
-		return nil
-	}); err != nil {
-		t.Fatalf("withKaboomStateLock: %v", err)
-	}
-	if !called {
-		t.Fatal("fn was not invoked after stale lock was reclaimed")
+	if got := markFirstToolCallEmittedForInstall(); got {
+		t.Fatal("second call returned true; expected false (already emitted)")
 	}
 }
 
@@ -667,192 +562,7 @@ func TestValidInstallID(t *testing.T) {
 	}
 }
 
-// TestCheckInstallIDDrift_NoOpWhenStoredEqualsDerived confirms that when
-// the persisted ID matches what we'd derive right now, CheckInstallIDDrift
-// is silent — no log fires, no beacon emits.
-func TestCheckInstallIDDrift_NoOpWhenStoredEqualsDerived(t *testing.T) {
-	dir := t.TempDir()
-	resetInstallIDState()
-	overrideKaboomDir(dir)
-	defer resetKaboomDir()
-
-	// Force derivation to return the same value the stored file has.
-	const knownID = "abcdef012345"
-	prevReadMachine := readMachineID
-	defer func() { readMachineID = prevReadMachine }()
-	// We need machine_id such that derive == knownID. Easier: seed the
-	// file with what derive will produce, then check no drift logged.
-	readMachineID = func() (string, bool) { return "stub-machine", true }
-
-	id := GetInstallID() // generates via derive (no file yet)
-	if id == "" {
-		t.Fatal("GetInstallID returned empty")
-	}
-
-	var logged bool
-	SetInstallIDDriftLogFn(func(stored, derived string) { logged = true })
-	defer SetInstallIDDriftLogFn(nil)
-
-	CheckInstallIDDrift()
-	if logged {
-		t.Errorf("drift logger fired when stored == derived")
-	}
-	_ = knownID
-}
-
-// TestCheckInstallIDDrift_FiresWhenDerivedChanges confirms that a stored ID
-// (held over from a previous host) different from the current derivation
-// triggers the drift logger AND persists install_id_lineage.
-func TestCheckInstallIDDrift_FiresWhenDerivedChanges(t *testing.T) {
-	dir := t.TempDir()
-	resetInstallIDState()
-	overrideKaboomDir(dir)
-	defer resetKaboomDir()
-
-	const stored = "111111111111"
-	if err := os.WriteFile(filepath.Join(dir, "install_id"), []byte(stored), 0o600); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	// Force derive to yield a different value.
-	prevReadMachine := readMachineID
-	defer func() { readMachineID = prevReadMachine }()
-	readMachineID = func() (string, bool) { return "new-machine", true }
-
-	var fired int
-	var loggedStored, loggedDerived string
-	SetInstallIDDriftLogFn(func(s, d string) {
-		fired++
-		loggedStored, loggedDerived = s, d
-	})
-	defer SetInstallIDDriftLogFn(nil)
-
-	CheckInstallIDDrift()
-	if fired != 1 {
-		t.Errorf("drift logger fired %d times, want 1", fired)
-	}
-	if loggedStored != stored {
-		t.Errorf("logged stored = %q, want %q", loggedStored, stored)
-	}
-	if loggedDerived == "" || loggedDerived == stored {
-		t.Errorf("logged derived = %q, want non-empty and != stored", loggedDerived)
-	}
-
-	// Cadence guard: second call with same derivation should NOT re-fire.
-	CheckInstallIDDrift()
-	if fired != 1 {
-		t.Errorf("drift logger fired %d times after dedupe, want 1", fired)
-	}
-
-	// Verify lineage file was persisted.
-	lineage, err := os.ReadFile(filepath.Join(dir, "install_id_lineage"))
-	if err != nil {
-		t.Fatalf("lineage file missing: %v", err)
-	}
-	if string(lineage) != loggedDerived {
-		t.Errorf("lineage = %q, want %q", string(lineage), loggedDerived)
-	}
-}
-
-// TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree pins that the
-// atomic.Pointer[func] pattern allows arbitrary interleaving of Set + Load
-// without data races. 50 setters rotate the registered fn while 50 loaders
-// read it; with -race -count=N this fails fast if the pattern regresses
-// (e.g., someone replaces atomic.Pointer with a plain var).
-func TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree(t *testing.T) {
-	t.Cleanup(func() { SetInstallIDDriftLogFn(nil) })
-
-	const goroutines = 50
-	const iterations = 200
-	var wg sync.WaitGroup
-	wg.Add(goroutines * 2)
-
-	noop := func(stored, derived string) {}
-	other := func(stored, derived string) {}
-
-	for i := range goroutines {
-		fn := noop
-		if i%2 == 0 {
-			fn = other
-		}
-		go func() {
-			defer wg.Done()
-			for range iterations {
-				SetInstallIDDriftLogFn(fn)
-			}
-		}()
-	}
-	for range goroutines {
-		go func() {
-			defer wg.Done()
-			for range iterations {
-				_ = loadInstallIDDriftLogFn()
-			}
-		}()
-	}
-
-	wg.Wait()
-}
-
-// TestLoadOrGenerateInstallID_ConcurrentFourLocationWritersConverge
-// extends the original concurrent-writers test to the new four-location
-// world. The persist hook blocks the first goroutine inside the slow path
-// while the second goroutine starts and contends for the install_id.lock,
-// guaranteeing the lock + re-check path is exercised (not the fast read
-// path). The lock guarantees both share one ID, AND the heal pass
-// propagates that ID to ALL four locations (primary + .bak + secondary + .bak).
-func TestLoadOrGenerateInstallID_ConcurrentFourLocationWritersConverge(t *testing.T) {
-	primary := t.TempDir()
-	secondary := t.TempDir()
-	resetInstallIDState()
-	overrideKaboomDir(primary)
-	overrideSecondaryDir(secondary)
-	defer resetKaboomDir()
-
-	originalReadMachineID := readMachineID
-	readMachineID = func() (string, bool) { return "", false }
-	defer func() { readMachineID = originalReadMachineID }()
-
-	entered, release := firstWriterGate(t, &installIDBeforePersistHook)
-
-	firstResult := make(chan string, 1)
-	secondResult := make(chan string, 1)
-
-	go func() { firstResult <- loadOrGenerateInstallID() }()
-
-	select {
-	case <-entered:
-	case <-time.After(2 * time.Second):
-		t.Fatal("first install_id writer did not reach persist hook")
-	}
-
-	go func() { secondResult <- loadOrGenerateInstallID() }()
-
-	release()
-
-	id1 := <-firstResult
-	id2 := <-secondResult
-	if id1 == "" || id2 == "" {
-		t.Fatalf("loadOrGenerateInstallID() returned empty: id1=%q id2=%q", id1, id2)
-	}
-	if id1 != id2 {
-		t.Fatalf("concurrent writers diverged: id1=%q id2=%q", id1, id2)
-	}
-
-	// All four locations must hold the same valid ID after heal.
-	for _, p := range []string{
-		filepath.Join(primary, "install_id"),
-		filepath.Join(primary, "install_id.bak"),
-		filepath.Join(secondary, "install_id"),
-		filepath.Join(secondary, "install_id.bak"),
-	} {
-		got, err := os.ReadFile(p)
-		if err != nil {
-			t.Errorf("location %s missing after heal: %v", p, err)
-			continue
-		}
-		if string(got) != id1 {
-			t.Errorf("location %s = %q, want %q", p, string(got), id1)
-		}
-	}
-}
+// Drift tests (TestCheckInstallIDDrift_NoOpWhenStoredEqualsDerived,
+// TestCheckInstallIDDrift_FiresWhenDerivedChanges,
+// TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree) live in
+// install_id_drift_test.go.

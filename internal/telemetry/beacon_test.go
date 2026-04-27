@@ -260,25 +260,34 @@ func drainSem() {
 // Bails with t.Fatalf if total acquisition exceeds quiesceSemTimeout — a
 // stuck beacon goroutine would otherwise hang the whole test binary until
 // `go test -timeout` fires. The deadline is overall, not per-slot.
+//
+// On timeout the helper goroutine is signalled to stop pushing tokens (so
+// it cannot corrupt the next test's semaphore state after we return), and
+// any tokens it already pushed are drained.
 const quiesceSemTimeout = 5 * time.Second
 
 func quiesceSem(t *testing.T) {
 	t.Helper()
 
+	cancel := make(chan struct{})
 	acquired := make(chan struct{})
 	go func() {
+		defer close(acquired)
 		for range maxConcurrentBeacons {
-			sem <- struct{}{}
+			select {
+			case sem <- struct{}{}:
+			case <-cancel:
+				return
+			}
 		}
-		close(acquired)
 	}()
 
 	select {
 	case <-acquired:
 	case <-time.After(quiesceSemTimeout):
-		// Drain whatever the helper goroutine pushed so the next test
-		// doesn't see a saturated semaphore.
-		drainSem()
+		close(cancel)
+		<-acquired // wait for helper to observe cancel and exit
+		drainSem() // discard any tokens already pushed
 		t.Fatalf("quiesceSem: full acquisition not completed within %s — leaked beacon goroutine?", quiesceSemTimeout)
 	}
 

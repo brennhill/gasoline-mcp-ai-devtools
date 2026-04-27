@@ -97,9 +97,11 @@ var secondaryDirDisabled bool
 var installIDBeforePersistHook func()
 var firstToolCallBeforePersistHook func()
 
-// Lock budget vars (not consts) so tests can shrink them and exercise the
-// timeout-exhausted and stale-lock-removal branches without burning seconds.
-// Production values are restored by the test cleanup helper.
+// installStateLock* are CONST IN PRODUCTION; declared as vars only so
+// tests can shrink them and exercise the timeout-exhausted and stale-
+// lock-removal branches without burning seconds. Mutation is gated by
+// helpers_test.go::withLockBudget which serializes via lockBudgetMu and
+// restores the originals via t.Cleanup.
 var (
 	installStateLockTimeout = 2 * time.Second
 	installStateLockPoll    = 10 * time.Millisecond
@@ -154,7 +156,13 @@ func GetInstallID() string {
 	}
 
 	installIDLoadMu.Lock()
-	installIDLoadInFlight = nil
+	// Only clear the in-flight pointer if it still references THIS leader's
+	// op. A test reset (or any concurrent state-clearing) may have already
+	// nilled or replaced it; clobbering a successor op would let two leaders
+	// run the slow path simultaneously, breaking the singleflight invariant.
+	if installIDLoadInFlight == op {
+		installIDLoadInFlight = nil
+	}
 	installIDLoadMu.Unlock()
 	close(op.done)
 	return op.id
@@ -230,9 +238,14 @@ func installIDLocations() []string {
 	return locs
 }
 
+// userHomeDirFn is the indirection tests override to drive the
+// "UserHomeDir errors" and "empty home" branches of secondaryKaboomDir
+// without touching $HOME on the host.
+var userHomeDirFn = os.UserHomeDir
+
 // secondaryKaboomDir returns the platform-stable mirror directory or "" if
 // no usable home dir / unsupported OS / explicitly disabled. Tests override
-// via secondaryDirOverride or secondaryDirDisabled.
+// via secondaryDirOverride, secondaryDirDisabled, or userHomeDirFn.
 func secondaryKaboomDir() string {
 	if secondaryDirDisabled {
 		return ""
@@ -240,7 +253,7 @@ func secondaryKaboomDir() string {
 	if secondaryDirOverride != "" {
 		return secondaryDirOverride
 	}
-	home, err := os.UserHomeDir()
+	home, err := userHomeDirFn()
 	if err != nil || strings.TrimSpace(home) == "" {
 		return ""
 	}

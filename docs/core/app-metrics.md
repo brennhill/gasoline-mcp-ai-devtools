@@ -156,6 +156,35 @@ Tests in `internal/telemetry/contract_compliance_test.go` and
 `internal/telemetry/e2e_reporting_test.go` enforce the kind/severity
 mapping.
 
+### Daemon-owned on-disk artifacts
+
+The daemon writes a small set of files at startup and during normal
+operation. All paths are anchored at the **primary kaboom directory**
+(`~/.kaboom/` on darwin/linux, `%USERPROFILE%\.kaboom\` on windows).
+Most files are mirrored at the **platform-stable secondary mirror** so
+a wipe of `~/.kaboom/` alone does NOT reset the install identity.
+
+| File | Purpose | Mirrored to secondary? |
+|------|---------|------------------------|
+| `install_id` | The 12-char hex anonymous install ID. Source of truth for `iid`. | ✓ |
+| `install_id.bak` | Backup of `install_id`; read fallback if primary is corrupt or missing. | ✓ |
+| `install_id.lock` | Cross-process O_EXCL lock used by `withKaboomStateLock` while persisting `install_id`. Removed on success; cleaned up after `installStateLockStale=10s` if the writer crashed. | — |
+| `install_id_lineage` | The most-recent derived ID seen by `CheckInstallIDDrift`. Cadence guard: ensures `install_id_migrated` beacons fire at most once per actual identity change across daemon starts. | — |
+| `first_tool_call_install_id` | Marker indicating the install ID for which a `first_tool_call` event has already been emitted. Prevents duplicate emissions across restarts. | — |
+| `first_tool_call_install_id.lock` | Cross-process O_EXCL lock used while persisting the marker. Removed on success; same staleness behavior as `install_id.lock`. | — |
+
+**Platform-stable secondary mirror locations** (resolved by
+`secondaryKaboomDirForOS` in `internal/telemetry/install_id.go`):
+
+- darwin: `~/Library/Application Support/Kaboom/`
+- linux: `$XDG_STATE_HOME/kaboom/` (fallback `~/.local/state/kaboom/`)
+- windows: `%LOCALAPPDATA%\Kaboom\` (fallback `%USERPROFILE%\AppData\Local\Kaboom\`)
+
+To fully reset the install identity (rare; users normally never need
+this), wipe BOTH the primary kaboom directory AND the platform-stable
+mirror. Wiping only one will result in self-heal restoring the missing
+files from the other location on next daemon start.
+
 ### `tool_call`
 
 Emit one event per meaningful tool invocation or command action.

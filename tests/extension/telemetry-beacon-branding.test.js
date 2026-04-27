@@ -37,9 +37,17 @@ describe('extension telemetry isolation', () => {
     const re = /(telemetry.*beacon|beacon.*telemetry)/i
     const offenders = []
 
+    // Symlinks are NOT followed: a symlinked node_modules would otherwise
+    // explode the search and could trigger false positives off-tree. We
+    // also check symlink TARGETS for matching names so a symlink renamed
+    // to mask a beacon helper still trips the check.
     function scan(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name)
+        if (entry.isSymbolicLink()) {
+          if (re.test(entry.name)) offenders.push(full)
+          continue
+        }
         if (entry.isDirectory()) {
           scan(full)
           continue
@@ -64,6 +72,10 @@ describe('extension telemetry isolation', () => {
     function scan(dir) {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name)
+        if (entry.isSymbolicLink()) {
+          if (re.test(entry.name)) offenders.push(full)
+          continue
+        }
         if (entry.isDirectory()) {
           scan(full)
           continue

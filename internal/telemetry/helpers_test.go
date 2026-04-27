@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // overrideKaboomDir sets a custom directory for testing. Also disables the
@@ -42,11 +43,11 @@ func resetKaboomDir() {
 }
 
 // resetInstallIDState clears the cached install ID for testing. Race-safe
-// with parallel GetInstallID callers via installIDLoadMu — even a stale
-// goroutine still inside the slow path will not see torn state. Also
-// clears installIDLoadInFlight so a subsequent test does not inherit a
-// stale singleflight op pointer (the prior leader's `done` channel was
-// already closed when its load completed; just zero the pointer).
+// with parallel GetInstallID callers via installIDLoadMu, AND with stale
+// leader cleanup via the leader's `installIDLoadInFlight == op` guard at
+// install_id.go (the leader will not clobber a successor op installed
+// after its own slow path returned). The reset also zeroes
+// installIDLoadInFlight so the next caller becomes a fresh leader.
 func resetInstallIDState() {
 	installIDLoadMu.Lock()
 	defer installIDLoadMu.Unlock()
@@ -82,6 +83,33 @@ func setOnFireBeacon(fn func(sent bool)) {
 	onFireBeaconMu.Lock()
 	onFireBeacon = fn
 	onFireBeaconMu.Unlock()
+}
+
+// lockBudgetMu serializes concurrent mutation of installStateLockTimeout/
+// Poll/Stale. Tests in this package don't use t.Parallel(), but a future
+// `go test -count=N` run could overlap cleanups if -p>1 splits packages
+// (cross-package the vars are isolated, but in-package multiple tests using
+// the helper benefit from explicit serialization).
+var lockBudgetMu sync.Mutex
+
+// withLockBudget shrinks installStateLockTimeout/Poll/Stale for the duration
+// of t. The originals are restored via t.Cleanup. Acquisition is gated by
+// lockBudgetMu so two tests calling the helper in the same run cannot tear.
+func withLockBudget(t *testing.T, timeout, poll, stale time.Duration) {
+	t.Helper()
+	lockBudgetMu.Lock()
+	origT := installStateLockTimeout
+	origP := installStateLockPoll
+	origS := installStateLockStale
+	installStateLockTimeout = timeout
+	installStateLockPoll = poll
+	installStateLockStale = stale
+	t.Cleanup(func() {
+		installStateLockTimeout = origT
+		installStateLockPoll = origP
+		installStateLockStale = origS
+		lockBudgetMu.Unlock()
+	})
 }
 
 // firstWriterGate installs a single-shot gate on a *func() persist hook

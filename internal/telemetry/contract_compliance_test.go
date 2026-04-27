@@ -245,9 +245,12 @@ func TestContract_DefaultEndpointPinned(t *testing.T) {
 
 // TestContract_DefaultEndpointMatchesDocs cross-pins the daemon's endpoint
 // against the docs (`docs/core/app-metrics.md`) so a developer who updates
-// only one side of the contract trips the test. The agent doc lists the
-// canonical ingest URL on a code-block line; we grep for it as a substring
-// rather than parsing the doc.
+// only one side of the contract trips the test.
+//
+// The URL must appear inside a fenced code block (```...```) — substring
+// containment alone would pass against a casual mention like "deprecated
+// old URL: ...". The fenced-block requirement signals the URL is a
+// canonical pin, not prose.
 func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -259,8 +262,23 @@ func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read %s: %v", docPath, err)
 	}
-	if !strings.Contains(string(body), defaultEndpoint) {
-		t.Errorf("%s does not mention defaultEndpoint %q — code/doc drift in wire contract", docPath, defaultEndpoint)
+
+	// Walk the doc, tracking fence state. A line matches the contract
+	// when it appears inside a fenced block AND contains the URL.
+	inFence := false
+	pinned := false
+	for _, line := range strings.Split(string(body), "\n") {
+		if strings.HasPrefix(strings.TrimLeft(line, " \t"), "```") {
+			inFence = !inFence
+			continue
+		}
+		if inFence && strings.Contains(line, defaultEndpoint) {
+			pinned = true
+			break
+		}
+	}
+	if !pinned {
+		t.Errorf("%s does not pin defaultEndpoint %q inside a fenced code block — code/doc drift in wire contract", docPath, defaultEndpoint)
 	}
 }
 

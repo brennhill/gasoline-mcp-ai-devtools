@@ -3,6 +3,12 @@
 // file owns the post-load comparison that detects host renames / machine_id
 // changes and emits one observability beacon per actual identity change.
 //
+// Depends on install_id.go for: kaboomDir, tryReadValidID, writeTokenAtomic,
+// deriveInstallID, GetInstallID. The split is geographic (one file per
+// concern), not modular — both files share package-private state. A future
+// refactor that needs hard isolation should introduce an installIDStore
+// interface; today the readability win of separate files is sufficient.
+//
 // Metrics emitted from this file:
 //   - SetInstallIDDriftLogFn callback                  — fires once per new
 //     derived ID seen, surfacing the (stored, derived) pair to the lifecycle
@@ -52,18 +58,6 @@ func loadInstallIDDriftLogFn() func(stored, derived string) {
 		return nil
 	}
 	return *p
-}
-
-// HasInstallIDDriftLogFnForTest reports whether SetInstallIDDriftLogFn has
-// installed a non-nil callback. The "ForTest" suffix marks it as a test-only
-// introspection seam — production code has no business reading registration
-// state and should treat this function as if it did not exist. The function
-// must remain on the public API only because cross-package tests in
-// cmd/browser-agent cannot link against unexported symbols and Go's
-// export_test.go pattern only crosses the same-package external test
-// boundary, not arbitrary downstream packages.
-func HasInstallIDDriftLogFnForTest() bool {
-	return loadInstallIDDriftLogFn() != nil
 }
 
 // CheckInstallIDDrift fires the registered drift logger AND emits an

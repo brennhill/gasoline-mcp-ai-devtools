@@ -18,10 +18,11 @@
 package main
 
 import (
-	"os"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
@@ -76,20 +77,55 @@ func TestWireInstallIDDriftLogger_RegistersThroughTelemetry(t *testing.T) {
 	}
 }
 
-// TestRunMCPMode_CallsWireInstallIDDriftLogger asserts the source of
-// runMCPMode contains a call to wireInstallIDDriftLogger. Cheap regression
-// guard — a refactor that drops this call (turning the daemon into one that
-// no longer surfaces install-id drift) fails fast at test time.
+// TestRunMCPMode_CallsWireInstallIDDriftLogger uses go/parser + go/ast to
+// confirm runMCPMode's body contains a CallExpr to wireInstallIDDriftLogger,
+// without pinning the local variable names of its arguments. A refactor that
+// renames `server`→`srv` is benign and must not break this test; one that
+// drops the call entirely fails fast.
 func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
-		t.Fatal("runtime.Caller failed — cannot locate source for grep")
+		t.Fatal("runtime.Caller failed — cannot locate source for AST walk")
 	}
-	source, err := os.ReadFile(filepath.Join(filepath.Dir(thisFile), "main_connection_mcp.go"))
+	srcPath := filepath.Join(filepath.Dir(thisFile), "main_connection_mcp.go")
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, srcPath, nil, parser.SkipObjectResolution)
 	if err != nil {
-		t.Fatalf("read main_connection_mcp.go: %v", err)
+		t.Fatalf("parse %s: %v", srcPath, err)
 	}
-	if !strings.Contains(string(source), "wireInstallIDDriftLogger(server, port)") {
-		t.Fatal("main_connection_mcp.go must call wireInstallIDDriftLogger(server, port) so install_id_drift surfaces in lifecycle logs")
+
+	var runMCPMode *ast.FuncDecl
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok {
+			continue
+		}
+		if fn.Name.Name == "runMCPMode" && fn.Recv == nil {
+			runMCPMode = fn
+			break
+		}
+	}
+	if runMCPMode == nil {
+		t.Fatal("runMCPMode function not found in main_connection_mcp.go")
+	}
+
+	found := false
+	ast.Inspect(runMCPMode.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := call.Fun.(*ast.Ident)
+		if !ok {
+			return true
+		}
+		if ident.Name == "wireInstallIDDriftLogger" {
+			found = true
+			return false
+		}
+		return true
+	})
+	if !found {
+		t.Fatal("runMCPMode body must contain a call to wireInstallIDDriftLogger so install_id_drift surfaces in lifecycle logs")
 	}
 }
