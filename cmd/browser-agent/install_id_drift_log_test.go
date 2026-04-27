@@ -23,6 +23,7 @@ import (
 	"go/token"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
@@ -117,20 +118,39 @@ func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 	}
 	runMCPMode := runMCPModes[0]
 
-	// Whitelist for selector-call qualifiers. Bare-identifier calls are
-	// always accepted; selectors are accepted only when their package
-	// qualifier is in this set so a stray import (or a struct method on an
-	// unrelated type) does not falsely satisfy the contract.
-	allowedSelectorQualifiers := map[string]bool{
-		"helpers":   true,
-		"telemetry": true,
-		"main":      true,
+	// Build the selector whitelist from main_connection_mcp.go's actual
+	// imports plus "main" (always allowed for in-package calls). Any
+	// future legitimate refactor that moves wireInstallIDDriftLogger to a
+	// new sub-package automatically extends the whitelist as long as the
+	// new package is imported here. A stray import (e.g., `fmt.x()`)
+	// remains rejected because Go's name uniqueness within an import
+	// scope makes accidental match implausible — but a typo'd import or
+	// shadowed alias would surface as "must contain a call".
+	allowedSelectorQualifiers := map[string]bool{"main": true}
+	for _, imp := range file.Imports {
+		// Path is the quoted import string; alias (if any) is in imp.Name.
+		var qualifier string
+		if imp.Name != nil {
+			qualifier = imp.Name.Name
+		} else {
+			// Default qualifier is the trailing path segment; strip quotes.
+			path := strings.Trim(imp.Path.Value, `"`)
+			if i := strings.LastIndex(path, "/"); i >= 0 {
+				qualifier = path[i+1:]
+			} else {
+				qualifier = path
+			}
+		}
+		if qualifier != "" && qualifier != "_" && qualifier != "." {
+			allowedSelectorQualifiers[qualifier] = true
+		}
 	}
 
-	// Recursively peel ParenExpr/IndexExpr/IndexListExpr wrappers so the
-	// underlying call ident or selector is reachable. Matters for generic
-	// instantiation (`wireInstallIDDriftLogger[T](...)`) and parenthesized
-	// calls.
+	// Recursively peel wrapper expressions so the underlying call ident or
+	// selector is reachable: ParenExpr (`(fn)(...)`), IndexExpr / IndexListExpr
+	// (generic instantiation `fn[T](...)` / `fn[T,U](...)`), StarExpr
+	// (deref-call `(*pfn)(...)`), TypeAssertExpr (`fn.(SomeType)(...)`).
+	// All four are legal call shapes in idiomatic Go.
 	var unwrap func(ast.Expr) ast.Expr
 	unwrap = func(e ast.Expr) ast.Expr {
 		switch x := e.(type) {
@@ -139,6 +159,10 @@ func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 		case *ast.IndexExpr:
 			return unwrap(x.X)
 		case *ast.IndexListExpr:
+			return unwrap(x.X)
+		case *ast.StarExpr:
+			return unwrap(x.X)
+		case *ast.TypeAssertExpr:
 			return unwrap(x.X)
 		default:
 			return e

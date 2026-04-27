@@ -116,6 +116,7 @@ func readLastDerivedSeen() string {
 	if strings.TrimSpace(kaboomDir) == "" {
 		return ""
 	}
+	// ARTIFACT: install_id_lineage
 	return tryReadValidID(filepath.Join(kaboomDir, "install_id_lineage"))
 }
 

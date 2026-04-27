@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/testsupport"
 )
 
 // captureBeacon sets up a test server and returns a channel that receives beacon payloads.
@@ -245,47 +247,27 @@ func TestContract_DefaultEndpointPinned(t *testing.T) {
 }
 
 // TestContract_ArtifactTableMatchesCallSites scans production telemetry
-// source for filename literals the daemon writes/reads/locks and asserts
-// each appears in the docs/core/app-metrics.md "Daemon-owned on-disk
-// artifacts" table. A new artifact added to the code without a doc row
-// (or vice versa) trips this test.
+// source for `// ARTIFACT: <name>` magic comments next to each on-disk
+// daemon-owned file call site and asserts each appears in the
+// docs/core/app-metrics.md "Daemon-owned on-disk artifacts" table.
+//
+// The magic-comment scheme decouples the test from the call-site shape:
+// renames of `kaboomDir`, `withKaboomStateLock`, or any helper do not
+// silently disable the symmetry check. Adding a new on-disk file just
+// requires (1) tagging its call site with `// ARTIFACT: <name>` and
+// (2) adding a doc table row.
+//
+// Producer rules: each artifact must be tagged at least once across the
+// production sources scanned below; the same artifact may legitimately
+// appear at multiple call sites (read + write) and that's fine.
 func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
-	repoRoot := repoRootForTest(t)
+	repoRoot := testsupport.RepoRoot(t)
 	docPath := filepath.Join(repoRoot, "docs", "core", "app-metrics.md")
 	docBody, err := os.ReadFile(docPath)
 	if err != nil {
 		t.Fatalf("read %s: %v", docPath, err)
 	}
 
-	// Set of artifacts the daemon owns. Adding a new on-disk file requires
-	// updating BOTH the production code AND this set AND the doc table.
-	expected := []string{
-		"install_id",
-		"install_id.bak",
-		"install_id.lock",
-		"install_id_lineage",
-		"first_tool_call_install_id",
-		"first_tool_call_install_id.lock",
-	}
-
-	// Each artifact must be backtick-quoted in the doc table to count as a
-	// canonical pin (the table uses Markdown inline code).
-	const docSection = "Daemon-owned on-disk artifacts"
-	for _, name := range expected {
-		needle := "`" + name + "`"
-		if !strings.Contains(string(docBody), needle) {
-			t.Errorf("%s missing artifact pin %s — add a row to the %q table at %s", docPath, needle, docSection, docPath)
-		}
-	}
-
-	// Sanity: each expected artifact is referenced somewhere in production
-	// telemetry source (not just docs). Catches the inverse drift —
-	// removing a code path without removing the doc row.
-	//
-	// Some filenames are constructed compositionally (e.g., install_id.bak
-	// is `primary + ".bak"` — not a single string literal). For those, we
-	// require BOTH the base literal AND the suffix literal to appear in
-	// production source.
 	prodFiles := []string{
 		filepath.Join(repoRoot, "internal", "telemetry", "install_id.go"),
 		filepath.Join(repoRoot, "internal", "telemetry", "install_id_drift.go"),
@@ -300,50 +282,47 @@ func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
 		prodSrc.WriteByte('\n')
 	}
 	src := prodSrc.String()
-	// Compositional names: production code joins them at runtime via a
-	// variable (e.g., `primary + ".bak"` where `primary` is a previously
-	// computed `filepath.Join(kaboomDir, "<base>")`). The most robust
-	// signal of "still composed" is the suffix literal `".bak"` being
-	// present AND the base literal `"<base>"` being present in the same
-	// production source. We use a proximity regex that tolerates the
-	// variable-binding pattern: `+ ".bak"` adjacent to a path-Join of the
-	// base literal.
+
+	// Extract artifact names tagged at production call sites.
+	artifactPat := regexp.MustCompile(`(?m)^\s*//\s*ARTIFACT:\s*(\S+)\s*$`)
+	codeArtifacts := make(map[string]bool)
+	for _, m := range artifactPat.FindAllStringSubmatch(src, -1) {
+		codeArtifacts[m[1]] = true
+	}
+
+	// Set of artifacts expected to be both code-tagged AND doc-rowed.
+	// Adding a new on-disk file requires updating ALL THREE: production
+	// code (with ARTIFACT tag), this set, and the doc table.
+	expected := []string{
+		"install_id",
+		"install_id.bak",
+		"install_id.lock",
+		"install_id_lineage",
+		"first_tool_call_install_id",
+		"first_tool_call_install_id.lock",
+	}
+	const docSection = "Daemon-owned on-disk artifacts"
+
 	for _, name := range expected {
-		if strings.HasSuffix(name, ".bak") {
-			base := strings.TrimSuffix(name, ".bak")
-			// Proximity check: the `+ ".bak"` concatenation must appear AND
-			// the base literal `"<base>"` must appear in a Join near the top
-			// of the file (filepath.Join(...,"<base>") or similar).
-			suffixPattern := regexp.MustCompile(`\+\s*"\.bak"`)
-			basePattern := regexp.MustCompile(`filepath\.Join\([^)]*"` + regexp.QuoteMeta(base) + `"`)
-			if !suffixPattern.MatchString(src) {
-				t.Errorf("artifact %q: no `+ \".bak\"` concatenation found in production source — stale doc row in %q?", name, docSection)
-			}
-			if !basePattern.MatchString(src) {
-				t.Errorf("artifact %q: base literal %q not found inside any filepath.Join — stale doc row in %q?", name, base, docSection)
-			}
-			continue
+		if !codeArtifacts[name] {
+			t.Errorf("expected artifact %q has no `// ARTIFACT: %s` tag in any of the searched production files: %v — stale expected list, or missing tag at the call site?", name, name, prodFiles)
 		}
-		quoted := `"` + name + `"`
-		if !strings.Contains(src, quoted) {
-			t.Errorf("artifact %q listed in app-metrics.md is no longer referenced in production telemetry source — stale doc row in %q?", name, docSection)
+		needle := "`" + name + "`"
+		if !strings.Contains(string(docBody), needle) {
+			t.Errorf("expected artifact %q missing doc pin %s — add a row to the %q table at %s", name, needle, docSection, docPath)
 		}
 	}
 
-	// Direct source→doc symmetry: scan production source for filename-shaped
-	// string literals that look like daemon artifacts (passed to
-	// withKaboomStateLock or filepath.Join(kaboomDir, ...)) and assert
-	// each is in the expected set. Catches the inverse drift — a new code
-	// artifact landing without ever updating the doc table.
-	literalPat := regexp.MustCompile(`\b(?:withKaboomStateLock\(|filepath\.Join\(kaboomDir,\s*)"([^"]+)"`)
+	// Direct symmetry: anything tagged with ARTIFACT in code MUST be in
+	// expected (catches a new code artifact that landed without doc/test
+	// updates).
 	expectedSet := make(map[string]bool, len(expected))
 	for _, name := range expected {
 		expectedSet[name] = true
 	}
-	for _, m := range literalPat.FindAllStringSubmatch(src, -1) {
-		name := m[1]
+	for name := range codeArtifacts {
 		if !expectedSet[name] {
-			t.Errorf("production source references on-disk artifact %q (via call site %q) that is NOT documented in the %q table; add a row to %s", name, strings.TrimSuffix(m[0], `"`+name+`"`), docSection, docPath)
+			t.Errorf("production source tags on-disk artifact %q via // ARTIFACT comment but it is NOT in the test's expected list (and likely not in the %q table either); add doc + expected list update", name, docSection)
 		}
 	}
 }
@@ -357,7 +336,7 @@ func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
 // old URL: ...". The fenced-block requirement signals the URL is a
 // canonical pin, not prose.
 func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
-	repoRoot := repoRootForTest(t)
+	repoRoot := testsupport.RepoRoot(t)
 	docPath := filepath.Join(repoRoot, "docs", "core", "app-metrics.md")
 	body, err := os.ReadFile(docPath)
 	if err != nil {
@@ -400,73 +379,8 @@ func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
 	}
 }
 
-// markdownFenceOpenInfo reports whether trimmed starts with 3+ of '`' or '~' and
-// returns the fence character.
-func markdownFenceOpenInfo(trimmed string) (bool, byte) {
-	for _, ch := range []byte{'`', '~'} {
-		if markdownCountLeadingByte(trimmed, ch) >= 3 {
-			return true, ch
-		}
-	}
-	return false, 0
-}
-
-func markdownCountLeadingByte(s string, ch byte) int {
-	n := 0
-	for n < len(s) && s[n] == ch {
-		n++
-	}
-	return n
-}
-
-func TestMarkdownCountLeadingByte(t *testing.T) {
-	cases := []struct {
-		s    string
-		ch   byte
-		want int
-	}{
-		{"", '`', 0},
-		{"x", '`', 0},
-		{"`", '`', 1},
-		{"```", '`', 3},
-		{"````x", '`', 4},
-		{"```~~~", '~', 0},
-		{"~~~", '~', 3},
-	}
-	for _, tc := range cases {
-		if got := markdownCountLeadingByte(tc.s, tc.ch); got != tc.want {
-			t.Errorf("markdownCountLeadingByte(%q, %q) = %d, want %d", tc.s, tc.ch, got, tc.want)
-		}
-	}
-}
-
-func TestMarkdownFenceOpenInfo(t *testing.T) {
-	cases := []struct {
-		name    string
-		s       string
-		wantOK  bool
-		wantCh  byte
-	}{
-		{"empty", "", false, 0},
-		{"two backticks", "``", false, 0},
-		{"three backticks", "```", true, '`'},
-		{"four backticks", "````", true, '`'},
-		{"three backticks with info", "```go", true, '`'},
-		{"three tildes", "~~~", true, '~'},
-		{"five tildes", "~~~~~", true, '~'},
-		{"two tildes", "~~", false, 0},
-		{"mixed prefix", "`~~", false, 0},
-		{"plain text", "hello", false, 0},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			ok, ch := markdownFenceOpenInfo(tc.s)
-			if ok != tc.wantOK || ch != tc.wantCh {
-				t.Errorf("markdownFenceOpenInfo(%q) = (%v, %q), want (%v, %q)", tc.s, ok, ch, tc.wantOK, tc.wantCh)
-			}
-		})
-	}
-}
+// markdownFenceOpenInfo / markdownCountLeadingByte and their unit tests
+// live in markdown_fence_test.go.
 
 // TestContract_FireStructuredBeaconDefensiveCheck verifies fireStructuredBeacon
 // does not panic when 'event' field is missing or wrong type.

@@ -193,6 +193,7 @@ func loadOrGenerateInstallID() string {
 	}
 
 	var stableID string
+	// ARTIFACT: install_id.lock
 	if err := withKaboomStateLock("install_id.lock", func() error {
 		for _, path := range locations {
 			if id := tryReadValidID(path); id != "" {
@@ -229,6 +230,8 @@ func loadOrGenerateInstallID() string {
 // priority order: primary, primary.bak, secondary, secondary.bak. Read tries
 // them in order; write fans out to all four.
 func installIDLocations() []string {
+	// ARTIFACT: install_id
+	// ARTIFACT: install_id.bak
 	primary := filepath.Join(kaboomDir, "install_id")
 	locs := []string{primary, primary + ".bak"}
 	if sec := secondaryKaboomDir(); sec != "" {
@@ -543,6 +546,7 @@ func loadFirstToolCallInstallID() string {
 	if strings.TrimSpace(kaboomDir) == "" {
 		return ""
 	}
+	// ARTIFACT: first_tool_call_install_id
 	id, err := readTrimmedFile(filepath.Join(kaboomDir, "first_tool_call_install_id"))
 	if err != nil {
 		return ""
@@ -560,6 +564,7 @@ func claimFirstToolCallInstallID(installID string) (bool, error) {
 
 	markerPath := filepath.Join(kaboomDir, "first_tool_call_install_id")
 	claimed := false
+	// ARTIFACT: first_tool_call_install_id.lock
 	err := withKaboomStateLock("first_tool_call_install_id.lock", func() error {
 		current, err := readTrimmedFile(markerPath)
 		if err == nil && current == installID {
