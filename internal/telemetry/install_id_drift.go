@@ -78,11 +78,13 @@ func loadInstallIDDriftLogFn() func(stored, derived string) {
 // host emits exactly one beacon across all subsequent daemon starts, not one
 // per process.
 //
-// Concurrency: the drift log fn is snapshotted exactly once at function
-// entry, so a concurrent SetInstallIDDriftLogFn affects only the NEXT call.
-// The AppError beacon and lineage persist run unconditionally after the
-// snapshot — so if a caller registered a logger but rotated to nil mid-call,
-// the original logger still receives this drift event AND the beacon fires.
+// Concurrency: the drift log fn is loaded exactly once into a local
+// variable. AppError and lineage persistence are independent of the log fn
+// and run unconditionally after the load — they read no installIDDriftLogFn
+// state at all. So a concurrent SetInstallIDDriftLogFn:
+//   - cannot interpose a different fn between this call's load and invoke;
+//   - cannot suppress the beacon, since AppError ignores the registered fn;
+//   - affects only the NEXT CheckInstallIDDrift call's load.
 // The cadence guard above prevents the beacon from re-emitting for the same
 // derivation across daemon starts.
 func CheckInstallIDDrift() {

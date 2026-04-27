@@ -243,6 +243,82 @@ func TestContract_DefaultEndpointPinned(t *testing.T) {
 	}
 }
 
+// TestContract_ArtifactTableMatchesCallSites scans production telemetry
+// source for filename literals the daemon writes/reads/locks and asserts
+// each appears in the docs/core/app-metrics.md "Daemon-owned on-disk
+// artifacts" table. A new artifact added to the code without a doc row
+// (or vice versa) trips this test.
+func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	repoRoot := filepath.Clean(filepath.Join(wd, "..", ".."))
+	docPath := filepath.Join(repoRoot, "docs", "core", "app-metrics.md")
+	docBody, err := os.ReadFile(docPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", docPath, err)
+	}
+
+	// Set of artifacts the daemon owns. Adding a new on-disk file requires
+	// updating BOTH the production code AND this set AND the doc table.
+	expected := []string{
+		"install_id",
+		"install_id.bak",
+		"install_id.lock",
+		"install_id_lineage",
+		"first_tool_call_install_id",
+		"first_tool_call_install_id.lock",
+	}
+
+	// Each artifact must be backtick-quoted in the doc table to count as a
+	// canonical pin (the table uses Markdown inline code).
+	for _, name := range expected {
+		needle := "`" + name + "`"
+		if !strings.Contains(string(docBody), needle) {
+			t.Errorf("%s missing artifact pin %s — code/doc drift", docPath, needle)
+		}
+	}
+
+	// Sanity: each expected artifact is referenced somewhere in production
+	// telemetry source (not just docs). Catches the inverse drift —
+	// removing a code path without removing the doc row.
+	//
+	// Some filenames are constructed compositionally (e.g., install_id.bak
+	// is `primary + ".bak"` — not a single string literal). For those, we
+	// require BOTH the base literal AND the suffix literal to appear in
+	// production source.
+	prodFiles := []string{
+		filepath.Join(repoRoot, "internal", "telemetry", "install_id.go"),
+		filepath.Join(repoRoot, "internal", "telemetry", "install_id_drift.go"),
+	}
+	var prodSrc strings.Builder
+	for _, p := range prodFiles {
+		body, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("read %s: %v", p, err)
+		}
+		prodSrc.Write(body)
+		prodSrc.WriteByte('\n')
+	}
+	src := prodSrc.String()
+	for _, name := range expected {
+		// Compositional names: base + ".bak" suffix concatenated at
+		// runtime. Verify both halves appear in source.
+		if strings.HasSuffix(name, ".bak") {
+			base := strings.TrimSuffix(name, ".bak")
+			if !strings.Contains(src, `"`+base+`"`) || !strings.Contains(src, `".bak"`) {
+				t.Errorf("artifact %q is compositional but base %q or suffix \".bak\" missing from production source — stale doc row?", name, base)
+			}
+			continue
+		}
+		quoted := `"` + name + `"`
+		if !strings.Contains(src, quoted) {
+			t.Errorf("artifact %q listed in app-metrics.md is no longer referenced in production telemetry source — stale doc row?", name)
+		}
+	}
+}
+
 // TestContract_DefaultEndpointMatchesDocs cross-pins the daemon's endpoint
 // against the docs (`docs/core/app-metrics.md`) so a developer who updates
 // only one side of the contract trips the test.
@@ -263,13 +339,30 @@ func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
 		t.Fatalf("read %s: %v", docPath, err)
 	}
 
-	// Walk the doc, tracking fence state. A line matches the contract
-	// when it appears inside a fenced block AND contains the URL.
+	// Walk the doc, tracking fence state per CommonMark: a fence opens
+	// with 3+ consecutive backticks OR 3+ consecutive tildes; the matching
+	// close uses the same character class with at least the same count.
+	// A line matches the contract when it appears inside a fenced block
+	// AND contains the URL.
 	inFence := false
+	fenceChar := byte(0)
+	fenceLen := 0
 	pinned := false
 	for _, line := range strings.Split(string(body), "\n") {
-		if strings.HasPrefix(strings.TrimLeft(line, " \t"), "```") {
-			inFence = !inFence
+		trimmed := strings.TrimLeft(line, " \t")
+		if op, ch := fenceOpenInfo(trimmed); op {
+			if !inFence {
+				inFence = true
+				fenceChar = ch
+				fenceLen = countLeading(trimmed, ch)
+				continue
+			}
+			// Closing fence requires same char and at least the same length.
+			if ch == fenceChar && countLeading(trimmed, ch) >= fenceLen {
+				inFence = false
+				fenceChar = 0
+				fenceLen = 0
+			}
 			continue
 		}
 		if inFence && strings.Contains(line, defaultEndpoint) {
@@ -280,6 +373,25 @@ func TestContract_DefaultEndpointMatchesDocs(t *testing.T) {
 	if !pinned {
 		t.Errorf("%s does not pin defaultEndpoint %q inside a fenced code block — code/doc drift in wire contract", docPath, defaultEndpoint)
 	}
+}
+
+// fenceOpenInfo reports whether trimmed starts with 3+ of '`' or '~' and
+// returns the fence character.
+func fenceOpenInfo(trimmed string) (bool, byte) {
+	for _, ch := range []byte{'`', '~'} {
+		if countLeading(trimmed, ch) >= 3 {
+			return true, ch
+		}
+	}
+	return false, 0
+}
+
+func countLeading(s string, ch byte) int {
+	n := 0
+	for n < len(s) && s[n] == ch {
+		n++
+	}
+	return n
 }
 
 // TestContract_FireStructuredBeaconDefensiveCheck verifies fireStructuredBeacon

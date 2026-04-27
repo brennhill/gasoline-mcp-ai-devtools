@@ -95,6 +95,11 @@ var lockBudgetMu sync.Mutex
 // withLockBudget shrinks installStateLockTimeout/Poll/Stale for the duration
 // of t. The originals are restored via t.Cleanup. Acquisition is gated by
 // lockBudgetMu so two tests calling the helper in the same run cannot tear.
+//
+// CONSTRAINT: do NOT call from a subtest of a test that already called
+// withLockBudget — the inner call will block forever on lockBudgetMu since
+// the outer cleanup runs only after subtests complete. If you need nested
+// budgets, call withLockBudget at the leaf-test level only.
 func withLockBudget(t *testing.T, timeout, poll, stale time.Duration) {
 	t.Helper()
 	lockBudgetMu.Lock()
@@ -109,6 +114,26 @@ func withLockBudget(t *testing.T, timeout, poll, stale time.Duration) {
 		installStateLockPoll = origP
 		installStateLockStale = origS
 		lockBudgetMu.Unlock()
+	})
+}
+
+// homeDirFnMu serializes concurrent mutation of userHomeDirFn so two tests
+// rotating the override cannot tear in the rare event of `go test -p>1`.
+var homeDirFnMu sync.Mutex
+
+// withHomeDirFn rotates userHomeDirFn for the duration of t and restores
+// the original via t.Cleanup. Use this instead of `defer userHomeDirFn = orig`
+// so a t.Fatal between override and restore cannot leak the override into
+// the next test (Cleanup runs even on failure; bare defer doesn't help if
+// the test author forgets to write it).
+func withHomeDirFn(t *testing.T, fn func() (string, error)) {
+	t.Helper()
+	homeDirFnMu.Lock()
+	orig := userHomeDirFn
+	userHomeDirFn = fn
+	t.Cleanup(func() {
+		userHomeDirFn = orig
+		homeDirFnMu.Unlock()
 	})
 }
 

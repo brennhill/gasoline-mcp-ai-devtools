@@ -105,7 +105,9 @@ func TestCheckInstallIDDrift_FiresWhenDerivedChanges(t *testing.T) {
 // Loaders also tally side-effects via observably-distinct sentinel
 // closures so the test fails if the loader saw a wrong-shape pointer
 // (e.g., a regression that silently coerced the pointer to nil would
-// leave both counters at 0).
+// leave both counters at 0). The pre-Set noop call before spawning loaders
+// ensures the load path is GUARANTEED (not scheduler-dependent) to observe
+// a non-nil fn at least once.
 func TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree(t *testing.T) {
 	t.Cleanup(func() { SetInstallIDDriftLogFn(nil) })
 
@@ -118,6 +120,12 @@ func TestSetInstallIDDriftLogFn_ConcurrentSetAndLoadIsRaceFree(t *testing.T) {
 	var otherCalls atomic.Int64
 	noop := func(stored, derived string) { noopCalls.Add(1) }
 	other := func(stored, derived string) { otherCalls.Add(1) }
+
+	// Seed the registered fn so the first loader iteration observes a
+	// non-nil pointer regardless of how the scheduler interleaves
+	// setters and loaders. Happens-before via SetInstallIDDriftLogFn's
+	// atomic store.
+	SetInstallIDDriftLogFn(noop)
 
 	for i := range goroutines {
 		fn := noop

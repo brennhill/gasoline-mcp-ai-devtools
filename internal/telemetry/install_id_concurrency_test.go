@@ -14,6 +14,19 @@ import (
 	"time"
 )
 
+// TestGetInstallID_ResetDuringInFlightLeaderDoesNotClobberSuccessor pins
+// the singleflight invariant: when resetInstallIDState fires while a
+// leader is mid-I/O, the leader's post-load cleanup must NOT clear the
+// successor op installed by the next caller. Otherwise two leaders run
+// the slow path concurrently — the very condition singleflight prevents.
+//
+// Implementation: leader A is parked inside the persist hook. While A is
+// parked we (a) reset state, (b) install a sentinel op pointer in
+// installIDLoadInFlight directly to simulate the successor B that has
+// taken the in-memory mutex but is now blocked on the file lock A still
+// holds. Releasing A then exercises A's post-load cleanup. Without the
+// `if installIDLoadInFlight == op { … }` guard, A would clobber the
+// sentinel; with the guard, the sentinel survives.
 func TestGetInstallID_ResetDuringInFlightLeaderDoesNotClobberSuccessor(t *testing.T) {
 	dir := t.TempDir()
 	resetInstallIDState()

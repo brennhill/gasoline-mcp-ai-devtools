@@ -237,19 +237,6 @@ func TestMarkFirstToolCallEmittedForInstall_NoStableInstallID(t *testing.T) {
 	}
 }
 
-// TestGetInstallID_ResetDuringInFlightLeaderDoesNotClobberSuccessor pins
-// the singleflight invariant: when resetInstallIDState fires while a
-// leader is mid-I/O, the leader's post-load cleanup must NOT clear the
-// successor op installed by the next caller. Otherwise two leaders run
-// the slow path concurrently — the very condition singleflight prevents.
-//
-// Implementation: leader A is parked inside the persist hook. While A is
-// parked we (a) reset state, (b) install a sentinel op pointer in
-// installIDLoadInFlight directly to simulate the successor B that has
-// taken the in-memory mutex but is now blocked on the file lock A still
-// holds. Releasing A then exercises A's post-load cleanup. Without the
-// `if installIDLoadInFlight == op { … }` guard, A would clobber the
-// sentinel; with the guard, the sentinel survives.
 // Concurrency tests
 // (TestGetInstallID_ResetDuringInFlightLeaderDoesNotClobberSuccessor,
 // TestLoadOrGenerateInstallID_ConcurrentFreshWritersShareOneInstallID,
@@ -262,30 +249,30 @@ func TestMarkFirstToolCallEmittedForInstall_NoStableInstallID(t *testing.T) {
 // an error, and UserHomeDir returning empty/whitespace. Both must fall
 // through to "" so a daemon on a misconfigured host doesn't crash.
 func TestSecondaryKaboomDir_HomeFailureBranches(t *testing.T) {
-	prevFn := userHomeDirFn
 	prevDisabled := secondaryDirDisabled
 	prevOverride := secondaryDirOverride
 	defer func() {
-		userHomeDirFn = prevFn
 		secondaryDirDisabled = prevDisabled
 		secondaryDirOverride = prevOverride
 	}()
 	secondaryDirDisabled = false
 	secondaryDirOverride = ""
 
-	userHomeDirFn = func() (string, error) { return "", os.ErrNotExist }
-	if got := secondaryKaboomDir(); got != "" {
-		t.Errorf("secondaryKaboomDir() with errored home = %q, want \"\"", got)
+	cases := []struct {
+		name string
+		fn   func() (string, error)
+	}{
+		{"errored home", func() (string, error) { return "", os.ErrNotExist }},
+		{"whitespace home", func() (string, error) { return "   ", nil }},
+		{"empty home", func() (string, error) { return "", nil }},
 	}
-
-	userHomeDirFn = func() (string, error) { return "   ", nil }
-	if got := secondaryKaboomDir(); got != "" {
-		t.Errorf("secondaryKaboomDir() with whitespace home = %q, want \"\"", got)
-	}
-
-	userHomeDirFn = func() (string, error) { return "", nil }
-	if got := secondaryKaboomDir(); got != "" {
-		t.Errorf("secondaryKaboomDir() with empty home = %q, want \"\"", got)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			withHomeDirFn(t, tc.fn)
+			if got := secondaryKaboomDir(); got != "" {
+				t.Errorf("secondaryKaboomDir() = %q, want \"\"", got)
+			}
+		})
 	}
 }
 

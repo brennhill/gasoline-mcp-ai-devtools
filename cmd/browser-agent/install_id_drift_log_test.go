@@ -100,7 +100,10 @@ func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 		if !ok {
 			continue
 		}
-		if fn.Name.Name == "runMCPMode" && fn.Recv == nil {
+		// Match by name regardless of receiver: a future refactor that
+		// makes runMCPMode a method on *Server should still trip this
+		// regression guard.
+		if fn.Name.Name == "runMCPMode" {
 			runMCPMode = fn
 			break
 		}
@@ -109,17 +112,26 @@ func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 		t.Fatal("runMCPMode function not found in main_connection_mcp.go")
 	}
 
+	// Match calls by callee name only — handle both bare identifier
+	// (`wireInstallIDDriftLogger(...)`) and selector form
+	// (`helpers.wireInstallIDDriftLogger(...)`) so a sub-package extraction
+	// remains a benign refactor.
 	found := false
 	ast.Inspect(runMCPMode.Body, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
 		}
-		ident, ok := call.Fun.(*ast.Ident)
-		if !ok {
+		var name string
+		switch fun := call.Fun.(type) {
+		case *ast.Ident:
+			name = fun.Name
+		case *ast.SelectorExpr:
+			name = fun.Sel.Name
+		default:
 			return true
 		}
-		if ident.Name == "wireInstallIDDriftLogger" {
+		if name == "wireInstallIDDriftLogger" {
 			found = true
 			return false
 		}

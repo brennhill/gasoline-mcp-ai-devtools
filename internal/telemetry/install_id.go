@@ -246,6 +246,12 @@ var userHomeDirFn = os.UserHomeDir
 // secondaryKaboomDir returns the platform-stable mirror directory or "" if
 // no usable home dir / unsupported OS / explicitly disabled. Tests override
 // via secondaryDirOverride, secondaryDirDisabled, or userHomeDirFn.
+//
+// The wrapper passes os.Getenv directly to secondaryKaboomDirForOS;
+// secondaryKaboomDirForOS itself takes the env getter as a parameter and is
+// the test seam for OS-branch coverage. Tests that need to drive
+// XDG_STATE_HOME / LOCALAPPDATA branches deterministically should call
+// secondaryKaboomDirForOS directly with a stub env, NOT mutate the wrapper.
 func secondaryKaboomDir() string {
 	if secondaryDirDisabled {
 		return ""

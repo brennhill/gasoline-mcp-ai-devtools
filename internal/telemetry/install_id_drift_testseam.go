@@ -15,8 +15,14 @@
 //   3. build-tag gating would force every test invocation to pass
 //      `-tags=...`, polluting Makefile/CI for one introspection function.
 //
-// File-naming convention: `_testseam` makes the intent unmistakable at the
-// directory level even before opening the file.
+// Tradeoff acknowledged: this function ships in the production binary
+// (~adds bytes for one boolean read of an atomic.Pointer). The cost is
+// trivial; the alternative (build tags, code-gen) is not.
+//
+// File-naming convention: `_testseam` is INFORMATIONAL ONLY — Go's build
+// system recognizes only `_test.go` for test-only compilation. The suffix
+// here serves as a discoverability hint at the directory level so a
+// reviewer can spot the test-only file before opening it.
 
 package telemetry
 
