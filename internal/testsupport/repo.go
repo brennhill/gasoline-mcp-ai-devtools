@@ -7,7 +7,11 @@
 //
 // Production code MUST NOT import this package — the helpers here are
 // test-only and there is no API stability guarantee. Cross-package
-// imports from `*_test.go` are expected and supported.
+// imports from `*_test.go` are expected and supported. The
+// "MUST NOT import" rule is enforced by
+// TestPackageNotImportedByProductionCode in package_isolation_test.go;
+// the build does not have a tag-gate because that would require every
+// caller's `go test` invocation to opt in via `-tags`.
 package testsupport
 
 import (
@@ -22,9 +26,22 @@ import (
 // a stray go.mod in a fixture sub-tree (e.g., a future testdata module
 // for plugin-loading tests) cannot masquerade as the repo root.
 //
-// If the project is ever forked or renamed, update this constant in lockstep
-// with go.mod's `module` line.
+// This is intentionally a hand-maintained constant rather than a value
+// auto-derived from go.mod: deriving from go.mod would defeat the
+// drift-detection purpose. TestExpectedModulePath_MatchesGoMod
+// (repo_test.go) cross-pins the const against go.mod so a fork or
+// rename that updates one without the other fires a clear test failure.
+//
+// If the project is ever forked or renamed, update this constant in
+// lockstep with go.mod's `module` line.
 const ExpectedModulePath = "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP"
+
+// RepoRootChdirHint is a stable marker embedded in the
+// "no go.mod ancestor" Fatalf message so tests can assert remediation
+// guidance is present without coupling to surrounding prose. Production
+// callers should not depend on the marker; it exists purely for test
+// observability.
+const RepoRootChdirHint = "[hint:t-chdir-non-module]"
 
 // repoRootTB is the minimal testing.TB subset RepoRoot needs. Defined as
 // an interface (instead of taking *testing.T or testing.TB directly) so
@@ -55,9 +72,8 @@ type repoRootTB interface {
 // returned root is the canonical repo, not a nested module.
 //
 // Fails with t.Fatalf if the walk reaches the filesystem root without
-// finding a matching go.mod. The error includes a remediation hint for
-// tests that have changed cwd via `t.Chdir(t.TempDir())` to a non-module
-// directory.
+// finding a matching go.mod. The error includes the RepoRootChdirHint
+// marker so tests can pin the remediation guidance is present.
 func RepoRoot(t repoRootTB) string {
 	t.Helper()
 	wd, err := os.Getwd()
@@ -65,6 +81,15 @@ func RepoRoot(t repoRootTB) string {
 		t.Fatalf("testsupport.RepoRoot: os.Getwd: %v", err)
 		return ""
 	}
+	return repoRootFromWd(t, wd)
+}
+
+// repoRootFromWd is the wd-injectable form of RepoRoot. Tests use this
+// directly to exercise the not-found branch without relying on
+// `t.Chdir`-into-a-tempdir tricks (which themselves depend on whether
+// `$TMPDIR` happens to sit inside a Go module on the host).
+func repoRootFromWd(t repoRootTB, wd string) string {
+	t.Helper()
 	for d := wd; ; {
 		goModPath := filepath.Join(d, "go.mod")
 		if _, err := os.Stat(goModPath); err == nil {
@@ -78,11 +103,35 @@ func RepoRoot(t repoRootTB) string {
 		}
 		parent := filepath.Dir(d)
 		if parent == d {
-			t.Fatalf("testsupport.RepoRoot: walked past filesystem root from %q without finding go.mod declaring module %q; if your test calls t.Chdir, do not chdir to a non-module directory before invoking this helper", wd, ExpectedModulePath)
+			t.Fatalf("testsupport.RepoRoot: walked past filesystem root from %q without finding go.mod declaring module %q; if your test calls t.Chdir, do not chdir to a non-module directory before invoking this helper %s", wd, ExpectedModulePath, RepoRootChdirHint)
 			return ""
 		}
 		d = parent
 	}
+}
+
+// ResolvePathsEqual reports whether two filesystem paths refer to the
+// same canonical location after symlink resolution. Used by tests that
+// compare paths returned from APIs that may resolve `/var` ↔
+// `/private/var` (macOS) or other platform-symlink quirks.
+//
+// Both inputs MUST exist on disk; missing paths fail the test via
+// t.Fatalf with a clear diagnostic. The boolean result is true iff
+// EvalSymlinks(got) == EvalSymlinks(want); use this in `if !equal`
+// branches that emit test-specific error messages.
+func ResolvePathsEqual(t repoRootTB, got, want string) bool {
+	t.Helper()
+	gotResolved, err := filepath.EvalSymlinks(got)
+	if err != nil {
+		t.Fatalf("testsupport.ResolvePathsEqual: EvalSymlinks(%q): %v", got, err)
+		return false
+	}
+	wantResolved, err := filepath.EvalSymlinks(want)
+	if err != nil {
+		t.Fatalf("testsupport.ResolvePathsEqual: EvalSymlinks(%q): %v", want, err)
+		return false
+	}
+	return gotResolved == wantResolved
 }
 
 // readModulePath parses the `module <path>` directive from a go.mod file.
@@ -93,8 +142,8 @@ func RepoRoot(t repoRootTB) string {
 // We bufio.Scanner the file rather than slurp the whole thing so a 0-byte
 // or huge go.mod is bounded.
 //
-// Quote-handling: trimQuotes accepts a balanced double-quote pair and
-// strips it; an unbalanced quote (e.g., `"foo` with no closing quote)
+// Quote-handling: trimModuleQuotes accepts a balanced double-quote pair
+// and strips it; an unbalanced quote (e.g., `"foo` with no closing quote)
 // is returned as-is so the caller can fail the equality check rather
 // than silently producing a truncated module path.
 func readModulePath(goModPath string) (string, bool) {

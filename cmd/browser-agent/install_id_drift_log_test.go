@@ -134,10 +134,11 @@ func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 	// whitelist — silently satisfying the contract via a foreign symbol.
 	// testsupport.ImportQualifiers surfaces the dot-import path so we
 	// fail loudly here.
-	allowedSelectorQualifiers, dotImports := testsupport.ImportQualifiers(file)
-	if len(dotImports) > 0 {
-		t.Fatalf("main_connection_mcp.go uses dot-import(s) %q which this contract test does not support; replace with named imports or remove the dot-import(s)", dotImports)
+	imports := testsupport.ImportQualifiers(file)
+	if len(imports.DotImports) > 0 {
+		t.Fatalf("main_connection_mcp.go uses dot-import(s) %q which this contract test does not support; replace with named imports or remove the dot-import(s)", imports.DotImports)
 	}
+	allowedSelectorQualifiers := imports.Qualifiers
 	allowedSelectorQualifiers["main"] = true
 
 	// Recursively peel wrapper expressions so the underlying call ident or

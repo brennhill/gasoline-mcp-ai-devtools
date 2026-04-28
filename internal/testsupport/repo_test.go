@@ -1,8 +1,9 @@
 // repo_test.go — Self-tests for testsupport.RepoRoot. Verify the happy-path
 // walk-up returns the repo root containing go.mod, the failure mode fires
-// testing.TB.Fatalf with a remediation hint when no go.mod is reachable,
-// and the foreign-module skip branch (the whole reason ExpectedModulePath
-// exists) actually walks past a non-matching go.mod.
+// testing.TB.Fatalf with the RepoRootChdirHint marker when no go.mod is
+// reachable, the foreign-module skip branch (the whole reason
+// ExpectedModulePath exists) actually walks past a non-matching go.mod,
+// and the parser handles each go.mod shape that the wild has produced.
 
 package testsupport
 
@@ -33,80 +34,90 @@ func TestRepoRoot_FindsRepoRootFromPackageDir(t *testing.T) {
 	}
 }
 
-// TestRepoRoot_FatalfWhenNoGoMod simulates an environment where no
-// ancestor directory contains a go.mod. We can't actually chdir to "/"
-// (the test framework would lose the test binary), so we spawn a fake T
-// that captures Fatalf, and chdir to a tempdir that we KNOW has no go.mod
-// in any ancestor — except: the test's tempdir is normally inside a
-// /var/folders or /tmp path that has no go.mod ancestors, so this works.
+// TestRepoRoot_FatalfWhenNoGoMod exercises the not-found branch via the
+// wd-injectable internal form, so the test does NOT depend on whether
+// $TMPDIR happens to sit inside a Go module on the host machine. We pass
+// a synthetic path under TempDir() and verify the walk reaches filesystem
+// root with the RepoRootChdirHint marker present.
 //
-// The test asserts the captured Fatalf message contains the remediation
-// hint about t.Chdir, which is what makes the failure actionable.
+// We still GUARD against a host where TempDir() roots inside a Go module
+// (rare but possible on contributor machines) — but the guard now skips
+// loudly with t.Logf, so it is visible in `-v` runs whether the branch
+// was actually exercised.
 func TestRepoRoot_FatalfWhenNoGoMod(t *testing.T) {
-	// Make sure we're chdir'd to a path with no go.mod in any ancestor.
-	// /var/folders/... (macOS) and /tmp/... typically lack go.mod, but
-	// guard with a runtime check: if our tempdir DOES have a go.mod
-	// ancestor (e.g., on a contributor's machine where $TMPDIR sits
-	// inside a Go module), skip rather than produce a misleading pass.
 	tmp := t.TempDir()
 	for d := tmp; d != filepath.Dir(d); d = filepath.Dir(d) {
 		if _, err := os.Stat(filepath.Join(d, "go.mod")); err == nil {
 			t.Skipf("ancestor %q contains go.mod; cannot exercise the not-found branch on this filesystem", d)
 		}
 	}
-
-	t.Chdir(tmp) // restored automatically when test ends
+	t.Logf("exercising not-found branch from synthetic wd %q", tmp)
 
 	fake := &FakeT{}
-	func() {
-		defer RecoverFakeFatal()
-		RepoRoot(fake)
-		t.Fatal("expected FakeT.Fatalf panic; did not occur")
-	}()
+	ExpectFakeFatal(t, fake, func() {
+		repoRootFromWd(fake, tmp)
+	})
 	if fake.Fatal == "" {
 		t.Fatal("Fatalf was not called from a directory with no go.mod ancestor")
 	}
-	// The remediation hint mentions t.Chdir — load-bearing for users
-	// who tripped this by chdir'ing to a non-module path.
-	if !strings.Contains(fake.Fatal, "t.Chdir") {
-		t.Errorf("Fatalf message = %q, want substring %q (remediation hint missing)", fake.Fatal, "t.Chdir")
+	// The remediation hint marker is load-bearing — production callers
+	// who tripped this by chdir'ing to a non-module path see it in the
+	// failure message. The marker is a stable token so prose can evolve
+	// without breaking this assertion.
+	if !strings.Contains(fake.Fatal, RepoRootChdirHint) {
+		t.Errorf("Fatalf message = %q, want substring %q (remediation marker missing)", fake.Fatal, RepoRootChdirHint)
 	}
 }
 
 // TestRepoRoot_SkipsForeignGoMod is the regression guard for the whole
-// reason ExpectedModulePath exists. We construct a directory tree like:
+// reason ExpectedModulePath exists. We construct a directory tree:
 //
 //	tmp/
 //	  go.mod                 ← canonical (declares ExpectedModulePath)
 //	  inner/
 //	    go.mod               ← foreign (declares some other module)
-//	    pkg/                 ← cwd
+//	    pkg/                 ← test wd
 //
 // and assert RepoRoot returns tmp/, NOT tmp/inner/. Without the
 // module-path filter in repo.go, RepoRoot would return tmp/inner/ —
 // silently rerouting contract tests that read repo-rooted paths.
 //
-// A regression in readModulePath that always returns ("", false) would
-// trip the not-found branch tested above, but a regression that returned
-// the WRONG module name would silently route to whichever go.mod was
-// nearest. This test pins both correctness layers.
+// Negative control: we directly call readModulePath on the inner go.mod
+// and assert it returns "example.com/fixture/sub". This proves the
+// fixture's foreign module IS PARSEABLE — so the skip is filter-driven,
+// not parse-failure-driven. A regression in readModulePath that returned
+// ("", false) for valid go.mods would silently turn this test into a
+// no-op without the negative control.
 func TestRepoRoot_SkipsForeignGoMod(t *testing.T) {
 	tmp := t.TempDir()
 
-	// Outer go.mod: the canonical one we expect RepoRoot to pick.
 	outerMod := "module " + ExpectedModulePath + "\n\ngo 1.24\n"
 	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(outerMod), 0o644); err != nil {
 		t.Fatalf("write outer go.mod: %v", err)
 	}
 
-	// Inner go.mod: a fixture sub-module masquerading as a root.
 	innerDir := filepath.Join(tmp, "inner")
 	if err := os.MkdirAll(innerDir, 0o755); err != nil {
 		t.Fatalf("mkdir inner: %v", err)
 	}
-	innerMod := "module example.com/fixture/sub\n\ngo 1.24\n"
+	const innerModule = "example.com/fixture/sub"
+	innerMod := "module " + innerModule + "\n\ngo 1.24\n"
 	if err := os.WriteFile(filepath.Join(innerDir, "go.mod"), []byte(innerMod), 0o644); err != nil {
 		t.Fatalf("write inner go.mod: %v", err)
+	}
+
+	// Negative control: prove the fixture's go.mod is itself parseable
+	// as a foreign module. If readModulePath has regressed to always
+	// returning ("", false), the SkipsForeignGoMod assertion below
+	// would still pass (because the walk treats parse failures the
+	// same as foreign modules), and the test would silently lose its
+	// teeth.
+	parsed, ok := readModulePath(filepath.Join(innerDir, "go.mod"))
+	if !ok {
+		t.Fatalf("negative control: readModulePath rejected the fixture inner go.mod — readModulePath has regressed")
+	}
+	if parsed != innerModule {
+		t.Fatalf("negative control: readModulePath returned %q, want %q", parsed, innerModule)
 	}
 
 	pkgDir := filepath.Join(innerDir, "pkg")
@@ -114,24 +125,10 @@ func TestRepoRoot_SkipsForeignGoMod(t *testing.T) {
 		t.Fatalf("mkdir pkg: %v", err)
 	}
 
-	t.Chdir(pkgDir)
-
-	got := RepoRoot(t)
-	want := tmp
-	// Resolve symlinks both sides so /private/var/folders/... vs
-	// /var/folders/... (macOS tempdir aliasing) does not flake the
-	// equality check.
-	gotResolved, err := filepath.EvalSymlinks(got)
-	if err != nil {
-		t.Fatalf("EvalSymlinks(got): %v", err)
-	}
-	wantResolved, err := filepath.EvalSymlinks(want)
-	if err != nil {
-		t.Fatalf("EvalSymlinks(want): %v", err)
-	}
-	if gotResolved != wantResolved {
-		t.Errorf("RepoRoot returned %q (resolved %q); want %q (resolved %q) — foreign go.mod was not skipped",
-			got, gotResolved, want, wantResolved)
+	// Inject pkgDir as the wd directly — no t.Chdir gymnastics.
+	got := repoRootFromWd(t, pkgDir)
+	if !ResolvePathsEqual(t, got, tmp) {
+		t.Errorf("RepoRoot returned %q; want %q — foreign go.mod was not skipped", got, tmp)
 	}
 }
 
@@ -154,5 +151,111 @@ func TestExpectedModulePath_MatchesGoMod(t *testing.T) {
 	if module != ExpectedModulePath {
 		t.Errorf("ExpectedModulePath = %q, but %s declares module %q — update the const in repo.go and any test fixtures in lockstep with go.mod",
 			ExpectedModulePath, goModPath, module)
+	}
+}
+
+// TestReadModulePath_TableEdges directly covers each go.mod parse shape
+// readModulePath claims to handle (and a few intentional non-shapes).
+// These are exercised transitively elsewhere, but pinning them as direct
+// cases lets a refactor of the parser fail HERE first with a precise
+// case label, instead of in some downstream contract test that reads
+// the repo's real go.mod.
+func TestReadModulePath_TableEdges(t *testing.T) {
+	cases := []struct {
+		name     string
+		body     string
+		wantPath string
+		wantOK   bool
+	}{
+		{
+			name:     "plain space-separated",
+			body:     "module example.com/foo\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
+			name:     "tab-separated",
+			body:     "module\texample.com/foo\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
+			name:     "leading comments and blank lines",
+			body:     "// header comment\n\n// another\nmodule example.com/foo\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
+			name:     "balanced quotes stripped",
+			body:     `module "example.com/foo"` + "\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
+			name:     "unbalanced leading quote NOT stripped",
+			body:     `module "example.com/foo` + "\n",
+			wantPath: `"example.com/foo`,
+			wantOK:   true,
+		},
+		{
+			name:     "unbalanced trailing quote NOT stripped",
+			body:     `module example.com/foo"` + "\n",
+			wantPath: `example.com/foo"`,
+			wantOK:   true,
+		},
+		{
+			name:     "empty file",
+			body:     "",
+			wantPath: "",
+			wantOK:   false,
+		},
+		{
+			name:     "first non-comment line is not a module directive",
+			body:     "go 1.24\nmodule example.com/foo\n",
+			wantPath: "",
+			wantOK:   false,
+		},
+		{
+			name:     "comments only, no directive",
+			body:     "// just a comment\n// and another\n",
+			wantPath: "",
+			wantOK:   false,
+		},
+		{
+			name:     "module directive with trailing whitespace",
+			body:     "module example.com/foo   \n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "go.mod")
+			if err := os.WriteFile(path, []byte(tc.body), 0o644); err != nil {
+				t.Fatalf("write fixture: %v", err)
+			}
+			got, ok := readModulePath(path)
+			if ok != tc.wantOK {
+				t.Errorf("ok = %v, want %v", ok, tc.wantOK)
+			}
+			if got != tc.wantPath {
+				t.Errorf("path = %q, want %q", got, tc.wantPath)
+			}
+		})
+	}
+}
+
+// TestReadModulePath_NonexistentFile pins the read-error path: a
+// missing file returns ("", false) without panicking. The walk-up logic
+// in repoRootFromWd relies on this — every parent directory is asked
+// for a go.mod and most don't have one.
+func TestReadModulePath_NonexistentFile(t *testing.T) {
+	got, ok := readModulePath(filepath.Join(t.TempDir(), "does-not-exist"))
+	if ok {
+		t.Errorf("ok = true, want false for missing file (got path %q)", got)
+	}
+	if got != "" {
+		t.Errorf("path = %q, want empty for missing file", got)
 	}
 }

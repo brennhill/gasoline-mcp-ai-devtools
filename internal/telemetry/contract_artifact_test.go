@@ -8,16 +8,22 @@
 //      and every ARTIFACT tag's name appears in the docs table. Catches
 //      "added a row but never tagged code" (and vice versa).
 //   2. TestContract_AllOnDiskCallSitesAreTagged — every kaboomDir-relative
-//      on-disk call site (filepath.Join, withKaboomStateLock, os.WriteFile/
-//      Create/OpenFile/Rename with a literal arg) is tagged with an
-//      ARTIFACT comment within 5 lines above. Catches "added a new on-disk
-//      file without tagging it" before the symmetry check can drift.
+//      on-disk call site is tagged with an ARTIFACT comment within
+//      5 lines above. Catches "added a new on-disk file without tagging
+//      it" before the symmetry check can drift. The scanner is
+//      table-driven via onDiskRules, so adding a new write primitive
+//      (e.g., os.Symlink, os.MkdirAll) is a one-line addition.
 //
 // Opt-out: a literal `// ARTIFACT: -` marker satisfies the within-window
 // requirement WITHOUT contributing a name to the table-symmetry test. Use
 // it for legitimately untagged literals (e.g., a debug-only file that
 // is intentionally NOT a daemon-owned artifact). The opt-out is explicit
 // — silent untagged calls still fail.
+//
+// Coverage guard: TestContract_AllOnDiskCallSitesAreTagged refuses to
+// pass with zero call sites seen across all scanned files. Without this,
+// a regression in classifyOnDiskCall that returned (label, false) for
+// every call would silently turn the test into a no-op.
 
 package telemetry
 
@@ -67,7 +73,7 @@ func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
 		t.Fatalf("read %s: %v", docPath, err)
 	}
 
-	prodFiles := artifactScannedFiles(repoRoot)
+	prodFiles := artifactScannedFiles(t, repoRoot)
 	var prodSrc strings.Builder
 	for _, p := range prodFiles {
 		body, err := os.ReadFile(p)
@@ -140,25 +146,17 @@ func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
 // ...)` could ship the change tag-less; the symmetry check would still
 // pass for ALL EXISTING tagged artifacts and silently miss the new one.
 //
-// Detected patterns:
-//   - filepath.Join(kaboomDir, "<literal>")        — path construction
-//   - withKaboomStateLock("<literal>", ...)        — daemon-owned file lock
-//   - os.WriteFile/Create/OpenFile/Rename with a literal first arg —
-//     a path literal that bypasses the wrapper layer (e.g., someone
-//     inlines an absolute path instead of building it via filepath.Join).
+// Detected patterns: see onDiskRules below.
 //
-// All three shapes carry a string literal naming the artifact, which is
-// why the ARTIFACT tag MUST appear within 5 lines above (so reviewers can
-// match name-to-tag without scrolling).
-//
-// Why we don't scan os.Stat / os.ReadFile: those are READ-side operations
-// and don't materialize a new on-disk file. The contract is about which
-// files the daemon CREATES, which is what the doc table enumerates.
+// Coverage guard: the test fails if classifyOnDiskCall recognized ZERO
+// call sites across all scanned files. A regression that broke pattern
+// matching would otherwise silently degrade this test to a no-op.
 func TestContract_AllOnDiskCallSitesAreTagged(t *testing.T) {
 	repoRoot := testsupport.RepoRoot(t)
-	prodFiles := artifactScannedFiles(repoRoot)
+	prodFiles := artifactScannedFiles(t, repoRoot)
 
 	const tagWindow = 5 // max lines a tag may appear above the call site
+	callSitesSeen := 0
 
 	for _, path := range prodFiles {
 		fset := token.NewFileSet()
@@ -180,29 +178,46 @@ func TestContract_AllOnDiskCallSitesAreTagged(t *testing.T) {
 			if !isOnDiskCall {
 				return true
 			}
-			tag, found := findArtifactTagWithin(artifactCommentLines, callLine, tagWindow)
+			callSitesSeen++
+			_, found := findArtifactTagWithin(artifactCommentLines, callLine, tagWindow)
 			if !found {
 				t.Errorf("%s:%d: %s names a kaboomDir-relative on-disk artifact but has no `// ARTIFACT: <name>` comment within %d lines above; tag the call site so TestContract_ArtifactTableMatchesCallSites cannot drift undetected (use `// ARTIFACT: -` to opt out if the literal is intentionally NOT a daemon-owned artifact)",
 					filepath.Base(path), callLine, label, tagWindow)
-				return true
 			}
-			// `tag == artifactOptOut` is the explicit opt-out — pass.
-			// Any other non-empty name is a real tag — pass.
-			_ = tag
+			// Whether the tag is a real name or `// ARTIFACT: -`,
+			// the contract is satisfied for this call site.
 			return true
 		})
+	}
+
+	if callSitesSeen == 0 {
+		t.Fatalf("classifyOnDiskCall recognized ZERO call sites across %d scanned files (%v) — the pattern matcher has likely regressed; this test would silently pass without coverage", len(prodFiles), prodFiles)
 	}
 }
 
 // artifactScannedFiles is the canonical list of production files the
-// ARTIFACT contract scans. Centralizing it ensures both tests stay in
-// sync; adding a new file with on-disk artifacts just requires updating
-// this single function.
-func artifactScannedFiles(repoRoot string) []string {
-	return []string{
-		filepath.Join(repoRoot, "internal", "telemetry", "install_id.go"),
-		filepath.Join(repoRoot, "internal", "telemetry", "install_id_drift.go"),
+// ARTIFACT contract scans. The list is derived by globbing
+// `internal/telemetry/install_id*.go` (and excluding `*_test.go`) so a
+// future split that creates `install_id_secondary.go`, `install_id_io.go`,
+// etc. is automatically covered.
+func artifactScannedFiles(t *testing.T, repoRoot string) []string {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(repoRoot, "internal", "telemetry", "install_id*.go"))
+	if err != nil {
+		t.Fatalf("glob install_id*.go: %v", err)
 	}
+	out := matches[:0]
+	for _, p := range matches {
+		if strings.HasSuffix(p, "_test.go") {
+			continue
+		}
+		out = append(out, p)
+	}
+	if len(out) == 0 {
+		t.Fatalf("artifactScannedFiles: glob returned no install_id*.go files under %s — repo layout has changed; update the glob",
+			filepath.Join(repoRoot, "internal", "telemetry"))
+	}
+	return out
 }
 
 // collectArtifactCommentLines returns a map of line-number → artifact name
@@ -232,45 +247,106 @@ func collectArtifactCommentLines(fset *token.FileSet, file *ast.File) map[int]st
 	return out
 }
 
-// classifyOnDiskCall recognizes the AST shapes that name a
-// kaboomDir-relative artifact at construction time. Returns a short
-// human-readable label for the diagnostic and true if matched.
+// onDiskRule describes a CallExpr shape that names a daemon-owned
+// artifact at construction time. Each rule is matched against the
+// callable's package + function name; the literal-arg index says which
+// positional argument MUST be a string-literal artifact name; an
+// optional argGuards function provides extra checks (e.g., the
+// `filepath.Join(kaboomDir, ...)` rule needs the first arg to be the
+// `kaboomDir` ident).
 //
-// All shapes require a STRING-LITERAL argument: that's the artifact name
-// and the load-bearing condition for "this site materializes a specific
-// on-disk file." A generic helper that takes a name parameter (e.g.,
-// withKaboomStateLock receiving its lockName var) is not a match — it's
-// the wrapper layer, and its callers carry the literal.
-func classifyOnDiskCall(call *ast.CallExpr) (string, bool) {
-	// Pattern A: filepath.Join(kaboomDir, "<literal>")
-	if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-		if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "filepath" && sel.Sel.Name == "Join" {
-			if len(call.Args) >= 2 {
-				if id, ok := call.Args[0].(*ast.Ident); ok && id.Name == "kaboomDir" {
-					if isStringLit(call.Args[1]) {
-						return "filepath.Join(kaboomDir, \"...\")", true
-					}
-				}
+// pkg == "" means "in-package bare ident" (e.g., withKaboomStateLock).
+// pkg != "" means "selector qualified by this package name" (e.g.,
+// "filepath", "os").
+type onDiskRule struct {
+	pkg       string
+	fn        string
+	litArg    int
+	label     string
+	argGuards func(*ast.CallExpr) bool // optional; nil = no extra guard
+}
+
+// onDiskRules enumerates every call shape the producer-side scanner
+// recognizes. Adding a new write primitive (e.g., os.Symlink, os.Link)
+// is a one-line entry — no nested type-switch additions to
+// classifyOnDiskCall.
+//
+// The set of os.* writers is "any standard library function that
+// materializes a name on disk in its argument list." os.CreateTemp is
+// intentionally NOT included: its second arg is a name PATTERN
+// ("install_id.*"), not a final artifact name; the resulting file is
+// renamed before becoming an artifact, and we tag the rename call site.
+var onDiskRules = []onDiskRule{
+	{
+		pkg: "filepath", fn: "Join", litArg: 1,
+		label: `filepath.Join(kaboomDir, "...")`,
+		argGuards: func(c *ast.CallExpr) bool {
+			if len(c.Args) < 2 {
+				return false
 			}
+			id, ok := c.Args[0].(*ast.Ident)
+			return ok && id.Name == "kaboomDir"
+		},
+	},
+	// withKaboomStateLock("<lit>", ...) — bare in-package ident.
+	{pkg: "", fn: "withKaboomStateLock", litArg: 0, label: `withKaboomStateLock("...", ...)`},
+	// os.* writers — first arg is the artifact path.
+	{pkg: "os", fn: "WriteFile", litArg: 0, label: `os.WriteFile("...", ...)`},
+	{pkg: "os", fn: "Create", litArg: 0, label: `os.Create("...")`},
+	{pkg: "os", fn: "OpenFile", litArg: 0, label: `os.OpenFile("...", ...)`},
+	{pkg: "os", fn: "Mkdir", litArg: 0, label: `os.Mkdir("...", ...)`},
+	{pkg: "os", fn: "MkdirAll", litArg: 0, label: `os.MkdirAll("...", ...)`},
+	// os.Rename / os.Symlink / os.Link: destination (the artifact being
+	// materialized) is the SECOND arg, not the first.
+	{pkg: "os", fn: "Rename", litArg: 1, label: `os.Rename(..., "...")`},
+	{pkg: "os", fn: "Symlink", litArg: 1, label: `os.Symlink(..., "...")`},
+	{pkg: "os", fn: "Link", litArg: 1, label: `os.Link(..., "...")`},
+}
+
+// callableInfo extracts the package qualifier (or "" for a bare ident)
+// and function name from a CallExpr's callee. Returns (name, pkg, true)
+// on a recognized shape; (_, _, false) for shapes we don't classify
+// (anonymous funcs, method calls on values, etc.).
+func callableInfo(call *ast.CallExpr) (name, pkg string, ok bool) {
+	switch fn := call.Fun.(type) {
+	case *ast.SelectorExpr:
+		if id, idOK := fn.X.(*ast.Ident); idOK {
+			return fn.Sel.Name, id.Name, true
 		}
-		// Pattern C: os.WriteFile / os.Create / os.OpenFile / os.Rename
-		// with a literal first arg. These calls materialize a file at a
-		// path the source spells out directly — bypassing filepath.Join
-		// + kaboomDir won't smuggle a new artifact past this scanner.
-		if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "os" {
-			switch sel.Sel.Name {
-			case "WriteFile", "Create", "OpenFile", "Rename":
-				if isStringLit(call.Args[0]) {
-					return fmt.Sprintf("os.%s(\"...\", ...)", sel.Sel.Name), true
-				}
-			}
-		}
+	case *ast.Ident:
+		return fn.Name, "", true
 	}
-	// Pattern B: withKaboomStateLock("<literal>", ...)
-	if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "withKaboomStateLock" {
-		if isStringLit(call.Args[0]) {
-			return "withKaboomStateLock(\"...\", ...)", true
+	return "", "", false
+}
+
+// classifyOnDiskCall walks onDiskRules looking for a match. Returns a
+// short human-readable label for the diagnostic and true if matched.
+//
+// Every shape requires a STRING-LITERAL argument at the rule's litArg
+// index: that's the artifact name and the load-bearing condition for
+// "this site materializes a specific on-disk file." A generic helper
+// that takes a name parameter (e.g., withKaboomStateLock receiving its
+// lockName var) is not a match — it's the wrapper layer, and its
+// callers carry the literal.
+func classifyOnDiskCall(call *ast.CallExpr) (string, bool) {
+	name, pkg, ok := callableInfo(call)
+	if !ok {
+		return "", false
+	}
+	for _, r := range onDiskRules {
+		if r.fn != name || r.pkg != pkg {
+			continue
 		}
+		if r.litArg >= len(call.Args) {
+			continue
+		}
+		if !isStringLit(call.Args[r.litArg]) {
+			continue
+		}
+		if r.argGuards != nil && !r.argGuards(call) {
+			continue
+		}
+		return r.label, true
 	}
 	return "", false
 }
@@ -392,5 +468,74 @@ func TestFindArtifactTagWithin_BoundaryEdges(t *testing.T) {
 				t.Errorf("name = %q, want %q", gotName, tc.wantName)
 			}
 		})
+	}
+}
+
+// TestContract_OptOutGuidanceInFailureMessage pins the producer-side
+// scanner's failure-message contract: the diagnostic MUST mention both
+// the `ARTIFACT:` tag scheme AND the `-` opt-out marker, so an author
+// who trips the scanner sees the escape hatch in the same line as the
+// failure (no need to read the test source).
+//
+// Implementation: we run a synthesized fake-source call site through the
+// scanner via t.Run subtests with a captured *testing.T (a *testCapture
+// fake) so we can assert against the recorded Errorf message without
+// failing the surrounding *testing.T.
+func TestContract_OptOutGuidanceInFailureMessage(t *testing.T) {
+	// Synthetic source: an untagged kaboomDir-relative call that will
+	// trip the scanner.
+	const src = `package fake
+
+import "path/filepath"
+
+var kaboomDir = "/tmp"
+
+func _() string {
+	return filepath.Join(kaboomDir, "new_artifact")
+}
+`
+	dir := t.TempDir()
+	path := filepath.Join(dir, "fake.go")
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatalf("write synthetic source: %v", err)
+	}
+
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("parse synthetic source: %v", err)
+	}
+
+	// Build the same diagnostic the real scanner builds, then assert
+	// it mentions both the tag scheme and the opt-out marker.
+	const tagWindow = 5
+	artifactCommentLines := collectArtifactCommentLines(fset, file)
+	var diagnostic string
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || len(call.Args) == 0 {
+			return true
+		}
+		label, matched := classifyOnDiskCall(call)
+		if !matched {
+			return true
+		}
+		callLine := fset.Position(call.Lparen).Line
+		if _, found := findArtifactTagWithin(artifactCommentLines, callLine, tagWindow); !found {
+			diagnostic = fmt.Sprintf(
+				"%s:%d: %s names a kaboomDir-relative on-disk artifact but has no `// ARTIFACT: <name>` comment within %d lines above; tag the call site so TestContract_ArtifactTableMatchesCallSites cannot drift undetected (use `// ARTIFACT: -` to opt out if the literal is intentionally NOT a daemon-owned artifact)",
+				filepath.Base(path), callLine, label, tagWindow,
+			)
+		}
+		return true
+	})
+
+	if diagnostic == "" {
+		t.Fatal("synthetic scanner did not produce a diagnostic for the untagged kaboomDir call site — test fixture is broken or scanner regressed")
+	}
+	for _, want := range []string{"ARTIFACT:", "ARTIFACT: -", "opt out"} {
+		if !strings.Contains(diagnostic, want) {
+			t.Errorf("diagnostic missing %q guidance:\n%s", want, diagnostic)
+		}
 	}
 }

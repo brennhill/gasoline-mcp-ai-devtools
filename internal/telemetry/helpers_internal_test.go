@@ -9,6 +9,14 @@
 // signals to humans that this file tests un-exported package internals,
 // matching the same intent the standard library uses (e.g.,
 // `time/internal_test.go`).
+//
+// CONSTRAINT — no t.Parallel() in package telemetry: the install ID
+// pipeline owns several package-level globals (kaboomDir,
+// installIDLoadInFlight, cachedInstallIDPtr, secondaryDirOverride,
+// userHomeDirFn). The withXxxState helpers in helpers_test.go gate these
+// with mutexes so a sequential test suite is safe; t.Parallel() would
+// run cleanups concurrently and corrupt the global state. Any new test
+// in this package must NOT call t.Parallel().
 
 package telemetry
 
@@ -66,22 +74,20 @@ func TestWithRotation_MutexUnlockedAfterCleanup(t *testing.T) {
 
 // TestWithRotation_NestedCallFiresFatalf verifies the misuse guard fires
 // t.Fatalf with the label when a second call occurs while the mutex is
-// still held. Driven via testsupport.FakeT so the failure does not
-// propagate to the surrounding test — we want to ASSERT that Fatalf was
-// called, not have its call abort us.
+// still held. Driven via testsupport.ExpectFakeFatal so the failure does
+// not propagate to the surrounding test — we want to ASSERT that Fatalf
+// was called, not have its call abort us.
 func TestWithRotation_NestedCallFiresFatalf(t *testing.T) {
 	var mu sync.Mutex
 	mu.Lock() // simulate "another caller already holds the rotation lock"
 	defer mu.Unlock()
 
 	fake := &testsupport.FakeT{}
-	func() {
-		defer testsupport.RecoverFakeFatal()
+	testsupport.ExpectFakeFatal(t, fake, func() {
 		withRotation(fake, &mu, "myLabel",
 			func() int { return 0 },
 			func(int) {})
-		t.Fatal("expected FakeT.Fatalf panic; did not occur")
-	}()
+	})
 	if fake.Fatal == "" {
 		t.Fatal("Fatalf was not called when mutex was already held")
 	}
@@ -149,5 +155,23 @@ func TestFakeT_RunCleanupsLIFO(t *testing.T) {
 		if order[i] != want[i] {
 			t.Errorf("cleanup[%d] = %d, want %d (RunCleanups must be LIFO)", i, order[i], want[i])
 		}
+	}
+}
+
+// TestFakeT_RunCleanupsIdempotent pins the divergence-protection contract
+// from the package doc: a second RunCleanups call MUST be a no-op,
+// matching real *testing.T (which does not re-fire cleanups). Without
+// this, a future test that defers RunCleanups AND calls it explicitly
+// would phantom-restore state twice.
+func TestFakeT_RunCleanupsIdempotent(t *testing.T) {
+	fake := &testsupport.FakeT{}
+	var fires int
+	fake.Cleanup(func() { fires++ })
+
+	fake.RunCleanups()
+	fake.RunCleanups() // second call must NOT re-fire registered cleanups.
+
+	if fires != 1 {
+		t.Errorf("cleanup fired %d times across two RunCleanups calls; want 1 (idempotent)", fires)
 	}
 }
