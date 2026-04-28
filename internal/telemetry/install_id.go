@@ -18,6 +18,9 @@
 // loadOrGenerateInstallID tries a deterministic HMAC derivation from
 // (machine_id, uid, hostname) so recoverable environments get the same ID
 // back instead of a fresh random.
+//
+// On-disk artifact call sites are tagged `// ARTIFACT: <name>` — see
+// TestContract_ArtifactTableMatchesCallSites in contract_compliance_test.go.
 
 package telemetry
 
@@ -562,6 +565,7 @@ func claimFirstToolCallInstallID(installID string) (bool, error) {
 		return false, err
 	}
 
+	// ARTIFACT: first_tool_call_install_id
 	markerPath := filepath.Join(kaboomDir, "first_tool_call_install_id")
 	claimed := false
 	// ARTIFACT: first_tool_call_install_id.lock

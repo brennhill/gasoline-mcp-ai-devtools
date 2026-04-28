@@ -20,6 +20,9 @@
 //     exactly once across all subsequent daemon starts.
 //
 // Wire contract: docs/core/app-metrics.md.
+//
+// On-disk artifact call sites are tagged `// ARTIFACT: <name>` — see
+// TestContract_ArtifactTableMatchesCallSites in contract_compliance_test.go.
 
 package telemetry
 
@@ -128,5 +131,6 @@ func persistLastDerivedSeen(derived string) {
 		return
 	}
 	_ = os.MkdirAll(kaboomDir, 0o700)
+	// ARTIFACT: install_id_lineage
 	_ = writeTokenAtomic(filepath.Join(kaboomDir, "install_id_lineage"), derived)
 }

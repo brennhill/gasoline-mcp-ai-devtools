@@ -94,6 +94,17 @@ func setOnFireBeacon(fn func(sent bool)) {
 	onFireBeaconMu.Unlock()
 }
 
+// rotationT is the minimal subset of *testing.T behavior withRotation
+// requires. Defining it as an interface lets the helpers self-test
+// (helpers_internal_test.go) drive a fake T and observe the misuse-guard
+// branch without aborting the surrounding test. *testing.T satisfies the
+// interface implicitly.
+type rotationT interface {
+	Helper()
+	Fatalf(format string, args ...any)
+	Cleanup(func())
+}
+
 // withRotation is the canonical state-rotation primitive. It TryLocks the
 // given mutex, runs save() to snapshot existing state, registers a t.Cleanup
 // that restores via restore(snapshot) and unlocks the mutex. The label
@@ -101,10 +112,20 @@ func setOnFireBeacon(fn func(sent bool)) {
 // uniform diagnostic messages. Use this directly when adding a new rotation
 // pattern; don't replicate the TryLock/Cleanup boilerplate inline.
 //
+// Generic over T: the snapshot type is inferred from save(). Callers no
+// longer perform `s.(SnapshotType)` type assertions, so a misspelled type
+// becomes a compile error rather than a runtime panic.
+//
+// The label remains a hand-passed string (not derived via runtime.Caller):
+// it appears verbatim in the misuse t.Fatalf message and serves as a
+// human-meaningful tag, not a stack-frame name. A Caller-derived helper
+// name (e.g., "withLockBudget.func1") would be noisier without adding
+// clarity.
+//
 // CONSTRAINT: do NOT call any with*State helper from a subtest of a test
 // that already called the same helper. The misuse guard fires t.Fatalf at
 // the offending call site rather than blocking on `go test -timeout`.
-func withRotation(t *testing.T, mu *sync.Mutex, label string, save func() any, restore func(any)) {
+func withRotation[T any](t rotationT, mu *sync.Mutex, label string, save func() T, restore func(T)) {
 	t.Helper()
 	if !mu.TryLock() {
 		t.Fatalf("%s: mutex already held — likely a nested call from a subtest of a test that already called %s (see CONSTRAINT in helpers_test.go)", label, label)
@@ -126,11 +147,10 @@ var lockBudgetMu sync.Mutex
 func withLockBudget(t *testing.T, timeout, poll, stale time.Duration) {
 	t.Helper()
 	withRotation(t, &lockBudgetMu, "withLockBudget",
-		func() any {
+		func() [3]time.Duration {
 			return [3]time.Duration{installStateLockTimeout, installStateLockPoll, installStateLockStale}
 		},
-		func(s any) {
-			v := s.([3]time.Duration)
+		func(v [3]time.Duration) {
 			installStateLockTimeout, installStateLockPoll, installStateLockStale = v[0], v[1], v[2]
 		})
 	installStateLockTimeout = timeout
@@ -146,8 +166,8 @@ var homeDirFnMu sync.Mutex
 func withHomeDirFn(t *testing.T, fn func() (string, error)) {
 	t.Helper()
 	withRotation(t, &homeDirFnMu, "withHomeDirFn",
-		func() any { return userHomeDirFn },
-		func(s any) { userHomeDirFn = s.(func() (string, error)) })
+		func() func() (string, error) { return userHomeDirFn },
+		func(prev func() (string, error)) { userHomeDirFn = prev })
 	userHomeDirFn = fn
 }
 
@@ -164,11 +184,10 @@ func withSecondaryDirState(t *testing.T, disabled bool, override string) {
 		override string
 	}
 	withRotation(t, &secondaryDirStateMu, "withSecondaryDirState",
-		func() any {
+		func() secondaryDirSnapshot {
 			return secondaryDirSnapshot{disabled: secondaryDirDisabled, override: secondaryDirOverride}
 		},
-		func(s any) {
-			v := s.(secondaryDirSnapshot)
+		func(v secondaryDirSnapshot) {
 			secondaryDirDisabled = v.disabled
 			secondaryDirOverride = v.override
 		})

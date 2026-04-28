@@ -23,10 +23,10 @@ import (
 	"go/token"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/telemetry"
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/testsupport"
 )
 
 func TestNewInstallIDDriftLogger_LogShape(t *testing.T) {
@@ -126,25 +126,19 @@ func TestRunMCPMode_CallsWireInstallIDDriftLogger(t *testing.T) {
 	// remains rejected because Go's name uniqueness within an import
 	// scope makes accidental match implausible — but a typo'd import or
 	// shadowed alias would surface as "must contain a call".
-	allowedSelectorQualifiers := map[string]bool{"main": true}
-	for _, imp := range file.Imports {
-		// Path is the quoted import string; alias (if any) is in imp.Name.
-		var qualifier string
-		if imp.Name != nil {
-			qualifier = imp.Name.Name
-		} else {
-			// Default qualifier is the trailing path segment; strip quotes.
-			path := strings.Trim(imp.Path.Value, `"`)
-			if i := strings.LastIndex(path, "/"); i >= 0 {
-				qualifier = path[i+1:]
-			} else {
-				qualifier = path
-			}
-		}
-		if qualifier != "" && qualifier != "_" && qualifier != "." {
-			allowedSelectorQualifiers[qualifier] = true
-		}
+	//
+	// Dot-imports are explicitly unsupported: a `. "some/pkg"` import
+	// makes that package's identifiers appear bare in the AST (as
+	// *ast.Ident), so a hypothetical pkg.wireInstallIDDriftLogger would
+	// be matched by the *ast.Ident branch below WITHOUT consulting the
+	// whitelist — silently satisfying the contract via a foreign symbol.
+	// testsupport.ImportQualifiers surfaces the dot-import path so we
+	// fail loudly here.
+	allowedSelectorQualifiers, dotImportPath := testsupport.ImportQualifiers(file)
+	if dotImportPath != "" {
+		t.Fatalf("main_connection_mcp.go uses a dot-import (%q) which this contract test does not support; replace with a named import or remove the dot-import", dotImportPath)
 	}
+	allowedSelectorQualifiers["main"] = true
 
 	// Recursively peel wrapper expressions so the underlying call ident or
 	// selector is reachable: ParenExpr (`(fn)(...)`), IndexExpr / IndexListExpr
