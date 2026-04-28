@@ -10,13 +10,13 @@
 // matching the same intent the standard library uses (e.g.,
 // `time/internal_test.go`).
 //
-// CONSTRAINT — no t.Parallel() in package telemetry: the install ID
-// pipeline owns several package-level globals (kaboomDir,
-// installIDLoadInFlight, cachedInstallIDPtr, secondaryDirOverride,
-// userHomeDirFn). The withXxxState helpers in helpers_test.go gate these
-// with mutexes so a sequential test suite is safe; t.Parallel() would
-// run cleanups concurrently and corrupt the global state. Any new test
-// in this package must NOT call t.Parallel().
+// FakeT-specific semantic tests (LIFO cleanup, idempotency, multi-Fatalf
+// recording) live in internal/testsupport/faket_test.go next to the
+// implementation. This file restricts itself to withRotation behavior.
+//
+// CONSTRAINT — no t.Parallel() in package telemetry: see doc.go for the
+// package-wide explanation. New tests in this package must NOT call
+// t.Parallel().
 
 package telemetry
 
@@ -88,14 +88,14 @@ func TestWithRotation_NestedCallFiresFatalf(t *testing.T) {
 			func() int { return 0 },
 			func(int) {})
 	})
-	if fake.Fatal == "" {
+	if fake.Fatal() == "" {
 		t.Fatal("Fatalf was not called when mutex was already held")
 	}
 	// Label must appear in the misuse message verbatim — operators rely
 	// on it to identify which helper was misused.
 	const wantSubstr = "myLabel"
-	if !strings.Contains(fake.Fatal, wantSubstr) {
-		t.Errorf("Fatalf message = %q, want substring %q", fake.Fatal, wantSubstr)
+	if !strings.Contains(fake.Fatal(), wantSubstr) {
+		t.Errorf("Fatalf message = %q, want substring %q", fake.Fatal(), wantSubstr)
 	}
 }
 
@@ -130,48 +130,5 @@ func TestWithRotation_RestoreRunsViaCleanup(t *testing.T) {
 		t.Error("mutex still held after cleanup ran")
 	} else {
 		mu.Unlock()
-	}
-}
-
-// TestFakeT_RunCleanupsLIFO pins the LIFO ordering of FakeT.RunCleanups —
-// the whole point of the fake (mirroring testing.T.Cleanup semantics).
-// A regression that switched the iteration to FIFO would silently flip
-// withRotation self-tests' restore order vs. real *testing.T behavior,
-// producing a fake that disagrees with the system it impersonates.
-func TestFakeT_RunCleanupsLIFO(t *testing.T) {
-	fake := &testsupport.FakeT{}
-	var order []int
-	fake.Cleanup(func() { order = append(order, 1) })
-	fake.Cleanup(func() { order = append(order, 2) })
-	fake.Cleanup(func() { order = append(order, 3) })
-
-	fake.RunCleanups()
-
-	want := []int{3, 2, 1}
-	if len(order) != len(want) {
-		t.Fatalf("cleanups ran %d times, want %d", len(order), len(want))
-	}
-	for i := range want {
-		if order[i] != want[i] {
-			t.Errorf("cleanup[%d] = %d, want %d (RunCleanups must be LIFO)", i, order[i], want[i])
-		}
-	}
-}
-
-// TestFakeT_RunCleanupsIdempotent pins the divergence-protection contract
-// from the package doc: a second RunCleanups call MUST be a no-op,
-// matching real *testing.T (which does not re-fire cleanups). Without
-// this, a future test that defers RunCleanups AND calls it explicitly
-// would phantom-restore state twice.
-func TestFakeT_RunCleanupsIdempotent(t *testing.T) {
-	fake := &testsupport.FakeT{}
-	var fires int
-	fake.Cleanup(func() { fires++ })
-
-	fake.RunCleanups()
-	fake.RunCleanups() // second call must NOT re-fire registered cleanups.
-
-	if fires != 1 {
-		t.Errorf("cleanup fired %d times across two RunCleanups calls; want 1 (idempotent)", fires)
 	}
 }

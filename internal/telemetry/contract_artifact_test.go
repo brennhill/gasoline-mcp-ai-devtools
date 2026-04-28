@@ -46,6 +46,16 @@ import (
 // a constant so future renames can't drift between the two tests below.
 const artifactOptOut = "-"
 
+// onDiskUntaggedDiagFmt is the printf-style format string the
+// producer-side scanner uses to construct its diagnostic when an
+// on-disk call site lacks an ARTIFACT tag. Centralized so the real
+// scanner and TestContract_OptOutGuidanceInFailureMessage both
+// reference one source — a refactor that updates the prose in only
+// one place would silently leave the other behind.
+//
+// Format args (in order): file, line, label, window.
+const onDiskUntaggedDiagFmt = "%s:%d: %s names a kaboomDir-relative on-disk artifact but has no `// ARTIFACT: <name>` comment within %d lines above; tag the call site so TestContract_ArtifactTableMatchesCallSites cannot drift undetected (use `// ARTIFACT: -` to opt out if the literal is intentionally NOT a daemon-owned artifact)"
+
 // TestContract_ArtifactTableMatchesCallSites scans production telemetry
 // source for `// ARTIFACT: <name>` magic comments next to each on-disk
 // daemon-owned file call site and asserts each appears in the
@@ -181,8 +191,7 @@ func TestContract_AllOnDiskCallSitesAreTagged(t *testing.T) {
 			callSitesSeen++
 			_, found := findArtifactTagWithin(artifactCommentLines, callLine, tagWindow)
 			if !found {
-				t.Errorf("%s:%d: %s names a kaboomDir-relative on-disk artifact but has no `// ARTIFACT: <name>` comment within %d lines above; tag the call site so TestContract_ArtifactTableMatchesCallSites cannot drift undetected (use `// ARTIFACT: -` to opt out if the literal is intentionally NOT a daemon-owned artifact)",
-					filepath.Base(path), callLine, label, tagWindow)
+				t.Errorf(onDiskUntaggedDiagFmt, filepath.Base(path), callLine, label, tagWindow)
 			}
 			// Whether the tag is a real name or `// ARTIFACT: -`,
 			// the contract is satisfied for this call site.
@@ -206,7 +215,7 @@ func artifactScannedFiles(t *testing.T, repoRoot string) []string {
 	if err != nil {
 		t.Fatalf("glob install_id*.go: %v", err)
 	}
-	out := matches[:0]
+	out := make([]string, 0, len(matches))
 	for _, p := range matches {
 		if strings.HasSuffix(p, "_test.go") {
 			continue
@@ -249,21 +258,26 @@ func collectArtifactCommentLines(fset *token.FileSet, file *ast.File) map[int]st
 
 // onDiskRule describes a CallExpr shape that names a daemon-owned
 // artifact at construction time. Each rule is matched against the
-// callable's package + function name; the literal-arg index says which
-// positional argument MUST be a string-literal artifact name; an
-// optional argGuards function provides extra checks (e.g., the
-// `filepath.Join(kaboomDir, ...)` rule needs the first arg to be the
-// `kaboomDir` ident).
+// callable's package + function name; litArg says which positional arg
+// MUST be a string-literal artifact name; optional firstArgIdent
+// requires arg[0] to be a bare *ast.Ident with that name (e.g.,
+// `kaboomDir` for the `filepath.Join(kaboomDir, "...")` shape).
 //
 // pkg == "" means "in-package bare ident" (e.g., withKaboomStateLock).
 // pkg != "" means "selector qualified by this package name" (e.g.,
 // "filepath", "os").
+//
+// All extension shapes today fit into this declarative struct — no
+// rule needs an arbitrary closure. If a future shape genuinely
+// requires custom predicate logic, add a typed field for that
+// predicate (don't reach for func(call *CallExpr) bool generically;
+// closures are escape-hatch flexibility this table has resisted).
 type onDiskRule struct {
-	pkg       string
-	fn        string
-	litArg    int
-	label     string
-	argGuards func(*ast.CallExpr) bool // optional; nil = no extra guard
+	pkg            string
+	fn             string
+	litArg         int
+	label          string
+	firstArgIdent  string // optional; arg[0] must be a bare ident with this name
 }
 
 // onDiskRules enumerates every call shape the producer-side scanner
@@ -277,16 +291,12 @@ type onDiskRule struct {
 // ("install_id.*"), not a final artifact name; the resulting file is
 // renamed before becoming an artifact, and we tag the rename call site.
 var onDiskRules = []onDiskRule{
+	// filepath.Join(kaboomDir, "<lit>") — first arg must be the
+	// kaboomDir package ident; second arg is the literal artifact name.
 	{
 		pkg: "filepath", fn: "Join", litArg: 1,
-		label: `filepath.Join(kaboomDir, "...")`,
-		argGuards: func(c *ast.CallExpr) bool {
-			if len(c.Args) < 2 {
-				return false
-			}
-			id, ok := c.Args[0].(*ast.Ident)
-			return ok && id.Name == "kaboomDir"
-		},
+		label:         `filepath.Join(kaboomDir, "...")`,
+		firstArgIdent: "kaboomDir",
 	},
 	// withKaboomStateLock("<lit>", ...) — bare in-package ident.
 	{pkg: "", fn: "withKaboomStateLock", litArg: 0, label: `withKaboomStateLock("...", ...)`},
@@ -343,8 +353,14 @@ func classifyOnDiskCall(call *ast.CallExpr) (string, bool) {
 		if !isStringLit(call.Args[r.litArg]) {
 			continue
 		}
-		if r.argGuards != nil && !r.argGuards(call) {
-			continue
+		if r.firstArgIdent != "" {
+			if len(call.Args) == 0 {
+				continue
+			}
+			id, ok := call.Args[0].(*ast.Ident)
+			if !ok || id.Name != r.firstArgIdent {
+				continue
+			}
 		}
 		return r.label, true
 	}
@@ -522,10 +538,8 @@ func _() string {
 		}
 		callLine := fset.Position(call.Lparen).Line
 		if _, found := findArtifactTagWithin(artifactCommentLines, callLine, tagWindow); !found {
-			diagnostic = fmt.Sprintf(
-				"%s:%d: %s names a kaboomDir-relative on-disk artifact but has no `// ARTIFACT: <name>` comment within %d lines above; tag the call site so TestContract_ArtifactTableMatchesCallSites cannot drift undetected (use `// ARTIFACT: -` to opt out if the literal is intentionally NOT a daemon-owned artifact)",
-				filepath.Base(path), callLine, label, tagWindow,
-			)
+			diagnostic = fmt.Sprintf(onDiskUntaggedDiagFmt,
+				filepath.Base(path), callLine, label, tagWindow)
 		}
 		return true
 	})

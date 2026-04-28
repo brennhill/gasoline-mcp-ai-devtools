@@ -9,9 +9,13 @@
 // test-only and there is no API stability guarantee. Cross-package
 // imports from `*_test.go` are expected and supported. The
 // "MUST NOT import" rule is enforced by
-// TestPackageNotImportedByProductionCode in package_isolation_test.go;
-// the build does not have a tag-gate because that would require every
-// caller's `go test` invocation to opt in via `-tags`.
+// TestPackageNotImportedByProductionCode in package_isolation_test.go.
+//
+// Files in this package, by concern:
+//   - repo.go      — repo-root walk + go.mod parser (ExpectedModulePath, RepoRoot)
+//   - paths.go     — filesystem path helpers (AssertPathsEqual)
+//   - astutil.go   — Go AST traversal helpers (ImportQualifiers)
+//   - faket.go     — *testing.T fake + canonical TB-shaped interfaces
 package testsupport
 
 import (
@@ -38,20 +42,12 @@ const ExpectedModulePath = "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP"
 
 // RepoRootChdirHint is a stable marker embedded in the
 // "no go.mod ancestor" Fatalf message so tests can assert remediation
-// guidance is present without coupling to surrounding prose. Production
-// callers should not depend on the marker; it exists purely for test
-// observability.
-const RepoRootChdirHint = "[hint:t-chdir-non-module]"
-
-// repoRootTB is the minimal testing.TB subset RepoRoot needs. Defined as
-// an interface (instead of taking *testing.T or testing.TB directly) so
-// repo_test.go can drive a fake implementation that captures Fatalf
-// without aborting the surrounding *testing.T. *testing.T and *testing.B
-// satisfy this interface implicitly.
-type repoRootTB interface {
-	Helper()
-	Fatalf(format string, args ...any)
-}
+// guidance is present without coupling to surrounding prose. Worded as
+// human-readable English (rather than a token like `[hint:t-chdir]`)
+// so a real failure surfaces actionable text directly to the developer
+// who tripped it; the test that pins this can substring-match the
+// const just as well.
+const RepoRootChdirHint = "[hint: avoid t.Chdir to non-module dir]"
 
 // RepoRoot walks up from the current working directory looking for the
 // nearest directory containing a `go.mod` file whose `module` directive
@@ -74,7 +70,7 @@ type repoRootTB interface {
 // Fails with t.Fatalf if the walk reaches the filesystem root without
 // finding a matching go.mod. The error includes the RepoRootChdirHint
 // marker so tests can pin the remediation guidance is present.
-func RepoRoot(t repoRootTB) string {
+func RepoRoot(t helperFatalfTB) string {
 	t.Helper()
 	wd, err := os.Getwd()
 	if err != nil {
@@ -88,7 +84,17 @@ func RepoRoot(t repoRootTB) string {
 // directly to exercise the not-found branch without relying on
 // `t.Chdir`-into-a-tempdir tricks (which themselves depend on whether
 // `$TMPDIR` happens to sit inside a Go module on the host).
-func repoRootFromWd(t repoRootTB, wd string) string {
+//
+// LIMITATION: this helper does NOT inject the os.Stat call, so tests
+// running on a host where $TMPDIR's ancestors contain a go.mod cannot
+// fully exercise the not-found branch. TestRepoRoot_FatalfWhenNoGoMod
+// guards against that with a Skipf. A future test requiring full
+// hermeticity (e.g., one that wants to assert specific Fatalf prose
+// without depending on host filesystem layout) would need a `statFn
+// func(string) (fs.FileInfo, error)` indirection here. We have not
+// added that yet because it would clutter the production walk for a
+// single test.
+func repoRootFromWd(t helperFatalfTB, wd string) string {
 	t.Helper()
 	for d := wd; ; {
 		goModPath := filepath.Join(d, "go.mod")
@@ -110,30 +116,6 @@ func repoRootFromWd(t repoRootTB, wd string) string {
 	}
 }
 
-// ResolvePathsEqual reports whether two filesystem paths refer to the
-// same canonical location after symlink resolution. Used by tests that
-// compare paths returned from APIs that may resolve `/var` ↔
-// `/private/var` (macOS) or other platform-symlink quirks.
-//
-// Both inputs MUST exist on disk; missing paths fail the test via
-// t.Fatalf with a clear diagnostic. The boolean result is true iff
-// EvalSymlinks(got) == EvalSymlinks(want); use this in `if !equal`
-// branches that emit test-specific error messages.
-func ResolvePathsEqual(t repoRootTB, got, want string) bool {
-	t.Helper()
-	gotResolved, err := filepath.EvalSymlinks(got)
-	if err != nil {
-		t.Fatalf("testsupport.ResolvePathsEqual: EvalSymlinks(%q): %v", got, err)
-		return false
-	}
-	wantResolved, err := filepath.EvalSymlinks(want)
-	if err != nil {
-		t.Fatalf("testsupport.ResolvePathsEqual: EvalSymlinks(%q): %v", want, err)
-		return false
-	}
-	return gotResolved == wantResolved
-}
-
 // readModulePath parses the `module <path>` directive from a go.mod file.
 // Returns ("", false) on any read/parse failure; only the literal directive
 // shape (`module <something>` on its own line) is recognized — block-form
@@ -146,6 +128,19 @@ func ResolvePathsEqual(t repoRootTB, got, want string) bool {
 // and strips it; an unbalanced quote (e.g., `"foo` with no closing quote)
 // is returned as-is so the caller can fail the equality check rather
 // than silently producing a truncated module path.
+//
+// Real-world go.mod variants handled:
+//   - tab separator (`module\texample.com/foo`)
+//   - leading comments and blank lines
+//   - balanced quoted path
+//   - inline comments after the path (`module example.com/foo // c`)
+//   - trailing whitespace on the directive line
+//   - multiple spaces between `module` and the path
+//   - CRLF line endings (Windows-checkout)
+//
+// NOT handled: BOM-prefixed go.mod files. Not seen in the wild; if a
+// future contributor produces one, the test table in repo_test.go will
+// surface the failure.
 func readModulePath(goModPath string) (string, bool) {
 	f, err := os.Open(goModPath)
 	if err != nil {
@@ -155,22 +150,48 @@ func readModulePath(goModPath string) (string, bool) {
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		// Strip trailing CR (CRLF line endings on Windows-checkout
+		// repositories). bufio.Scanner splits on \n, leaving \r if
+		// present.
+		line := strings.TrimRight(scanner.Text(), "\r")
+		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "//") {
 			continue
 		}
-		if rest, ok := strings.CutPrefix(line, "module "); ok {
-			return trimModuleQuotes(strings.TrimSpace(rest)), true
+		rest, ok := cutModuleDirective(line)
+		if !ok {
+			// First non-comment line isn't a module directive — bail
+			// rather than scan the whole file.
+			return "", false
 		}
-		if rest, ok := strings.CutPrefix(line, "module\t"); ok {
-			return trimModuleQuotes(strings.TrimSpace(rest)), true
+		// Strip any inline `// comment` tail after the path.
+		if i := strings.Index(rest, "//"); i >= 0 {
+			rest = rest[:i]
 		}
-		// Anything else on the first non-comment line means there's no
-		// module directive (or it's malformed); bail rather than scan
-		// the whole file.
-		return "", false
+		return trimModuleQuotes(strings.TrimSpace(rest)), true
 	}
 	return "", false
+}
+
+// cutModuleDirective returns the path portion of a `module <path>`
+// directive, or ("", false) if the line does not start with the
+// directive keyword. Handles single-space, tab, and multi-space
+// separators uniformly.
+func cutModuleDirective(line string) (string, bool) {
+	rest, ok := strings.CutPrefix(line, "module")
+	if !ok {
+		return "", false
+	}
+	if rest == "" {
+		// Bare `module` with nothing after — malformed.
+		return "", false
+	}
+	// First char must be whitespace (space or tab); anything else
+	// (e.g., "modulefoo") is not a directive.
+	if rest[0] != ' ' && rest[0] != '\t' {
+		return "", false
+	}
+	return strings.TrimLeft(rest, " \t"), true
 }
 
 // trimModuleQuotes strips a balanced surrounding double-quote pair from

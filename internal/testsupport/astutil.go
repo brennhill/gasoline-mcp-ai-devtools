@@ -44,13 +44,6 @@ type ImportFacts struct {
 // Qualifiers never contains "" or "_". The caller is responsible for
 // adding "main" or any other in-package qualifier — this helper deals
 // solely with the file's imports.
-//
-// Future API direction: if a future caller needs all imports including
-// blanks, source order, or per-import metadata (path + qualifier + kind),
-// migrate to a `[]ImportInfo` return where each entry carries
-// (Path, Qualifier, Kind). The current shape is over-fit to "build a
-// SelectorExpr whitelist + fail on dot-imports" — the only consumer
-// today.
 func ImportQualifiers(file *ast.File) ImportFacts {
 	out := ImportFacts{Qualifiers: make(map[string]bool, len(file.Imports))}
 	for _, imp := range file.Imports {

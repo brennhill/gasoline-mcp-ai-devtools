@@ -1,6 +1,6 @@
 // package_isolation_test.go — Enforces the package doc's "Production
 // code MUST NOT import this package" rule. The package ships
-// non-`_test.go` files (faket.go, repo.go, astutil.go) because
+// non-`_test.go` files (faket.go, repo.go, paths.go, astutil.go) because
 // `_test.go` files in package P cannot be imported by `_test.go` files
 // in package Q — Go's test compilation is per-package. The cost is
 // that the testsupport symbols (FakeT, RepoRoot, ImportQualifiers, ...)
@@ -24,20 +24,63 @@ import (
 	"go/token"
 	"io/fs"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
 
-// testsupportImportPath is the canonical Go import path of this package.
-// Hardcoded here (instead of derived) because deriving from runtime info
-// would couple the test to the host go.mod's module path, which is
-// exactly what the test must NOT depend on (the test runs BEFORE
-// trusting that path is what we think it is).
-const testsupportImportPath = "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/testsupport"
+// testsupportImportPath is the canonical Go import path of this package,
+// derived from ExpectedModulePath so a fork or rename only updates one
+// site. Earlier this was a hand-maintained duplicate; the drift-detection
+// const itself (ExpectedModulePath) is already validated by
+// TestExpectedModulePath_MatchesGoMod, so deriving here adds no risk.
+var testsupportImportPath = ExpectedModulePath + "/internal/testsupport"
+
+// skippedWalkDirs enumerates directory names that the production-import
+// scan must not descend into. Listed by name (no path prefix) so the
+// match is fast and order-independent. Entries:
+//
+//   - hidden dirs (.git, .gitnexus, .claude): infrastructure, never
+//     contain Go source we own
+//   - vendor: third-party packages — could legitimately contain a
+//     testsupport import we don't want to flag against ourselves
+//   - node_modules: JS deps, no Go source
+//   - testdata: Go's own ignore convention; fixtures live here and may
+//     legitimately import testsupport for self-testing
+//   - tmp, dist, build, out, coverage: build/output dirs that may
+//     contain copied or generated source
+//
+// Any directory beginning with "_" is also skipped — Go's tooling
+// (`go build`, `go test`) ignores `_`-prefixed dirs by convention.
+var skippedWalkDirs = map[string]struct{}{
+	"vendor":       {},
+	"node_modules": {},
+	"testdata":     {},
+	"tmp":          {},
+	"dist":         {},
+	"build":        {},
+	"out":          {},
+	"coverage":     {},
+}
+
+// shouldSkipDir reports whether the walk should call SkipDir on the
+// given directory name. The root entry ("." or the absolute path's
+// basename) is never skipped.
+func shouldSkipDir(name string) bool {
+	if name == "" || name == "." {
+		return false
+	}
+	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
+		return true
+	}
+	_, ok := skippedWalkDirs[name]
+	return ok
+}
 
 // TestPackageNotImportedByProductionCode walks the repo and fails if a
-// non-`_test.go` file imports testsupport. Skips vendor dirs, hidden
-// dirs, and node_modules. The walk is a single os.WalkDir; no shell-out.
+// non-`_test.go` file imports testsupport. Tracks filesScanned so a
+// regression that breaks the parser entirely (zero files inspected)
+// fails LOUDLY instead of silently passing as "no offenders found."
 func TestPackageNotImportedByProductionCode(t *testing.T) {
 	root := RepoRoot(t)
 
@@ -46,27 +89,22 @@ func TestPackageNotImportedByProductionCode(t *testing.T) {
 		lineNum int
 	}
 	var offenders []offender
+	filesScanned := 0
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			// Ignore individual entry errors (e.g., transient permission
-			// blips); the walk continues. The aggregate result of the
-			// scan is what the assertion below cares about.
+			// Surface walk errors via Logf so a regression in
+			// directory-iteration is visible without aborting the
+			// scan over the rest of the tree.
+			t.Logf("walk error at %s: %v", path, walkErr)
 			return nil
 		}
 		if d.IsDir() {
-			name := d.Name()
-			// Skip hidden dirs (.git, .gitnexus, .claude), vendor, and
-			// node_modules. Walking these wastes time and could
-			// introduce false positives from third-party packages that
-			// happen to import testsupport (impossible in practice,
-			// but cheap to defend).
-			if name != "." && (strings.HasPrefix(name, ".") || name == "vendor" || name == "node_modules") {
+			if shouldSkipDir(d.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		// Production = .go file that is not a *_test.go file.
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
@@ -80,6 +118,7 @@ func TestPackageNotImportedByProductionCode(t *testing.T) {
 			t.Logf("%s: parse failure (treated as no-import): %v", path, err)
 			return nil
 		}
+		filesScanned++
 		for _, imp := range file.Imports {
 			if strings.Trim(imp.Path.Value, `"`) == testsupportImportPath {
 				offenders = append(offenders, offender{
@@ -94,6 +133,14 @@ func TestPackageNotImportedByProductionCode(t *testing.T) {
 		t.Fatalf("walk: %v", err)
 	}
 
+	// Coverage guard: a regression that broke parsing of every file
+	// (e.g., a corrupt FileSet, or all files mis-ending with .go.bak)
+	// would otherwise pass the assertion below with zero offenders.
+	// We need to know we actually scanned production code.
+	if filesScanned == 0 {
+		t.Fatalf("scanned ZERO non-test .go files under %s — the walk has likely regressed; this test would silently pass without coverage", root)
+	}
+
 	if len(offenders) > 0 {
 		var lines []string
 		for _, o := range offenders {
@@ -101,26 +148,9 @@ func TestPackageNotImportedByProductionCode(t *testing.T) {
 			if relErr != nil {
 				rel = o.path
 			}
-			lines = append(lines, "  "+rel+":"+itoa(o.lineNum))
+			lines = append(lines, "  "+rel+":"+strconv.Itoa(o.lineNum))
 		}
 		t.Fatalf("production code MUST NOT import %s — found %d offending file(s):\n%s\n\nIf the import is genuinely needed, move the helper out of testsupport into a non-test package (e.g., a new internal/<feature>util/ that does not advertise itself as test-only).",
 			testsupportImportPath, len(offenders), strings.Join(lines, "\n"))
 	}
-}
-
-// itoa is a small int→string helper so the contract test does not need
-// to pull in strconv just for one call. Identical to strconv.Itoa for
-// non-negative inputs (the only kind we produce — line numbers).
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(buf[i:])
 }

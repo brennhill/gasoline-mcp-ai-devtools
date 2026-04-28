@@ -1,9 +1,10 @@
-// repo_test.go — Self-tests for testsupport.RepoRoot. Verify the happy-path
-// walk-up returns the repo root containing go.mod, the failure mode fires
-// testing.TB.Fatalf with the RepoRootChdirHint marker when no go.mod is
-// reachable, the foreign-module skip branch (the whole reason
-// ExpectedModulePath exists) actually walks past a non-matching go.mod,
-// and the parser handles each go.mod shape that the wild has produced.
+// repo_test.go — Self-tests for testsupport.RepoRoot. Verify the
+// happy-path walk-up returns the repo root containing go.mod, the
+// failure mode fires Fatalf with the RepoRootChdirHint marker when no
+// go.mod is reachable, the foreign-module skip branch (the whole
+// reason ExpectedModulePath exists) actually walks past a non-matching
+// go.mod, and the parser handles each go.mod shape that the wild has
+// produced.
 
 package testsupport
 
@@ -43,7 +44,8 @@ func TestRepoRoot_FindsRepoRootFromPackageDir(t *testing.T) {
 // We still GUARD against a host where TempDir() roots inside a Go module
 // (rare but possible on contributor machines) — but the guard now skips
 // loudly with t.Logf, so it is visible in `-v` runs whether the branch
-// was actually exercised.
+// was actually exercised. (Filesystem stat is not currently injectable;
+// see the LIMITATION in repoRootFromWd's doc.)
 func TestRepoRoot_FatalfWhenNoGoMod(t *testing.T) {
 	tmp := t.TempDir()
 	for d := tmp; d != filepath.Dir(d); d = filepath.Dir(d) {
@@ -57,15 +59,15 @@ func TestRepoRoot_FatalfWhenNoGoMod(t *testing.T) {
 	ExpectFakeFatal(t, fake, func() {
 		repoRootFromWd(fake, tmp)
 	})
-	if fake.Fatal == "" {
+	if fake.Fatal() == "" {
 		t.Fatal("Fatalf was not called from a directory with no go.mod ancestor")
 	}
 	// The remediation hint marker is load-bearing — production callers
 	// who tripped this by chdir'ing to a non-module path see it in the
 	// failure message. The marker is a stable token so prose can evolve
 	// without breaking this assertion.
-	if !strings.Contains(fake.Fatal, RepoRootChdirHint) {
-		t.Errorf("Fatalf message = %q, want substring %q (remediation marker missing)", fake.Fatal, RepoRootChdirHint)
+	if !strings.Contains(fake.Fatal(), RepoRootChdirHint) {
+		t.Errorf("Fatalf message = %q, want substring %q (remediation marker missing)", fake.Fatal(), RepoRootChdirHint)
 	}
 }
 
@@ -127,9 +129,7 @@ func TestRepoRoot_SkipsForeignGoMod(t *testing.T) {
 
 	// Inject pkgDir as the wd directly — no t.Chdir gymnastics.
 	got := repoRootFromWd(t, pkgDir)
-	if !ResolvePathsEqual(t, got, tmp) {
-		t.Errorf("RepoRoot returned %q; want %q — foreign go.mod was not skipped", got, tmp)
-	}
+	AssertPathsEqual(t, got, tmp, "foreign go.mod was not skipped")
 }
 
 // TestExpectedModulePath_MatchesGoMod is the drift guard between the
@@ -180,6 +180,12 @@ func TestReadModulePath_TableEdges(t *testing.T) {
 			wantOK:   true,
 		},
 		{
+			name:     "multiple spaces between keyword and path",
+			body:     "module    example.com/foo\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
 			name:     "leading comments and blank lines",
 			body:     "// header comment\n\n// another\nmodule example.com/foo\n",
 			wantPath: "example.com/foo",
@@ -226,6 +232,36 @@ func TestReadModulePath_TableEdges(t *testing.T) {
 			body:     "module example.com/foo   \n",
 			wantPath: "example.com/foo",
 			wantOK:   true,
+		},
+		{
+			name:     "CRLF line endings",
+			body:     "// header\r\nmodule example.com/foo\r\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
+			name:     "inline comment after path",
+			body:     "module example.com/foo // alias note\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
+			name:     "inline comment with quoted path",
+			body:     `module "example.com/foo" // x` + "\n",
+			wantPath: "example.com/foo",
+			wantOK:   true,
+		},
+		{
+			name:     "modulefoo (no space) is NOT a directive",
+			body:     "modulefoo example.com/foo\n",
+			wantPath: "",
+			wantOK:   false,
+		},
+		{
+			name:     "bare module keyword with no path",
+			body:     "module\n",
+			wantPath: "",
+			wantOK:   false,
 		},
 	}
 	for _, tc := range cases {
