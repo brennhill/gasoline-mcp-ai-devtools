@@ -167,7 +167,7 @@ func withHomeDirFn(t *testing.T, fn func() (string, error)) {
 	t.Helper()
 	withRotation(t, &homeDirFnMu, "withHomeDirFn",
 		func() func() (string, error) { return userHomeDirFn },
-		func(prev func() (string, error)) { userHomeDirFn = prev })
+		func(v func() (string, error)) { userHomeDirFn = v })
 	userHomeDirFn = fn
 }
 

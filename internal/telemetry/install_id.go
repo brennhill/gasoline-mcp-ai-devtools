@@ -19,8 +19,13 @@
 // (machine_id, uid, hostname) so recoverable environments get the same ID
 // back instead of a fresh random.
 //
-// On-disk artifact call sites are tagged `// ARTIFACT: <name>` — see
-// TestContract_ArtifactTableMatchesCallSites in contract_compliance_test.go.
+// On-disk artifact call sites are tagged `// ARTIFACT: <name>` — the
+// scheme is enforced by the contract tests in contract_artifact_test.go,
+// which both pin the docs/code symmetry AND fail-build any new
+// kaboomDir-relative call site that lacks a tag. The scheme is described
+// at the top of that file; specific test names are intentionally not
+// referenced here so a future test rename does not silently de-sync this
+// header.
 
 package telemetry
 

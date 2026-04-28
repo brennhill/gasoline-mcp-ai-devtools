@@ -11,24 +11,30 @@ import (
 )
 
 // ImportQualifiers returns the set of identifier qualifiers usable as the
-// left-hand side of a SelectorExpr in `file`, plus the import path of any
-// dot-import encountered. The boolean second return is true iff the file
-// contains at least one dot-import.
+// left-hand side of a SelectorExpr in `file`, plus every dot-import path
+// encountered (in source order). Returning ALL dot-imports — not just the
+// first — lets callers list every offender in a single failure message
+// instead of forcing two iterations to fix.
 //
 // Built-in semantics:
 //   - Named import (`foo "x/y"`) → qualifier "foo".
 //   - Plain import (`"x/y/baz"`) → qualifier "baz" (trailing path segment).
 //   - Blank import (`_ "x/y"`)   → skipped (no qualifier).
-//   - Dot import (`. "x/y"`)     → SKIPPED in the map AND the dot-import
-//     flag is set; the caller MUST handle this (typically t.Fatalf) because
+//   - Dot import (`. "x/y"`)     → SKIPPED in the map AND appended to
+//     dotImports; the caller MUST handle this (typically t.Fatalf) because
 //     dot-imports defeat selector-based whitelisting: identifiers from the
 //     dot-imported package appear bare (as *ast.Ident), bypassing any
 //     SelectorExpr-based check.
 //
-// The returned map never contains "" or "_". The caller is responsible for
-// adding "main" or any other in-package qualifier — this helper deals
+// The returned map never contains "" or "_". The caller is responsible
+// for adding "main" or any other in-package qualifier — this helper deals
 // solely with the file's imports.
-func ImportQualifiers(file *ast.File) (qualifiers map[string]bool, dotImport string) {
+//
+// dotImports preserves the file's source order (deterministic for tests
+// that compare against a fixture). It is nil — not [] — when no
+// dot-imports are present, so callers can use `len(dotImports) > 0` or
+// `dotImports == nil` interchangeably as the gate.
+func ImportQualifiers(file *ast.File) (qualifiers map[string]bool, dotImports []string) {
 	qualifiers = make(map[string]bool, len(file.Imports))
 	for _, imp := range file.Imports {
 		// Strip the surrounding quotes from the import path literal.
@@ -36,14 +42,10 @@ func ImportQualifiers(file *ast.File) (qualifiers map[string]bool, dotImport str
 		if imp.Name != nil {
 			switch imp.Name.Name {
 			case ".":
-				// Caller-visible signal: at least one dot-import is
-				// present. We return the first one found so the
-				// caller's error message can name it; this matches
-				// the "fail fast at first offender" UX of the
-				// existing telemetry contract tests.
-				if dotImport == "" {
-					dotImport = path
-				}
+				// Caller-visible signal: every dot-import path is
+				// surfaced so the caller's error message can name
+				// all offenders. Order matches source order.
+				dotImports = append(dotImports, path)
 				continue
 			case "_":
 				continue
@@ -63,5 +65,5 @@ func ImportQualifiers(file *ast.File) (qualifiers map[string]bool, dotImport str
 			qualifiers[qual] = true
 		}
 	}
-	return qualifiers, dotImport
+	return qualifiers, dotImports
 }

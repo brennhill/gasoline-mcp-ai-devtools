@@ -1,18 +1,19 @@
 // contract_compliance_test.go — Tests verifying beacon payloads match the Counterscale ingest contract.
 // These tests catch schema drift between the Go sender and the Counterscale worker.
+//
+// Companion file: contract_artifact_test.go owns the source-level
+// `// ARTIFACT: <name>` magic-comment scheme — both the table-symmetry
+// check against docs and the producer-side AST scanner that asserts every
+// kaboomDir-relative on-disk call site is tagged.
 
 package telemetry
 
 import (
 	"encoding/json"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -246,87 +247,6 @@ func TestContract_DefaultEndpointPinned(t *testing.T) {
 	const want = "https://t.gokaboom.dev/v1/event"
 	if defaultEndpoint != want {
 		t.Errorf("defaultEndpoint = %q, want %q (wire contract)", defaultEndpoint, want)
-	}
-}
-
-// TestContract_ArtifactTableMatchesCallSites scans production telemetry
-// source for `// ARTIFACT: <name>` magic comments next to each on-disk
-// daemon-owned file call site and asserts each appears in the
-// docs/core/app-metrics.md "Daemon-owned on-disk artifacts" table.
-//
-// The magic-comment scheme decouples the test from the call-site shape:
-// renames of `kaboomDir`, `withKaboomStateLock`, or any helper do not
-// silently disable the symmetry check. Adding a new on-disk file just
-// requires (1) tagging its call site with `// ARTIFACT: <name>` and
-// (2) adding a doc table row.
-//
-// Producer rules: each artifact must be tagged at least once across the
-// production sources scanned below; the same artifact may legitimately
-// appear at multiple call sites (read + write) and that's fine.
-func TestContract_ArtifactTableMatchesCallSites(t *testing.T) {
-	repoRoot := testsupport.RepoRoot(t)
-	docPath := filepath.Join(repoRoot, "docs", "core", "app-metrics.md")
-	docBody, err := os.ReadFile(docPath)
-	if err != nil {
-		t.Fatalf("read %s: %v", docPath, err)
-	}
-
-	prodFiles := []string{
-		filepath.Join(repoRoot, "internal", "telemetry", "install_id.go"),
-		filepath.Join(repoRoot, "internal", "telemetry", "install_id_drift.go"),
-	}
-	var prodSrc strings.Builder
-	for _, p := range prodFiles {
-		body, err := os.ReadFile(p)
-		if err != nil {
-			t.Fatalf("read %s: %v", p, err)
-		}
-		prodSrc.Write(body)
-		prodSrc.WriteByte('\n')
-	}
-	src := prodSrc.String()
-
-	// Extract artifact names tagged at production call sites.
-	artifactPat := regexp.MustCompile(`(?m)^\s*//\s*ARTIFACT:\s*(\S+)\s*$`)
-	codeArtifacts := make(map[string]bool)
-	for _, m := range artifactPat.FindAllStringSubmatch(src, -1) {
-		codeArtifacts[m[1]] = true
-	}
-
-	// Set of artifacts expected to be both code-tagged AND doc-rowed.
-	// Adding a new on-disk file requires updating ALL THREE: production
-	// code (with ARTIFACT tag), this set, and the doc table.
-	expected := []string{
-		"install_id",
-		"install_id.bak",
-		"install_id.lock",
-		"install_id_lineage",
-		"first_tool_call_install_id",
-		"first_tool_call_install_id.lock",
-	}
-	const docSection = "Daemon-owned on-disk artifacts"
-
-	for _, name := range expected {
-		if !codeArtifacts[name] {
-			t.Errorf("expected artifact %q has no `// ARTIFACT: %s` tag in any of the searched production files: %v — stale expected list, or missing tag at the call site?", name, name, prodFiles)
-		}
-		needle := "`" + name + "`"
-		if !strings.Contains(string(docBody), needle) {
-			t.Errorf("expected artifact %q missing doc pin %s — add a row to the %q table at %s", name, needle, docSection, docPath)
-		}
-	}
-
-	// Direct symmetry: anything tagged with ARTIFACT in code MUST be in
-	// expected (catches a new code artifact that landed without doc/test
-	// updates).
-	expectedSet := make(map[string]bool, len(expected))
-	for _, name := range expected {
-		expectedSet[name] = true
-	}
-	for name := range codeArtifacts {
-		if !expectedSet[name] {
-			t.Errorf("production source tags on-disk artifact %q via // ARTIFACT comment but it is NOT in the test's expected list (and likely not in the %q table either); add doc + expected list update", name, docSection)
-		}
 	}
 }
 
@@ -711,136 +631,4 @@ done:
 	if postTimeoutStarts != 1 {
 		t.Errorf("concurrent post-timeout RecordToolCall produced %d session_start beacons, want exactly 1", postTimeoutStarts)
 	}
-}
-
-// TestContract_AllOnDiskCallSitesAreTagged is the producer-side companion
-// to TestContract_ArtifactTableMatchesCallSites. The earlier test asserts
-// "every name in the expected list has at least one ARTIFACT tag in the
-// production source"; this one asserts the inverse, more important
-// invariant: "every place that names a kaboomDir-relative on-disk path is
-// tagged with an ARTIFACT comment within 5 lines above."
-//
-// Without this scanner, an author who adds a new on-disk file via
-// `filepath.Join(kaboomDir, "new_file")` or `withKaboomStateLock("x.lock",
-// ...)` could ship the change tag-less; the symmetry check would still
-// pass for ALL EXISTING tagged artifacts and silently miss the new one.
-//
-// Detected patterns (in install_id.go + install_id_drift.go):
-//   - filepath.Join(kaboomDir, "<literal>")     — path construction
-//   - withKaboomStateLock("<literal>", ...)     — daemon-owned file lock
-//
-// Both shapes carry a string literal naming the artifact, which is why
-// the ARTIFACT tag MUST appear within 5 lines above (so reviewers can
-// match name-to-tag without scrolling).
-//
-// Why not also scan os.WriteFile / os.Create / os.OpenFile / os.Rename:
-// in the current code those low-level calls live inside writeTokenAtomic
-// and withKaboomStateLock helpers and receive variables (idPath, lockPath)
-// rather than literal Joins; their semantic "what artifact is this" is
-// determined at the wrapper call sites, which is exactly what we scan.
-// If a future refactor inlines an os.* call with a literal kaboomDir Join,
-// extend this scanner to recognize that shape too.
-func TestContract_AllOnDiskCallSitesAreTagged(t *testing.T) {
-	repoRoot := testsupport.RepoRoot(t)
-	prodFiles := []string{
-		filepath.Join(repoRoot, "internal", "telemetry", "install_id.go"),
-		filepath.Join(repoRoot, "internal", "telemetry", "install_id_drift.go"),
-	}
-
-	const tagWindow = 5 // max lines a tag may appear above the call site
-
-	for _, path := range prodFiles {
-		fset := token.NewFileSet()
-		file, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-		if err != nil {
-			t.Fatalf("parse %s: %v", path, err)
-		}
-
-		// Pre-collect ARTIFACT comments by line number for fast lookup.
-		artifactCommentLines := make(map[int]bool)
-		for _, cg := range file.Comments {
-			for _, c := range cg.List {
-				if !strings.HasPrefix(c.Text, "//") {
-					continue
-				}
-				body := strings.TrimSpace(strings.TrimPrefix(c.Text, "//"))
-				if !strings.HasPrefix(body, "ARTIFACT:") {
-					continue
-				}
-				line := fset.Position(c.Slash).Line
-				artifactCommentLines[line] = true
-			}
-		}
-
-		// Walk all call expressions and check the two on-disk shapes.
-		ast.Inspect(file, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok || len(call.Args) == 0 {
-				return true
-			}
-			callLine := fset.Position(call.Lparen).Line
-			label, isOnDiskCall := classifyOnDiskCall(call)
-			if !isOnDiskCall {
-				return true
-			}
-			if !hasArtifactTagWithin(artifactCommentLines, callLine, tagWindow) {
-				t.Errorf("%s:%d: %s names a kaboomDir-relative on-disk artifact but has no `// ARTIFACT: <name>` comment within %d lines above; tag the call site so TestContract_ArtifactTableMatchesCallSites cannot drift undetected",
-					filepath.Base(path), callLine, label, tagWindow)
-			}
-			return true
-		})
-	}
-}
-
-// classifyOnDiskCall recognizes the two AST shapes that name a
-// kaboomDir-relative artifact at construction time. Returns a short
-// human-readable label for the diagnostic and true if matched.
-//
-// Both shapes require a STRING-LITERAL second/first argument: that's the
-// artifact name and the load-bearing condition for "this site materializes
-// a specific on-disk file." A generic helper that takes a name parameter
-// (e.g., withKaboomStateLock receiving its lockName var) is not a
-// match — it's the wrapper layer, and its callers carry the literal.
-func classifyOnDiskCall(call *ast.CallExpr) (string, bool) {
-	// Pattern A: filepath.Join(kaboomDir, "<literal>")
-	if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
-		if pkg, ok := sel.X.(*ast.Ident); ok && pkg.Name == "filepath" && sel.Sel.Name == "Join" {
-			if len(call.Args) >= 2 {
-				if id, ok := call.Args[0].(*ast.Ident); ok && id.Name == "kaboomDir" {
-					if isStringLit(call.Args[1]) {
-						return "filepath.Join(kaboomDir, \"...\")", true
-					}
-				}
-			}
-		}
-	}
-	// Pattern B: withKaboomStateLock("<literal>", ...)
-	if id, ok := call.Fun.(*ast.Ident); ok && id.Name == "withKaboomStateLock" {
-		if isStringLit(call.Args[0]) {
-			return "withKaboomStateLock(\"...\", ...)", true
-		}
-	}
-	return "", false
-}
-
-// isStringLit reports whether expr is a string-typed BasicLit. Concatenated
-// expressions (e.g., `name + ".bak"`) are intentionally NOT a match — those
-// are derivative constructions; the canonical artifact name lives at the
-// originating literal site.
-func isStringLit(expr ast.Expr) bool {
-	lit, ok := expr.(*ast.BasicLit)
-	return ok && lit.Kind == token.STRING
-}
-
-// hasArtifactTagWithin returns true iff any line in [callLine-window, callLine-1]
-// carries an `// ARTIFACT: <name>` comment. The strict <-window-and-above
-// rule prevents a tag from "below" or on-the-same-line from satisfying the
-// contract; the comment must precede the call so reviewers see it first.
-func hasArtifactTagWithin(tagLines map[int]bool, callLine, window int) bool {
-	for ln := callLine - window; ln < callLine; ln++ {
-		if tagLines[ln] {
-			return true
-		}
-	}
-	return false
 }

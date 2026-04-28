@@ -3,48 +3,22 @@
 // nested-misuse t.Fatalf branch. Uses a private mutex + counter so these
 // tests cannot interfere with the real package-level rotation mutexes
 // (lockBudgetMu, homeDirFnMu, secondaryDirStateMu).
+//
+// The `_internal_test.go` filename is convention only — Go's build system
+// treats every `*_test.go` file in this package identically. The suffix
+// signals to humans that this file tests un-exported package internals,
+// matching the same intent the standard library uses (e.g.,
+// `time/internal_test.go`).
 
 package telemetry
 
 import (
-	"fmt"
+	"strings"
 	"sync"
 	"testing"
+
+	"github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP/internal/testsupport"
 )
-
-// fakeRotationT satisfies the rotationT interface without aborting the
-// surrounding *testing.T. Fatalf records into fatal and panics with a
-// sentinel so the calling goroutine unwinds; the test then recovers and
-// inspects the captured message. Cleanup is collected so the test can
-// invoke it manually after the body returns (mirroring t.Cleanup's
-// post-test ordering without requiring a real *testing.T).
-type fakeRotationT struct {
-	fatal    string
-	cleanups []func()
-}
-
-func (f *fakeRotationT) Helper() {}
-
-func (f *fakeRotationT) Fatalf(format string, args ...any) {
-	f.fatal = fmt.Sprintf(format, args...)
-	// Use a sentinel panic so the caller unwinds — t.Fatalf semantics
-	// require "abort the current goroutine"; our fake mimics that with
-	// recover() at the call site.
-	panic(fakeFatalSentinel{})
-}
-
-func (f *fakeRotationT) Cleanup(fn func()) {
-	f.cleanups = append(f.cleanups, fn)
-}
-
-func (f *fakeRotationT) runCleanups() {
-	// LIFO, matching testing.T.Cleanup semantics.
-	for i := len(f.cleanups) - 1; i >= 0; i-- {
-		f.cleanups[i]()
-	}
-}
-
-type fakeFatalSentinel struct{}
 
 // TestWithRotation_SaveRunsBeforeRestore exercises the happy path: save
 // captures pre-state, body mutates state, t.Cleanup restores the snapshot.
@@ -92,51 +66,42 @@ func TestWithRotation_MutexUnlockedAfterCleanup(t *testing.T) {
 
 // TestWithRotation_NestedCallFiresFatalf verifies the misuse guard fires
 // t.Fatalf with the label when a second call occurs while the mutex is
-// still held. Driven via fakeRotationT so the failure does not propagate
-// to the surrounding test — we want to ASSERT that Fatalf was called, not
-// have its call abort us.
+// still held. Driven via testsupport.FakeT so the failure does not
+// propagate to the surrounding test — we want to ASSERT that Fatalf was
+// called, not have its call abort us.
 func TestWithRotation_NestedCallFiresFatalf(t *testing.T) {
 	var mu sync.Mutex
 	mu.Lock() // simulate "another caller already holds the rotation lock"
 	defer mu.Unlock()
 
-	fake := &fakeRotationT{}
+	fake := &testsupport.FakeT{}
 	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				if _, ok := r.(fakeFatalSentinel); !ok {
-					panic(r) // re-raise unexpected panics
-				}
-			}
-		}()
+		defer testsupport.RecoverFakeFatal()
 		withRotation(fake, &mu, "myLabel",
 			func() int { return 0 },
 			func(int) {})
-		t.Fatal("expected fakeRotationT.Fatalf panic; did not occur")
+		t.Fatal("expected FakeT.Fatalf panic; did not occur")
 	}()
-	if fake.fatal == "" {
+	if fake.Fatal == "" {
 		t.Fatal("Fatalf was not called when mutex was already held")
 	}
 	// Label must appear in the misuse message verbatim — operators rely
 	// on it to identify which helper was misused.
 	const wantSubstr = "myLabel"
-	if !contains(fake.fatal, wantSubstr) {
-		t.Errorf("Fatalf message = %q, want substring %q", fake.fatal, wantSubstr)
-	}
-	// Save/restore must NOT have run (the call should bail before save).
-	if len(fake.cleanups) != 0 {
-		t.Errorf("Cleanup registered %d funcs after misuse; want 0", len(fake.cleanups))
+	if !strings.Contains(fake.Fatal, wantSubstr) {
+		t.Errorf("Fatalf message = %q, want substring %q", fake.Fatal, wantSubstr)
 	}
 }
 
 // TestWithRotation_RestoreRunsViaCleanup verifies the restore runs when
-// the registered cleanup fires (driven via fakeRotationT so we can invoke
-// cleanups deterministically without spinning up a child *testing.T).
+// the registered cleanup fires (driven via testsupport.FakeT so we can
+// invoke cleanups deterministically without spinning up a child
+// *testing.T).
 func TestWithRotation_RestoreRunsViaCleanup(t *testing.T) {
 	var mu sync.Mutex
 	state := 7
 
-	fake := &fakeRotationT{}
+	fake := &testsupport.FakeT{}
 	withRotation(fake, &mu, "label",
 		func() int { return state },
 		func(v int) { state = v })
@@ -150,11 +115,11 @@ func TestWithRotation_RestoreRunsViaCleanup(t *testing.T) {
 		t.Fatal("withRotation did not hold the mutex post-call")
 	}
 
-	fake.runCleanups()
+	fake.RunCleanups()
 	if state != 7 {
 		t.Errorf("state after cleanup = %d, want 7", state)
 	}
-	// Mutex must be unlocked after cleanup.
+	// Mutex must be unlocked after cleanup ran.
 	if !mu.TryLock() {
 		t.Error("mutex still held after cleanup ran")
 	} else {
@@ -162,14 +127,27 @@ func TestWithRotation_RestoreRunsViaCleanup(t *testing.T) {
 	}
 }
 
-// contains is a tiny strings.Contains stand-in to avoid pulling in the
-// strings package solely for this self-test (helpers_test.go's existing
-// imports are unaffected).
-func contains(haystack, needle string) bool {
-	for i := 0; i+len(needle) <= len(haystack); i++ {
-		if haystack[i:i+len(needle)] == needle {
-			return true
+// TestFakeT_RunCleanupsLIFO pins the LIFO ordering of FakeT.RunCleanups —
+// the whole point of the fake (mirroring testing.T.Cleanup semantics).
+// A regression that switched the iteration to FIFO would silently flip
+// withRotation self-tests' restore order vs. real *testing.T behavior,
+// producing a fake that disagrees with the system it impersonates.
+func TestFakeT_RunCleanupsLIFO(t *testing.T) {
+	fake := &testsupport.FakeT{}
+	var order []int
+	fake.Cleanup(func() { order = append(order, 1) })
+	fake.Cleanup(func() { order = append(order, 2) })
+	fake.Cleanup(func() { order = append(order, 3) })
+
+	fake.RunCleanups()
+
+	want := []int{3, 2, 1}
+	if len(order) != len(want) {
+		t.Fatalf("cleanups ran %d times, want %d", len(order), len(want))
+	}
+	for i := range want {
+		if order[i] != want[i] {
+			t.Errorf("cleanup[%d] = %d, want %d (RunCleanups must be LIFO)", i, order[i], want[i])
 		}
 	}
-	return false
 }

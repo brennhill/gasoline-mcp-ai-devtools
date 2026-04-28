@@ -21,8 +21,11 @@
 //
 // Wire contract: docs/core/app-metrics.md.
 //
-// On-disk artifact call sites are tagged `// ARTIFACT: <name>` — see
-// TestContract_ArtifactTableMatchesCallSites in contract_compliance_test.go.
+// On-disk artifact call sites are tagged `// ARTIFACT: <name>` — the
+// scheme is enforced by contract_artifact_test.go (docs/code symmetry +
+// producer-side scanner). Specific test names are intentionally not
+// referenced here so a future test rename does not silently de-sync this
+// header.
 
 package telemetry
 

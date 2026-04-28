@@ -92,6 +92,11 @@ func RepoRoot(t repoRootTB) string {
 //
 // We bufio.Scanner the file rather than slurp the whole thing so a 0-byte
 // or huge go.mod is bounded.
+//
+// Quote-handling: trimQuotes accepts a balanced double-quote pair and
+// strips it; an unbalanced quote (e.g., `"foo` with no closing quote)
+// is returned as-is so the caller can fail the equality check rather
+// than silently producing a truncated module path.
 func readModulePath(goModPath string) (string, bool) {
 	f, err := os.Open(goModPath)
 	if err != nil {
@@ -106,10 +111,10 @@ func readModulePath(goModPath string) (string, bool) {
 			continue
 		}
 		if rest, ok := strings.CutPrefix(line, "module "); ok {
-			return strings.Trim(strings.TrimSpace(rest), `"`), true
+			return trimModuleQuotes(strings.TrimSpace(rest)), true
 		}
 		if rest, ok := strings.CutPrefix(line, "module\t"); ok {
-			return strings.Trim(strings.TrimSpace(rest), `"`), true
+			return trimModuleQuotes(strings.TrimSpace(rest)), true
 		}
 		// Anything else on the first non-comment line means there's no
 		// module directive (or it's malformed); bail rather than scan
@@ -117,4 +122,17 @@ func readModulePath(goModPath string) (string, bool) {
 		return "", false
 	}
 	return "", false
+}
+
+// trimModuleQuotes strips a balanced surrounding double-quote pair from
+// the module path. Earlier this used strings.Trim, which would also strip
+// a single trailing or leading quote — masking a malformed directive
+// like `module "foo` as the valid path `foo`. Requiring both ends keeps
+// the parser honest: a malformed quote pair returns the raw string and
+// the caller's path-equality check fails loudly.
+func trimModuleQuotes(s string) string {
+	if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
+		return s[1 : len(s)-1]
+	}
+	return s
 }

@@ -1,33 +1,17 @@
 // repo_test.go — Self-tests for testsupport.RepoRoot. Verify the happy-path
-// walk-up returns the repo root containing go.mod, and the failure mode
-// fires testing.TB.Fatalf with a remediation hint when no go.mod is reachable.
+// walk-up returns the repo root containing go.mod, the failure mode fires
+// testing.TB.Fatalf with a remediation hint when no go.mod is reachable,
+// and the foreign-module skip branch (the whole reason ExpectedModulePath
+// exists) actually walks past a non-matching go.mod.
 
 package testsupport
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-// fakeTB satisfies the repoRootTB interface (Helper + Fatalf) — the
-// minimal subset RepoRoot uses. We can't implement the full testing.TB
-// (unexported methods) so RepoRoot's parameter type was tightened to
-// repoRootTB precisely so this self-test could exist.
-type fakeTB struct {
-	fatal string
-}
-
-func (f *fakeTB) Helper() {}
-
-func (f *fakeTB) Fatalf(format string, args ...any) {
-	f.fatal = fmt.Sprintf(format, args...)
-	panic(fakeFatalSentinel{})
-}
-
-type fakeFatalSentinel struct{}
 
 // TestRepoRoot_FindsRepoRootFromPackageDir runs from this package directory
 // (the test runner sets cwd to the package's source dir by default). It
@@ -44,9 +28,8 @@ func TestRepoRoot_FindsRepoRootFromPackageDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read go.mod: %v", err)
 	}
-	const wantModule = "github.com/brennhill/Kaboom-Browser-AI-Devtools-MCP"
-	if !strings.Contains(string(body), wantModule) {
-		t.Errorf("go.mod at %s does not declare module %q (full body: %q)", root, wantModule, body)
+	if !strings.Contains(string(body), ExpectedModulePath) {
+		t.Errorf("go.mod at %s does not declare module %q (full body: %q)", root, ExpectedModulePath, body)
 	}
 }
 
@@ -74,24 +57,102 @@ func TestRepoRoot_FatalfWhenNoGoMod(t *testing.T) {
 
 	t.Chdir(tmp) // restored automatically when test ends
 
-	fake := &fakeTB{}
+	fake := &FakeT{}
 	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				if _, ok := r.(fakeFatalSentinel); !ok {
-					panic(r)
-				}
-			}
-		}()
+		defer RecoverFakeFatal()
 		RepoRoot(fake)
-		t.Fatal("expected fakeTB.Fatalf panic; did not occur")
+		t.Fatal("expected FakeT.Fatalf panic; did not occur")
 	}()
-	if fake.fatal == "" {
+	if fake.Fatal == "" {
 		t.Fatal("Fatalf was not called from a directory with no go.mod ancestor")
 	}
 	// The remediation hint mentions t.Chdir — load-bearing for users
 	// who tripped this by chdir'ing to a non-module path.
-	if !strings.Contains(fake.fatal, "t.Chdir") {
-		t.Errorf("Fatalf message = %q, want substring %q (remediation hint missing)", fake.fatal, "t.Chdir")
+	if !strings.Contains(fake.Fatal, "t.Chdir") {
+		t.Errorf("Fatalf message = %q, want substring %q (remediation hint missing)", fake.Fatal, "t.Chdir")
+	}
+}
+
+// TestRepoRoot_SkipsForeignGoMod is the regression guard for the whole
+// reason ExpectedModulePath exists. We construct a directory tree like:
+//
+//	tmp/
+//	  go.mod                 ← canonical (declares ExpectedModulePath)
+//	  inner/
+//	    go.mod               ← foreign (declares some other module)
+//	    pkg/                 ← cwd
+//
+// and assert RepoRoot returns tmp/, NOT tmp/inner/. Without the
+// module-path filter in repo.go, RepoRoot would return tmp/inner/ —
+// silently rerouting contract tests that read repo-rooted paths.
+//
+// A regression in readModulePath that always returns ("", false) would
+// trip the not-found branch tested above, but a regression that returned
+// the WRONG module name would silently route to whichever go.mod was
+// nearest. This test pins both correctness layers.
+func TestRepoRoot_SkipsForeignGoMod(t *testing.T) {
+	tmp := t.TempDir()
+
+	// Outer go.mod: the canonical one we expect RepoRoot to pick.
+	outerMod := "module " + ExpectedModulePath + "\n\ngo 1.24\n"
+	if err := os.WriteFile(filepath.Join(tmp, "go.mod"), []byte(outerMod), 0o644); err != nil {
+		t.Fatalf("write outer go.mod: %v", err)
+	}
+
+	// Inner go.mod: a fixture sub-module masquerading as a root.
+	innerDir := filepath.Join(tmp, "inner")
+	if err := os.MkdirAll(innerDir, 0o755); err != nil {
+		t.Fatalf("mkdir inner: %v", err)
+	}
+	innerMod := "module example.com/fixture/sub\n\ngo 1.24\n"
+	if err := os.WriteFile(filepath.Join(innerDir, "go.mod"), []byte(innerMod), 0o644); err != nil {
+		t.Fatalf("write inner go.mod: %v", err)
+	}
+
+	pkgDir := filepath.Join(innerDir, "pkg")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatalf("mkdir pkg: %v", err)
+	}
+
+	t.Chdir(pkgDir)
+
+	got := RepoRoot(t)
+	want := tmp
+	// Resolve symlinks both sides so /private/var/folders/... vs
+	// /var/folders/... (macOS tempdir aliasing) does not flake the
+	// equality check.
+	gotResolved, err := filepath.EvalSymlinks(got)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(got): %v", err)
+	}
+	wantResolved, err := filepath.EvalSymlinks(want)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(want): %v", err)
+	}
+	if gotResolved != wantResolved {
+		t.Errorf("RepoRoot returned %q (resolved %q); want %q (resolved %q) — foreign go.mod was not skipped",
+			got, gotResolved, want, wantResolved)
+	}
+}
+
+// TestExpectedModulePath_MatchesGoMod is the drift guard between the
+// `ExpectedModulePath` const and the repository's actual `go.mod`. If a
+// future fork or rename updates one without the other, every contract
+// test that resolves repo-rooted paths starts skipping or fataling — this
+// test fires first with a clear message instead.
+//
+// We resolve `go.mod` via os.ReadFile + readModulePath so we exercise the
+// same parser RepoRoot uses; an unrelated regression that broke
+// readModulePath without changing the const would surface here too.
+func TestExpectedModulePath_MatchesGoMod(t *testing.T) {
+	root := RepoRoot(t)
+	goModPath := filepath.Join(root, "go.mod")
+	module, ok := readModulePath(goModPath)
+	if !ok {
+		t.Fatalf("readModulePath(%q) returned !ok — go.mod parse regression", goModPath)
+	}
+	if module != ExpectedModulePath {
+		t.Errorf("ExpectedModulePath = %q, but %s declares module %q — update the const in repo.go and any test fixtures in lockstep with go.mod",
+			ExpectedModulePath, goModPath, module)
 	}
 }
