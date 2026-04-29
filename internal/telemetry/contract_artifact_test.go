@@ -46,12 +46,18 @@ import (
 // a constant so future renames can't drift between the two tests below.
 const artifactOptOut = "-"
 
-// onDiskUntaggedDiagFmt is the printf-style format string the
-// producer-side scanner uses to construct its diagnostic when an
-// on-disk call site lacks an ARTIFACT tag. Centralized so the real
-// scanner and TestContract_OptOutGuidanceInFailureMessage both
-// reference one source — a refactor that updates the prose in only
-// one place would silently leave the other behind.
+// onDiskUntaggedDiagFmt is the printf-style format string used by the
+// untagged-call-site failure path. Centralized so both
+// TestContract_AllOnDiskCallSitesAreTagged (which fires the diagnostic
+// against real production source) and
+// TestContract_OptOutGuidanceInFailureMessage (which asserts the
+// diagnostic mentions the `-` opt-out marker) reference one source —
+// a refactor that updated the prose in only one place would silently
+// leave the other behind.
+//
+// (Both call sites are in this *_test.go file; there is no production
+// scanner. The format string is shared between two tests, not between
+// test and production.)
 //
 // Format args (in order): file, line, label, window.
 const onDiskUntaggedDiagFmt = "%s:%d: %s names a kaboomDir-relative on-disk artifact but has no `// ARTIFACT: <name>` comment within %d lines above; tag the call site so TestContract_ArtifactTableMatchesCallSites cannot drift undetected (use `// ARTIFACT: -` to opt out if the literal is intentionally NOT a daemon-owned artifact)"
@@ -259,9 +265,9 @@ func collectArtifactCommentLines(fset *token.FileSet, file *ast.File) map[int]st
 // onDiskRule describes a CallExpr shape that names a daemon-owned
 // artifact at construction time. Each rule is matched against the
 // callable's package + function name; litArg says which positional arg
-// MUST be a string-literal artifact name; optional firstArgIdent
-// requires arg[0] to be a bare *ast.Ident with that name (e.g.,
-// `kaboomDir` for the `filepath.Join(kaboomDir, "...")` shape).
+// MUST be a string-literal artifact name; optional argIdents requires
+// arg[idx] to be a bare *ast.Ident with the named value (e.g.,
+// `0:"kaboomDir"` for the `filepath.Join(kaboomDir, "...")` shape).
 //
 // pkg == "" means "in-package bare ident" (e.g., withKaboomStateLock).
 // pkg != "" means "selector qualified by this package name" (e.g.,
@@ -272,12 +278,17 @@ func collectArtifactCommentLines(fset *token.FileSet, file *ast.File) map[int]st
 // requires custom predicate logic, add a typed field for that
 // predicate (don't reach for func(call *CallExpr) bool generically;
 // closures are escape-hatch flexibility this table has resisted).
+//
+// The argIdents map (rather than a `firstArgIdent string`) anticipates
+// future rules that need ident constraints on more than the first arg
+// — e.g., a hypothetical `wrapper(ctx, kaboomDir, "...")` rule would
+// constrain arg[1].
 type onDiskRule struct {
-	pkg            string
-	fn             string
-	litArg         int
-	label          string
-	firstArgIdent  string // optional; arg[0] must be a bare ident with this name
+	pkg       string
+	fn        string
+	litArg    int
+	label     string
+	argIdents map[int]string // optional; arg[idx] must be a bare ident with the named value
 }
 
 // onDiskRules enumerates every call shape the producer-side scanner
@@ -295,8 +306,8 @@ var onDiskRules = []onDiskRule{
 	// kaboomDir package ident; second arg is the literal artifact name.
 	{
 		pkg: "filepath", fn: "Join", litArg: 1,
-		label:         `filepath.Join(kaboomDir, "...")`,
-		firstArgIdent: "kaboomDir",
+		label:     `filepath.Join(kaboomDir, "...")`,
+		argIdents: map[int]string{0: "kaboomDir"},
 	},
 	// withKaboomStateLock("<lit>", ...) — bare in-package ident.
 	{pkg: "", fn: "withKaboomStateLock", litArg: 0, label: `withKaboomStateLock("...", ...)`},
@@ -353,14 +364,23 @@ func classifyOnDiskCall(call *ast.CallExpr) (string, bool) {
 		if !isStringLit(call.Args[r.litArg]) {
 			continue
 		}
-		if r.firstArgIdent != "" {
-			if len(call.Args) == 0 {
-				continue
+		// argIdents: every constrained position must be a bare ident
+		// with the expected name. Out-of-range or non-ident args fail
+		// the rule.
+		identsOK := true
+		for idx, want := range r.argIdents {
+			if idx >= len(call.Args) {
+				identsOK = false
+				break
 			}
-			id, ok := call.Args[0].(*ast.Ident)
-			if !ok || id.Name != r.firstArgIdent {
-				continue
+			id, ok := call.Args[idx].(*ast.Ident)
+			if !ok || id.Name != want {
+				identsOK = false
+				break
 			}
+		}
+		if !identsOK {
+			continue
 		}
 		return r.label, true
 	}
@@ -499,7 +519,14 @@ func TestFindArtifactTagWithin_BoundaryEdges(t *testing.T) {
 // failing the surrounding *testing.T.
 func TestContract_OptOutGuidanceInFailureMessage(t *testing.T) {
 	// Synthetic source: an untagged kaboomDir-relative call that will
-	// trip the scanner.
+	// trip the scanner. The package name (`fake`), the kaboomDir
+	// declaration, and the function body exist solely to satisfy
+	// go/parser's syntactic requirements — they are NOT meant to
+	// mirror real production shape (no Telemetry semantics, no
+	// state-lock wrapper). If the scanner ever validates that
+	// kaboomDir is declared by the same package as the production
+	// telemetry pipeline, this fixture must add a matching package
+	// declaration.
 	const src = `package fake
 
 import "path/filepath"

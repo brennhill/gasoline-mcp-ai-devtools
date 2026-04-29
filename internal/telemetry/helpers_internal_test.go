@@ -88,14 +88,14 @@ func TestWithRotation_NestedCallFiresFatalf(t *testing.T) {
 			func() int { return 0 },
 			func(int) {})
 	})
-	if fake.Fatal() == "" {
+	if fake.LastFatal() == "" {
 		t.Fatal("Fatalf was not called when mutex was already held")
 	}
 	// Label must appear in the misuse message verbatim — operators rely
 	// on it to identify which helper was misused.
 	const wantSubstr = "myLabel"
-	if !strings.Contains(fake.Fatal(), wantSubstr) {
-		t.Errorf("Fatalf message = %q, want substring %q", fake.Fatal(), wantSubstr)
+	if !strings.Contains(fake.LastFatal(), wantSubstr) {
+		t.Errorf("Fatalf message = %q, want substring %q", fake.LastFatal(), wantSubstr)
 	}
 }
 

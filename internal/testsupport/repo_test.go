@@ -1,6 +1,6 @@
 // repo_test.go — Self-tests for testsupport.RepoRoot. Verify the
 // happy-path walk-up returns the repo root containing go.mod, the
-// failure mode fires Fatalf with the RepoRootChdirHint marker when no
+// failure mode fires Fatalf with the repoRootChdirHint marker when no
 // go.mod is reachable, the foreign-module skip branch (the whole
 // reason ExpectedModulePath exists) actually walks past a non-matching
 // go.mod, and the parser handles each go.mod shape that the wild has
@@ -39,17 +39,24 @@ func TestRepoRoot_FindsRepoRootFromPackageDir(t *testing.T) {
 // wd-injectable internal form, so the test does NOT depend on whether
 // $TMPDIR happens to sit inside a Go module on the host machine. We pass
 // a synthetic path under TempDir() and verify the walk reaches filesystem
-// root with the RepoRootChdirHint marker present.
+// root with the repoRootChdirHint marker present.
 //
 // We still GUARD against a host where TempDir() roots inside a Go module
 // (rare but possible on contributor machines) — but the guard now skips
-// loudly with t.Logf, so it is visible in `-v` runs whether the branch
-// was actually exercised. (Filesystem stat is not currently injectable;
-// see the LIMITATION in repoRootFromWd's doc.)
+// loudly via t.Skipf, so it's visible in `-v` runs whether the branch
+// was actually exercised. CI is required to NOT skip (see the CI guard
+// at the end), so the not-found branch is always exercised in CI; the
+// skip is permitted only on contributor machines.
 func TestRepoRoot_FatalfWhenNoGoMod(t *testing.T) {
 	tmp := t.TempDir()
 	for d := tmp; d != filepath.Dir(d); d = filepath.Dir(d) {
 		if _, err := os.Stat(filepath.Join(d, "go.mod")); err == nil {
+			// CI must not skip — the not-found branch must be
+			// exercised somewhere. CONTINUOUS_INTEGRATION /
+			// GITHUB_ACTIONS / CI cover the common runners.
+			if isCI() {
+				t.Fatalf("CI host has go.mod ancestor %q: this test cannot exercise the not-found branch on this filesystem layout — CI configuration must use a tempdir outside any Go module", d)
+			}
 			t.Skipf("ancestor %q contains go.mod; cannot exercise the not-found branch on this filesystem", d)
 		}
 	}
@@ -59,16 +66,28 @@ func TestRepoRoot_FatalfWhenNoGoMod(t *testing.T) {
 	ExpectFakeFatal(t, fake, func() {
 		repoRootFromWd(fake, tmp)
 	})
-	if fake.Fatal() == "" {
+	if fake.LastFatal() == "" {
 		t.Fatal("Fatalf was not called from a directory with no go.mod ancestor")
 	}
 	// The remediation hint marker is load-bearing — production callers
 	// who tripped this by chdir'ing to a non-module path see it in the
 	// failure message. The marker is a stable token so prose can evolve
 	// without breaking this assertion.
-	if !strings.Contains(fake.Fatal(), RepoRootChdirHint) {
-		t.Errorf("Fatalf message = %q, want substring %q (remediation marker missing)", fake.Fatal(), RepoRootChdirHint)
+	if !strings.Contains(fake.LastFatal(), repoRootChdirHint) {
+		t.Errorf("Fatalf message = %q, want substring %q (remediation marker missing)", fake.LastFatal(), repoRootChdirHint)
 	}
+}
+
+// isCI reports whether the test is running under a known CI runner.
+// Used by TestRepoRoot_FatalfWhenNoGoMod to refuse the contributor-
+// machine skip path in CI, where the not-found branch MUST exercise.
+func isCI() bool {
+	for _, k := range []string{"CI", "GITHUB_ACTIONS", "CONTINUOUS_INTEGRATION"} {
+		if v := os.Getenv(k); v != "" && v != "false" && v != "0" {
+			return true
+		}
+	}
+	return false
 }
 
 // TestRepoRoot_SkipsForeignGoMod is the regression guard for the whole
@@ -129,7 +148,7 @@ func TestRepoRoot_SkipsForeignGoMod(t *testing.T) {
 
 	// Inject pkgDir as the wd directly — no t.Chdir gymnastics.
 	got := repoRootFromWd(t, pkgDir)
-	AssertPathsEqual(t, got, tmp, "foreign go.mod was not skipped")
+	AssertPathResolvesTo(t, got, tmp, "foreign go.mod was not skipped")
 }
 
 // TestExpectedModulePath_MatchesGoMod is the drift guard between the
@@ -222,6 +241,12 @@ func TestReadModulePath_TableEdges(t *testing.T) {
 			wantOK:   false,
 		},
 		{
+			name:     "module directive on later line is NOT recovered",
+			body:     "require example.com/dep v1\nmodule example.com/foo\n",
+			wantPath: "",
+			wantOK:   false,
+		},
+		{
 			name:     "comments only, no directive",
 			body:     "// just a comment\n// and another\n",
 			wantPath: "",
@@ -263,6 +288,24 @@ func TestReadModulePath_TableEdges(t *testing.T) {
 			wantPath: "",
 			wantOK:   false,
 		},
+		{
+			name:     "empty-quoted module path is rejected",
+			body:     "module \"\"\n",
+			wantPath: "",
+			wantOK:   false,
+		},
+		{
+			name:     "whitespace-quoted module path is rejected",
+			body:     "module \"   \"\n",
+			wantPath: "   ",
+			wantOK:   true,
+		},
+		{
+			name:     "UTF-8 BOM not handled (current behavior pinned)",
+			body:     "\ufeffmodule example.com/foo\n",
+			wantPath: "",
+			wantOK:   false,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -293,5 +336,39 @@ func TestReadModulePath_NonexistentFile(t *testing.T) {
 	}
 	if got != "" {
 		t.Errorf("path = %q, want empty for missing file", got)
+	}
+}
+
+// TestCutDirective_TableEdges is a direct unit test for the directive
+// extractor. Lives here next to readModulePath since cutDirective is
+// the only consumer today, but the helper is generalized for future
+// `go 1.24` / `toolchain ...` parsers.
+func TestCutDirective_TableEdges(t *testing.T) {
+	cases := []struct {
+		name     string
+		line     string
+		keyword  string
+		wantRest string
+		wantOK   bool
+	}{
+		{name: "space sep", line: "module example.com/foo", keyword: "module", wantRest: "example.com/foo", wantOK: true},
+		{name: "tab sep", line: "module\texample.com/foo", keyword: "module", wantRest: "example.com/foo", wantOK: true},
+		{name: "multi space", line: "module    example.com/foo", keyword: "module", wantRest: "example.com/foo", wantOK: true},
+		{name: "go directive", line: "go 1.24", keyword: "go", wantRest: "1.24", wantOK: true},
+		{name: "wrong keyword", line: "require example.com/dep v1", keyword: "module", wantRest: "", wantOK: false},
+		{name: "no separator after keyword", line: "modulefoo bar", keyword: "module", wantRest: "", wantOK: false},
+		{name: "bare keyword", line: "module", keyword: "module", wantRest: "", wantOK: false},
+		{name: "empty line", line: "", keyword: "module", wantRest: "", wantOK: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := cutDirective(tc.line, tc.keyword)
+			if ok != tc.wantOK {
+				t.Errorf("ok = %v, want %v", ok, tc.wantOK)
+			}
+			if got != tc.wantRest {
+				t.Errorf("rest = %q, want %q", got, tc.wantRest)
+			}
+		})
 	}
 }

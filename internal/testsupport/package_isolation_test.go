@@ -37,30 +37,46 @@ import (
 var testsupportImportPath = ExpectedModulePath + "/internal/testsupport"
 
 // skippedWalkDirs enumerates directory names that the production-import
-// scan must not descend into. Listed by name (no path prefix) so the
-// match is fast and order-independent. Entries:
+// scan must not descend into. The set is intentionally heterogeneous —
+// different sources, different drift risks. New additions should be
+// landed alongside a comment naming the convention.
 //
-//   - hidden dirs (.git, .gitnexus, .claude): infrastructure, never
-//     contain Go source we own
-//   - vendor: third-party packages — could legitimately contain a
-//     testsupport import we don't want to flag against ourselves
-//   - node_modules: JS deps, no Go source
-//   - testdata: Go's own ignore convention; fixtures live here and may
+// Go-tooling conventions (`go build`/`go test` ignore these by
+// convention; never contain compilable Go source the toolchain
+// builds):
+//   - testdata             — Go's own ignore convention; fixtures may
 //     legitimately import testsupport for self-testing
-//   - tmp, dist, build, out, coverage: build/output dirs that may
-//     contain copied or generated source
+//   - any name beginning with `_` (handled by shouldSkipDir, NOT this
+//     map) — Go-tooling-ignored prefix
 //
-// Any directory beginning with "_" is also skipped — Go's tooling
-// (`go build`, `go test`) ignores `_`-prefixed dirs by convention.
+// Hidden infrastructure (handled by shouldSkipDir's `.` prefix check,
+// NOT this map): .git, .gitnexus, .claude, .github.
+//
+// Ecosystem conventions (other languages' conventions; never contain
+// Go source we own):
+//   - vendor      — Go third-party packages (legitimately may contain
+//     a testsupport import; we don't want to flag against ourselves)
+//   - node_modules — JS deps
+//
+// Common build/output directory names. Heuristic: directories with
+// these names rarely contain top-level production Go we want scanned.
+// A hypothetical `out/cli/main.go` (legal but unusual) would be
+// silently skipped — see TestPackageIsolation_FootgunDocumented for
+// the documented gap. If a real project ships production Go in a
+// directory matching one of these names, drop the entry from this set.
+//   - tmp, dist, build, out, coverage
 var skippedWalkDirs = map[string]struct{}{
+	// Go-tooling conventions
+	"testdata": {},
+	// Ecosystem conventions
 	"vendor":       {},
 	"node_modules": {},
-	"testdata":     {},
-	"tmp":          {},
-	"dist":         {},
-	"build":        {},
-	"out":          {},
-	"coverage":     {},
+	// Common build/output dir names (footgun risk; see comment above)
+	"tmp":      {},
+	"dist":     {},
+	"build":    {},
+	"out":      {},
+	"coverage": {},
 }
 
 // shouldSkipDir reports whether the walk should call SkipDir on the
@@ -90,6 +106,7 @@ func TestPackageNotImportedByProductionCode(t *testing.T) {
 	}
 	var offenders []offender
 	filesScanned := 0
+	parseFailures := 0
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -111,11 +128,15 @@ func TestPackageNotImportedByProductionCode(t *testing.T) {
 		fset := token.NewFileSet()
 		file, err := parser.ParseFile(fset, path, nil, parser.ImportsOnly)
 		if err != nil {
-			// A parse failure on a production .go file is a separate
-			// problem; surface it but do not block the scan, so the
-			// final error message lists every offender even when one
-			// file is broken.
-			t.Logf("%s: parse failure (treated as no-import): %v", path, err)
+			// Track parse failures separately. We do NOT abort the
+			// scan (the offender list should still print even when
+			// one file is broken), but we DO mark the test failed
+			// at the end — silent parse failures previously masked
+			// regressions that broke parsing for "most files" while
+			// leaving one parseable, satisfying the filesScanned > 0
+			// guard while massively under-scanning.
+			parseFailures++
+			t.Logf("%s: parse failure: %v", path, err)
 			return nil
 		}
 		filesScanned++
@@ -139,6 +160,13 @@ func TestPackageNotImportedByProductionCode(t *testing.T) {
 	// We need to know we actually scanned production code.
 	if filesScanned == 0 {
 		t.Fatalf("scanned ZERO non-test .go files under %s — the walk has likely regressed; this test would silently pass without coverage", root)
+	}
+
+	// Surface ANY parse failures as a non-fatal error. The offender
+	// scan still prints below; the test fails at the end so neither
+	// signal masks the other.
+	if parseFailures > 0 {
+		t.Errorf("encountered %d parse failures during the production-import scan; see preceding logs for paths", parseFailures)
 	}
 
 	if len(offenders) > 0 {

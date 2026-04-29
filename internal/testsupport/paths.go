@@ -6,38 +6,61 @@ package testsupport
 
 import "path/filepath"
 
-// AssertPathsEqual fails t (via Fatalf) unless got and want resolve to
-// the same canonical filesystem path after symlink resolution. Used by
-// tests that compare paths returned from APIs that may resolve
-// `/var` ↔ `/private/var` (macOS) or other platform-symlink quirks.
+// AssertPathResolvesTo fails t (via Fatalf) unless `actual` and
+// `expected` resolve to the same canonical filesystem path after
+// symlink resolution. Used by tests that compare paths returned from
+// APIs that may resolve `/var` ↔ `/private/var` (macOS) or other
+// platform-symlink quirks.
 //
-// The msg parameter is appended to the failure message to give the test
-// a chance to explain what it was checking (e.g., "foreign go.mod was
-// not skipped"). Pass "" if no extra context is needed.
+// The verb-shaped name (`AssertPathResolvesTo`) makes argument order
+// unambiguous at the call site: read as "assert {actual} resolves to
+// {expected}". The earlier name `AssertPathsEqual` had three same-
+// typed string arguments in a row, inviting silent swaps that would
+// produce a misleading "got X, want Y" on inequality.
+//
+// `msg` is variadic so call sites that have no extra context can omit
+// it entirely (vs. typing `""` to advertise an uninformative empty).
+// When supplied, the strings are joined with spaces and appended to
+// every failure mode (inequality OR symlink-lookup error).
 //
 // Both inputs MUST exist on disk; missing paths fail the test via
-// Fatalf with a clear diagnostic. The function returns nothing — call
-// sites that need a continue-on-error semantic should compare resolved
-// paths inline rather than reach for this helper.
-func AssertPathsEqual(t helperFatalfTB, got, want, msg string) {
+// Fatalf with the same msg appended.
+func AssertPathResolvesTo(t HelperFatalfTB, actual, expected string, msg ...string) {
 	t.Helper()
-	gotResolved, err := filepath.EvalSymlinks(got)
+	tail := joinMsg(msg)
+	actualResolved, err := filepath.EvalSymlinks(actual)
 	if err != nil {
-		t.Fatalf("AssertPathsEqual: EvalSymlinks(%q): %v", got, err)
+		t.Fatalf("AssertPathResolvesTo: EvalSymlinks(%q): %v%s", actual, err, tail)
 		return
 	}
-	wantResolved, err := filepath.EvalSymlinks(want)
+	expectedResolved, err := filepath.EvalSymlinks(expected)
 	if err != nil {
-		t.Fatalf("AssertPathsEqual: EvalSymlinks(%q): %v", want, err)
+		t.Fatalf("AssertPathResolvesTo: EvalSymlinks(%q): %v%s", expected, err, tail)
 		return
 	}
-	if gotResolved != wantResolved {
-		if msg == "" {
-			t.Fatalf("paths differ: got %q (resolved %q), want %q (resolved %q)",
-				got, gotResolved, want, wantResolved)
-			return
+	if actualResolved != expectedResolved {
+		t.Fatalf("paths differ: actual %q (resolved %q), expected %q (resolved %q)%s",
+			actual, actualResolved, expected, expectedResolved, tail)
+	}
+}
+
+// joinMsg formats the variadic msg slice into a `: <msg>` suffix for
+// Fatalf templates, or "" if the slice is empty. Hoisted so every
+// failure branch in AssertPathResolvesTo formats consistently.
+func joinMsg(msg []string) string {
+	if len(msg) == 0 {
+		return ""
+	}
+	out := ":"
+	for _, m := range msg {
+		if m == "" {
+			continue
 		}
-		t.Fatalf("paths differ: got %q (resolved %q), want %q (resolved %q): %s",
-			got, gotResolved, want, wantResolved, msg)
+		out += " " + m
 	}
+	if out == ":" {
+		// All msg entries were empty strings — produce no suffix.
+		return ""
+	}
+	return out
 }

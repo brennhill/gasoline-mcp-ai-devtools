@@ -1,4 +1,4 @@
-// faket.go — Shared *testing.T fake for self-tests of helpers that take
+// faket.go — *testing.T fake for self-tests of helpers that take
 // minimal testing.TB-shaped interfaces. Captures Fatalf without aborting
 // the surrounding *testing.T so the failure path is observable as a
 // value to assert against, not a fatal signal that aborts the run.
@@ -11,10 +11,8 @@
 // (`TestPackageNotImportedByProductionCode` in package_isolation_test.go)
 // guards the "production code MUST NOT import this package" rule.
 //
-// Canonical TB-shaped interfaces live in this file (helperFatalfTB,
-// helperFatalTB) so every helper in the package — RepoRoot,
-// AssertPathsEqual, ExpectFakeFatal — uses the same canonical names
-// rather than each one inventing its own minimal subset.
+// Canonical TB-shaped interfaces (HelperFatalfTB, HelperFatalTB) live in
+// tb.go alongside their doc — search for them there.
 
 package testsupport
 
@@ -23,51 +21,26 @@ import (
 	"sync"
 )
 
-// helperFatalfTB is the canonical minimal subset of *testing.T behavior
-// for helpers that fail the test via Fatalf (formatted message). Used
-// by RepoRoot, AssertPathsEqual, and any future helper that needs the
-// "Helper() + Fatalf()" shape.
-//
-// *testing.T and *testing.B satisfy this implicitly. *FakeT also
-// satisfies it, which is why these helpers are testable without a real
-// *testing.T.
-type helperFatalfTB interface {
-	Helper()
-	Fatalf(format string, args ...any)
-}
-
-// helperFatalTB is the canonical minimal subset for helpers that fail
-// the test via Fatal (un-formatted, args spread). Used by
-// ExpectFakeFatal to fail the surrounding *testing.T when the body
-// returns normally without invoking FakeT.Fatalf.
-//
-// Separate from helperFatalfTB because Fatal and Fatalf are distinct
-// methods on testing.TB; merging them would require callers to choose
-// at every site.
-type helperFatalTB interface {
-	Helper()
-	Fatal(args ...any)
-}
-
 // FakeFatalSentinel is the panic value FakeT.Fatalf uses to abort the
-// calling goroutine. Tests recover() this sentinel explicitly so any other
-// panic still propagates.
+// calling goroutine. Tests recover() this sentinel explicitly so any
+// other panic still propagates.
 type FakeFatalSentinel struct{}
 
 // FakeT is a minimal *testing.T fake. It satisfies any interface composed
 // of Helper + Fatalf (+ optional Cleanup), which covers both the
-// helperFatalfTB and the rotationT (in package telemetry) shapes.
+// HelperFatalfTB and the rotationT (in package telemetry) shapes.
 //
 // Fatalf appends the formatted message to the internal fatals slice and
 // panics with FakeFatalSentinel{}; the calling test recovers and
-// inspects via Fatal() (last message) or Fatals() (full history). Cleanup
-// is collected in registration order and exposed via RunCleanups, which
-// fires LIFO to mirror testing.T.Cleanup semantics.
+// inspects via LastFatal() (most recent message) or Fatals() (full
+// history). Cleanup is collected in registration order and exposed via
+// RunCleanups, which fires LIFO to mirror testing.T.Cleanup semantics.
 //
 // Concurrent use: writes to fatals/cleanups are mutex-guarded so a fake
 // shared between goroutines (e.g., a future test that drives a helper
 // from multiple workers) does not race the recorder. Reads through
-// Fatal() / Fatals() are also guarded; direct field access is forbidden.
+// LastFatal() / Fatals() are also guarded; direct field access is
+// forbidden (the slice is unexported).
 type FakeT struct {
 	mu       sync.Mutex
 	fatals   []string
@@ -75,18 +48,21 @@ type FakeT struct {
 }
 
 // Helper is a no-op required by the testing.TB-shaped interfaces.
+// FakeT records messages but never reports a failure line, so the
+// real testing.T.Helper() attribution semantics are irrelevant here —
+// the fake is for inspecting message content, not stack frames.
 func (f *FakeT) Helper() {}
 
 // Fatalf records the formatted message and panics with
 // FakeFatalSentinel{}. The caller is expected to recover the sentinel
 // (via the recoverFakeFatal helper or, more commonly, ExpectFakeFatal)
-// and inspect via Fatal() / Fatals().
+// and inspect via LastFatal() / Fatals().
 //
-// Multiple Fatalf invocations in a single body are allowed and recorded
-// in the fatals slice. Real testing.T.Fatalf aborts the goroutine, so
-// in practice a body produces exactly one fatal — but real code can
-// invoke a fake's Fatalf from a deferred cleanup, in which case both
-// messages must be visible to the test asserting the order.
+// Multiple Fatalf invocations against the same FakeT are allowed and
+// recorded in the fatals slice. Real testing.T.Fatalf aborts the
+// goroutine, so in practice a body produces exactly one fatal — but a
+// deferred cleanup may invoke Fatalf after the body returned, in which
+// case both messages are observable in source order.
 func (f *FakeT) Fatalf(format string, args ...any) {
 	f.mu.Lock()
 	f.fatals = append(f.fatals, fmt.Sprintf(format, args...))
@@ -94,9 +70,15 @@ func (f *FakeT) Fatalf(format string, args ...any) {
 	panic(FakeFatalSentinel{})
 }
 
-// Fatal returns the most recently recorded Fatalf message, or "" if no
-// Fatalf has fired. For history, use Fatals().
-func (f *FakeT) Fatal() string {
+// LastFatal returns the most recently recorded Fatalf message, or "" if
+// no Fatalf has fired. For the full history, use Fatals().
+//
+// Named LastFatal (not Fatal) so it does not collide with
+// testing.TB.Fatal(args ...any) — that method is a verb (fire a
+// failure); this one is a noun (read recorded message). HelperFatalTB
+// uses the verb form, FakeT uses the noun form, and the rename keeps
+// callers unambiguous about which they intend.
+func (f *FakeT) LastFatal() string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if len(f.fatals) == 0 {
@@ -108,6 +90,12 @@ func (f *FakeT) Fatal() string {
 // Fatals returns a snapshot of every Fatalf message recorded so far, in
 // the order they fired. The returned slice is independent of the FakeT's
 // internal state; the caller may mutate it freely.
+//
+// Fatals never returns nil: a fresh FakeT (no Fatalf yet) returns a
+// non-nil empty slice. Callers using `len(fatals) == 0` work either
+// way; callers using `reflect.DeepEqual(fatals, []string{})` rely on
+// this guarantee, since reflect.DeepEqual treats nil and empty slices
+// as unequal.
 func (f *FakeT) Fatals() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -138,7 +126,13 @@ func (f *FakeT) Cleanup(fn func()) {
 //
 // Cleanups run WITHOUT the internal mutex held — a cleanup is allowed
 // to call back into FakeT methods (e.g., register another cleanup, or
-// invoke Fatalf) without deadlocking.
+// invoke Fatalf) without deadlocking. A reentrant Cleanup() registers
+// onto a fresh slice; the next RunCleanups call fires it. A reentrant
+// Fatalf records onto fatals and panics with FakeFatalSentinel — the
+// outer cleanup call site is responsible for recovering the sentinel,
+// otherwise the panic aborts the LIFO sweep at the offending cleanup.
+//
+// TestFakeT_CleanupCanReenterFakeT pins this contract.
 func (f *FakeT) RunCleanups() {
 	f.mu.Lock()
 	cleanups := f.cleanups
@@ -155,8 +149,10 @@ func (f *FakeT) RunCleanups() {
 //
 // Unexported because every external caller uses ExpectFakeFatal, which
 // wraps recoverFakeFatal with the surrounding "expected panic; did not
-// occur" assertion. Internal tests inside the testsupport package can
-// reach this directly if they need bare recover semantics.
+// occur" assertion. Internal callers in the testsupport package use
+// recoverFakeFatal directly when they need bare recover semantics —
+// see TestFakeT_FatalfRecordsAllMessages for the canonical pattern
+// (driving Fatalf in a loop without the body-must-panic assertion).
 func recoverFakeFatal() {
 	r := recover()
 	if r == nil {
@@ -178,10 +174,10 @@ func recoverFakeFatal() {
 //
 //	testsupport.ExpectFakeFatal(t, fake, func() { helperUnderTest(fake) })
 //
-// Pre-existing fake.Fatal content is cleared on entry so a stale value
-// from a prior call cannot mask a body that silently returns without
-// invoking Fatalf.
-func ExpectFakeFatal(t helperFatalTB, fake *FakeT, body func()) {
+// Pre-existing fake.LastFatal content is cleared on entry so a stale
+// value from a prior call cannot mask a body that silently returns
+// without invoking Fatalf.
+func ExpectFakeFatal(t HelperFatalTB, fake *FakeT, body func()) {
 	t.Helper()
 	fake.clearFatals()
 	defer recoverFakeFatal()
